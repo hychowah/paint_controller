@@ -1,0 +1,24 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/test2/ros2_ws/install/towngas_interfaces/include/**",
+        "/home/test2/ros2_ws/install/teknic_interfaces/include/**",
+        "/opt/ros/humble/include/**",
+        "/home/test2/ros2_ws/src/teknic_controller_ros2/include/**",
+        "/home/test2/ros2_ws/src/towngas_interfaces/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
