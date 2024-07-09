@@ -5,6 +5,7 @@ import CustomComponents 1.0  // Import the module where PlotItem is registered
 
 Rectangle {
     id: page1Rect
+    objectName: "page1Rect"
     Layout.fillWidth: true
     Layout.fillHeight: true
     color: "#E66100"

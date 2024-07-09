@@ -62,7 +62,7 @@ class PaintController(Node):
 
         print("Found stackView")
 
-        page1 = stack_view.findChild(QObject, "page1")
+        page1 = stack_view.findChild(QObject, "page1Rect")
         if page1 is None:
             print("Could not find page1 in QML")
             sys.exit(-1)
