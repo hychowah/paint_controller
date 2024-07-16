@@ -34,8 +34,8 @@ Rectangle {
                 id: imagePage1
                 source: "../paint_controller/resource/base.png"
                 anchors.centerIn: parent
-                width: selectBar.width * 1.5
-                height: selectBar.width * 1.5
+                width: selectBar.width * 0.8
+                height: selectBar.width * 0.8
                 fillMode: Image.PreserveAspectFit
             }
 
@@ -105,7 +105,7 @@ Rectangle {
                 width: parent.width
 
                 Text {
-                    text: "Winch"
+                    text: "WINCH"
                     color: "white"
                     font.pixelSize: 12
                     font.bold: true
@@ -127,7 +127,7 @@ Rectangle {
                 width: parent.width
 
                 Text {
-                    text: "Wheel"
+                    text: "WHEEL"
                     color: "white"
                     font.pixelSize: 12
                     font.bold: true
@@ -149,7 +149,7 @@ Rectangle {
                 width: parent.width
 
                 Text {
-                    text: "End-effector"
+                    text: "END-EFFECTOR"
                     color: "white"
                     font.pixelSize: 12
                     font.bold: true

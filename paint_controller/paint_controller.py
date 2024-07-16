@@ -1,13 +1,14 @@
-import sys
-import os
-import rclpy
-from rclpy.node import Node
 from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt
 from PySide6.QtGui import QGuiApplication, QPainter
 from PySide6.QtQml import QQmlApplicationEngine, QQmlContext, qmlRegisterType
 from PySide6.QtQuick import QQuickPaintedItem
-from sensor_msgs.msg import LaserScan
+
+import sys
+import os
 import numpy as np
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import LaserScan
 
 class PlotItem(QQuickPaintedItem):
     def __init__(self, parent=None):
@@ -27,9 +28,10 @@ class PlotItem(QQuickPaintedItem):
         for i in range(len(x)):
             painter.drawPoint(int(x[i]), int(y[i]))
 
-class PaintController(Node):
+class PaintController(Node, QObject):
     def __init__(self, app):
         super().__init__('paint_controller')
+        QObject.__init__(self)
         self.app = app
         self.subscription = self.create_subscription(
             LaserScan,
@@ -79,13 +81,19 @@ class PaintController(Node):
         self.plot_item = PlotItem()
         self.engine.rootContext().setContextProperty("plotItem", self.plot_item)
 
+        # Set the backend property after the engine is loaded
+        self.engine.rootContext().setContextProperty("backend", self)
+
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_plot)
         self.timer.start(100)  # update every 100 ms
 
-        self.engine.rootContext().setContextProperty("backend", self)
-
         sys.exit(self.app.exec())
+
+    @Slot(bool)
+    def toggleSwitchChanged(self, checked):
+        print(f"Toggle switch changed: {checked}")
+        # Implement your function here that should be triggered by the toggle switch
 
     def listener_callback(self, msg):
         self.scan_data = msg
@@ -104,17 +112,6 @@ class PaintController(Node):
         x = np.array(self.scan_data.ranges) * np.cos(angles)
         y = np.array(self.scan_data.ranges) * np.sin(angles)
         self.plot_item.set_plot_data(x, y)
-
-    @Slot(bool)
-    def toggle_program(self, is_on):
-        self.program_running = is_on
-        if is_on:
-            self.get_logger().info('Program started')
-            # Add your specific program start logic here
-        else:
-            self.get_logger().info('Program stopped')
-            # Add your specific program stop logic here
-        
 
 def main(args=None):
     rclpy.init(args=args)
