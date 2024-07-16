@@ -17,12 +17,13 @@ Rectangle {
 
         ColumnLayout {
             Layout.preferredWidth: 700
+
             spacing: 20
 
             Rectangle {
                 id: titleContainer
                 Layout.fillWidth: true
-                Layout.preferredHeight: 500  // Adjust height as needed
+                Layout.preferredHeight: 600  // Adjust height as needed
                 color: "#E2E2E2"
                 radius: 10
                 Layout.alignment: Qt.AlignHCenter | Qt.AlignTop

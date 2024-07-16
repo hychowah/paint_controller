@@ -1,5 +1,5 @@
-from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt
-from PySide6.QtGui import QGuiApplication, QPainter
+from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine, QQmlContext, qmlRegisterType
 from PySide6.QtQuick import QQuickPaintedItem
 
@@ -7,6 +7,7 @@ import sys
 import os
 import numpy as np
 import rclpy
+import random
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
 
@@ -29,8 +30,11 @@ class PlotItem(QQuickPaintedItem):
             painter.drawPoint(int(x[i]), int(y[i]))
 
 class PaintController(Node, QObject):
+    lengthChanged = Signal(str)
+    speedChanged = Signal(str)
+
     def __init__(self, app):
-        super().__init__('paint_controller')
+        Node.__init__(self, 'paint_controller')
         QObject.__init__(self)
         self.app = app
         self.subscription = self.create_subscription(
@@ -40,6 +44,8 @@ class PaintController(Node, QObject):
             10)
         self.subscription  # prevent unused variable warning
 
+        self._length = "0"
+        self._speed = "0"
         self.scan_data = None
 
         self.init_ui()
@@ -90,6 +96,26 @@ class PaintController(Node, QObject):
 
         sys.exit(self.app.exec())
 
+    @Property(str, notify=lengthChanged)
+    def length(self):
+        return self._length
+
+    @length.setter
+    def length(self, value):
+        if self._length != value:
+            self._length = value
+            self.lengthChanged.emit(value)
+
+    @Property(str, notify=speedChanged)
+    def speed(self):
+        return self._speed
+
+    @speed.setter
+    def speed(self, value):
+        if self._speed != value:
+            self._speed = value
+            self.speedChanged.emit(value)
+
     @Slot(bool)
     def toggleSwitchChanged(self, checked):
         print(f"Toggle switch changed: {checked}")
@@ -101,6 +127,7 @@ class PaintController(Node, QObject):
         print(f'Received LiDAR Data: {len(msg.ranges)} ranges')
 
     def update_plot(self):
+        self.speed = str(random.randint(-9, 9))  # This will trigger the setter and emit the signal
         if self.scan_data is None:
             return
 

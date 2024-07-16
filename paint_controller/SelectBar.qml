@@ -42,8 +42,10 @@ Rectangle {
             MouseArea {
                 anchors.fill: parent
                 onClicked: {
-                    stackView.replace(page1Component)
-                    selectBar.selectedButton = "buttonPage1"
+                    if (selectBar.selectedButton !== "buttonPage1") {
+                        stackView.replace(page1Component)
+                        selectBar.selectedButton = "buttonPage1"
+                    }
                 }
             }
         }
@@ -68,8 +70,10 @@ Rectangle {
             MouseArea {
                 anchors.fill: parent
                 onClicked: {
-                    stackView.replace(page2Component)
-                    selectBar.selectedButton = "buttonPage2"
+                    if (selectBar.selectedButton !== "buttonPage2") {
+                        stackView.replace(page2Component)
+                        selectBar.selectedButton = "buttonPage2"
+                    }
                 }
             }
         }
