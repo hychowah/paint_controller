@@ -7,7 +7,7 @@ Rectangle {
     objectName: "page2Rect"
     Layout.fillWidth: true
     Layout.fillHeight: true
-    color: "#3D3846"
+    color: "#FFFFFF"
 
     ColumnLayout {
         spacing: 20

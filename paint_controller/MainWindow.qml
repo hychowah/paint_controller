@@ -5,9 +5,10 @@ import CustomComponents 1.0
 
 ApplicationWindow {
     visible: true
+    visibility: Window.FullScreen
     width: 1280
     height: 720
-    title: qsTr("MainWindow")
+    title: qsTr("Painting Robot")
 
     Rectangle {
         id: background

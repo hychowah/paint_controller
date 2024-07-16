@@ -8,7 +8,7 @@ Rectangle {
     objectName: "page1Rect"
     Layout.fillWidth: true
     Layout.fillHeight: true
-    color: "#E66100"
+    color: "#FFFFFF"
 
     RowLayout {
         anchors.fill: parent
@@ -16,46 +16,54 @@ Rectangle {
         spacing: 20
 
         ColumnLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.preferredWidth: 700
             spacing: 20
 
-            Text {
-                text: "Page 1"
-                font.pixelSize: 40
-                color: "#FFFFFF"
+            Rectangle {
+                id: titleContainer
+                Layout.fillWidth: true
+                Layout.preferredHeight: 680  // Adjust height as needed
+                color: "#DDDDDD"
+                radius: 10
                 Layout.alignment: Qt.AlignHCenter | Qt.AlignTop
+
+                Text {
+                    text: "Page 1"
+                    font.pixelSize: 40
+                    color: "#000000"  // Adjusted color for visibility
+                    anchors.centerIn: parent
+                }
             }
         }
 
         ColumnLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.preferredWidth: 500
             spacing: 20
 
             Item {
                 id: plotContainer
                 objectName: "plotContainer"
-                Layout.fillWidth: true
-                Layout.fillHeight: true
+                width: 500
+                height: 500
                 Layout.alignment: Qt.AlignHCenter | Qt.AlignTop
 
                 property var plotWidget: null
 
                 PlotItem {
                     id: plotItem
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
+                    width: parent.width
+                    height: parent.height
                 }
             }
 
             Rectangle {
+                id: cameraView
                 color: "#DDDDDD"
-                Layout.fillWidth: true
-                Layout.preferredHeight: 100
+                width: 500
+                height: 500
                 Layout.alignment: Qt.AlignHCenter | Qt.AlignBottom
                 Text {
-                    text: "Bottom Row"
+                    text: "Camera View"
                     anchors.centerIn: parent
                     color: "#000000"
                 }

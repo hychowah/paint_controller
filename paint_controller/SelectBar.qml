@@ -3,9 +3,9 @@ import QtQuick.Layouts 1.15
 
 Rectangle {
     id: selectBar
-    width: 101
+    width: 150
     Layout.fillHeight: true
-    color: "#191d21"
+    color: "#4374A2"
 
     property var stackView
 
@@ -23,18 +23,18 @@ Rectangle {
 
         Rectangle {
             id: buttonPage1
-            width: 80
-            height: 80
+            width: selectBar.width * 0.8
+            height: selectBar.width * 0.8
             radius: 20
-            color: "#56606e"
+            color: "#70A3D2"
             Layout.alignment: Qt.AlignHCenter
 
             Image {
                 id: imagePage1
                 source: "../paint_controller/resource/base.png"
                 anchors.centerIn: parent
-                width: parent.width * 0.8
-                height: parent.height * 0.8
+                width: selectBar.width * 0.8
+                height: selectBar.width * 0.8
                 fillMode: Image.PreserveAspectFit
             }
 
@@ -46,18 +46,18 @@ Rectangle {
 
         Rectangle {
             id: buttonPage2
-            width: 80
-            height: 80
+            width: selectBar.width * 0.8
+            height: selectBar.width * 0.8
             radius: 20
-            color: "#56606e"
+            color: "#70A3D2"
             Layout.alignment: Qt.AlignHCenter
 
             Image {
                 id: imagePage2
                 source: "../paint_controller/resource/winch.png"
                 anchors.centerIn: parent
-                width: parent.width * 0.8
-                height: parent.height * 0.8
+                width: selectBar.width * 0.6
+                height: selectBar.width * 0.6
                 fillMode: Image.PreserveAspectFit
             }
 
@@ -65,6 +65,131 @@ Rectangle {
                 anchors.fill: parent
                 onClicked: stackView.replace(page2Component)
             }
+        }
+    }
+
+    // Top border for the connection status row
+    Rectangle {
+        width: parent.width
+        height: 2
+        color: "white"
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: connectionStatusRow.top
+    }
+
+    // Connection status row
+    Rectangle {
+        id: connectionStatusRow
+        width: parent.width
+        height: 80
+        color: "#A4A589"
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: buttonExit.top 
+        anchors.bottomMargin: 50
+
+        Column {
+            anchors.fill: parent
+            spacing: 5
+            anchors.margins: 10
+
+            // Winch status
+            Row {
+                spacing: 5
+                width: parent.width
+
+                Text {
+                    text: "Winch"
+                    color: "white"
+                    font.pixelSize: 12
+                    font.bold: true
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: selectBar.width * 0.7 // Adjust this width to ensure alignment
+                }
+                Rectangle {
+                    width: 15
+                    height: 15
+                    radius: 7.5
+                    color: "yellow" // Change color based on status
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            // Wheel status
+            Row {
+                spacing: 5
+                width: parent.width
+
+                Text {
+                    text: "Wheel"
+                    color: "white"
+                    font.pixelSize: 12
+                    font.bold: true
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: selectBar.width * 0.7 // Adjust this width to ensure alignment
+                }
+                Rectangle {
+                    width: 15
+                    height: 15
+                    radius: 7.5
+                    color: "yellow" // Change color based on status
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            // End-effector status
+            Row {
+                spacing: 5
+                width: parent.width
+
+                Text {
+                    text: "End-effector"
+                    color: "white"
+                    font.pixelSize: 12
+                    font.bold: true
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: selectBar.width * 0.7 // Adjust this width to ensure alignment
+                }
+                Rectangle {
+                    width: 15
+                    height: 15
+                    radius: 7.5
+                    color: "yellow" // Change color based on status
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+        }
+    }
+
+    // Bottom border for the connection status row
+    Rectangle {
+        width: parent.width
+        height: 2
+        color: "white"
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: connectionStatusRow.bottom
+    }
+
+    // Exit button positioned near the bottom
+    Rectangle {
+        id: buttonExit
+        width: selectBar.width * 0.8
+        height: selectBar.width * 0.8
+        radius: 20
+        color: "#FF5733"
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 20 // Adjust this margin as needed
+
+        Text {
+            text: "Exit"
+            anchors.centerIn: parent
+            color: "#FFFFFF"
+            font.pixelSize: 20
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: Qt.quit()
         }
     }
 }
