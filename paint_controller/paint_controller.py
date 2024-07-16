@@ -83,6 +83,8 @@ class PaintController(Node):
         self.timer.timeout.connect(self.update_plot)
         self.timer.start(100)  # update every 100 ms
 
+        self.engine.rootContext().setContextProperty("backend", self)
+
         sys.exit(self.app.exec())
 
     def listener_callback(self, msg):
@@ -102,6 +104,17 @@ class PaintController(Node):
         x = np.array(self.scan_data.ranges) * np.cos(angles)
         y = np.array(self.scan_data.ranges) * np.sin(angles)
         self.plot_item.set_plot_data(x, y)
+
+    @Slot(bool)
+    def toggle_program(self, is_on):
+        self.program_running = is_on
+        if is_on:
+            self.get_logger().info('Program started')
+            # Add your specific program start logic here
+        else:
+            self.get_logger().info('Program stopped')
+            # Add your specific program stop logic here
+        
 
 def main(args=None):
     rclpy.init(args=args)

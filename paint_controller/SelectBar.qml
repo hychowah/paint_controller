@@ -8,6 +8,7 @@ Rectangle {
     color: "#4374A2"
 
     property var stackView
+    property string selectedButton: "buttonPage1" // Default selected button
 
     Column {
         anchors.top: parent.top
@@ -26,21 +27,24 @@ Rectangle {
             width: selectBar.width * 0.8
             height: selectBar.width * 0.8
             radius: 20
-            color: "#70A3D2"
+            color: selectBar.selectedButton === "buttonPage1" ? "#E2E2E2" : "#70A3D2"
             Layout.alignment: Qt.AlignHCenter
 
             Image {
                 id: imagePage1
                 source: "../paint_controller/resource/base.png"
                 anchors.centerIn: parent
-                width: selectBar.width * 0.8
-                height: selectBar.width * 0.8
+                width: selectBar.width * 1.5
+                height: selectBar.width * 1.5
                 fillMode: Image.PreserveAspectFit
             }
 
             MouseArea {
                 anchors.fill: parent
-                onClicked: stackView.replace(page1Component)
+                onClicked: {
+                    stackView.replace(page1Component)
+                    selectBar.selectedButton = "buttonPage1"
+                }
             }
         }
 
@@ -49,7 +53,7 @@ Rectangle {
             width: selectBar.width * 0.8
             height: selectBar.width * 0.8
             radius: 20
-            color: "#70A3D2"
+            color: selectBar.selectedButton === "buttonPage2" ? "#E2E2E2" : "#70A3D2"
             Layout.alignment: Qt.AlignHCenter
 
             Image {
@@ -63,7 +67,10 @@ Rectangle {
 
             MouseArea {
                 anchors.fill: parent
-                onClicked: stackView.replace(page2Component)
+                onClicked: {
+                    stackView.replace(page2Component)
+                    selectBar.selectedButton = "buttonPage2"
+                }
             }
         }
     }

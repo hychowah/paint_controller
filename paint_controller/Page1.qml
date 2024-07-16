@@ -8,7 +8,7 @@ Rectangle {
     objectName: "page1Rect"
     Layout.fillWidth: true
     Layout.fillHeight: true
-    color: "#FFFFFF"
+    color: "#9F9F9F"
 
     RowLayout {
         anchors.fill: parent
@@ -22,8 +22,8 @@ Rectangle {
             Rectangle {
                 id: titleContainer
                 Layout.fillWidth: true
-                Layout.preferredHeight: 680  // Adjust height as needed
-                color: "#DDDDDD"
+                Layout.preferredHeight: 500  // Adjust height as needed
+                color: "#E2E2E2"
                 radius: 10
                 Layout.alignment: Qt.AlignHCenter | Qt.AlignTop
 
@@ -37,14 +37,14 @@ Rectangle {
         }
 
         ColumnLayout {
-            Layout.preferredWidth: 500
-            spacing: 20
+            Layout.preferredWidth: 300
+            spacing: 0
 
             Item {
                 id: plotContainer
                 objectName: "plotContainer"
-                width: 500
-                height: 500
+                width: 300
+                height: 300
                 Layout.alignment: Qt.AlignHCenter | Qt.AlignTop
 
                 property var plotWidget: null
@@ -58,9 +58,9 @@ Rectangle {
 
             Rectangle {
                 id: cameraView
-                color: "#DDDDDD"
-                width: 500
-                height: 500
+                color: "#E2E2E2"
+                width: 300
+                height: 300
                 Layout.alignment: Qt.AlignHCenter | Qt.AlignBottom
                 Text {
                     text: "Camera View"
