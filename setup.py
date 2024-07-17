@@ -19,7 +19,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'paint_controller = paint_controller.paint_controller:main'
+            'paint_controller = paint_controller.paint_controller:main',
+            'winch_node = paint_controller.winch_node:main'
         ],
     },
 )
