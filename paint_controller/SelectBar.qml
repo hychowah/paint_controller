@@ -120,7 +120,7 @@ Rectangle {
                     width: 15
                     height: 15
                     radius: 7.5
-                    color: "yellow" // Change color based on status
+                    color: backend.winchAvailable ? "#00e600" : "yellow" // Change color based on status
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }

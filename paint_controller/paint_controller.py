@@ -32,6 +32,7 @@ class PlotItem(QQuickPaintedItem):
 class PaintController(Node, QObject):
     lengthChanged = Signal(str)
     speedChanged = Signal(str)
+    winchAvailableChanged = Signal(bool)
 
     def __init__(self, app):
         Node.__init__(self, 'paint_controller')
@@ -46,6 +47,7 @@ class PaintController(Node, QObject):
 
         self._length = "0"
         self._speed = "0"
+        self._winch_available = False
         self.scan_data = None
 
         self.init_ui()
@@ -96,6 +98,16 @@ class PaintController(Node, QObject):
 
         sys.exit(self.app.exec())
 
+    @Property(bool, notify=winchAvailableChanged)
+    def winchAvailable(self):
+        return self._winch_available
+    
+    @winchAvailable.setter
+    def winchAvailable(self, value):
+        if self._winch_available != value:
+            self._winch_available = value
+            self.winchAvailableChanged.emit(value)
+
     @Property(str, notify=lengthChanged)
     def length(self):
         return self._length
@@ -128,6 +140,10 @@ class PaintController(Node, QObject):
 
     def update_plot(self):
         self.speed = str(random.randint(-9, 9))  # This will trigger the setter and emit the signal
+        if random.randint(0, 1):
+            self.winchAvailable = True
+        else:
+            self.winchAvailable = False
         if self.scan_data is None:
             return
 

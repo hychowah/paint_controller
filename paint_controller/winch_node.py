@@ -71,7 +71,7 @@ class WinchNode(Node):
         status_msg.available = self.winch_enabled
         status_msg.available = time() - self.last_feedback_time <= 0.5  # Check if feedback was received recently
         self.winch_status_pub.publish(status_msg)
-        self.get_logger().info(f'Published winch status: {status_msg}')
+        # self.get_logger().info(f'Published winch status: {status_msg}')
 
     def get_length_mm(self):
         return (self.current_motor_cnt - self.zero_length_cnt) * LENGTH_PER_REV / MOTOR_CNT_PER_REV / WINCH_GEAR_RATIO
@@ -179,6 +179,9 @@ class WinchGUI:
         self.update_status()
 
     def send_length_command(self):
+        if not self.winch_node.winch_enabled:
+            self.winch_node.logger.info("Winch is not enabled.")
+            return
         try:
             length = int(self.length_entry.get())
             speed = int(self.speed_entry.get())
@@ -190,6 +193,9 @@ class WinchGUI:
             print("Invalid input")
 
     def send_speed_command(self):
+        if not self.winch_node.winch_enabled:
+            self.winch_node.logger.info("Winch is not enabled.")
+            return
         try:
             speed_mm_s = int(self.speed_entry.get())
             target_rpm = int(speed_mm_s * WINCH_GEAR_RATIO * 60 / LENGTH_PER_REV)
@@ -231,6 +237,9 @@ def main(args=None):
         gui = WinchGUI(node)
         gui.run()
 
+    # Wait for the ROS thread to finish before exiting
+    ros_thread.join()
+    
     node.destroy_node()
     rclpy.shutdown()
 

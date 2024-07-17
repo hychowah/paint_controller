@@ -98,9 +98,9 @@ Rectangle {
                     // Box to the right of the cable
                     Rectangle {
                         id: infoBox
-                        width: 130
+                        width: 110
                         height: 80
-                        color: "#8C8783"
+                        color: "transparent"
                         radius: 10
                         anchors.left: cable.right
                         anchors.leftMargin: 20
@@ -188,6 +188,31 @@ Rectangle {
                     anchors.top: cable.bottom
                 }
 
+                // Arrow Image Above the Input Field
+                Rectangle {
+                    width: 100
+                    height: 100
+                    anchors.horizontalCenter: inputField.horizontalCenter
+                    anchors.bottom: inputField.top
+                    anchors.bottomMargin: 20
+                    color: "transparent"
+                    Image {
+                        id: arrowAbove
+                        rotation: -90
+                        source: "../paint_controller/resource/arrow.png"
+                        anchors.fill: parent
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        onPressed: arrowAbove.opacity = 0.5
+                        onReleased: {
+                            arrowAbove.opacity = 1.0
+                            // Define your action here
+                            console.log("Arrow above clicked")
+                        }
+                    }
+                }
+
                 // Input Field
                 TextField {
                     id: inputField
@@ -202,8 +227,8 @@ Rectangle {
                         border.width: 1
                     }
                     padding: 10
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.verticalCenter: parent.verticalCenter
+                    x: parent.width / 2 - width / 2 - 60
+                    y: parent.height / 2 - height / 2 - 55
                     onFocusChanged: {
                         if (focus && numpadLoader.status === Loader.Ready) {
                             numpadLoader.item.targetField = inputField
@@ -214,27 +239,32 @@ Rectangle {
                     }
                 }
 
-                // Text components with absolute positioning
-                Text {
-                    text: "Page 2"
-                    font.pixelSize: 40
-                    color: "#000000"  // Adjusted color for visibility
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.top: parent.top
-                    anchors.topMargin: 20
-                }
-
-                Text {
-                    text: "This is the second page."
-                    font.pixelSize: 20
-                    color: "#000000"  // Adjusted color for visibility
-                    anchors.horizontalCenter: parent.horizontalCenter
+                // Arrow Image Below the Input Field
+                Rectangle {
+                    width: 100
+                    height: 100
+                    anchors.horizontalCenter: inputField.horizontalCenter
                     anchors.top: inputField.bottom
                     anchors.topMargin: 20
+                    color: "transparent"
+                    Image {
+                        id: arrowBelow
+                        rotation: 90
+                        source: "../paint_controller/resource/arrow.png"
+                        anchors.fill: parent
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        onPressed: arrowBelow.opacity = 0.5
+                        onReleased: {
+                            arrowBelow.opacity = 1.0
+                            // Define your action here
+                            console.log("Arrow below clicked")
+                        }
+                    }
                 }
 
                 // Add the Numpad component
-                
             }
         }
     }

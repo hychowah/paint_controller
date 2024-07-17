@@ -10,6 +10,11 @@ Popup {
     y: 280
 
     property TextField targetField
+    property int buttonFontSize: 20
+    property color buttonColor: "#dddddd"
+    property color buttonPressedColor: "#bbbbbb"
+    property color buttonBorderColor: "#888888"
+    property int buttonRadius: 60
 
     background: Rectangle {
         color: "transparent"
@@ -36,11 +41,11 @@ Popup {
                 Button {
                     anchors.fill: parent
                     text: "7"
-                    font.pixelSize: 20
+                    font.pixelSize: numpad.buttonFontSize
                     background: Rectangle {
-                        color: parent.pressed ? "#bbbbbb" : "#dddddd"
-                        radius: 20
-                        border.color: "#888888"
+                        color: parent.pressed ? numpad.buttonPressedColor : numpad.buttonColor
+                        radius: numpad.buttonRadius
+                        border.color: numpad.buttonBorderColor
                     }
                     contentItem: Text {
                         text: parent.text
@@ -66,11 +71,11 @@ Popup {
                 Button {
                     anchors.fill: parent
                     text: "8"
-                    font.pixelSize: 20
+                    font.pixelSize: numpad.buttonFontSize
                     background: Rectangle {
-                        color: parent.pressed ? "#bbbbbb" : "#dddddd"
-                        radius: 20
-                        border.color: "#888888"
+                        color: parent.pressed ? numpad.buttonPressedColor : numpad.buttonColor
+                        radius: numpad.buttonRadius
+                        border.color: numpad.buttonBorderColor
                     }
                     contentItem: Text {
                         text: parent.text
@@ -96,11 +101,11 @@ Popup {
                 Button {
                     anchors.fill: parent
                     text: "9"
-                    font.pixelSize: 20
+                    font.pixelSize: numpad.buttonFontSize
                     background: Rectangle {
-                        color: parent.pressed ? "#bbbbbb" : "#dddddd"
-                        radius: 20
-                        border.color: "#888888"
+                        color: parent.pressed ? numpad.buttonPressedColor : numpad.buttonColor
+                        radius: numpad.buttonRadius
+                        border.color: numpad.buttonBorderColor
                     }
                     contentItem: Text {
                         text: parent.text
@@ -126,11 +131,11 @@ Popup {
                 Button {
                     anchors.fill: parent
                     text: "4"
-                    font.pixelSize: 20
+                    font.pixelSize: numpad.buttonFontSize
                     background: Rectangle {
-                        color: parent.pressed ? "#bbbbbb" : "#dddddd"
-                        radius: 20
-                        border.color: "#888888"
+                        color: parent.pressed ? numpad.buttonPressedColor : numpad.buttonColor
+                        radius: numpad.buttonRadius
+                        border.color: numpad.buttonBorderColor
                     }
                     contentItem: Text {
                         text: parent.text
@@ -156,11 +161,11 @@ Popup {
                 Button {
                     anchors.fill: parent
                     text: "5"
-                    font.pixelSize: 20
+                    font.pixelSize: numpad.buttonFontSize
                     background: Rectangle {
-                        color: parent.pressed ? "#bbbbbb" : "#dddddd"
-                        radius: 20
-                        border.color: "#888888"
+                        color: parent.pressed ? numpad.buttonPressedColor : numpad.buttonColor
+                        radius: numpad.buttonRadius
+                        border.color: numpad.buttonBorderColor
                     }
                     contentItem: Text {
                         text: parent.text
@@ -186,11 +191,11 @@ Popup {
                 Button {
                     anchors.fill: parent
                     text: "6"
-                    font.pixelSize: 20
+                    font.pixelSize: numpad.buttonFontSize
                     background: Rectangle {
-                        color: parent.pressed ? "#bbbbbb" : "#dddddd"
-                        radius: 20
-                        border.color: "#888888"
+                        color: parent.pressed ? numpad.buttonPressedColor : numpad.buttonColor
+                        radius: numpad.buttonRadius
+                        border.color: numpad.buttonBorderColor
                     }
                     contentItem: Text {
                         text: parent.text
@@ -216,11 +221,11 @@ Popup {
                 Button {
                     anchors.fill: parent
                     text: "1"
-                    font.pixelSize: 20
+                    font.pixelSize: numpad.buttonFontSize
                     background: Rectangle {
-                        color: parent.pressed ? "#bbbbbb" : "#dddddd"
-                        radius: 20
-                        border.color: "#888888"
+                        color: parent.pressed ? numpad.buttonPressedColor : numpad.buttonColor
+                        radius: numpad.buttonRadius
+                        border.color: numpad.buttonBorderColor
                     }
                     contentItem: Text {
                         text: parent.text
@@ -246,11 +251,11 @@ Popup {
                 Button {
                     anchors.fill: parent
                     text: "2"
-                    font.pixelSize: 20
+                    font.pixelSize: numpad.buttonFontSize
                     background: Rectangle {
-                        color: parent.pressed ? "#bbbbbb" : "#dddddd"
-                        radius: 20
-                        border.color: "#888888"
+                        color: parent.pressed ? numpad.buttonPressedColor : numpad.buttonColor
+                        radius: numpad.buttonRadius
+                        border.color: numpad.buttonBorderColor
                     }
                     contentItem: Text {
                         text: parent.text
@@ -276,41 +281,11 @@ Popup {
                 Button {
                     anchors.fill: parent
                     text: "3"
-                    font.pixelSize: 20
+                    font.pixelSize: numpad.buttonFontSize
                     background: Rectangle {
-                        color: parent.pressed ? "#bbbbbb" : "#dddddd"
-                        radius: 20
-                        border.color: "#888888"
-                    }
-                    contentItem: Text {
-                        text: parent.text
-                        font: parent.font
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    onClicked: {
-                        if (numpad.targetField) {
-                            numpad.targetField.text += text
-                        }
-                    }
-                }
-            }
-
-            Rectangle {
-                Layout.row: 3
-                Layout.column: 0
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                color: "transparent"
-
-                Button {
-                    anchors.fill: parent
-                    text: "0"
-                    font.pixelSize: 20
-                    background: Rectangle {
-                        color: parent.pressed ? "#bbbbbb" : "#dddddd"
-                        radius: 20
-                        border.color: "#888888"
+                        color: parent.pressed ? numpad.buttonPressedColor : numpad.buttonColor
+                        radius: numpad.buttonRadius
+                        border.color: numpad.buttonBorderColor
                     }
                     contentItem: Text {
                         text: parent.text
@@ -335,12 +310,42 @@ Popup {
 
                 Button {
                     anchors.fill: parent
-                    text: "Clear"
-                    font.pixelSize: 20
+                    text: "0"
+                    font.pixelSize: numpad.buttonFontSize
                     background: Rectangle {
-                        color: parent.pressed ? "#bbbbbb" : "#dddddd"
-                        radius: 20
-                        border.color: "#888888"
+                        color: parent.pressed ? numpad.buttonPressedColor : numpad.buttonColor
+                        radius: numpad.buttonRadius
+                        border.color: numpad.buttonBorderColor
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        font: parent.font
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: {
+                        if (numpad.targetField) {
+                            numpad.targetField.text += text
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.row: 3
+                Layout.column: 0
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                color: "transparent"
+
+                Button {
+                    anchors.fill: parent
+                    text: "Clear"
+                    font.pixelSize: numpad.buttonFontSize
+                    background: Rectangle {
+                        color: parent.pressed ? numpad.buttonPressedColor : numpad.buttonColor
+                        radius: numpad.buttonRadius
+                        border.color: numpad.buttonBorderColor
                         anchors.fill: parent
                     }
                     contentItem: Text {
@@ -367,11 +372,11 @@ Popup {
                 Button {
                     anchors.fill: parent
                     text: "Enter"
-                    font.pixelSize: 20
+                    font.pixelSize: numpad.buttonFontSize
                     background: Rectangle {
-                        color: parent.pressed ? "#bbbbbb" : "#dddddd"
-                        radius: 20
-                        border.color: "#888888"
+                        color: parent.pressed ? numpad.buttonPressedColor : numpad.buttonColor
+                        radius: numpad.buttonRadius
+                        border.color: numpad.buttonBorderColor
                         anchors.fill: parent
                     }
                     contentItem: Text {
