@@ -2,7 +2,7 @@
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Bool
-from towngas_interfaces.msg import WheelSpeeds  # Replace 'towngas_interfaces' with your package name where the WheelSpeeds.msg is defined
+from towngas_interfaces.msg import MoveWheelSpeeds  # Replace 'towngas_interfaces' with your package name where the WheelSpeeds.msg is defined
 import evdev
 from evdev import InputDevice, ecodes, list_devices
 import threading
@@ -11,7 +11,7 @@ class JoystickControlNode(Node):
     def __init__(self):
         super().__init__('joystick_control_node')
         self.disable_motor_pub = self.create_publisher(Bool, 'disable_motor', 10)
-        self.wheel_speeds_pub = self.create_publisher(WheelSpeeds, 'wheel_speeds', 10)
+        self.wheel_speeds_pub = self.create_publisher(MoveWheelSpeeds, 'wheel_speeds', 10)
         self.joystick = None
         self.joystick_thread = None
 
@@ -36,6 +36,15 @@ class JoystickControlNode(Node):
         self.get_logger().info(f'Published disable_motor with disable={disable}')
 
     def publish_wheel_speeds(self):
+        if self.is_significant_change():
+            left_speed = float(self.calculate_left_wheel_speed())
+            right_speed = float(self.calculate_right_wheel_speed())
+            msg = MoveWheelSpeeds()
+            msg.left_wheel_speed = left_speed
+            msg.right_wheel_speed = right_speed
+            self.wheel_speeds_pub.publish(msg)
+            self.get_logger().info(f'Published wheel_speeds with left_wheel_speed={left_speed} right_wheel_speed={right_speed}')
+            self.update_last_values()
         left_speed = float(self.calculate_left_wheel_speed())
         right_speed = float(self.calculate_right_wheel_speed())
         msg = WheelSpeeds()
