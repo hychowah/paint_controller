@@ -1,4 +1,6 @@
-from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal
+#!/usr/bin/env python3
+
+from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QResource
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine, QQmlContext, qmlRegisterType
 from PySide6.QtQuick import QQuickPaintedItem
@@ -10,6 +12,7 @@ import rclpy
 import random
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
+
 
 class PlotItem(QQuickPaintedItem):
     def __init__(self, parent=None):
@@ -54,8 +57,11 @@ class PaintController(Node, QObject):
 
     def init_ui(self):
         self.engine = QQmlApplicationEngine()
-        qml_path = os.path.join(os.path.dirname(__file__), 'MainWindow.qml')
-        print(f"Loading QML file from: {qml_path}")
+        # qml_path = os.path.join(os.path.dirname(__file__), 'qml/MainWindow.qml')
+        # print(f"Loading QML file from: {qml_path}")
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+
+        qml_path = os.path.join(current_dir, 'qml', 'MainWindow.qml')
         self.engine.load(QUrl.fromLocalFile(qml_path))
 
         if not self.engine.rootObjects():

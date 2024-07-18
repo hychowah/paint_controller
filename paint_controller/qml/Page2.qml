@@ -198,8 +198,7 @@ Rectangle {
                     color: "transparent"
                     Image {
                         id: arrowAbove
-                        rotation: -90
-                        source: "../paint_controller/resource/arrow.png"
+                        source: "../paint_controller/resource/up_arrow.png"
                         anchors.fill: parent
                     }
                     MouseArea {
@@ -216,19 +215,27 @@ Rectangle {
                 // Input Field
                 TextField {
                     id: inputField
-                    placeholderText: "Enter number"
+                    placeholderText: "Enter length"
                     font.pixelSize: 20
                     width: 200
                     height: 40
+                    verticalAlignment: Text.AlignBottom
+                    bottomPadding: 5
+                    rightPadding: 30  // Make room for the "mm" text
                     background: Rectangle {
-                        color: "white"
-                        radius: 10
+                        color: "#9F9F9F"
                         border.color: "gray"
                         border.width: 1
+                        Rectangle {
+                            width: parent.width
+                            height: 1
+                            anchors.bottom: parent.bottom
+                            color: "gray"
+                        }
                     }
                     padding: 10
-                    x: parent.width / 2 - width / 2 - 60
-                    y: parent.height / 2 - height / 2 - 55
+                    x: parent.width / 2 - width / 2 - 90
+                    y: parent.height / 2 - height / 2 + 95
                     onFocusChanged: {
                         if (focus && numpadLoader.status === Loader.Ready) {
                             numpadLoader.item.targetField = inputField
@@ -236,6 +243,16 @@ Rectangle {
                         } else if (numpadLoader.status === Loader.Ready) {
                             numpadLoader.item.close()
                         }
+                    }
+
+                    Text {
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        anchors.rightMargin: 5
+                        anchors.bottomMargin: 5
+                        text: "mm"
+                        font.pixelSize: 14
+                        color: "gray"
                     }
                 }
 
@@ -249,8 +266,7 @@ Rectangle {
                     color: "transparent"
                     Image {
                         id: arrowBelow
-                        rotation: 90
-                        source: "../paint_controller/resource/arrow.png"
+                        source: "../paint_controller/resource/down_arrow.png"
                         anchors.fill: parent
                     }
                     MouseArea {
@@ -264,7 +280,41 @@ Rectangle {
                     }
                 }
 
-                // Add the Numpad component
+                // Vertical Slider to the right of the Input Field
+                Slider {
+                    id: verticalSlider
+                    orientation: Qt.Vertical
+                    anchors.left: inputField.right
+                    anchors.leftMargin: 20
+                    anchors.verticalCenter: inputField.verticalCenter
+                    width: 60
+                    implicitHeight: 300
+                    from: 0
+                    to: 100
+                    stepSize: 1
+                    value: 50
+
+                    // Custom handle
+                    handle: Rectangle {
+                        x: verticalSlider.leftPadding + verticalSlider.availableWidth / 2 - width / 2
+                        y: verticalSlider.topPadding + verticalSlider.visualPosition * (verticalSlider.availableHeight - height)
+                        implicitWidth: 30
+                        height: 30
+                        radius: 15  // This makes it circular
+                        color: verticalSlider.pressed ? "#cccccc" : "#ffffff"  // Light grey when pressed, white otherwise
+                        border.color: "#999999"
+                        border.width: 2
+
+                        // Optional: Add an inner circle for a more distinctive look
+                        Rectangle {
+                            anchors.centerIn: parent
+                            width: parent.width * 0.6
+                            height: width
+                            radius: width / 2
+                            color: "#999999"
+                        }
+                    }
+                }
             }
         }
     }

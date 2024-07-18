@@ -1,0 +1,16 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/">
+        <file>qml/MainWindow.qml</file>
+        <file>qml/Page1.qml</file>
+        <file>qml/Page2.qml</file>
+        <file>qml/Numpad.qml</file>
+        <file>qml/SelectBar.qml</file>
+        <file>resource/base.png</file>
+        <file>resource/down_arrow.png</file>
+        <file>resource/end-effector.png</file>
+        <file>resource/hanging.png</file>
+        <file>resource/up_arrow.png</file>
+        <file>resource/winch.png</file>
+    </qresource>
+</RCC>

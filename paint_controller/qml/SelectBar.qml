@@ -32,7 +32,7 @@ Rectangle {
 
             Image {
                 id: imagePage1
-                source: "../paint_controller/resource/base.png"
+                source: "../resource/base.png"
                 anchors.centerIn: parent
                 width: selectBar.width * 0.8
                 height: selectBar.width * 0.8
@@ -60,7 +60,7 @@ Rectangle {
 
             Image {
                 id: imagePage2
-                source: "../paint_controller/resource/winch.png"
+                source: "../resource/winch.png"
                 anchors.centerIn: parent
                 width: selectBar.width * 0.6
                 height: selectBar.width * 0.6
