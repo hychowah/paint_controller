@@ -49,7 +49,7 @@ Rectangle {
                         anchors.margins: 10
                     }
                     Text {
-                        text: "1"
+                        text: backend.left_wheel_speed
                         font.pixelSize: 40
                         color: "#000000"
                         anchors.centerIn: parent
@@ -82,7 +82,7 @@ Rectangle {
                         anchors.margins: 10
                     }
                     Text {
-                        text: "2"
+                        text: backend.right_wheel_speed
                         font.pixelSize: 40
                         color: "#000000"
                         anchors.centerIn: parent
@@ -115,7 +115,7 @@ Rectangle {
                         anchors.margins: 10
                     }
                     Text {
-                        text: "3"
+                        text: backend.left_wheel_current
                         font.pixelSize: 40
                         color: "#000000"
                         anchors.centerIn: parent
@@ -148,7 +148,7 @@ Rectangle {
                         anchors.margins: 10
                     }
                     Text {
-                        text: "4"
+                        text: backend.right_wheel_current
                         font.pixelSize: 40
                         color: "#000000"
                         anchors.centerIn: parent

@@ -3,19 +3,22 @@
 import rclpy
 from rclpy.node import Node
 from towngas_interfaces.msg import MoveWheelSpeeds, DisableWheelMotor  # Replace 'towngas_interfaces' with your package name where the messages are defined
+import time
 import evdev
 from evdev import InputDevice, ecodes, list_devices
 from std_msgs.msg import Int32
 import threading
 from teknic_interfaces.msg import TeknicCommand
 
+SPEED_LIMIT = 100
+
 class JoystickControlNode(Node):
     def __init__(self):
         super().__init__('joystick_control_node')
-        self.disable_motor_pub = self.create_publisher(DisableWheelMotor, 'disable_wheel_motor', 10)
-        self.wheel_speeds_pub = self.create_publisher(MoveWheelSpeeds, 'move_wheel_speeds', 10)
-        self.winch_speed_pub = self.create_publisher(Int32, 'move_winch_speed', 10)
-        self.teknic_command_pub = self.create_publisher(TeknicCommand, 'teknic_command', 10)
+        self.disable_motor_pub = self.create_publisher(DisableWheelMotor, 'disable_wheel_motor', 1)
+        self.wheel_speeds_pub = self.create_publisher(MoveWheelSpeeds, 'move_wheel_speeds', 1)
+        self.winch_speed_pub = self.create_publisher(Int32, 'move_winch_speed', 1)
+        self.teknic_command_pub = self.create_publisher(TeknicCommand, 'teknic_command', 1)
         
         self.joystick = None
         self.joystick_thread = None
@@ -32,12 +35,12 @@ class JoystickControlNode(Node):
         self.joystick_thread.start()
 
         # Create a timer to publish wheel speeds at 20 Hz
-        self.timer = self.create_timer(0.1, self.publish_wheel_speeds)
+        self.timer = self.create_timer(0.05, self.publish_wheel_speeds)
 
         # Initialize joystick values
         self.values = {'ABS_X': 0, 'ABS_Y': 0, 'ABS_RX': 0, 'ABS_RY': 0}
         self.last_values = {'ABS_X': 0, 'ABS_Y': 0, 'ABS_RX': 0, 'ABS_RY': 0}
-        self.threshold = 50  # Adjust the threshold as needed
+        self.threshold = 150  # Adjust the threshold as needed
 
     def publish_disable_motor(self, disable):
         msg = DisableWheelMotor()
@@ -87,7 +90,9 @@ class JoystickControlNode(Node):
         return normalized_value * max_output
 
     def calculate_left_wheel_speed(self):
-        base_speed = self.linear_map(self.values['ABS_Y'], 32767.0, 20.0)
+        if self.is_in_zero_zone(self.values['ABS_Y']):
+            return 0.0
+        base_speed = self.linear_map(self.values['ABS_Y'], 32767.0, SPEED_LIMIT)
         differential = 1.0 + (abs(self.values['ABS_X']) / 32767.0) * 1.5
 
         if abs(base_speed) < 1.5:
@@ -108,7 +113,10 @@ class JoystickControlNode(Node):
             return 0.0
 
     def calculate_right_wheel_speed(self):
-        base_speed = self.linear_map(self.values['ABS_Y'], 32767.0, 20.0)
+        if self.is_in_zero_zone(self.values['ABS_Y']): 
+            return 0.0
+
+        base_speed = self.linear_map(self.values['ABS_Y'], 32767.0, SPEED_LIMIT)
         differential = 1.0 + (abs(self.values['ABS_X']) / 32767.0)
         if abs(base_speed) < 1.5:
             base_speed = 0.0
@@ -128,7 +136,13 @@ class JoystickControlNode(Node):
         
 
     def calculate_winch_speed(self):
-        return self.cubic_map(self.values['ABS_RY'], 32767.0, 100.0)  # Adjust max_output as needed
+        if self.is_in_zero_zone(self.values['ABS_RY']):
+            return 0.0
+        else:
+            return self.cubic_map(self.values['ABS_RY'], 32767.0, 100.0)  # Adjust max_output as needed
+
+    def is_in_zero_zone(self, value):
+        return (abs(value) < 1000);
 
     def find_joystick(self):
         devices = [InputDevice(path) for path in list_devices()]

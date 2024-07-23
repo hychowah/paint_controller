@@ -109,7 +109,7 @@ Rectangle {
                         GridLayout {
                             anchors.fill: parent
                             anchors.margins: 10
-                            columns: 2
+                            columns: 3
                             rowSpacing: 5
 
                             Text {
@@ -120,7 +120,7 @@ Rectangle {
                                 Layout.alignment: Qt.AlignLeft
                             }
                             Text {
-                                text: backend.length
+                                text: backend.winch_length
                                 font.pixelSize: 16
                                 Layout.row: 0
                                 Layout.column: 1
@@ -134,12 +134,27 @@ Rectangle {
                                 Layout.alignment: Qt.AlignLeft
                             }
                             Text {
-                                text: backend.speed
+                                text: backend.winch_speed
                                 font.pixelSize: 16
                                 Layout.row: 1
                                 Layout.column: 1
                                 Layout.alignment: Qt.AlignRight
                             }
+                            Text {
+                                text: "Current: "
+                                font.pixelSize: 16
+                                Layout.row: 2
+                                Layout.column: 0
+                                Layout.alignment: Qt.AlignLeft
+                            }
+                            Text {
+                                text: backend.winch_current
+                                font.pixelSize: 16
+                                Layout.row: 2
+                                Layout.column: 1
+                                Layout.alignment: Qt.AlignRight
+                            }
+                            
                         }
                     }
 
@@ -151,8 +166,8 @@ Rectangle {
                         color: "transparent"
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.verticalCenter: infoBox.verticalCenter
-                        rotation: backend.speed > 0 ? 0 : 180
-                        visible: backend.speed != 0  // Arrow is visible only when speed is non-zero
+                        rotation: backend.winch_speed > 0 ? 0 : 180
+                        visible: backend.winch_speed != 0  // Arrow is visible only when speed is non-zero
 
                         // Left diagonal line of the arrowhead
                         Rectangle {

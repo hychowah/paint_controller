@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QResource
+from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QResource, QThread
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine, QQmlContext, qmlRegisterType
 from PySide6.QtWidgets import QApplication
@@ -13,7 +13,7 @@ import rclpy
 import random
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
-from towngas_interfaces.msg import WinchStatus
+from towngas_interfaces.msg import WinchStatus, WheelStatus
 
 
 class PlotItem(QQuickPaintedItem):
@@ -34,18 +34,22 @@ class PlotItem(QQuickPaintedItem):
         for i in range(len(x)):
             painter.drawPoint(int(x[i]), int(y[i]))
 
+
 class PaintController(Node, QObject):
     winchLengthChanged = Signal(str)
     winchSpeedChanged = Signal(str)
+    winchCurrentChanged = Signal(str)
     leftSpeedChanged = Signal(str)
+    leftCurrentChanged = Signal(str)
+    rightCurrentChanged = Signal(str)
     rightSpeedChanged = Signal(str)
     winchAvailableChanged = Signal(bool)
 
 
-    def __init__(self, app):
+    def __init__(self):
         Node.__init__(self, 'paint_controller')
         QObject.__init__(self)
-        self.app = app
+
         self.lidar_sub = self.create_subscription(
             LaserScan,
             'scan',
@@ -58,82 +62,43 @@ class PaintController(Node, QObject):
             self.winch_sub_callback,
             10)
         self.winch_sub  # prevent unused variable warning
+        self.wheel_sub = self.create_subscription(
+            WheelStatus,
+            'wheel_motor_status',
+            self.wheel_sub_callback,
+            10)
+        self.wheel_sub
+        self._left_wheel_speed = "0"
+        self._right_wheel_speed = "0"
+        self._left_wheel_current = "0"
+        self._right_wheel_current = "0"
 
         self._winch_length = "0"
         self._winch_speed = "0"
+        self._winch_curent = "0"
         self._winch_available = False
         self.scan_data = None
 
-        self.init_ui()
-
-    def init_ui(self):
-        self.engine = QQmlApplicationEngine()
-        # qml_path = os.path.join(os.path.dirname(__file__), 'qml/MainWindow.qml')
-        # print(f"Loading QML file from: {qml_path}")
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-
-        qml_path = os.path.join(current_dir, 'qml', 'MainWindow.qml')
-        self.engine.load(QUrl.fromLocalFile(qml_path))
-
-        if not self.engine.rootObjects():
-            print("Failed to load QML file.")
-            sys.exit(-1)
-
-        self.root = self.engine.rootObjects()[0]
-        print(f"Root object: {self.root}")
-
-        stack_view = self.root.findChild(QObject, "stackView")
-        if stack_view is None:
-            print("Could not find stackView in QML")
-            sys.exit(-1)
-
-        print("Found stackView")
-
-        page1 = stack_view.findChild(QObject, "page1Rect")
-        if page1 is None:
-            print("Could not find page1 in QML")
-            sys.exit(-1)
-
-        print("Found page1")
-
-        plot_container = page1.findChild(QObject, "plotContainer")
-        if plot_container is None:
-            print("Could not find plotContainer in QML")
-            sys.exit(-1)
-
-        print("Found plotContainer")
-
-        self.plot_item = PlotItem()
-        self.engine.rootContext().setContextProperty("plotItem", self.plot_item)
-
-        # Set the backend property after the engine is loaded
-        self.engine.rootContext().setContextProperty("backend", self)
-
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update_plot)
-        self.timer.start(100)  # update every 100 ms
-
-        sys.exit(self.app.exec())
-
     @Property(bool, notify=winchAvailableChanged)
-    def winchAvailable(self):
+    def winch_available(self):
         return self._winch_available
-    
-    @winchAvailable.setter
-    def winchAvailable(self, value):
+
+    @winch_available.setter
+    def winch_available(self, value):
+        print(f"Setting winch available: {value}")
         if self._winch_available != value:
             self._winch_available = value
             self.winchAvailableChanged.emit(value)
 
     @Property(str, notify=winchLengthChanged)
     def winch_length(self):
-        return self._length
+        return self._winch_length
 
     @winch_length.setter
     def winch_length(self, value):
-        if self._length != value:
-            self._length = value
-            self.lengthChanged.emit(value)
+        if self._winch_length != value:
+            self._winch_length = value
+            self.winchLengthChanged.emit(value)
 
     @Property(str, notify=winchSpeedChanged)
     def winch_speed(self):
@@ -145,7 +110,57 @@ class PaintController(Node, QObject):
             self._winch_speed = value
             self.winchSpeedChanged.emit(value)
 
-    @Property(bool, notify=winchAvailableChanged)
+    @Property(str, notify=winchCurrentChanged)
+    def winch_current(self):
+        return self._winch_curent
+    
+    @winch_current.setter
+    def winch_current(self, value):
+        if self._winch_curent != value:
+            self._winch_curent = value
+            self.winchCurrentChanged.emit(value)
+
+    @Property(str, notify=leftSpeedChanged)
+    def left_wheel_speed(self):
+        return self._left_wheel_speed
+    
+    @left_wheel_speed.setter
+    def left_wheel_speed(self, value):
+        print(f"Setting left wheel speed: {value}")
+        if self._left_wheel_speed != value:
+            self._left_wheel_speed = value
+            self.leftSpeedChanged.emit(value)
+
+    @Property(str, notify=rightSpeedChanged)
+    def right_wheel_speed(self):
+        return self._right_wheel_speed
+    
+    @right_wheel_speed.setter
+    def right_wheel_speed(self, value):
+        if self._right_wheel_speed != value:
+            self._right_wheel_speed = value
+            self.rightSpeedChanged.emit(value)
+    
+    @Property(str, notify=leftCurrentChanged)
+    def left_wheel_current(self):
+        return self._left_wheel_current
+    
+    @left_wheel_current.setter
+    def left_wheel_current(self, value):
+        if self._left_wheel_current != value:
+            self._left_wheel_current = value
+            self.leftCurrentChanged.emit(value)
+
+    @Property(str, notify=rightCurrentChanged)
+    def right_wheel_current(self):
+        return self._right_wheel_current
+    
+    @right_wheel_current.setter
+    def right_wheel_current(self, value):
+        if self._right_wheel_current != value:
+            self._right_wheel_current = value
+            self.rightCurrentChanged.emit(value)
+        
 
     @Slot(bool)
     def toggleSwitchChanged(self, checked):
@@ -159,18 +174,20 @@ class PaintController(Node, QObject):
 
     def winch_sub_callback(self, msg):
         print(f'Received Winch Status: {msg}')
-        msg = WinchStatus()
         self.winch_length = str(msg.cable_length)
         self.winch_speed = str(msg.cable_speed)
-        
-        self.winchAvailable = msg.available
+        self.winch_current = str(msg.winch_torque)
+        self.winch_available = bool(msg.available)
+        print(f'Winch Length: {self.winch_length}, Winch Speed: {self.winch_speed}, Winch Available: {msg.available}')
+
+    def wheel_sub_callback(self, msg):
+        print(f'Received Wheel Status: {msg}')
+        self.left_wheel_speed = f"{msg.left_wheel_speed:.2f}"
+        self.right_wheel_speed = f"{msg.right_wheel_speed:.2f}"
+        self.left_wheel_current = f"{msg.left_wheel_current:.2f}"
+        self.right_wheel_current = f"{msg.right_wheel_current:.2f}"
 
     def update_plot(self):
-        # self.speed = str(random.randint(-9, 9))  # This will trigger the setter and emit the signal
-        # if random.randint(0, 1):
-        #     self.winchAvailable = True
-        # else:
-        #     self.winchAvailable = False
         if self.scan_data is None:
             return
 
@@ -183,19 +200,75 @@ class PaintController(Node, QObject):
         y = np.array(self.scan_data.ranges) * np.sin(angles)
         self.plot_item.set_plot_data(x, y)
 
+
+class RosThread(QThread):
+    def __init__(self, node):
+        super().__init__()
+        self.node = node
+
+    def run(self):
+        rclpy.spin(self.node)
+
+
 def main(args=None):
     rclpy.init(args=args)
     app = QApplication(sys.argv)  # Use QGuiApplication instead of QApplication
-    
+
     qmlRegisterType(PlotItem, 'CustomComponents', 1, 0, 'PlotItem')
 
-    paint_controller = PaintController(app)
+    paint_controller = PaintController()
 
-    rclpy.spin(paint_controller)
+    ros_thread = RosThread(paint_controller)
+    ros_thread.start()
 
+    engine = QQmlApplicationEngine()
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    qml_path = os.path.join(current_dir, 'qml', 'MainWindow.qml')
+    engine.load(QUrl.fromLocalFile(qml_path))
+
+    if not engine.rootObjects():
+        print("Failed to load QML file.")
+        sys.exit(-1)
+
+    root = engine.rootObjects()[0]
+    print(f"Root object: {root}")
+
+    stack_view = root.findChild(QObject, "stackView")
+    if stack_view is None:
+        print("Could not find stackView in QML")
+        sys.exit(-1)
+
+    print("Found stackView")
+
+    page1 = stack_view.findChild(QObject, "page1Rect")
+    if page1 is None:
+        print("Could not find page1 in QML")
+        sys.exit(-1)
+
+    print("Found page1")
+
+    plot_container = page1.findChild(QObject, "plotContainer")
+    if plot_container is None:
+        print("Could not find plotContainer in QML")
+        sys.exit(-1)
+
+    print("Found plotContainer")
+
+    plot_item = PlotItem()
+    engine.rootContext().setContextProperty("plotItem", plot_item)
+    engine.rootContext().setContextProperty("backend", paint_controller)
+
+    timer = QTimer()
+    timer.timeout.connect(paint_controller.update_plot)
+    timer.start(100)  # update every 100 ms
+
+    sys.exit(app.exec())
+
+    ros_thread.quit()
+    ros_thread.wait()
     paint_controller.destroy_node()
     rclpy.shutdown()
-    sys.exit(app.exec())  # Move the exec() call here
+
 
 if __name__ == '__main__':
     main()

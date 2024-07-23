@@ -15,6 +15,7 @@ SPOOL_DIAMETER = 105  # mm
 LENGTH_PER_REV = SPOOL_DIAMETER * 3.1415926  # mm
 MOTOR_CNT_PER_REV = 6400
 WINCH_GEAR_RATIO = 40
+MOTOR_MAX_RPM = 1000
 
 class WinchNode(Node):
     def __init__(self):
@@ -27,18 +28,18 @@ class WinchNode(Node):
         self.last_feedback_time = time()
         
         # Create subscriptions
-        self.motor_feedback_sub = self.create_subscription(TeknicStatus, 'teknicStatus', self.motor_feedback_callback, 10)
+        self.motor_feedback_sub = self.create_subscription(TeknicStatus, 'teknicStatus', self.motor_feedback_callback, 1)
         self.get_logger().info("Subscribed to teknicStatus topic")
-        self.move_winch_length_sub = self.create_subscription(MoveWinchLength, 'moveWinchLength', self.move_winch_length_callback, 10)
-        self.move_winch_speed_sub = self.create_subscription(Int32, 'move_winch_speed', self.move_winch_speed_callback, 10)
+        self.move_winch_length_sub = self.create_subscription(MoveWinchLength, 'moveWinchLength', self.move_winch_length_callback, 1)
+        self.move_winch_speed_sub = self.create_subscription(Int32, 'move_winch_speed', self.move_winch_speed_callback, 1)
 
         # Create publisher for winch status
-        self.winch_status_pub = self.create_publisher(WinchStatus, 'winchStatus', 10)
+        self.winch_status_pub = self.create_publisher(WinchStatus, 'winchStatus', 1)
 
         # Create publishers for motor commands
-        self.move_pos_pub = self.create_publisher(MoveTeknicPos, 'move_teknic_pos', 10)
-        self.move_vel_pub = self.create_publisher(MoveTeknicVel, 'move_teknic_vel', 10)
-        self.teknic_command_pub = self.create_publisher(TeknicCommand, 'teknic_command', 10)
+        self.move_pos_pub = self.create_publisher(MoveTeknicPos, 'move_teknic_pos', 1)
+        self.move_vel_pub = self.create_publisher(MoveTeknicVel, 'move_teknic_vel', 1)
+        self.teknic_command_pub = self.create_publisher(TeknicCommand, 'teknic_command', 1)
         
         # Create a timer to check command timeout
         self.command_timeout_timer = self.create_timer(0.1, self.publish_status)
@@ -95,6 +96,9 @@ class WinchNode(Node):
             return
         target_speed = msg.data
         target_speed_rpm = int(target_speed * 60 * WINCH_GEAR_RATIO / LENGTH_PER_REV)
+        if abs(target_speed_rpm) > MOTOR_MAX_RPM:
+            target_speed_rpm = 0
+            self.get_logger().info(f'target speed exceed the limit')
         command_msg = MoveTeknicVel()
         command_msg.motor_vel = [target_speed_rpm]
         self.get_logger().info(f'Sent winch command: {command_msg}')
