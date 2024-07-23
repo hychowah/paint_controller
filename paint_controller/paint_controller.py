@@ -3,6 +3,7 @@
 from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QResource
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine, QQmlContext, qmlRegisterType
+from PySide6.QtWidgets import QApplication
 from PySide6.QtQuick import QQuickPaintedItem
 
 import sys
@@ -12,6 +13,7 @@ import rclpy
 import random
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
+from towngas_interfaces.msg import WinchStatus
 
 
 class PlotItem(QQuickPaintedItem):
@@ -33,23 +35,32 @@ class PlotItem(QQuickPaintedItem):
             painter.drawPoint(int(x[i]), int(y[i]))
 
 class PaintController(Node, QObject):
-    lengthChanged = Signal(str)
-    speedChanged = Signal(str)
+    winchLengthChanged = Signal(str)
+    winchSpeedChanged = Signal(str)
+    leftSpeedChanged = Signal(str)
+    rightSpeedChanged = Signal(str)
     winchAvailableChanged = Signal(bool)
+
 
     def __init__(self, app):
         Node.__init__(self, 'paint_controller')
         QObject.__init__(self)
         self.app = app
-        self.subscription = self.create_subscription(
+        self.lidar_sub = self.create_subscription(
             LaserScan,
             'scan',
-            self.listener_callback,
+            self.lidar_sub_callback,
             10)
-        self.subscription  # prevent unused variable warning
+        self.lidar_sub  # prevent unused variable warning
+        self.winch_sub = self.create_subscription(
+            WinchStatus,
+            'winchStatus',
+            self.winch_sub_callback,
+            10)
+        self.winch_sub  # prevent unused variable warning
 
-        self._length = "0"
-        self._speed = "0"
+        self._winch_length = "0"
+        self._winch_speed = "0"
         self._winch_available = False
         self.scan_data = None
 
@@ -114,42 +125,52 @@ class PaintController(Node, QObject):
             self._winch_available = value
             self.winchAvailableChanged.emit(value)
 
-    @Property(str, notify=lengthChanged)
-    def length(self):
+    @Property(str, notify=winchLengthChanged)
+    def winch_length(self):
         return self._length
 
-    @length.setter
-    def length(self, value):
+    @winch_length.setter
+    def winch_length(self, value):
         if self._length != value:
             self._length = value
             self.lengthChanged.emit(value)
 
-    @Property(str, notify=speedChanged)
-    def speed(self):
-        return self._speed
+    @Property(str, notify=winchSpeedChanged)
+    def winch_speed(self):
+        return self._winch_speed
 
-    @speed.setter
-    def speed(self, value):
-        if self._speed != value:
-            self._speed = value
-            self.speedChanged.emit(value)
+    @winch_speed.setter
+    def winch_speed(self, value):
+        if self._winch_speed != value:
+            self._winch_speed = value
+            self.winchSpeedChanged.emit(value)
+
+    @Property(bool, notify=winchAvailableChanged)
 
     @Slot(bool)
     def toggleSwitchChanged(self, checked):
         print(f"Toggle switch changed: {checked}")
         # Implement your function here that should be triggered by the toggle switch
 
-    def listener_callback(self, msg):
+    def lidar_sub_callback(self, msg):
         self.scan_data = msg
         self.get_logger().info(f'Received LiDAR Data: {len(msg.ranges)} ranges')
         print(f'Received LiDAR Data: {len(msg.ranges)} ranges')
 
+    def winch_sub_callback(self, msg):
+        print(f'Received Winch Status: {msg}')
+        msg = WinchStatus()
+        self.winch_length = str(msg.cable_length)
+        self.winch_speed = str(msg.cable_speed)
+        
+        self.winchAvailable = msg.available
+
     def update_plot(self):
-        self.speed = str(random.randint(-9, 9))  # This will trigger the setter and emit the signal
-        if random.randint(0, 1):
-            self.winchAvailable = True
-        else:
-            self.winchAvailable = False
+        # self.speed = str(random.randint(-9, 9))  # This will trigger the setter and emit the signal
+        # if random.randint(0, 1):
+        #     self.winchAvailable = True
+        # else:
+        #     self.winchAvailable = False
         if self.scan_data is None:
             return
 
@@ -164,7 +185,7 @@ class PaintController(Node, QObject):
 
 def main(args=None):
     rclpy.init(args=args)
-    app = QGuiApplication(sys.argv)  # Use QGuiApplication instead of QApplication
+    app = QApplication(sys.argv)  # Use QGuiApplication instead of QApplication
     
     qmlRegisterType(PlotItem, 'CustomComponents', 1, 0, 'PlotItem')
 

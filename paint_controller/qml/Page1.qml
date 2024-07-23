@@ -17,22 +17,150 @@ Rectangle {
 
         ColumnLayout {
             Layout.preferredWidth: 700
+            Layout.maximumHeight: 400
 
             spacing: 20
 
-            Rectangle {
-                id: titleContainer
-                Layout.fillWidth: true
-                Layout.preferredHeight: 600  // Adjust height as needed
-                color: "#E2E2E2"
-                radius: 10
-                Layout.alignment: Qt.AlignHCenter | Qt.AlignTop
+            GridLayout {
+                id: grid
+                columns: 2
+                rows: 2
+                columnSpacing: 10
+                rowSpacing: 10
+                anchors.fill: parent
+                anchors.margins: 10
+                Layout.preferredHeight: 200
 
-                Text {
-                    text: "Page 1"
-                    font.pixelSize: 40
-                    color: "#000000"  // Adjusted color for visibility
-                    anchors.centerIn: parent
+                Rectangle {
+                    Layout.column: 0
+                    Layout.row: 0
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    color: "#E2E2E2"
+                    radius: 10
+
+                    Text {
+                        text: "LEFT WHEEL SPEED"
+                        font.pixelSize: 20
+                        font.bold: true
+                        color: "#000000"
+                        anchors.top: parent.top
+                        anchors.left: parent.left
+                        anchors.margins: 10
+                    }
+                    Text {
+                        text: "1"
+                        font.pixelSize: 40
+                        color: "#000000"
+                        anchors.centerIn: parent
+                    }
+                    Text {
+                        text: "RPM"
+                        font.pixelSize: 16
+                        color: "#000000"
+                        anchors.bottom: parent.bottom
+                        anchors.right: parent.right
+                        anchors.margins: 30
+                    }
+                }
+
+                Rectangle {
+                    Layout.column: 1
+                    Layout.row: 0
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    color: "#E2E2E2"
+                    radius: 10
+
+                    Text {
+                        text: "RIGHT WHEEL SPEED:"
+                        font.bold: true
+                        font.pixelSize: 20
+                        color: "#000000"
+                        anchors.top: parent.top
+                        anchors.left: parent.left
+                        anchors.margins: 10
+                    }
+                    Text {
+                        text: "2"
+                        font.pixelSize: 40
+                        color: "#000000"
+                        anchors.centerIn: parent
+                    }
+                    Text {
+                        text: "RPM"
+                        font.pixelSize: 16
+                        color: "#000000"
+                        anchors.bottom: parent.bottom
+                        anchors.right: parent.right
+                        anchors.margins: 30
+                    }
+                }
+
+                Rectangle {
+                    Layout.column: 0
+                    Layout.row: 1
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    color: "#E2E2E2"
+                    radius: 10
+
+                    Text {
+                        text: "LEFT WHEEL CURRENT"
+                        font.bold: true
+                        font.pixelSize: 20
+                        color: "#000000"
+                        anchors.top: parent.top
+                        anchors.left: parent.left
+                        anchors.margins: 10
+                    }
+                    Text {
+                        text: "3"
+                        font.pixelSize: 40
+                        color: "#000000"
+                        anchors.centerIn: parent
+                    }
+                    Text {
+                        text: "A"
+                        font.pixelSize: 16
+                        color: "#000000"
+                        anchors.bottom: parent.bottom
+                        anchors.right: parent.right
+                        anchors.margins: 30
+                    }
+                }
+
+                Rectangle {
+                    Layout.column: 1
+                    Layout.row: 1
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    color: "#E2E2E2"
+                    radius: 10
+
+                    Text {
+                        text: "RIGHT WHEEL CURRENT"
+                        font.pixelSize: 20
+                        font.bold: true
+                        color: "#000000"
+                        anchors.top: parent.top
+                        anchors.left: parent.left
+                        anchors.margins: 10
+                    }
+                    Text {
+                        text: "4"
+                        font.pixelSize: 40
+                        color: "#000000"
+                        anchors.centerIn: parent
+                    }
+                    Text {
+                        text: "A"
+                        font.pixelSize: 16
+                        color: "#000000"
+                        anchors.bottom: parent.bottom
+                        anchors.right: parent.right
+                        anchors.margins: 30
+                    }
                 }
             }
         }

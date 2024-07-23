@@ -13,13 +13,13 @@ ApplicationWindow {
     Rectangle {
         id: background
         anchors.fill: parent
-        color: "#FFFFFF"
+        // color: "#FFFFFF"
 
         // Container to maintain resolution
-        Rectangle {
-            width: 1280
-            height: 720
-            anchors.centerIn: parent
+        // Rectangle {
+            // width: 1280
+            // height: 720
+            // anchors.centerIn: parent
             color: "#5E5C64"
 
             RowLayout {
@@ -81,4 +81,4 @@ ApplicationWindow {
             }
         }
     }
-}
+// }

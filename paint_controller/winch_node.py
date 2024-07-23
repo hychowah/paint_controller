@@ -26,15 +26,11 @@ class WinchNode(Node):
         self.current_motor_torque = 0
         self.last_feedback_time = time()
         
-        # Declare and get parameters
-        self.declare_parameter('num_of_motor', 1)
-        self.num_of_motor = self.get_parameter('num_of_motor').get_parameter_value().integer_value
-
         # Create subscriptions
         self.motor_feedback_sub = self.create_subscription(TeknicStatus, 'teknicStatus', self.motor_feedback_callback, 10)
         self.get_logger().info("Subscribed to teknicStatus topic")
         self.move_winch_length_sub = self.create_subscription(MoveWinchLength, 'moveWinchLength', self.move_winch_length_callback, 10)
-        self.move_winch_speed_sub = self.create_subscription(Int32, 'moveWinchSpeed', self.move_winch_speed_callback, 10)
+        self.move_winch_speed_sub = self.create_subscription(Int32, 'move_winch_speed', self.move_winch_speed_callback, 10)
 
         # Create publisher for winch status
         self.winch_status_pub = self.create_publisher(WinchStatus, 'winchStatus', 10)
@@ -53,7 +49,6 @@ class WinchNode(Node):
         self.available = False
 
     def motor_feedback_callback(self, msg: TeknicStatus):
-        self.current_motor_status = msg.motors[0]
         self.current_motor_cnt = msg.motors[0].pos
         self.current_motor_vel = msg.motors[0].speed
         self.current_motor_torque = msg.motors[0].torque
@@ -99,7 +94,7 @@ class WinchNode(Node):
             self.get_logger().info('Winch is not enabled.')
             return
         target_speed = msg.data
-        target_speed_rpm = target_speed * MOTOR_CNT_PER_REV * WINCH_GEAR_RATIO / LENGTH_PER_REV
+        target_speed_rpm = int(target_speed * 60 * WINCH_GEAR_RATIO / LENGTH_PER_REV)
         command_msg = MoveTeknicVel()
         command_msg.motor_vel = [target_speed_rpm]
         self.get_logger().info(f'Sent winch command: {command_msg}')
@@ -245,3 +240,4 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
+    
