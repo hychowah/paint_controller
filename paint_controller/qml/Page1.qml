@@ -1,7 +1,8 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import QtCharts 2.15
+import QtQuick 6.7
+import QtQuick.Controls 6.7
+import QtQuick.Layouts 6.7
+import QtCharts 6.7
+import QtMultimedia 6.7
 
 Rectangle {
     id: page1Rect
@@ -11,202 +12,206 @@ Rectangle {
     property int timeStep: 0
     color: "#9F9F9F"
 
+    property int dataRectHeight: 150
+
     RowLayout {
         anchors.fill: parent
         anchors.margins: 20
         spacing: 20
 
         ColumnLayout {
-            Layout.preferredWidth: 700
-            Layout.maximumHeight: 400
-
+            Layout.preferredWidth: 800
+            Layout.fillHeight: true
             spacing: 20
 
-            GridLayout {
-                id: grid
-                columns: 2
-                rows: 2
-                columnSpacing: 10
-                rowSpacing: 10
-                anchors.fill: parent
-                anchors.margins: 10
-                Layout.preferredHeight: 200
+            Rectangle {
+                id: cameraView
+                objectName: "cameraView"
+                color: "transparent"
+                width: 800
+                height: 400
+                Layout.alignment: Qt.AlignHCenter | Qt.AlignTop
 
                 Rectangle {
-                    Layout.column: 0
-                    Layout.row: 0
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    color: "#E2E2E2"
-                    radius: 10
+                    id: imageContainer
+                    width: 300
+                    height: 150
+                    radius: 20 // Set the radius to make the corners rounded
+                    clip: true // Clip the content to the rounded corners
 
-                    Text {
-                        text: "LEFT WHEEL SPEED"
-                        font.pixelSize: 20
-                        font.bold: true
-                        color: "#000000"
-                        anchors.top: parent.top
-                        anchors.left: parent.left
-                        anchors.margins: 10
-                    }
-                    Text {
-                        text: backend.left_wheel_speed
-                        font.pixelSize: 40
-                        color: "#000000"
-                        anchors.centerIn: parent
-                    }
-                    Text {
-                        text: "RPM"
-                        font.pixelSize: 16
-                        color: "#000000"
-                        anchors.bottom: parent.bottom
-                        anchors.right: parent.right
-                        anchors.margins: 30
+                    Image {
+                        id: imageView
+                        objectName: "imageView"
+                        anchors.fill: parent
+                        fillMode: Image.Stretch
                     }
                 }
 
-                Rectangle {
-                    Layout.column: 1
-                    Layout.row: 0
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    color: "#E2E2E2"
-                    radius: 10
-
-                    Text {
-                        text: "RIGHT WHEEL SPEED:"
-                        font.bold: true
-                        font.pixelSize: 20
-                        color: "#000000"
-                        anchors.top: parent.top
-                        anchors.left: parent.left
-                        anchors.margins: 10
-                    }
-                    Text {
-                        text: backend.right_wheel_speed
-                        font.pixelSize: 40
-                        color: "#000000"
-                        anchors.centerIn: parent
-                    }
-                    Text {
-                        text: "RPM"
-                        font.pixelSize: 16
-                        color: "#000000"
-                        anchors.bottom: parent.bottom
-                        anchors.right: parent.right
-                        anchors.margins: 30
-                    }
-                }
-
-                Rectangle {
-                    Layout.column: 0
-                    Layout.row: 1
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    color: "#E2E2E2"
-                    radius: 10
-
-                    Text {
-                        text: "LEFT WHEEL CURRENT"
-                        font.bold: true
-                        font.pixelSize: 20
-                        color: "#000000"
-                        anchors.top: parent.top
-                        anchors.left: parent.left
-                        anchors.margins: 10
-                    }
-                    Text {
-                        text: backend.left_wheel_current
-                        font.pixelSize: 40
-                        color: "#000000"
-                        anchors.centerIn: parent
-                    }
-                    Text {
-                        text: "A"
-                        font.pixelSize: 16
-                        color: "#000000"
-                        anchors.bottom: parent.bottom
-                        anchors.right: parent.right
-                        anchors.margins: 30
-                    }
-                }
-
-                Rectangle {
-                    Layout.column: 1
-                    Layout.row: 1
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    color: "#E2E2E2"
-                    radius: 10
-
-                    Text {
-                        text: "RIGHT WHEEL CURRENT"
-                        font.pixelSize: 20
-                        font.bold: true
-                        color: "#000000"
-                        anchors.top: parent.top
-                        anchors.left: parent.left
-                        anchors.margins: 10
-                    }
-                    Text {
-                        text: backend.right_wheel_current
-                        font.pixelSize: 40
-                        color: "#000000"
-                        anchors.centerIn: parent
-                    }
-                    Text {
-                        text: "A"
-                        font.pixelSize: 16
-                        color: "#000000"
-                        anchors.bottom: parent.bottom
-                        anchors.right: parent.right
-                        anchors.margins: 30
-                    }
+                Text {
+                    text: "Camera View"
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 30
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    color: "#000000"
                 }
             }
+
+            // Item {
+            //     width: 800
+            //     height: 300
+
+            //     ChartView {
+            //         id: chartView
+            //         anchors.fill: parent
+            //         backgroundColor: "transparent"
+            //         backgroundRoundness : 20
+
+            //         ValueAxis {
+            //             id: axisX
+            //             min: 0
+            //             max: 400
+            //         }
+
+            //         LineSeries {
+            //             id: series1
+            //             axisX: axisX
+            //             name: "data"
+            //         }
+            //     }
+            // }
         }
 
         ColumnLayout {
             Layout.preferredWidth: 300
-            spacing: 0
+            Layout.fillHeight: true
+            spacing: 20
 
-            Item {
-                width: 300
-                height: 300
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: dataRectHeight
+                color: "#E2E2E2"
+                radius: 10
 
-                ChartView {
-                    id: chartView
-                    anchors.fill: parent
-
-                    ValueAxis {
-                        id: axisX
-                        min: 0
-                        max: 400
-                    }
-
-                    LineSeries {
-                        id: series1
-                        axisX: axisX
-                        name: "data"
-                    }
-
+                Text {
+                    text: "LEFT WHEEL SPEED"
+                    font.pixelSize: 20
+                    font.bold: true
+                    color: "#000000"
+                    anchors.top: parent.top
+                    anchors.left: parent.left
+                    anchors.margins: 10
+                }
+                Text {
+                    text: backend.left_wheel_speed
+                    font.pixelSize: 40
+                    color: "#000000"
+                    anchors.centerIn: parent
+                }
+                Text {
+                    text: "RPM"
+                    font.pixelSize: 16
+                    color: "#000000"
+                    anchors.bottom: parent.bottom
+                    anchors.right: parent.right
+                    anchors.margins: 30
                 }
             }
 
             Rectangle {
-                id: cameraView
+                Layout.fillWidth: true
+                Layout.preferredHeight: dataRectHeight
                 color: "#E2E2E2"
-                width: 300
-                height: 300
-                Layout.alignment: Qt.AlignHCenter | Qt.AlignBottom
+                radius: 10
+
                 Text {
-                    text: "Camera View"
-                    anchors.centerIn: parent
+                    text: "RIGHT WHEEL SPEED"
+                    font.bold: true
+                    font.pixelSize: 20
                     color: "#000000"
+                    anchors.top: parent.top
+                    anchors.left: parent.left
+                    anchors.margins: 10
+                }
+                Text {
+                    text: backend.right_wheel_speed
+                    font.pixelSize: 40
+                    color: "#000000"
+                    anchors.centerIn: parent
+                }
+                Text {
+                    text: "RPM"
+                    font.pixelSize: 16
+                    color: "#000000"
+                    anchors.bottom: parent.bottom
+                    anchors.right: parent.right
+                    anchors.margins: 30
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: dataRectHeight
+                color: "#E2E2E2"
+                radius: 10
+
+                Text {
+                    text: "LEFT WHEEL CURRENT"
+                    font.bold: true
+                    font.pixelSize: 20
+                    color: "#000000"
+                    anchors.top: parent.top
+                    anchors.left: parent.left
+                    anchors.margins: 10
+                }
+                Text {
+                    text: backend.left_wheel_current
+                    font.pixelSize: 40
+                    color: "#000000"
+                    anchors.centerIn: parent
+                }
+                Text {
+                    text: "A"
+                    font.pixelSize: 16
+                    color: "#000000"
+                    anchors.bottom: parent.bottom
+                    anchors.right: parent.right
+                    anchors.margins: 30
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: dataRectHeight
+                color: "#E2E2E2"
+                radius: 10
+
+                Text {
+                    text: "RIGHT WHEEL CURRENT"
+                    font.pixelSize: 20
+                    font.bold: true
+                    color: "#000000"
+                    anchors.top: parent.top
+                    anchors.left: parent.left
+                    anchors.margins: 10
+                }
+                Text {
+                    text: backend.right_wheel_current
+                    font.pixelSize: 40
+                    color: "#000000"
+                    anchors.centerIn: parent
+                }
+                Text {
+                    text: "A"
+                    font.pixelSize: 16
+                    color: "#000000"
+                    anchors.bottom: parent.bottom
+                    anchors.right: parent.right
+                    anchors.margins: 30
                 }
             }
         }
     }
+
     Timer {
         interval: 100
         repeat: true
@@ -214,7 +219,9 @@ Rectangle {
         onTriggered: {
             timeStep++;
             var y = (1+Math.cos(timeStep/10.0))/2.0;
-            series1.append(timeStep, y);
+            // series1.append(timeStep, y);
+            imageView.source = "image://frameProvider/frame?" + Math.random()
+        
         }
     }
 }

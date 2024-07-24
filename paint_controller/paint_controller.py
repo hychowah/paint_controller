@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
 from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QResource, QThread
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QGuiApplication, QImage, QPixmap
 from PySide6.QtQml import QQmlApplicationEngine, QQmlContext, qmlRegisterType
 from PySide6.QtWidgets import QApplication, QWidget, QMainWindow
 from PySide6.QtQuickWidgets import QQuickWidget
-from PySide6.QtQuick import QQuickPaintedItem
+from PySide6.QtQuick import QQuickPaintedItem, QQuickImageProvider
+from PySide6.QtMultimedia import QMediaPlayer
+from PySide6.QtMultimediaWidgets import QVideoWidget
 
 import sys
 import os
@@ -14,11 +16,31 @@ import rclpy
 import random
 from rclpy.node import Node
 import time
+from cv_bridge import CvBridge
+import cv2
+from sensor_msgs.msg import CompressedImage
 from sensor_msgs.msg import LaserScan
 from towngas_interfaces.msg import WinchStatus, WheelStatus
 
 
+class FrameProvider(QQuickImageProvider):
+    def __init__(self):
+        super(FrameProvider, self).__init__(QQuickImageProvider.Image)
+        self.image = QImage()
+
+    def update_frame(self, frame):
+        height, width, channel = frame.shape
+        bytes_per_line = 3 * width
+        self.image = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888).rgbSwapped()
+
+    def requestImage(self, id, size, requestedSize):
+        return self.image
+
+# Create the image provider instance
+frame_provider = FrameProvider()
+
 class PaintController(Node, QObject):
+    new_frame = Signal(np.ndarray)
     winchLengthChanged = Signal(str)
     winchSpeedChanged = Signal(str)
     winchCurrentChanged = Signal(str)
@@ -34,23 +56,37 @@ class PaintController(Node, QObject):
         Node.__init__(self, 'paint_controller')
         QObject.__init__(self)
 
+        self.new_frame.connect(self.update_frame)
+
+        qos_profile = rclpy.qos.QoSProfile(
+            reliability=rclpy.qos.QoSReliabilityPolicy.BEST_EFFORT,
+            history=rclpy.qos.QoSHistoryPolicy.KEEP_LAST,
+            depth=1
+        )
+        self.subscription = self.create_subscription(
+            CompressedImage, 
+            'camera/image/compressed', 
+            self.camera_callback, 
+            qos_profile)
+        self.br = CvBridge()
+
         self.lidar_sub = self.create_subscription(
             LaserScan,
             'scan',
             self.lidar_sub_callback,
-            10)
+            1)
         self.lidar_sub  # prevent unused variable warning
         self.winch_sub = self.create_subscription(
             WinchStatus,
             'winchStatus',
             self.winch_sub_callback,
-            10)
+            1)
         self.winch_sub  # prevent unused variable warning
         self.wheel_sub = self.create_subscription(
             WheelStatus,
             'wheel_motor_status',
             self.wheel_sub_callback,
-            10)
+            1)
         self.wheel_sub
 
         self._left_wheel_speed = "0"
@@ -164,6 +200,12 @@ class PaintController(Node, QObject):
         print(f"Toggle switch changed: {checked}")
         # Implement your function here that should be triggered by the toggle switch
 
+    @Slot(np.ndarray)
+    def update_frame(self, frame):
+        print("Updating frame")
+        frame_provider.update_frame(frame)
+        self.video_output.update()
+
     def lidar_sub_callback(self, msg):
         self.scan_data = msg
         self.get_logger().info(f'Received LiDAR Data: {len(msg.ranges)} ranges')
@@ -184,6 +226,14 @@ class PaintController(Node, QObject):
         self.left_wheel_current = f"{msg.left_wheel_current:.2f}"
         self.right_wheel_current = f"{msg.right_wheel_current:.2f}"
         self.last_msg_time = time.time()
+
+    def camera_callback(self, msg):
+        # Decode the compressed image
+        print("Received camera image")
+        np_arr = np.frombuffer(msg.data, np.uint8)
+        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        self.new_frame.emit(frame)
+
 
     def update_plot(self):
         if time.time() - self.last_msg_time > 0.5:
@@ -226,7 +276,8 @@ def main(args=None):
     current_dir = os.path.dirname(os.path.abspath(__file__))
     qml_path = os.path.join(current_dir, 'qml', 'MainWindow.qml')
     engine.load(QUrl.fromLocalFile(qml_path))
-
+    engine.addImageProvider("frameProvider", frame_provider)
+    
     if not engine.rootObjects():
         print("Failed to load QML file.")
         sys.exit(-1)
@@ -248,7 +299,9 @@ def main(args=None):
 
     print("Found page1")
 
-    plot_container = page1.findChild(QObject, "plotContainer")
+    paint_controller.video_output = page1.findChild(QObject, "imageView")
+    if paint_controller.video_output is None:
+        print("cant find video")
 
     engine.rootContext().setContextProperty("backend", paint_controller)
 
@@ -257,11 +310,6 @@ def main(args=None):
     timer.start(100)  # update every 100 ms
 
     sys.exit(app.exec())
-
-    ros_thread.quit()
-    ros_thread.wait()
-    paint_controller.destroy_node()
-    rclpy.shutdown()
 
 
 if __name__ == '__main__':
