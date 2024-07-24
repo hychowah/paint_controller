@@ -1,13 +1,14 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import CustomComponents 1.0  // Import the module where PlotItem is registered
+import QtCharts 2.15
 
 Rectangle {
     id: page1Rect
     objectName: "page1Rect"
     Layout.fillWidth: true
     Layout.fillHeight: true
+    property int timeStep: 0
     color: "#9F9F9F"
 
     RowLayout {
@@ -170,18 +171,25 @@ Rectangle {
             spacing: 0
 
             Item {
-                id: plotContainer
-                objectName: "plotContainer"
                 width: 300
                 height: 300
-                Layout.alignment: Qt.AlignHCenter | Qt.AlignTop
 
-                property var plotWidget: null
+                ChartView {
+                    id: chartView
+                    anchors.fill: parent
 
-                PlotItem {
-                    id: plotItem
-                    width: parent.width
-                    height: parent.height
+                    ValueAxis {
+                        id: axisX
+                        min: 0
+                        max: 400
+                    }
+
+                    LineSeries {
+                        id: series1
+                        axisX: axisX
+                        name: "data"
+                    }
+
                 }
             }
 
@@ -197,6 +205,16 @@ Rectangle {
                     color: "#000000"
                 }
             }
+        }
+    }
+    Timer {
+        interval: 100
+        repeat: true
+        running: true
+        onTriggered: {
+            timeStep++;
+            var y = (1+Math.cos(timeStep/10.0))/2.0;
+            series1.append(timeStep, y);
         }
     }
 }

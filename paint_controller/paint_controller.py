@@ -3,7 +3,8 @@
 from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QResource, QThread
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine, QQmlContext, qmlRegisterType
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QWidget, QMainWindow
+from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtQuick import QQuickPaintedItem
 
 import sys
@@ -12,39 +13,22 @@ import numpy as np
 import rclpy
 import random
 from rclpy.node import Node
+import time
 from sensor_msgs.msg import LaserScan
 from towngas_interfaces.msg import WinchStatus, WheelStatus
-
-
-class PlotItem(QQuickPaintedItem):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.plot_data = None
-
-    def set_plot_data(self, x, y):
-        self.plot_data = (x, y)
-        self.update()
-
-    def paint(self, painter):
-        if self.plot_data is None:
-            return
-
-        x, y = self.plot_data
-        painter.setPen(Qt.black)
-        for i in range(len(x)):
-            painter.drawPoint(int(x[i]), int(y[i]))
 
 
 class PaintController(Node, QObject):
     winchLengthChanged = Signal(str)
     winchSpeedChanged = Signal(str)
     winchCurrentChanged = Signal(str)
+    winchAvailableChanged = Signal(bool)
+
     leftSpeedChanged = Signal(str)
     leftCurrentChanged = Signal(str)
     rightCurrentChanged = Signal(str)
     rightSpeedChanged = Signal(str)
-    winchAvailableChanged = Signal(bool)
-
+    wheelAvailableChanged = Signal(bool)
 
     def __init__(self):
         Node.__init__(self, 'paint_controller')
@@ -68,15 +52,19 @@ class PaintController(Node, QObject):
             self.wheel_sub_callback,
             10)
         self.wheel_sub
+
         self._left_wheel_speed = "0"
         self._right_wheel_speed = "0"
         self._left_wheel_current = "0"
         self._right_wheel_current = "0"
+        self._wheel_available = False
+        self.last_msg_time = time.time()
 
         self._winch_length = "0"
         self._winch_speed = "0"
         self._winch_curent = "0"
         self._winch_available = False
+
         self.scan_data = None
 
     @Property(bool, notify=winchAvailableChanged)
@@ -160,8 +148,17 @@ class PaintController(Node, QObject):
         if self._right_wheel_current != value:
             self._right_wheel_current = value
             self.rightCurrentChanged.emit(value)
-        
 
+    @Property(bool, notify=wheelAvailableChanged)  
+    def wheel_available(self):
+        return self._wheel_available
+    
+    @wheel_available.setter
+    def wheel_available(self, value):
+        if self._wheel_available != value:
+            self._wheel_available = value
+            self.wheelAvailableChanged.emit(value)
+        
     @Slot(bool)
     def toggleSwitchChanged(self, checked):
         print(f"Toggle switch changed: {checked}")
@@ -181,13 +178,19 @@ class PaintController(Node, QObject):
         print(f'Winch Length: {self.winch_length}, Winch Speed: {self.winch_speed}, Winch Available: {msg.available}')
 
     def wheel_sub_callback(self, msg):
-        print(f'Received Wheel Status: {msg}')
+        print(f'Received Wheel Status: {msg}') 
         self.left_wheel_speed = f"{msg.left_wheel_speed:.2f}"
         self.right_wheel_speed = f"{msg.right_wheel_speed:.2f}"
         self.left_wheel_current = f"{msg.left_wheel_current:.2f}"
         self.right_wheel_current = f"{msg.right_wheel_current:.2f}"
+        self.last_msg_time = time.time()
 
     def update_plot(self):
+        if time.time() - self.last_msg_time > 0.5:
+            self.wheel_available = False
+        else:
+            self.wheel_available = True
+
         if self.scan_data is None:
             return
 
@@ -212,9 +215,7 @@ class RosThread(QThread):
 
 def main(args=None):
     rclpy.init(args=args)
-    app = QApplication(sys.argv)  # Use QGuiApplication instead of QApplication
-
-    qmlRegisterType(PlotItem, 'CustomComponents', 1, 0, 'PlotItem')
+    app = QApplication(sys.argv) 
 
     paint_controller = PaintController()
 
@@ -248,14 +249,7 @@ def main(args=None):
     print("Found page1")
 
     plot_container = page1.findChild(QObject, "plotContainer")
-    if plot_container is None:
-        print("Could not find plotContainer in QML")
-        sys.exit(-1)
 
-    print("Found plotContainer")
-
-    plot_item = PlotItem()
-    engine.rootContext().setContextProperty("plotItem", plot_item)
     engine.rootContext().setContextProperty("backend", paint_controller)
 
     timer = QTimer()
