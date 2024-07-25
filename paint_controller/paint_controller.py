@@ -22,25 +22,22 @@ from sensor_msgs.msg import CompressedImage
 from sensor_msgs.msg import LaserScan
 from towngas_interfaces.msg import WinchStatus, WheelStatus
 
+import gi
+gi.require_version('Gst', '1.0')
+gi.require_version('GstApp', '1.0')
+from gi.repository import Gst, GstApp
 
-class FrameProvider(QQuickImageProvider):
+
+class ImageProvider(QQuickImageProvider):
     def __init__(self):
-        super(FrameProvider, self).__init__(QQuickImageProvider.Image)
-        self.image = QImage()
-
-    def update_frame(self, frame):
-        height, width, channel = frame.shape
-        bytes_per_line = 3 * width
-        self.image = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888).rgbSwapped()
+        super().__init__(QQuickImageProvider.Image)
+        self.image = QImage(640, 480, QImage.Format_RGB888)
 
     def requestImage(self, id, size, requestedSize):
         return self.image
 
-# Create the image provider instance
-frame_provider = FrameProvider()
-
 class PaintController(Node, QObject):
-    new_frame = Signal(np.ndarray)
+    frame_ready = Signal()
     winchLengthChanged = Signal(str)
     winchSpeedChanged = Signal(str)
     winchCurrentChanged = Signal(str)
@@ -55,8 +52,18 @@ class PaintController(Node, QObject):
     def __init__(self):
         Node.__init__(self, 'paint_controller')
         QObject.__init__(self)
+        Gst.init(None)
+        
+        self.image_provider = ImageProvider()
 
-        self.new_frame.connect(self.update_frame)
+        self.pipeline = Gst.parse_launch(
+            "udpsrc port=5000 caps=\"application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96\" ! rtph264depay ! avdec_h264 ! videoconvert ! video/x-raw,format=RGB ! appsink name=sink"
+        )
+        self.sink = self.pipeline.get_by_name('sink')
+        self.sink.set_property('emit-signals', True)
+        self.sink.connect('new-sample', self.on_new_sample)
+
+        self.pipeline.set_state(Gst.State.PLAYING)
 
         qos_profile = rclpy.qos.QoSProfile(
             reliability=rclpy.qos.QoSReliabilityPolicy.BEST_EFFORT,
@@ -206,6 +213,30 @@ class PaintController(Node, QObject):
         frame_provider.update_frame(frame)
         self.video_output.update()
 
+    def on_new_sample(self, sink):
+        sample = sink.emit('pull-sample')
+        buffer = sample.get_buffer()
+        caps = sample.get_caps()
+        
+        structure = caps.get_structure(0)
+        width = structure.get_value('width')
+        height = structure.get_value('height')
+        
+        _, map_info = buffer.map(Gst.MapFlags.READ)
+        
+        # Ensure the data is in the correct format (RGB)
+        data = map_info.data
+        
+        # Create QImage directly from the buffer data
+        image = QImage(data, width, height, width * 3, QImage.Format_RGB888)
+        
+        self.image_provider.image = image.copy()  # Create a deep copy of the image
+        buffer.unmap(map_info)
+        
+        self.frame_ready.emit()
+        
+        return Gst.FlowReturn.OK
+
     def lidar_sub_callback(self, msg):
         self.scan_data = msg
         self.get_logger().info(f'Received LiDAR Data: {len(msg.ranges)} ranges')
@@ -275,9 +306,10 @@ def main(args=None):
     engine = QQmlApplicationEngine()
     current_dir = os.path.dirname(os.path.abspath(__file__))
     qml_path = os.path.join(current_dir, 'qml', 'MainWindow.qml')
-    engine.load(QUrl.fromLocalFile(qml_path))
-    engine.addImageProvider("frameProvider", frame_provider)
+    engine.addImageProvider("live", paint_controller.image_provider)
     
+    engine.load(QUrl.fromLocalFile(qml_path))
+
     if not engine.rootObjects():
         print("Failed to load QML file.")
         sys.exit(-1)
@@ -299,11 +331,8 @@ def main(args=None):
 
     print("Found page1")
 
-    paint_controller.video_output = page1.findChild(QObject, "imageView")
-    if paint_controller.video_output is None:
-        print("cant find video")
-
     engine.rootContext().setContextProperty("backend", paint_controller)
+    engine.rootContext().setContextProperty("videoStreamer", paint_controller)
 
     timer = QTimer()
     timer.timeout.connect(paint_controller.update_plot)
