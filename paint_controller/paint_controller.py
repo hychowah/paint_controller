@@ -53,7 +53,7 @@ class PaintController(Node, QObject):
         Node.__init__(self, 'paint_controller')
         QObject.__init__(self)
         Gst.init(None)
-        
+
         self.image_provider = ImageProvider()
 
         self.pipeline = Gst.parse_launch(
@@ -157,7 +157,6 @@ class PaintController(Node, QObject):
     
     @left_wheel_speed.setter
     def left_wheel_speed(self, value):
-        print(f"Setting left wheel speed: {value}")
         if self._left_wheel_speed != value:
             self._left_wheel_speed = value
             self.leftSpeedChanged.emit(value)
@@ -251,7 +250,6 @@ class PaintController(Node, QObject):
         print(f'Winch Length: {self.winch_length}, Winch Speed: {self.winch_speed}, Winch Available: {msg.available}')
 
     def wheel_sub_callback(self, msg):
-        print(f'Received Wheel Status: {msg}') 
         self.left_wheel_speed = f"{msg.left_wheel_speed:.2f}"
         self.right_wheel_speed = f"{msg.right_wheel_speed:.2f}"
         self.left_wheel_current = f"{msg.left_wheel_current:.2f}"

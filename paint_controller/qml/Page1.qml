@@ -15,6 +15,17 @@ Rectangle {
 
     property int dataRectHeight: 150
 
+    Rectangle {
+        id: dataRect
+        Layout.fillWidth: true  
+        width: 1050
+        height: 700
+        anchors.centerIn: parent
+        color: "#E2E2E2"
+        radius: 30
+    
+    
+
     RowLayout {
         anchors.fill: parent
         anchors.margins: 20
@@ -56,30 +67,6 @@ Rectangle {
 
                 }
             }
-
-            // Item {
-            //     width: 800
-            //     height: 300
-
-            //     ChartView {
-            //         id: chartView
-            //         anchors.fill: parent
-            //         backgroundColor: "transparent"
-            //         backgroundRoundness : 20
-
-            //         ValueAxis {
-            //             id: axisX
-            //             min: 0
-            //             max: 400
-            //         }
-
-            //         LineSeries {
-            //             id: series1
-            //             axisX: axisX
-            //             name: "data"
-            //         }
-            //     }
-            // }
         }
 
         ColumnLayout {
@@ -87,233 +74,55 @@ Rectangle {
             Layout.fillHeight: true
             spacing: 20
 
-            Rectangle {
-                id: leftWheelSpeedRect
-                Layout.fillWidth: true
-                Layout.preferredHeight: dataRectHeight
-                color: "#E2E2E2"
-                radius: 10
-
-                property var speedDataPoints: []
-
-                Text {
-                    id: titleText
-                    text: "LEFT WHEEL SPEED"
-                    font.pixelSize: 20
-                    font.bold: true
-                    color: "#000000"
-                    anchors.top: parent.top
-                    anchors.left: parent.left
-                    anchors.margins: 10
-                }
-
-                LineGraph {
-                    id: speedGraph
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.top: titleText.bottom
-                    anchors.bottom: speedText.top
-                    anchors.margins: 0
-                    
-                }
-
-                Text {
-                    id: speedText
-                    text: backend.left_wheel_speed
-                    font.pixelSize: 40
-                    color: "#000000"
-                    anchors.bottom: parent.bottom
-                    anchors.right: unitText.left
-                    anchors.rightMargin: 10
-                }
-
-                Text {
-                    id: unitText
-                    text: "RPM"
-                    font.pixelSize: 16
-                    color: "#000000"
-                    anchors.bottom: parent.bottom
-                    anchors.right: parent.right
-                    anchors.margins: 5
-                }
-
-                Timer {
-                    interval: 100  // Update every 100ms
-                    running: true
-                    repeat: true
-                    onTriggered: {
-                        speedGraph.addDataPoint(backend.left_wheel_speed);
-                    }
-                }
+            DataDisplay {
+                title: "LEFT SPEED"
+                speed: backend.left_wheel_current
+                backgroundColor: "#F0F0F0"
+                lineColor: "blue"
+                maxAbsValue: 50
+                Layout.preferredHeight: 140
+                titleFontSize: 24
+                valueFontSize: 44
+                unitFontSize: 18
             }
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: dataRectHeight
-                color: "#E2E2E2"
-                radius: 10
-
-                Text {
-                    id: rightWheelSpeedTitle
-                    text: "RIGHT WHEEL SPEED"
-                    font.bold: true
-                    font.pixelSize: 20
-                    color: "#000000"
-                    anchors.top: parent.top
-                    anchors.left: parent.left
-                    anchors.margins: 10
-                }
-
-                LineGraph {
-                    id: rightSpeedGraph
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.top: rightWheelSpeedTitle.bottom
-                    anchors.bottom: rightSpeedText.top
-                    anchors.margins: 0
-                }
-
-                Text {
-                    id: rightSpeedText
-                    text: backend.right_wheel_speed
-                    font.pixelSize: 40
-                    color: "#000000"
-                    anchors.bottom: parent.bottom
-                    anchors.right: rightSpeedUnitText.left
-                    anchors.rightMargin: 10
-                }
-
-                Text {
-                    id: rightSpeedUnitText
-                    text: "RPM"
-                    font.pixelSize: 16
-                    color: "#000000"
-                    anchors.bottom: parent.bottom
-                    anchors.right: parent.right
-                    anchors.margins: 5
-                }
-
-                Timer {
-                    interval: 100  // Update every 100ms
-                    running: true
-                    repeat: true
-                    onTriggered: {
-                        rightSpeedGraph.addDataPoint(backend.right_wheel_speed);
-                    }
-                }
+            DataDisplay {
+                title: "RIGHT SPEED"
+                speed: backend.right_wheel_current
+                backgroundColor: "#F0F0F0"
+                lineColor: "blue"
+                maxAbsValue: 50
+                Layout.preferredHeight: 140
+                titleFontSize: 24
+                valueFontSize: 44
+                unitFontSize: 18
             }
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: dataRectHeight
-                color: "#E2E2E2"
-                radius: 10
-
-                Text {
-                    id: leftWheelCurrentTitle
-                    text: "LEFT WHEEL CURRENT"
-                    font.bold: true
-                    font.pixelSize: 20
-                    color: "#000000"
-                    anchors.top: parent.top
-                    anchors.left: parent.left
-                    anchors.margins: 10
-                }
-
-                LineGraph {
-                    id: leftCurrentGraph
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.top: leftWheelCurrentTitle.bottom
-                    anchors.bottom: leftCurrentText.top
-                    anchors.margins: 0
-                }
-
-                Text {
-                    id: leftCurrentText
-                    text: backend.left_wheel_current
-                    font.pixelSize: 40
-                    color: "#000000"
-                    anchors.bottom: parent.bottom
-                    anchors.right: leftCurrentUnitText.left
-                    anchors.rightMargin: 10
-                }
-
-                Text {
-                    id: leftCurrentUnitText
-                    text: "A"
-                    font.pixelSize: 16
-                    color: "#000000"
-                    anchors.bottom: parent.bottom
-                    anchors.right: parent.right
-                    anchors.margins: 5
-                }
-
-                Timer {
-                    interval: 100  // Update every 100ms
-                    running: true
-                    repeat: true
-                    onTriggered: {
-                        leftCurrentGraph.addDataPoint(backend.left_wheel_current);
-                    }
-                }
+            DataDisplay {
+                title: "LEFT CURRENT"
+                speed: backend.left_wheel_speed
+                backgroundColor: "#F0F0F0"
+                lineColor: "blue"
+                maxAbsValue: 50
+                Layout.preferredHeight: 140
+                titleFontSize: 24
+                valueFontSize: 44
+                unitFontSize: 18
             }
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: dataRectHeight
-                color: "#E2E2E2"
-                radius: 10
-
-                Text {
-                    id: rightWheelCurrentTitle
-                    text: "RIGHT WHEEL CURRENT"
-                    font.pixelSize: 20
-                    font.bold: true
-                    color: "#000000"
-                    anchors.top: parent.top
-                    anchors.left: parent.left
-                    anchors.margins: 10
-                }
-
-                LineGraph {
-                    id: rightCurrentGraph
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.top: rightWheelCurrentTitle.bottom
-                    anchors.bottom: rightCurrentText.top
-                    anchors.margins: 0
-                }
-
-                Text {
-                    id: rightCurrentText
-                    text: backend.right_wheel_current
-                    font.pixelSize: 40
-                    color: "#000000"
-                    anchors.bottom: parent.bottom
-                    anchors.right: rightCurrentUnitText.left
-                    anchors.rightMargin: 10
-                }
-
-                Text {
-                    id: rightCurrentUnitText
-                    text: "A"
-                    font.pixelSize: 16
-                    color: "#000000"
-                    anchors.bottom: parent.bottom
-                    anchors.right: parent.right
-                    anchors.margins: 5
-                }
-
-                Timer {
-                    interval: 100  // Update every 100ms
-                    running: true
-                    repeat: true
-                    onTriggered: {
-                        rightCurrentGraph.addDataPoint(backend.right_wheel_current);
-                    }
-                }
+            DataDisplay {
+                title: "RIGHT CURRENT"
+                speed: backend.right_wheel_speed
+                backgroundColor: "#F0F0F0"
+                lineColor: "blue"
+                maxAbsValue: 50
+                Layout.preferredHeight: 140
+                titleFontSize: 24
+                valueFontSize: 44
+                unitFontSize: 18
             }
+
+            
         }
     }
 
@@ -337,4 +146,5 @@ Rectangle {
                         videoFrame.source = "image://live/frame"
                     }
     }
+}
 }

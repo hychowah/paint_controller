@@ -3,22 +3,20 @@ import QtQuick 2.15
 Canvas {
     id: canvas
     property var dataPoints: []
-    property int maxDataPoints: 50
-    property real minValue: 0
-    property real maxValue: 0
-    property real midLine: 0
-
+    property int maxDataPoints: 50  // Adjust this to change the number of points shown
+    property real minValue: -40  // Set to the minimum expected RPM
+    property real maxValue: 40   // Set to the maximum expected RPM
+    property real midLine: 0     // The middle line (0 RPM in this case)
+    property real maxAbsValue: 40 // Default max absolute value
+    property color lineColor: "blue"
+    
     function updateMinMaxValues() {
         if (dataPoints.length > 0) {
-            minValue = Math.min(...dataPoints)
-            maxValue = Math.max(...dataPoints)
-            // Add a small buffer to min and max for better visualization
-            var range = maxValue - minValue
-            minValue -= range * 0.1
-            maxValue += range * 0.1
+            minValue = -maxAbsValue
+            maxValue = maxAbsValue
         } else {
-            minValue = -40
-            maxValue = 40
+            minValue = -maxAbsValue
+            maxValue = maxAbsValue
         }
         requestPaint()
     }
@@ -26,6 +24,7 @@ Canvas {
     onPaint: {
         var ctx = getContext("2d");
         ctx.reset();
+
         var w = width;
         var h = height;
         var step = w / (maxDataPoints - 1);
@@ -41,8 +40,9 @@ Canvas {
         if (dataPoints.length < 2) return;
 
         // Draw the data line
-        ctx.strokeStyle = "#4374A2";
+        ctx.strokeStyle = lineColor;  // Blue color for the line
         ctx.lineWidth = 2;
+
         ctx.beginPath();
         for (var i = 0; i < dataPoints.length; i++) {
             var x = i * step;
@@ -57,6 +57,7 @@ Canvas {
     }
 
     function addDataPoint(value) {
+        value = Math.max(-maxAbsValue * 0.95, Math.min(maxAbsValue * 0.95, value));
         dataPoints.push(value);
         if (dataPoints.length > maxDataPoints) {
             dataPoints.shift();

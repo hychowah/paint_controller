@@ -6,9 +6,19 @@ import QtQuick.Layouts 1.15
 ApplicationWindow {
     visible: true
     visibility: Window.FullScreen
-    width: Screen.width
-    height: Screen.height
-    title: qsTr("Painting Robot")
+
+    // Get all available screens
+    property var screens: Qt.application.screens
+    
+    // Choose the screen you want (e.g., the second screen)
+    property var targetScreen: screens.length > 1 ? screens[1] : screens[0]
+    
+    // Set the window properties based on the target screen
+    x: targetScreen.virtualX
+    y: targetScreen.virtualY
+    width: targetScreen.width
+    height: targetScreen.height
+    
 
     Rectangle {
         id: background
