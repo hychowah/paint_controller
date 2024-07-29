@@ -77,6 +77,35 @@ Rectangle {
                 }
             }
         }
+
+        // New button for Page 3 with lidar.webp image
+        Rectangle {
+            id: buttonPage3
+            width: selectBar.width * 0.8
+            height: selectBar.width * 0.8
+            radius: 20
+            color: selectBar.selectedButton === "buttonPage3" ? "#E2E2E2" : "#70A3D2"
+            Layout.alignment: Qt.AlignHCenter
+
+            Image {
+                id: imagePage3
+                source: "../resource/lidar.webp"
+                anchors.centerIn: parent
+                width: selectBar.width * 0.6
+                height: selectBar.width * 0.6
+                fillMode: Image.PreserveAspectFit
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: {
+                    if (selectBar.selectedButton !== "buttonPage3") {
+                        stackView.replace(page3Component)
+                        selectBar.selectedButton = "buttonPage3"
+                    }
+                }
+            }
+        }
     }
 
     // Top border for the connection status row

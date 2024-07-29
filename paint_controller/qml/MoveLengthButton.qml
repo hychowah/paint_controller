@@ -39,7 +39,7 @@ Item {
         id: inputField
         placeholderText: "Enter length"
         font.pixelSize: 20
-        width: 200
+        width: 160
         height: 40
         verticalAlignment: Text.AlignBottom
         bottomPadding: 5
@@ -48,6 +48,7 @@ Item {
             color: "#9F9F9F"
             border.color: "gray"
             border.width: 1
+            radius: 5
             Rectangle {
                 width: parent.width
                 height: 1

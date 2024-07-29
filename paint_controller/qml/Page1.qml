@@ -76,48 +76,52 @@ Rectangle {
 
             DataDisplay {
                 title: "LEFT SPEED"
-                speed: backend.left_wheel_current
+                value: backend.left_wheel_speed
+                unit: "RPM"
                 backgroundColor: "#F0F0F0"
                 lineColor: "blue"
-                maxAbsValue: 50
+                maxAbsValue: 40
                 Layout.preferredHeight: 140
-                titleFontSize: 24
+                titleFontSize: 22
                 valueFontSize: 44
                 unitFontSize: 18
             }
 
             DataDisplay {
                 title: "RIGHT SPEED"
-                speed: backend.right_wheel_current
+                value: backend.right_wheel_speed
+                unit: "RPM"
                 backgroundColor: "#F0F0F0"
                 lineColor: "blue"
-                maxAbsValue: 50
+                maxAbsValue: 40
                 Layout.preferredHeight: 140
-                titleFontSize: 24
+                titleFontSize: 22
                 valueFontSize: 44
                 unitFontSize: 18
             }
 
             DataDisplay {
                 title: "LEFT CURRENT"
-                speed: backend.left_wheel_speed
+                value: backend.left_wheel_current
+                unit: "A"
                 backgroundColor: "#F0F0F0"
                 lineColor: "blue"
-                maxAbsValue: 50
+                maxAbsValue: 5
                 Layout.preferredHeight: 140
-                titleFontSize: 24
+                titleFontSize: 22
                 valueFontSize: 44
                 unitFontSize: 18
             }
 
             DataDisplay {
                 title: "RIGHT CURRENT"
-                speed: backend.right_wheel_speed
+                value: backend.right_wheel_current
+                unit: "A"
                 backgroundColor: "#F0F0F0"
                 lineColor: "blue"
-                maxAbsValue: 50
+                maxAbsValue: 5
                 Layout.preferredHeight: 140
-                titleFontSize: 24
+                titleFontSize: 22
                 valueFontSize: 44
                 unitFontSize: 18
             }

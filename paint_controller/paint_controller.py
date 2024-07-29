@@ -49,6 +49,8 @@ class PaintController(Node, QObject):
     rightSpeedChanged = Signal(str)
     wheelAvailableChanged = Signal(bool)
 
+    new_scan_data = Signal(list, float, float, float, float)
+
     def __init__(self):
         Node.__init__(self, 'paint_controller')
         QObject.__init__(self)
@@ -79,7 +81,7 @@ class PaintController(Node, QObject):
 
         self.lidar_sub = self.create_subscription(
             LaserScan,
-            'scan',
+            'fake_scan',
             self.lidar_sub_callback,
             1)
         self.lidar_sub  # prevent unused variable warning
@@ -96,6 +98,8 @@ class PaintController(Node, QObject):
             1)
         self.wheel_sub
 
+        self.latest_scan = None
+
         self._left_wheel_speed = "0"
         self._right_wheel_speed = "0"
         self._left_wheel_current = "0"
@@ -109,6 +113,12 @@ class PaintController(Node, QObject):
         self._winch_available = False
 
         self.scan_data = None
+
+    def update_status(self):
+        if time.time() - self.last_msg_time > 1:
+            self.wheel_available = False
+        else:
+            self.wheel_available = True
 
     @Property(bool, notify=winchAvailableChanged)
     def winch_available(self):
@@ -206,6 +216,21 @@ class PaintController(Node, QObject):
         print(f"Toggle switch changed: {checked}")
         # Implement your function here that should be triggered by the toggle switch
 
+    @Slot()
+    def update_plot(self):
+        if self.latest_scan is None:
+            return
+
+        ranges = list(self.latest_scan.ranges)
+        self.new_scan_data.emit(
+            ranges,
+            self.latest_scan.angle_min,
+            self.latest_scan.angle_increment,
+            self.latest_scan.range_min,
+            self.latest_scan.range_max
+        )
+        print("Signal emitted")
+
     @Slot(np.ndarray)
     def update_frame(self, frame):
         print("Updating frame")
@@ -237,9 +262,7 @@ class PaintController(Node, QObject):
         return Gst.FlowReturn.OK
 
     def lidar_sub_callback(self, msg):
-        self.scan_data = msg
-        self.get_logger().info(f'Received LiDAR Data: {len(msg.ranges)} ranges')
-        print(f'Received LiDAR Data: {len(msg.ranges)} ranges')
+        self.latest_scan = msg
 
     def winch_sub_callback(self, msg):
         print(f'Received Winch Status: {msg}')
@@ -262,25 +285,6 @@ class PaintController(Node, QObject):
         np_arr = np.frombuffer(msg.data, np.uint8)
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         self.new_frame.emit(frame)
-
-
-    def update_plot(self):
-        if time.time() - self.last_msg_time > 0.5:
-            self.wheel_available = False
-        else:
-            self.wheel_available = True
-
-        if self.scan_data is None:
-            return
-
-        angles = np.arange(self.scan_data.angle_min, self.scan_data.angle_max, self.scan_data.angle_increment)
-        if len(angles) != len(self.scan_data.ranges):
-            print("Mismatch in angles and ranges length")
-            return
-
-        x = np.array(self.scan_data.ranges) * np.cos(angles)
-        y = np.array(self.scan_data.ranges) * np.sin(angles)
-        self.plot_item.set_plot_data(x, y)
 
 
 class RosThread(QThread):
@@ -329,12 +333,14 @@ def main(args=None):
 
     print("Found page1")
 
+    engine.rootContext().setContextProperty("lidar_visualizer", paint_controller)
     engine.rootContext().setContextProperty("backend", paint_controller)
     engine.rootContext().setContextProperty("videoStreamer", paint_controller)
 
     timer = QTimer()
-    timer.timeout.connect(paint_controller.update_plot)
+    timer.timeout.connect(paint_controller.update_status)
     timer.start(100)  # update every 100 ms
+
 
     sys.exit(app.exec())
 

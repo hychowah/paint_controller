@@ -86,6 +86,11 @@ ApplicationWindow {
                             id: page2Component
                             Page2 {}
                         }
+
+                        Component {
+                            id: page3Component
+                            Page3 {}
+                        }
                     }
                 }
             }

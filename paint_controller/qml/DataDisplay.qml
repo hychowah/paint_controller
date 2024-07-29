@@ -4,8 +4,9 @@ import QtQuick.Layouts 1.15
 Rectangle {
     id: root
     property string title: "WHEEL SPEED"
-    property real speed: 0
-    property string speedSource: ""
+    property string unit: "RPM"
+    property real value: 0
+    property string valueSource: ""
     property color backgroundColor: "#E2E2E2"
     property color lineColor: "blue"
     property real maxAbsValue: 40
@@ -20,7 +21,7 @@ Rectangle {
     border.width: 2
 
     Text {
-        id: wheelSpeedTitle
+        id: valueTitle
         text: root.title
         font.bold: true
         font.pixelSize: titleFontSize
@@ -31,19 +32,19 @@ Rectangle {
     }
 
     LineGraph {
-        id: speedGraph
+        id: valueGraph
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.top: wheelSpeedTitle.bottom
-        anchors.bottom: speedText.top
+        anchors.top: valueTitle.bottom
+        anchors.bottom: valueText.top
         anchors.margins: 0
         maxAbsValue: root.maxAbsValue
         lineColor: root.lineColor
     }
 
     Text {
-        id: speedText
-        text: root.speed.toFixed(1)
+        id: valueText
+        text: root.value.toFixed(1)
         font.pixelSize: valueFontSize
         color: "#000000"
         anchors.bottom: parent.bottom
@@ -52,8 +53,8 @@ Rectangle {
     }
 
     Text {
-        id: speedUnitText
-        text: "RPM"
+        id: unitText
+        text: unit
         font.pixelSize: unitFontSize
         color: "#000000"
         anchors.bottom: parent.bottom
@@ -66,7 +67,7 @@ Rectangle {
         running: true
         repeat: true
         onTriggered: {
-            speedGraph.addDataPoint(root.speed);
+            valueGraph.addDataPoint(root.value);
         }
     }
 }

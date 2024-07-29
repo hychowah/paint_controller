@@ -20,117 +20,163 @@ Rectangle {
             Layout.preferredHeight: 700
             color: "white"
             radius: 20
-            Layout.alignment: Qt.AlignHCenter | Qt.AlignHCenter
+            Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
 
-            ColumnLayout {
+            RowLayout {
                 anchors.fill: parent
                 anchors.margins: 20
                 spacing: 20
 
-                // Toggle Switch at the top right corner
-                Switch {
-                    id: toggleSwitch
-                    width: 120
-                    height: 50
-                    anchors.top: parent.top
-                    anchors.right: parent.right
-                    anchors.topMargin: 20
-                    anchors.rightMargin: 20
+                // Spacer item
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.preferredWidth: 20
+                }
 
-                    indicator: Rectangle {
-                        implicitWidth: 120
-                        implicitHeight: 50
-                        x: toggleSwitch.leftPadding
-                        y: parent.height / 2 - height / 2
-                        radius: 25
-                        color: toggleSwitch.checked ? "#4CAF50" : "#F44336"
-                        border.color: toggleSwitch.checked ? "#45a049" : "#d32f2f"
+                // Left column (previously col 1)
+                ColumnLayout {
+                    Layout.fillHeight: true
+                    Layout.preferredWidth: 422
+
+                    Rectangle {
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
+                        color: "transparent"
+
+                        Image {
+                            id: hanging
+                            source: "../resource/hanging.png"
+                            anchors.fill: parent
+                            fillMode: Image.PreserveAspectFit 
+                        }
 
                         Rectangle {
-                            x: toggleSwitch.checked ? parent.width - width - 3 : 3
-                            width: toggleSwitch.checked ? parent.width * 0.4 : parent.width * 0.4
-                            height: 44
-                            y: 3
-                            radius: 22
-                            color: "white"
-                            border.color: "#D5D5D5"
-
-                            Behavior on x {
-                                NumberAnimation { duration: 200 }
-                            }
-                            Behavior on width {
-                                NumberAnimation { duration: 200 }
-                            }
-                        }
-
-                        Text {
-                            text: toggleSwitch.checked ? "Enable" : "Disable"
-                            font.pixelSize: 18
-                            color: toggleSwitch.checked ? "#FFFFFF" : "#FFFFFF"
-                            anchors.verticalCenter: parent.verticalCenter
-                            x: toggleSwitch.checked ? 10 : 50
-                        }
-                    }
-
-                    onCheckedChanged: backend.toggleSwitchChanged(checked)
-                }
-
-                // Representation of Winch, Cable, and Payload
-                Rectangle {
-                    width: 422
-                    height: 600
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: "transparent"
-                    Image {
-                        id: hanging
-                        source: "../resource/hanging.png"
-                        anchors.fill: parent
-                        fillMode: Image.PreserveAspectFit 
-                    }
-                    Rectangle {
-                        width: 120
-                        height: 60
-                        anchors.top: parent.top
-                        anchors.left: parent.left
-                        anchors.leftMargin: 10
-                        anchors.topMargin: 250
-                        color : "white"
-                        border.color: "black"
-                        border.width: 2
-                        radius: 10
-                        Text {
-                            text: "Length:"
-                            font.bold: true
-                            font.pixelSize: 20
-                            color: "#000000"
+                            width: 120
+                            height: 60
                             anchors.top: parent.top
                             anchors.left: parent.left
-                            anchors.leftMargin: 5
-                            anchors.topMargin: 5
-                            
-                        }
-                        Text {
-                            text : "mm"
-                            font.pixelSize: 10
-                            anchors.bottom: parent.bottom
-                            anchors.right: parent.right
-                            anchors.bottomMargin: 5
-                            anchors.rightMargin: 5
+                            anchors.leftMargin: 40
+                            anchors.topMargin: 230
+                            color: "transparent"
+                            radius: 10
 
+                            Text {
+                                text: "mm"
+                                font.pixelSize: 10
+                                anchors.bottom: parent.bottom
+                                anchors.right: parent.right
+                                anchors.bottomMargin: 5
+                                anchors.rightMargin: 5
+                            }
                         }
                     }
-                    
                 }
 
-                MoveLengthButton {
-                    id: moveLengthButton
-                    anchors.centerIn: parent
-                    applicationRoot: page2Rect  // Set the application root
-                    onArrowAboveClicked: console.log("Arrow above clicked")
-                    onArrowBelowClicked: console.log("Arrow below clicked")
-                    onInputValueChanged: console.log("Input value changed to:", inputValue)
-                    onSliderValueChanged: console.log("Slider value changed to:", sliderValue)
+                // Middle column (previously col 2)
+                ColumnLayout {
+                    Layout.fillHeight: true
+                    Layout.preferredWidth: 200
+
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 0 // Adjust this value to move MoveLengthButton down
+                    }
+
+                    MoveLengthButton {
+                        id: moveLengthButton
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 300
+                        applicationRoot: page2Rect
+                        onArrowAboveClicked: console.log("Arrow above clicked")
+                        onArrowBelowClicked: console.log("Arrow below clicked")
+                        onInputValueChanged: console.log("Input value changed to:", inputValue)
+                        onSliderValueChanged: console.log("Slider value changed to:", sliderValue)
+                    }
+
+                    Button {
+                        Layout.fillWidth: true
+                        text: "New Button"
+                        onClicked: console.log("New button clicked")
+                    }
+                }
+
+                // Right column (previously col 3)
+                ColumnLayout {
+                    Layout.fillHeight: true
+                    Layout.preferredWidth: 200
+                    spacing: 10
+
+                    Switch {
+                        id: toggleSwitch
+                        Layout.alignment: Qt.AlignRight | Qt.AlignTop
+
+                        indicator: Rectangle {
+                            implicitWidth: 120
+                            implicitHeight: 50
+                            radius: 25
+                            color: toggleSwitch.checked ? "#4CAF50" : "#F44336"
+                            border.color: toggleSwitch.checked ? "#45a049" : "#d32f2f"
+
+                            Rectangle {
+                                x: toggleSwitch.checked ? parent.width - width - 3 : 3
+                                width: toggleSwitch.checked ? parent.width * 0.4 : parent.width * 0.4
+                                height: 44
+                                y: 3
+                                radius: 22
+                                color: "white"
+                                border.color: "#D5D5D5"
+
+                                Behavior on x {
+                                    NumberAnimation { duration: 200 }
+                                }
+                                Behavior on width {
+                                    NumberAnimation { duration: 200 }
+                                }
+                            }
+
+                            Text {
+                                text: toggleSwitch.checked ? "Enable" : "Disable"
+                                font.pixelSize: 18
+                                color: "#FFFFFF"
+                                anchors.verticalCenter: parent.verticalCenter
+                                x: toggleSwitch.checked ? 10 : 50
+                            }
+                        }
+
+                        onCheckedChanged: backend.toggleSwitchChanged(checked)
+                    }
+
+                    DataDisplay {
+                        id: winchLengthDisplay
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 150
+                        title: "Length"
+                        unit: "mm"
+                    }
+
+                    DataDisplay {
+                        id: winchSpeedDisplay
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 150
+                        title: "Speed"
+                        unit: "mm/s"
+                    }
+
+                    DataDisplay {
+                        id: winchCurrentDisplay
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 150
+                        title: "Torque"
+                        unit: "%"
+                    }
+                }
+
+                // Spacer item
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.preferredWidth: 20
                 }
             }
         }
