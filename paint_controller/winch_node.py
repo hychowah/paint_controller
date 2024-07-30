@@ -11,11 +11,11 @@ import tkinter as tk
 from tkinter import ttk
 import threading
 
-SPOOL_DIAMETER = 105  # mm
+SPOOL_DIAMETER = 105.0  # mm
 LENGTH_PER_REV = SPOOL_DIAMETER * 3.1415926  # mm
-MOTOR_CNT_PER_REV = 6400
-WINCH_GEAR_RATIO = 40
-MOTOR_MAX_RPM = 1000
+MOTOR_CNT_PER_REV = 6400.0
+WINCH_GEAR_RATIO = 40.0
+MOTOR_MAX_RPM = 1000.0
 
 class WinchNode(Node):
     def __init__(self):
@@ -73,7 +73,7 @@ class WinchNode(Node):
         return (self.current_motor_cnt - self.zero_length_cnt) * LENGTH_PER_REV / MOTOR_CNT_PER_REV / WINCH_GEAR_RATIO
     
     def get_cable_speed(self):
-        return self.current_motor_vel * LENGTH_PER_REV / MOTOR_CNT_PER_REV / WINCH_GEAR_RATIO
+        return float(self.current_motor_vel) * LENGTH_PER_REV / MOTOR_CNT_PER_REV / WINCH_GEAR_RATIO
     
     def move_winch_length_callback(self, msg: MoveWinchLength):
         if not self.winch_enabled:

@@ -33,47 +33,78 @@ ApplicationWindow {
                 Layout.fillHeight: true
                 color: "#5E5C64"
                 
-                StackView {
-                    id: stackView
-                    objectName: "stackView"
+                ColumnLayout {
                     anchors.fill: parent
-                    initialItem: page1Component
+                    spacing: 0
                     
-                    property int currentIndex: 0
-                    property int targetIndex: 0
-                    
-                    replaceEnter: Transition {
-                        NumberAnimation {
-                            property: "y"
-                            from: stackView.currentIndex > stackView.targetIndex ? -stackView.height : stackView.height
-                            to: 0
-                            duration: 400
-                            easing.type: Easing.InOutQuad
+                    // Top bar
+                    Rectangle {
+                        id: topBar
+                        Layout.fillWidth: true
+                        height: 50
+                        color: "#3D3846"
+                        z: 1  // Ensure top bar is above the StackView
+                        
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            
+                            Text {
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.rightMargin: 20
+                                text: Qt.formatDateTime(new Date(), "hh:mm:ss")
+                                color: "white"
+                                font.family: "Roboto"  // Modern sans-serif font
+                                font.pixelSize: 24
+                                font.weight: Font.Medium
+                                
+                                Timer {
+                                    interval: 1000
+                                    running: true
+                                    repeat: true
+                                    onTriggered: parent.text = Qt.formatDateTime(new Date(), "hh:mm:ss")
+                                }
+                            }
                         }
-                        // onRunningChanged: {
-                        //     if (running) {
-                        //         console.log("Enter Transition - currentIndex:", stackView.currentIndex, "depth:", stackView.depth)
-                        //         console.log("Enter Transition - condition:", stackView.currentIndex > stackView.targetIndex)
-                        //     }
-                        // }
                     }
                     
-                    replaceExit: Transition {
-                        NumberAnimation {
-                            property: "y"
-                            from: 0
-                            to: stackView.currentIndex > stackView.targetIndex ? stackView.height : -stackView.height
-                            duration: 400
-                            easing.type: Easing.InOutQuad
+                    // StackView container
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        
+                        // StackView
+                        StackView {
+                            id: stackView
+                            objectName: "stackView"
+                            anchors.fill: parent
+                            initialItem: page1Component
+                            
+                            property int currentIndex: 0
+                            property int targetIndex: 0
+                            
+                            replaceEnter: Transition {
+                                NumberAnimation {
+                                    property: "y"
+                                    from: stackView.currentIndex > stackView.targetIndex ? -stackView.height : stackView.height
+                                    to: 0
+                                    duration: 400
+                                    easing.type: Easing.InOutQuad
+                                }
+                            }
+                            
+                            replaceExit: Transition {
+                                NumberAnimation {
+                                    property: "y"
+                                    from: 0
+                                    to: stackView.currentIndex > stackView.targetIndex ? stackView.height : -stackView.height
+                                    duration: 400
+                                    easing.type: Easing.InOutQuad
+                                }
+                            }
                         }
-                        // onRunningChanged: {
-                        //     if (running) {
-                        //         console.log("Exit Transition - currentIndex:", stackView.currentIndex, "depth:", stackView.depth)
-                        //         console.log("Exit Transition - condition:", stackView.currentIndex > stackView.depth)
-                        //     }
-                        // }
                     }
-                    
                 }
             }
         }
