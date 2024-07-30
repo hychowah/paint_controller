@@ -19,6 +19,9 @@ Canvas {
         ctx.save()
         ctx.translate(width / 2, height / 2)
         ctx.scale(scale, -scale)  // Flip Y-axis to make positive Y go up
+        
+        // Rotate the context 90 degrees clockwise
+        ctx.rotate(-Math.PI / 2)
 
         // Draw points
         ctx.fillStyle = pointColor

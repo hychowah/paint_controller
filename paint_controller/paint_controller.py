@@ -81,7 +81,7 @@ class PaintController(Node, QObject):
 
         self.lidar_sub = self.create_subscription(
             LaserScan,
-            'fake_scan',
+            'scan',
             self.lidar_sub_callback,
             1)
         self.lidar_sub  # prevent unused variable warning
@@ -229,7 +229,6 @@ class PaintController(Node, QObject):
             self.latest_scan.range_min,
             self.latest_scan.range_max
         )
-        print("Signal emitted")
 
     @Slot(np.ndarray)
     def update_frame(self, frame):

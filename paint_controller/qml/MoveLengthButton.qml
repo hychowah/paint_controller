@@ -106,7 +106,7 @@ Item {
         id: verticalSlider
         orientation: Qt.Vertical
         anchors.left: inputField.right
-        anchors.leftMargin: 20
+        anchors.leftMargin: 5
         anchors.verticalCenter: inputField.verticalCenter
         width: 60
         height: 300

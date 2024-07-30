@@ -10,7 +10,7 @@ from std_msgs.msg import Int32
 import threading
 from teknic_interfaces.msg import TeknicCommand
 
-SPEED_LIMIT = 100
+SPEED_LIMIT = 40
 
 class JoystickControlNode(Node):
     def __init__(self):

@@ -3,12 +3,30 @@ import QtQuick.Layouts 1.15
 
 Rectangle {
     id: selectBar
+    stackView: stackView
     width: 150
     Layout.fillHeight: true
     color: "#4374A2"
 
     property var stackView
     property string selectedButton: "buttonPage1" // Default selected button
+
+    function navigateToPage(index) {
+        console.log("Before navigation - currentIndex:", stackView.currentIndex, "depth:", stackView.targetIndex)
+        if (index !== stackView.currentIndex) {
+            var targetComponent;
+            stackView.targetIndex = index
+            switch(index) {
+                case 0: targetComponent = page1Component; break;
+                case 1: targetComponent = page2Component; break;
+                case 2: targetComponent = page3Component; break;
+            }
+            
+            console.log("Navigating to page:", index)
+            stackView.replace(stackView.currentItem, targetComponent)
+            stackView.currentIndex = index
+        }
+    }
 
     Column {
         anchors.top: parent.top
@@ -43,7 +61,7 @@ Rectangle {
                 anchors.fill: parent
                 onClicked: {
                     if (selectBar.selectedButton !== "buttonPage1") {
-                        stackView.replace(page1Component)
+                        selectBar.navigateToPage(0)
                         selectBar.selectedButton = "buttonPage1"
                     }
                 }
@@ -71,7 +89,7 @@ Rectangle {
                 anchors.fill: parent
                 onClicked: {
                     if (selectBar.selectedButton !== "buttonPage2") {
-                        stackView.replace(page2Component)
+                        selectBar.navigateToPage(1)
                         selectBar.selectedButton = "buttonPage2"
                     }
                 }
@@ -100,7 +118,7 @@ Rectangle {
                 anchors.fill: parent
                 onClicked: {
                     if (selectBar.selectedButton !== "buttonPage3") {
-                        stackView.replace(page3Component)
+                        selectBar.navigateToPage(2)
                         selectBar.selectedButton = "buttonPage3"
                     }
                 }

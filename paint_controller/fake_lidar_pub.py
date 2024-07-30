@@ -8,7 +8,7 @@ import array
 class FakeLidarPublisher(Node):
     def __init__(self):
         super().__init__('fake_lidar_publisher')
-        self.publisher_ = self.create_publisher(LaserScan, '/fake_scan', 10)
+        self.publisher_ = self.create_publisher(LaserScan, '/scan', 10)
         self.timer = self.create_timer(0.02, self.publish_scan)  # 10 Hz
         
         self.angle_min = -math.pi

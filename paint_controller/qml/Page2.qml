@@ -61,14 +61,14 @@ Rectangle {
                             color: "transparent"
                             radius: 10
 
-                            Text {
-                                text: "mm"
-                                font.pixelSize: 10
-                                anchors.bottom: parent.bottom
-                                anchors.right: parent.right
-                                anchors.bottomMargin: 5
-                                anchors.rightMargin: 5
-                            }
+                            // Text {
+                            //     text: "mm"
+                            //     font.pixelSize: 10
+                            //     anchors.bottom: parent.bottom
+                            //     anchors.right: parent.right
+                            //     anchors.bottomMargin: 5
+                            //     anchors.rightMargin: 5
+                            // }
                         }
                     }
                 }
@@ -78,15 +78,12 @@ Rectangle {
                     Layout.fillHeight: true
                     Layout.preferredWidth: 200
 
-                    Item {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 0 // Adjust this value to move MoveLengthButton down
-                    }
-
                     MoveLengthButton {
                         id: moveLengthButton
                         Layout.fillWidth: true
                         Layout.preferredHeight: 300
+                        Layout.bottomMargin: 0
+                        Layout.rightMargin: 130
                         applicationRoot: page2Rect
                         onArrowAboveClicked: console.log("Arrow above clicked")
                         onArrowBelowClicked: console.log("Arrow below clicked")
@@ -94,11 +91,6 @@ Rectangle {
                         onSliderValueChanged: console.log("Slider value changed to:", sliderValue)
                     }
 
-                    Button {
-                        Layout.fillWidth: true
-                        text: "New Button"
-                        onClicked: console.log("New button clicked")
-                    }
                 }
 
                 // Right column (previously col 3)
@@ -149,6 +141,7 @@ Rectangle {
 
                     DataDisplay {
                         id: winchLengthDisplay
+                        value: backend.winch_length
                         Layout.fillWidth: true
                         Layout.preferredHeight: 150
                         title: "Length"
@@ -157,6 +150,7 @@ Rectangle {
 
                     DataDisplay {
                         id: winchSpeedDisplay
+                        value: backend.winch_speed
                         Layout.fillWidth: true
                         Layout.preferredHeight: 150
                         title: "Speed"
@@ -165,6 +159,7 @@ Rectangle {
 
                     DataDisplay {
                         id: winchCurrentDisplay
+                        value: backend.winch_current
                         Layout.fillWidth: true
                         Layout.preferredHeight: 150
                         title: "Torque"

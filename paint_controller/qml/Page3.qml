@@ -14,12 +14,27 @@ Rectangle {
         spacing: 20
 
         Rectangle {
-            id: mainContainer
+            id: lidarPlotConatainer
             Layout.fillWidth: true
             Layout.preferredHeight: 700
             color: "white"
             radius: 20
             Layout.alignment: Qt.AlignHCenter | Qt.AlignHCenter
+
+            Image {
+                id: backgroundImage
+                anchors.fill: parent
+                source: "../resource/top_base.png"
+                fillMode: Image.PreserveAspectFit
+                // Scale the image (adjust as needed)
+                scale: 0.5 // You can change this value to scale up or down
+
+                // Fine-tune position using transform
+                transform: Translate {
+                    x: 0 // Adjust horizontal position
+                    y: 70 // Adjust vertical position
+                }
+            }
 
             LidarPlot {
                 id: lidarPlot
