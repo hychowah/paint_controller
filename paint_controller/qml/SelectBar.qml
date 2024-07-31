@@ -1,5 +1,8 @@
-import QtQuick 2.15
-import QtQuick.Layouts 1.15
+import QtQuick 6.7
+import QtQuick.Controls 6.7
+import QtQuick.Layouts 6.7
+import QtCharts 6.7
+import QtMultimedia 6.7
 
 Rectangle {
     id: selectBar
@@ -247,7 +250,17 @@ Rectangle {
 
         MouseArea {
             anchors.fill: parent
-            onClicked: Qt.quit()
+            onClicked: {
+                backend.terminateNodes()
+                // Wait a short time to allow nodes to terminate
+                exitTimer.start()
+            }
         }
     }
+    Timer {
+        id: exitTimer
+        interval: 1000 // 1 second delay
+        onTriggered: Qt.quit()
+    }
 }
+

@@ -6,7 +6,7 @@ ApplicationWindow {
     visible: true
     visibility: Window.FullScreen
     property var screens: Qt.application.screens
-    property var targetScreen: screens.length > 1 ? screens[1] : screens[0]
+    property var targetScreen: screens.length > 1 ? screens[0] : screens[0]
     
     x: targetScreen.virtualX
     y: targetScreen.virtualY
@@ -38,35 +38,8 @@ ApplicationWindow {
                     spacing: 0
                     
                     // Top bar
-                    Rectangle {
-                        id: topBar
+                    TopBar {
                         Layout.fillWidth: true
-                        height: 50
-                        color: "#3D3846"
-                        z: 1  // Ensure top bar is above the StackView
-                        
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            
-                            Text {
-                                anchors.right: parent.right
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.rightMargin: 20
-                                text: Qt.formatDateTime(new Date(), "hh:mm:ss")
-                                color: "white"
-                                font.family: "Roboto"  // Modern sans-serif font
-                                font.pixelSize: 24
-                                font.weight: Font.Medium
-                                
-                                Timer {
-                                    interval: 1000
-                                    running: true
-                                    repeat: true
-                                    onTriggered: parent.text = Qt.formatDateTime(new Date(), "hh:mm:ss")
-                                }
-                            }
-                        }
                     }
                     
                     // StackView container

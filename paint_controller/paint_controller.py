@@ -11,6 +11,8 @@ from PySide6.QtMultimediaWidgets import QVideoWidget
 
 import sys
 import os
+import signal
+import subprocess
 import numpy as np
 import rclpy
 import random
@@ -126,7 +128,6 @@ class PaintController(Node, QObject):
 
     @winch_available.setter
     def winch_available(self, value):
-        print(f"Setting winch available: {value}")
         if self._winch_available != value:
             self._winch_available = value
             self.winchAvailableChanged.emit(value)
@@ -236,6 +237,16 @@ class PaintController(Node, QObject):
         frame_provider.update_frame(frame)
         self.video_output.update()
 
+    @Slot()
+    def terminateNodes(self):
+        print("Terminating nodes")
+        try:
+            home_dir = os.path.expanduser("~")
+            script_path = os.path.join(home_dir, "stop_all_nodes.bash")
+            subprocess.run(["bash", script_path])
+        except subprocess.CalledProcessError as e:
+            print(f"Error running stop_all_nodes.bash: {e}")
+
     def on_new_sample(self, sink):
         sample = sink.emit('pull-sample')
         buffer = sample.get_buffer()
@@ -264,12 +275,10 @@ class PaintController(Node, QObject):
         self.latest_scan = msg
 
     def winch_sub_callback(self, msg):
-        print(f'Received Winch Status: {msg}')
         self.winch_length = str(msg.cable_length)
         self.winch_speed = str(msg.cable_speed)
         self.winch_current = str(msg.winch_torque)
         self.winch_available = bool(msg.available)
-        print(f'Winch Length: {self.winch_length}, Winch Speed: {self.winch_speed}, Winch Available: {msg.available}')
 
     def wheel_sub_callback(self, msg):
         self.left_wheel_speed = f"{msg.left_wheel_speed:.2f}"
@@ -280,7 +289,6 @@ class PaintController(Node, QObject):
 
     def camera_callback(self, msg):
         # Decode the compressed image
-        print("Received camera image")
         np_arr = np.frombuffer(msg.data, np.uint8)
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         self.new_frame.emit(frame)

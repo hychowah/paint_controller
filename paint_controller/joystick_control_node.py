@@ -12,6 +12,8 @@ from teknic_interfaces.msg import TeknicCommand
 
 SPEED_LIMIT = 40
 
+ZERO_ZONE = 1300
+
 class JoystickControlNode(Node):
     def __init__(self):
         super().__init__('joystick_control_node')
@@ -142,7 +144,7 @@ class JoystickControlNode(Node):
             return self.cubic_map(self.values['ABS_RY'], 32767.0, 100.0)  # Adjust max_output as needed
 
     def is_in_zero_zone(self, value):
-        return (abs(value) < 1000);
+        return (abs(value) < ZERO_ZONE);
 
     def find_joystick(self):
         devices = [InputDevice(path) for path in list_devices()]

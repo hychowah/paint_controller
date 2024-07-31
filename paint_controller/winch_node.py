@@ -101,7 +101,6 @@ class WinchNode(Node):
             self.get_logger().info(f'target speed exceed the limit')
         command_msg = MoveTeknicVel()
         command_msg.motor_vel = [target_speed_rpm]
-        self.get_logger().info(f'Sent winch command: {command_msg}')
         self.move_vel_pub.publish(command_msg)
 
     def enable_motor(self):

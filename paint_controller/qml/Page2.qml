@@ -99,48 +99,49 @@ Rectangle {
                     Layout.preferredWidth: 200
                     spacing: 10
 
-                    Switch {
-                        id: toggleSwitch
-                        Layout.alignment: Qt.AlignRight | Qt.AlignTop
+                    // Switch {
+                    //     id: toggleSwitch
+                    //     Layout.alignment: Qt.AlignRight | Qt.AlignTop
 
-                        indicator: Rectangle {
-                            implicitWidth: 120
-                            implicitHeight: 50
-                            radius: 25
-                            color: toggleSwitch.checked ? "#4CAF50" : "#F44336"
-                            border.color: toggleSwitch.checked ? "#45a049" : "#d32f2f"
+                    //     indicator: Rectangle {
+                    //         implicitWidth: 120
+                    //         implicitHeight: 50
+                    //         radius: 25
+                    //         color: toggleSwitch.checked ? "#4CAF50" : "#F44336"
+                    //         border.color: toggleSwitch.checked ? "#45a049" : "#d32f2f"
 
-                            Rectangle {
-                                x: toggleSwitch.checked ? parent.width - width - 3 : 3
-                                width: toggleSwitch.checked ? parent.width * 0.4 : parent.width * 0.4
-                                height: 44
-                                y: 3
-                                radius: 22
-                                color: "white"
-                                border.color: "#D5D5D5"
+                    //         Rectangle {
+                    //             x: toggleSwitch.checked ? parent.width - width - 3 : 3
+                    //             width: toggleSwitch.checked ? parent.width * 0.4 : parent.width * 0.4
+                    //             height: 44
+                    //             y: 3
+                    //             radius: 22
+                    //             color: "white"
+                    //             border.color: "#D5D5D5"
 
-                                Behavior on x {
-                                    NumberAnimation { duration: 200 }
-                                }
-                                Behavior on width {
-                                    NumberAnimation { duration: 200 }
-                                }
-                            }
+                    //             Behavior on x {
+                    //                 NumberAnimation { duration: 200 }
+                    //             }
+                    //             Behavior on width {
+                    //                 NumberAnimation { duration: 200 }
+                    //             }
+                    //         }
 
-                            Text {
-                                text: toggleSwitch.checked ? "Enable" : "Disable"
-                                font.pixelSize: 18
-                                color: "#FFFFFF"
-                                anchors.verticalCenter: parent.verticalCenter
-                                x: toggleSwitch.checked ? 10 : 50
-                            }
-                        }
+                    //         Text {
+                    //             text: toggleSwitch.checked ? "Enable" : "Disable"
+                    //             font.pixelSize: 18
+                    //             color: "#FFFFFF"
+                    //             anchors.verticalCenter: parent.verticalCenter
+                    //             x: toggleSwitch.checked ? 10 : 50
+                    //         }
+                    //     }
 
-                        onCheckedChanged: backend.toggleSwitchChanged(checked)
-                    }
+                    //     onCheckedChanged: backend.toggleSwitchChanged(checked)
+                    // }
 
                     DataDisplay {
                         id: winchLengthDisplay
+                        backgroundColor: "#F0F0F0"
                         value: backend.winch_length
                         Layout.fillWidth: true
                         Layout.preferredHeight: 150
@@ -150,6 +151,7 @@ Rectangle {
 
                     DataDisplay {
                         id: winchSpeedDisplay
+                        backgroundColor: "#F0F0F0"
                         value: backend.winch_speed
                         Layout.fillWidth: true
                         Layout.preferredHeight: 150
@@ -159,6 +161,7 @@ Rectangle {
 
                     DataDisplay {
                         id: winchCurrentDisplay
+                        backgroundColor: "#F0F0F0"
                         value: backend.winch_current
                         Layout.fillWidth: true
                         Layout.preferredHeight: 150
