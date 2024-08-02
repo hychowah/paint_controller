@@ -79,6 +79,7 @@ class PaintController(Node, QObject):
             'camera/image/compressed', 
             self.camera_callback, 
             qos_profile)
+        
         self.br = CvBridge()
 
         self.lidar_sub = self.create_subscription(
@@ -107,7 +108,7 @@ class PaintController(Node, QObject):
         self._left_wheel_current = "0"
         self._right_wheel_current = "0"
         self._wheel_available = False
-        self.last_msg_time = time.time()
+        self.last_msg_time = time.time() - 2
 
         self._winch_length = "0"
         self._winch_speed = "0"

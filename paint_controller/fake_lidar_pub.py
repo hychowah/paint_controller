@@ -36,7 +36,7 @@ class FakeLidarPublisher(Node):
         # Generate new ranges with random increments following normal distribution
         new_ranges = array.array('f')
         for last_range in self.last_ranges:
-            increment = random.gauss(0, 0.5)  # Mean 0, standard deviation 0.5
+            increment = random.gauss(0, 0.05)  # Mean 0, standard deviation 0.5
             new_range = max(min(last_range + increment, self.range_max), self.range_min)
             new_ranges.append(new_range)
         

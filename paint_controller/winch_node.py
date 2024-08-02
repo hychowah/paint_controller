@@ -73,7 +73,7 @@ class WinchNode(Node):
         return (self.current_motor_cnt - self.zero_length_cnt) * LENGTH_PER_REV / MOTOR_CNT_PER_REV / WINCH_GEAR_RATIO
     
     def get_cable_speed(self):
-        return float(self.current_motor_vel) * LENGTH_PER_REV / MOTOR_CNT_PER_REV / WINCH_GEAR_RATIO
+        return float(self.current_motor_vel) * LENGTH_PER_REV / (WINCH_GEAR_RATIO * 60)
     
     def move_winch_length_callback(self, msg: MoveWinchLength):
         if not self.winch_enabled:

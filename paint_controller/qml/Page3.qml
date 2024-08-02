@@ -27,12 +27,12 @@ Rectangle {
                 source: "../resource/top_base.png"
                 fillMode: Image.PreserveAspectFit
                 // Scale the image (adjust as needed)
-                scale: 0.5 // You can change this value to scale up or down
+                scale: 0.25 // You can change this value to scale up or down
 
                 // Fine-tune position using transform
                 transform: Translate {
                     x: 0 // Adjust horizontal position
-                    y: 70 // Adjust vertical position
+                    y: 40 // Adjust vertical position
                 }
             }
 

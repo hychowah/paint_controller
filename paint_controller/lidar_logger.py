@@ -68,9 +68,9 @@ class LidarDataLogger(Node):
         if os.path.exists(self.filename) and os.path.getsize(self.filename) > self.max_file_size:
             self.setup_file()
 
-        if current_time - self.last_compress > self.compress_interval:
-            self.compress_old_files()
-            self.last_compress = current_time
+        # if current_time - self.last_compress > self.compress_interval:
+        #     self.compress_old_files()
+        #     self.last_compress = current_time
 
     def flush_data(self):
         if self.data_buffer:
