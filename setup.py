@@ -21,7 +21,7 @@ setup(
         'console_scripts': [
             'paint_controller = paint_controller.paint_controller:main',
             'winch_node = paint_controller.winch_node:main',
-            'joystick_node = paint_controller.joystick_control_node:main',
+            'steam_deck_input_node = paint_controller.steam_input_node:main',
             'lidar_logger = paint_controller.lidar_logger:main'
         ],
     },

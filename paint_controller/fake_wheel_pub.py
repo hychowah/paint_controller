@@ -35,12 +35,12 @@ class FakeWheelStatusPublisher(Node):
         # Publish the message
         self.publisher_.publish(msg)
 
-        # Log the published data
-        self.get_logger().info(f'Publishing: '
-                               f'Left Speed: {self.left_wheel_speed:.2f}, '
-                               f'Right Speed: {self.right_wheel_speed:.2f}, '
-                               f'Left Current: {self.left_wheel_current:.2f}, '
-                               f'Right Current: {self.right_wheel_current:.2f}')
+        # Log the published publish_fake_data
+        # self.get_logger().info(f'Publishing: '
+          #                     f'Left Speed: {self.left_wheel_speed:.2f}, '
+          #                     f'Right Speed: {self.right_wheel_speed:.2f}, '
+          #                     f'Left Current: {self.left_wheel_current:.2f}, '
+          #                     f'Right Current: {self.right_wheel_current:.2f}')
 
 def main(args=None):
     rclpy.init(args=args)

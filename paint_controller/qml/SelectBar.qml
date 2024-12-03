@@ -251,7 +251,7 @@ Rectangle {
         MouseArea {
             anchors.fill: parent
             onClicked: {
-                backend.terminateNodes()
+                // backend.terminateNodes()
                 // Wait a short time to allow nodes to terminate
                 exitTimer.start()
             }

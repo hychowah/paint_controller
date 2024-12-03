@@ -8,38 +8,65 @@ Rectangle {
     Layout.fillWidth: true
     Layout.fillHeight: true
     color: "#9F9F9F"
+
     RowLayout {
         anchors.fill: parent
         anchors.margins: 20
         spacing: 20
 
         Rectangle {
-            id: lidarPlotConatainer
             Layout.fillWidth: true
-            Layout.preferredHeight: 700
-            color: "white"
-            radius: 20
-            Layout.alignment: Qt.AlignHCenter | Qt.AlignHCenter
+            Layout.fillHeight: true
+            color: "#FFFFFF"
+            radius: 10
 
-            Image {
-                id: backgroundImage
+            ColumnLayout {
                 anchors.fill: parent
-                source: "../resource/top_base.png"
-                fillMode: Image.PreserveAspectFit
-                // Scale the image (adjust as needed)
-                scale: 0.25 // You can change this value to scale up or down
+                anchors.margins: 15
+                spacing: 15
 
-                // Fine-tune position using transform
-                transform: Translate {
-                    x: 0 // Adjust horizontal position
-                    y: 40 // Adjust vertical position
+                Label {
+                    text: "Winch Status"
+                    font.pixelSize: 24
+                    font.bold: true
+                    Layout.alignment: Qt.AlignTop
                 }
-            }
 
-            LidarPlot {
-                id: lidarPlot
-                anchors.fill: parent
-                anchors.margins: 10 // This gives some padding inside the rectangle
+                GridLayout {
+                    columns: 2
+                    rowSpacing: 10
+                    columnSpacing: 20
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignTop
+
+                    Label { text: "Status:"; font.bold: true }
+                    Label { 
+                        text: backend.winch_available ? "Connected" : "Disconnected"
+                        color: backend.winch_available ? "green" : "red"
+                    }
+
+                    Label { text: "Cable Length:"; font.bold: true }
+                    Label { text: backend.winch_length + " m" }
+
+                    Label { text: "Cable Speed:"; font.bold: true }
+                    Label { text: backend.winch_speed + " m/s" }
+
+                    Label { text: "Torque:"; font.bold: true }
+                    Label { text: backend.winch_torque + " Nm" }
+
+                    Label { text: "Temperature:"; font.bold: true }
+                    Label { text: backend.winch_temperature + " °C" }
+
+                    Label { text: "Voltage:"; font.bold: true }
+                    Label { text: backend.winch_voltage + " V" }
+
+                    Label { text: "Brake:"; font.bold: true }
+                    Label { 
+                        text: backend.winch_brake ? "Engaged" : "Released"
+                        color: backend.winch_brake ? "red" : "green"
+                    }
+                }
             }
         }
     }

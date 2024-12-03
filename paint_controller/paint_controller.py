@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 
-from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QResource, QThread
-from PySide6.QtGui import QGuiApplication, QImage, QPixmap
-from PySide6.QtQml import QQmlApplicationEngine, QQmlContext, qmlRegisterType
-from PySide6.QtWidgets import QApplication, QWidget, QMainWindow
-from PySide6.QtQuickWidgets import QQuickWidget
-from PySide6.QtQuick import QQuickPaintedItem, QQuickImageProvider
-from PySide6.QtMultimedia import QMediaPlayer
-from PySide6.QtMultimediaWidgets import QVideoWidget
+from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QThread
+from PySide6.QtGui import  QImage, QPixmap
+from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType
+from PySide6.QtWidgets import QApplication
+from PySide6.QtQuick import  QQuickImageProvider
+
 
 import sys
 import os
@@ -17,6 +15,7 @@ import numpy as np
 import rclpy
 import random
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
 import time
 from cv_bridge import CvBridge
 import cv2
@@ -44,6 +43,11 @@ class PaintController(Node, QObject):
     winchSpeedChanged = Signal(str)
     winchCurrentChanged = Signal(str)
     winchAvailableChanged = Signal(bool)
+    winchTorqueChanged = Signal(str)
+    winchTemperatureChanged = Signal(str)
+    winchVoltageChanged = Signal(str)
+    winchBrakeChanged = Signal(bool)
+
 
     leftSpeedChanged = Signal(str)
     leftCurrentChanged = Signal(str)
@@ -88,11 +92,20 @@ class PaintController(Node, QObject):
             self.lidar_sub_callback,
             1)
         self.lidar_sub  # prevent unused variable warning
+
+        winch_qos = QoSProfile(
+            depth=1,
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+            history=HistoryPolicy.KEEP_LAST
+        )
         self.winch_sub = self.create_subscription(
             WinchStatus,
-            'winchStatus',
+            'winch/status',  # Match the publisher's topic name
             self.winch_sub_callback,
-            1)
+            winch_qos  # Use same QoS profile as publisher
+        )
+        
         self.winch_sub  # prevent unused variable warning
         self.wheel_sub = self.create_subscription(
             WheelStatus,
@@ -108,60 +121,93 @@ class PaintController(Node, QObject):
         self._left_wheel_current = "0"
         self._right_wheel_current = "0"
         self._wheel_available = False
-        self.last_msg_time = time.time() - 2
+        self.last_wheel_msg_time = time.time() - 2
+        self.last_winch_msg_time = time.time() - 2
 
-        self._winch_length = "0"
-        self._winch_speed = "0"
-        self._winch_curent = "0"
-        self._winch_available = False
+        self._winch_status = {}
 
         self.scan_data = None
 
     def update_status(self):
-        if time.time() - self.last_msg_time > 1:
+        if time.time() - self.last_wheel_msg_time > 1:
             self.wheel_available = False
         else:
             self.wheel_available = True
 
+        if time.time() - self.last_winch_msg_time > 1:
+            self.winch_available = False
+        else:
+            self.winch_available = True
+
     @Property(bool, notify=winchAvailableChanged)
     def winch_available(self):
-        return self._winch_available
+        return self._winch_status.get('available', False)
 
-    @winch_available.setter
+    @winch_available.setter 
     def winch_available(self, value):
-        if self._winch_available != value:
-            self._winch_available = value
+        if self._winch_status.get('available') != value:
+            self._winch_status['available'] = value
             self.winchAvailableChanged.emit(value)
 
     @Property(str, notify=winchLengthChanged)
     def winch_length(self):
-        return self._winch_length
+        return self._winch_status.get('cable_length', '0.00')
 
     @winch_length.setter
     def winch_length(self, value):
-        if self._winch_length != value:
-            self._winch_length = value
+        if self._winch_status.get('cable_length') != value:
+            self._winch_status['cable_length'] = value
             self.winchLengthChanged.emit(value)
 
     @Property(str, notify=winchSpeedChanged)
     def winch_speed(self):
-        return self._winch_speed
+        return self._winch_status.get('cable_speed', '0.00')
 
     @winch_speed.setter
     def winch_speed(self, value):
-        if self._winch_speed != value:
-            self._winch_speed = value
+        if self._winch_status.get('cable_speed') != value:
+            self._winch_status['cable_speed'] = value
             self.winchSpeedChanged.emit(value)
 
-    @Property(str, notify=winchCurrentChanged)
-    def winch_current(self):
-        return self._winch_curent
-    
-    @winch_current.setter
-    def winch_current(self, value):
-        if self._winch_curent != value:
-            self._winch_curent = value
-            self.winchCurrentChanged.emit(value)
+    @Property(str, notify=winchTorqueChanged)
+    def winch_torque(self):
+        return self._winch_status.get('winch_torque', '0.00')
+
+    @winch_torque.setter
+    def winch_torque(self, value):
+        if self._winch_status.get('winch_torque') != value:
+            self._winch_status['winch_torque'] = value
+            self.winchTorqueChanged.emit(value)
+
+    @Property(str, notify=winchTemperatureChanged)
+    def winch_temperature(self):
+        return self._winch_status.get('motor_temperature', '0.0')
+
+    @winch_temperature.setter
+    def winch_temperature(self, value):
+        if self._winch_status.get('motor_temperature') != value:
+            self._winch_status['motor_temperature'] = value
+            self.winchTemperatureChanged.emit(value)
+
+    @Property(str, notify=winchVoltageChanged)
+    def winch_voltage(self):
+        return self._winch_status.get('motor_voltage', '0.0')
+
+    @winch_voltage.setter
+    def winch_voltage(self, value):
+        if self._winch_status.get('motor_voltage') != value:
+            self._winch_status['motor_voltage'] = value
+            self.winchVoltageChanged.emit(value)
+
+    @Property(bool, notify=winchBrakeChanged)
+    def winch_brake(self):
+        return self._winch_status.get('motor_brake', False)
+
+    @winch_brake.setter
+    def winch_brake(self, value):
+        if self._winch_status.get('motor_brake') != value:
+            self._winch_status['motor_brake'] = value
+            self.winchBrakeChanged.emit(value)
 
     @Property(str, notify=leftSpeedChanged)
     def left_wheel_speed(self):
@@ -276,10 +322,28 @@ class PaintController(Node, QObject):
         self.latest_scan = msg
 
     def winch_sub_callback(self, msg):
-        self.winch_length = str(msg.cable_length)
-        self.winch_speed = str(msg.cable_speed)
-        self.winch_current = str(msg.winch_torque)
-        self.winch_available = bool(msg.available)
+        """Handle winch status messages"""
+        try:
+            # print(f"Received winch status message: {msg}")
+            self._winch_status = {
+                'cable_length': f"{msg.cable_length:.2f}",
+                'cable_speed': f"{msg.cable_speed:.2f}",
+                'winch_torque': f"{msg.winch_torque:.2f}",
+                'motor_temperature': f"{msg.motor_temperature:.1f}",
+                'motor_voltage': f"{msg.motor_voltage:.1f}",
+                'motor_brake': msg.motor_brake,
+                'available': msg.available
+            }
+
+            self.winchAvailableChanged.emit(msg.available)
+            self.winchLengthChanged.emit(self._winch_status['cable_length'])
+            self.winchSpeedChanged.emit(self._winch_status['cable_speed'])
+            self.winchTorqueChanged.emit(self._winch_status['winch_torque'])
+            self.winchTemperatureChanged.emit(self._winch_status['motor_temperature'])
+            self.winchVoltageChanged.emit(self._winch_status['motor_voltage'])
+            self.winchBrakeChanged.emit(msg.motor_brake)
+        except Exception as e:
+            self.get_logger().error(f'Error in winch status callback: {str(e)}')
 
     def wheel_sub_callback(self, msg):
         self.left_wheel_speed = f"{msg.left_wheel_speed:.2f}"
