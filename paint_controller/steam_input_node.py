@@ -156,7 +156,7 @@ class SteamDeckNode(Node):
             history=HistoryPolicy.KEEP_LAST
         )
         self.publisher = self.create_publisher(SteamDeckInput, 'steam_deck/input', steam_input_qos)
-        self.timer = self.create_timer(0.01, self.timer_callback)  # 100Hz
+        self.timer = self.create_timer(0.02, self.timer_callback)  # 100Hz
 
         
         

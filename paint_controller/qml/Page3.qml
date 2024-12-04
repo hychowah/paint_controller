@@ -9,6 +9,35 @@ Rectangle {
     Layout.fillHeight: true
     color: "#9F9F9F"
 
+    // Helper function to update available options
+    function updateComboBoxModels() {
+        let allOptions = ["None", "Winch Speed", "Wheel Speed", "EF arm", "EF top rail", "EF Prop"]
+        
+        // Filter out the selected option from the other combo box
+        let leftOptions = allOptions.filter(option => 
+            option === "None" || option !== rightJoystickMapping.currentText
+        )
+        let rightOptions = allOptions.filter(option => 
+            option === "None" || option !== leftJoystickMapping.currentText
+        )
+
+        // Store current selection
+        let leftCurrent = leftJoystickMapping.currentText
+        let rightCurrent = rightJoystickMapping.currentText
+
+        // Update models
+        leftJoystickMapping.model = leftOptions
+        rightJoystickMapping.model = rightOptions
+
+        // Restore selections if they're still valid
+        if (leftOptions.includes(leftCurrent)) {
+            leftJoystickMapping.currentIndex = leftOptions.indexOf(leftCurrent)
+        }
+        if (rightOptions.includes(rightCurrent)) {
+            rightJoystickMapping.currentIndex = rightOptions.indexOf(rightCurrent)
+        }
+    }
+
     RowLayout {
         anchors.fill: parent
         anchors.margins: 20
@@ -45,6 +74,19 @@ Rectangle {
                     Label { 
                         text: backend.winch_available ? "Connected" : "Disconnected"
                         color: backend.winch_available ? "green" : "red"
+                    }
+
+                    Label { text: "Enable Winch:"; font.bold: true }
+                    RowLayout {
+                        Switch {
+                            id: winchEnableSwitch
+                            checked: backend.winch_enabled
+                            onToggled: backend.setWinchEnabled(checked)
+                        }
+                        Label {
+                            text: winchEnableSwitch.checked ? "Enabled" : "Disabled"
+                            color: winchEnableSwitch.checked ? "green" : "red"
+                        }
                     }
 
                     Label { text: "Cable Length:"; font.bold: true }
@@ -90,7 +132,7 @@ Rectangle {
                 }
 
                 // Control Mapping Section
-                GroupBox {
+                 GroupBox {
                     title: "Control Mapping"
                     Layout.fillWidth: true
 
@@ -110,9 +152,13 @@ Rectangle {
                             ComboBox {
                                 id: leftJoystickMapping
                                 Layout.fillWidth: true
-                                model: ["None", "Winch Speed", "Wheel Speed", "Camera Pan/Tilt"]
+                                model: ["None", "Winch Speed", "Wheel Speed", "EF arm", "EF top rail", "EF Prop"]
                                 onCurrentTextChanged: {
+                                    if (currentText !== "None" && currentText === rightJoystickMapping.currentText) {
+                                        rightJoystickMapping.currentIndex = rightJoystickMapping.find("None")
+                                    }
                                     backend.setLeftJoystickControl(currentText)
+                                    updateComboBoxModels()
                                 }
                             }
                         }
@@ -129,9 +175,13 @@ Rectangle {
                             ComboBox {
                                 id: rightJoystickMapping
                                 Layout.fillWidth: true
-                                model: ["None", "Winch Speed", "Wheel Speed", "Camera Pan/Tilt"]
+                                model: ["None", "Winch Speed", "Wheel Speed", "EF arm", "EF top rail", "EF Prop"]
                                 onCurrentTextChanged: {
+                                    if (currentText !== "None" && currentText === leftJoystickMapping.currentText) {
+                                        leftJoystickMapping.currentIndex = leftJoystickMapping.find("None")
+                                    }
                                     backend.setRightJoystickControl(currentText)
+                                    updateComboBoxModels()
                                 }
                             }
                         }
@@ -205,22 +255,22 @@ Rectangle {
                         spacing: 5
                         Label { 
                             text: "↑"
-                            color: backend.dpad_up_pressed ? "green" : "gray"
+                            color: backend.dpad_up_pressed ? "red" : "gray"
                             font.bold: true
                         }
                         Label { 
                             text: "↓"
-                            color: backend.dpad_down_pressed ? "green" : "gray"
+                            color: backend.dpad_down_pressed ? "red" : "gray"
                             font.bold: true
                         }
                         Label { 
                             text: "←"
-                            color: backend.dpad_left_pressed ? "green" : "gray"
+                            color: backend.dpad_left_pressed ? "red" : "gray"
                             font.bold: true
                         }
                         Label { 
                             text: "→"
-                            color: backend.dpad_right_pressed ? "green" : "gray"
+                            color: backend.dpad_right_pressed ? "red" : "gray"
                             font.bold: true
                         }
                     }

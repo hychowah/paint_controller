@@ -16,10 +16,9 @@ import rclpy
 import random
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
+from std_msgs.msg import Float64, Bool
 import time
 from cv_bridge import CvBridge
-import cv2
-from sensor_msgs.msg import CompressedImage
 from sensor_msgs.msg import LaserScan
 from towngas_interfaces.msg import WinchStatus, WheelStatus, SteamDeckInput
 
@@ -71,21 +70,29 @@ class PaintController(Node, QObject):
             self.lidar_sub_callback,
             1)
         self.lidar_sub  # prevent unused variable warning
-
-        winch_qos = QoSProfile(
-            depth=1,
-            reliability=ReliabilityPolicy.BEST_EFFORT,
-            durability=DurabilityPolicy.VOLATILE,
-            history=HistoryPolicy.KEEP_LAST
-        )
+        
+        """ WINCH RELATED TOPIC """
+        self._winch_enabled = False
         self.winch_sub = self.create_subscription(
             WinchStatus,
             'winch/status',  # Match the publisher's topic name
             self.winch_sub_callback,
-            winch_qos  # Use same QoS profile as publisher
+            1  
         )
         self.winch_sub  # prevent unused variable warning
 
+        self.winch_move_speed_pub = self.create_publisher(
+            Float64,
+            'winch/cmd_speed',
+            1
+        )
+        self.winch_enable_pub = self.create_publisher(
+            Bool,
+            'winch/enable',
+            1
+        )
+
+        """ STEAM DECK INPUT RELATED TOPIC """
         steam_input_qos = QoSProfile(
             depth=1,
             reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -117,6 +124,9 @@ class PaintController(Node, QObject):
         self.last_wheel_msg_time = time.time() - 2
         self.last_winch_msg_time = time.time() - 2
 
+        self._left_joystick_control = "None"
+        self._right_joystick_control = "None"
+
         self._winch_status = {}
         self._steam_input = {}
 
@@ -145,6 +155,7 @@ class PaintController(Node, QObject):
     winchTemperatureChanged = Signal(str)
     winchVoltageChanged = Signal(str)
     winchBrakeChanged = Signal(bool)
+    winchEnabledChanged = Signal(bool)
 
     @Property(bool, notify=winchAvailableChanged)
     def winch_available(self):
@@ -216,6 +227,50 @@ class PaintController(Node, QObject):
             self._winch_status['motor_brake'] = value
             self.winchBrakeChanged.emit(value)
 
+    def winch_sub_callback(self, msg):
+        """Handle winch status messages"""
+        try:
+            # print(f"Received winch status message: {msg}")
+            self._winch_status = {
+                'cable_length': f"{msg.cable_length:.2f}",
+                'cable_speed': f"{msg.cable_speed:.2f}",
+                'winch_torque': f"{msg.winch_torque:.2f}",
+                'motor_temperature': f"{msg.motor_temperature:.1f}",
+                'motor_voltage': f"{msg.motor_voltage:.1f}",
+                'motor_brake': msg.motor_brake,
+                'available': msg.available
+            }
+
+            self.last_winch_msg_time = time.time()
+
+            self.winchAvailableChanged.emit(self._winch_status['available'])
+            self.winchLengthChanged.emit(self._winch_status['cable_length'])
+            self.winchSpeedChanged.emit(self._winch_status['cable_speed'])
+            self.winchTorqueChanged.emit(self._winch_status['winch_torque'])
+            self.winchTemperatureChanged.emit(self._winch_status['motor_temperature'])
+            self.winchVoltageChanged.emit(self._winch_status['motor_voltage'])
+            self.winchBrakeChanged.emit(self._winch_status['motor_brake'])
+        except Exception as e:
+            self.get_logger().error(f'Error in winch status callback: {str(e)}')
+
+    @Property(bool, notify=winchEnabledChanged)
+    def winch_enabled(self):
+        return self._winch_enabled
+
+    @winch_enabled.setter
+    def winch_enabled(self, value):
+        if self._winch_enabled != value:
+            self._winch_enabled = value
+            self.winchEnabledChanged.emit(value)
+
+    @Slot(bool)
+    def setWinchEnabled(self, enabled):
+        self.winch_enabled = enabled
+        self.get_logger().info(f'Winch {"enabled" if enabled else "disabled"}')
+        msg = Bool()
+        msg.data = enabled
+        self.winch_enable_pub.publish(msg)
+
     #############################################
     ### Wheel Motor Properties and Signals
     #############################################
@@ -225,6 +280,7 @@ class PaintController(Node, QObject):
     rightCurrentChanged = Signal(str)
     rightSpeedChanged = Signal(str)
     wheelAvailableChanged = Signal(bool)
+    
 
     @Property(str, notify=leftSpeedChanged)
     def left_wheel_speed(self):
@@ -282,30 +338,6 @@ class PaintController(Node, QObject):
         self.left_wheel_current = f"{msg.left_wheel_current:.2f}"
         self.right_wheel_current = f"{msg.right_wheel_current:.2f}"
         self.last_msg_time = time.time()
-
-    def winch_sub_callback(self, msg):
-        """Handle winch status messages"""
-        try:
-            # print(f"Received winch status message: {msg}")
-            self._winch_status = {
-                'cable_length': f"{msg.cable_length:.2f}",
-                'cable_speed': f"{msg.cable_speed:.2f}",
-                'winch_torque': f"{msg.winch_torque:.2f}",
-                'motor_temperature': f"{msg.motor_temperature:.1f}",
-                'motor_voltage': f"{msg.motor_voltage:.1f}",
-                'motor_brake': msg.motor_brake,
-                'available': msg.available
-            }
-
-            self.winchAvailableChanged.emit(msg.available)
-            self.winchLengthChanged.emit(self._winch_status['cable_length'])
-            self.winchSpeedChanged.emit(self._winch_status['cable_speed'])
-            self.winchTorqueChanged.emit(self._winch_status['winch_torque'])
-            self.winchTemperatureChanged.emit(self._winch_status['motor_temperature'])
-            self.winchVoltageChanged.emit(self._winch_status['motor_voltage'])
-            self.winchBrakeChanged.emit(msg.motor_brake)
-        except Exception as e:
-            self.get_logger().error(f'Error in winch status callback: {str(e)}')
 
     #############################################
     ### Steam Deck Input Properties and Signals
@@ -584,9 +616,95 @@ class PaintController(Node, QObject):
             self.SteamImuRollChanged.emit(self._steam_input['imu_roll'])
             self.SteamImuYawChanged.emit(self._steam_input['imu_yaw'])
 
+            self.update_joystick_control()
+
         except Exception as e:
             self.get_logger().error(f'Error in steam input callback: {str(e)}')
 
+    #############################################
+    ### Control Mapping Properties and Signals
+    #############################################
+
+    def update_joystick_control(self):
+        'LEFT JOYSTICK CONTROL'
+        # if self.left_joystick_control == "None":
+        #     pass
+        # elif self.left_joystick_control == "Winch Speed":
+        #     command_speed = self.joystick_control_winch_speed(self._steam_input.get('left_stick_y', 0))
+            
+        #     #publish command speed
+        #     msg = Float64()
+        #     msg.data = command_speed
+        #     self.winch_move_speed_pub.publish(msg)
+        "RIGHT JOYSTICK CONTROL"
+        if self.right_joystick_control == "None":
+            pass
+        elif self.right_joystick_control == "Winch Speed":
+            if not self._winch_enabled:
+                return
+            command_speed = self.joystick_control_winch_speed(float(self._steam_input.get('right_stick_y', 0.0)))
+            #publish command speed
+            msg = Float64()
+            # print(f"Command speed: {command_speed}")
+            msg.data = float(command_speed)
+            self.winch_move_speed_pub.publish(msg)
+
+    def joystick_control_winch_speed(self, joystick_value):
+        # check if winch is enabled
+        if not self._winch_status.get('available', False):
+            print("winch not avail")
+            return 0
+        
+        # if not self._winch_status.get('motor_brake', False):
+        #     print("winch brake locked")
+        #     return 0
+        
+        # map y axis joystick value to winch speed (-32768 to 32767 -> -1000 to 1000)
+        # dead zone is -1000 to 1000
+        if (abs(joystick_value) < 1800):
+            return 0
+        return float(joystick_value / 32.768)
+        
+
+    leftJoystickControlChanged = Signal(str)
+    rightJoystickControlChanged = Signal(str)
+
+    @Property(str, notify=leftJoystickControlChanged)
+    def left_joystick_control(self):
+        return self._left_joystick_control
+
+    @left_joystick_control.setter
+    def left_joystick_control(self, value):
+        if self._left_joystick_control != value:
+            self._left_joystick_control = value
+            self.leftJoystickControlChanged.emit(value)
+
+    @Property(str, notify=rightJoystickControlChanged)
+    def right_joystick_control(self):
+        return self._right_joystick_control
+
+    @right_joystick_control.setter
+    def right_joystick_control(self, value):
+        if self._right_joystick_control != value:
+            self._right_joystick_control = value
+            self.rightJoystickControlChanged.emit(value)
+
+    @Slot(str)
+    def setLeftJoystickControl(self, control):
+        self.left_joystick_control = control
+        # Add your control logic here based on the selection
+        self.get_logger().info(f'Left joystick control set to: {control}')
+
+    @Slot(str)
+    def setRightJoystickControl(self, control):
+        self.right_joystick_control = control
+        # Add your control logic here based on the selection
+        self.get_logger().info(f'Right joystick control set to: {control}')
+
+                
+
+    #############################################
+    ### Other Properties and Signals
     #############################################
         
     @Slot(bool)
@@ -701,10 +819,9 @@ def main(args=None):
     engine.rootContext().setContextProperty("backend", paint_controller)
     engine.rootContext().setContextProperty("videoStreamer", paint_controller)
 
-    timer = QTimer()
-    timer.timeout.connect(paint_controller.update_status)
-    timer.start(100)  # update every 100 ms
-
+    status_timer = QTimer()
+    status_timer.timeout.connect(paint_controller.update_status)
+    status_timer.start(100)  # update every 100 ms
 
     sys.exit(app.exec())
 
