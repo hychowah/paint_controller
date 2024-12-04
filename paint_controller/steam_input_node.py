@@ -149,13 +149,13 @@ class SteamDeckNode(Node):
     def __init__(self):
         super().__init__('steam_deck_node')
 
-        qos = QoSProfile(
+        steam_input_qos = QoSProfile(
             depth=1,
             reliability=ReliabilityPolicy.BEST_EFFORT,
             durability=DurabilityPolicy.VOLATILE,
             history=HistoryPolicy.KEEP_LAST
         )
-        self.publisher = self.create_publisher(SteamDeckInput, 'steam_deck/input', qos)
+        self.publisher = self.create_publisher(SteamDeckInput, 'steam_deck/input', steam_input_qos)
         self.timer = self.create_timer(0.01, self.timer_callback)  # 100Hz
 
         

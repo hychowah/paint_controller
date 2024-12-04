@@ -21,7 +21,7 @@ from cv_bridge import CvBridge
 import cv2
 from sensor_msgs.msg import CompressedImage
 from sensor_msgs.msg import LaserScan
-from towngas_interfaces.msg import WinchStatus, WheelStatus
+from towngas_interfaces.msg import WinchStatus, WheelStatus, SteamDeckInput
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -39,22 +39,6 @@ class ImageProvider(QQuickImageProvider):
 
 class PaintController(Node, QObject):
     frame_ready = Signal()
-    winchLengthChanged = Signal(str)
-    winchSpeedChanged = Signal(str)
-    winchCurrentChanged = Signal(str)
-    winchAvailableChanged = Signal(bool)
-    winchTorqueChanged = Signal(str)
-    winchTemperatureChanged = Signal(str)
-    winchVoltageChanged = Signal(str)
-    winchBrakeChanged = Signal(bool)
-
-
-    leftSpeedChanged = Signal(str)
-    leftCurrentChanged = Signal(str)
-    rightCurrentChanged = Signal(str)
-    rightSpeedChanged = Signal(str)
-    wheelAvailableChanged = Signal(bool)
-
     new_scan_data = Signal(list, float, float, float, float)
 
     def __init__(self):
@@ -78,11 +62,6 @@ class PaintController(Node, QObject):
             history=rclpy.qos.QoSHistoryPolicy.KEEP_LAST,
             depth=1
         )
-        self.subscription = self.create_subscription(
-            CompressedImage, 
-            'camera/image/compressed', 
-            self.camera_callback, 
-            qos_profile)
         
         self.br = CvBridge()
 
@@ -105,8 +84,22 @@ class PaintController(Node, QObject):
             self.winch_sub_callback,
             winch_qos  # Use same QoS profile as publisher
         )
-        
         self.winch_sub  # prevent unused variable warning
+
+        steam_input_qos = QoSProfile(
+            depth=1,
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+            history=HistoryPolicy.KEEP_LAST
+        )
+        self.steam_input_sub = self.create_subscription(
+            SteamDeckInput,
+            'steam_deck/input',
+            self.steam_input_callback,
+            steam_input_qos
+        )
+        self.steam_input_sub
+
         self.wheel_sub = self.create_subscription(
             WheelStatus,
             'wheel_motor_status',
@@ -125,6 +118,7 @@ class PaintController(Node, QObject):
         self.last_winch_msg_time = time.time() - 2
 
         self._winch_status = {}
+        self._steam_input = {}
 
         self.scan_data = None
 
@@ -138,6 +132,19 @@ class PaintController(Node, QObject):
             self.winch_available = False
         else:
             self.winch_available = True
+
+    #############################################
+    ### Winch Motor Properties and Signals
+    #############################################
+
+    winchLengthChanged = Signal(str)
+    winchSpeedChanged = Signal(str)
+    winchCurrentChanged = Signal(str)
+    winchAvailableChanged = Signal(bool)
+    winchTorqueChanged = Signal(str)
+    winchTemperatureChanged = Signal(str)
+    winchVoltageChanged = Signal(str)
+    winchBrakeChanged = Signal(bool)
 
     @Property(bool, notify=winchAvailableChanged)
     def winch_available(self):
@@ -209,6 +216,16 @@ class PaintController(Node, QObject):
             self._winch_status['motor_brake'] = value
             self.winchBrakeChanged.emit(value)
 
+    #############################################
+    ### Wheel Motor Properties and Signals
+    #############################################
+
+    leftSpeedChanged = Signal(str)
+    leftCurrentChanged = Signal(str)
+    rightCurrentChanged = Signal(str)
+    rightSpeedChanged = Signal(str)
+    wheelAvailableChanged = Signal(bool)
+
     @Property(str, notify=leftSpeedChanged)
     def left_wheel_speed(self):
         return self._left_wheel_speed
@@ -258,6 +275,319 @@ class PaintController(Node, QObject):
         if self._wheel_available != value:
             self._wheel_available = value
             self.wheelAvailableChanged.emit(value)
+
+    def wheel_sub_callback(self, msg):
+        self.left_wheel_speed = f"{msg.left_wheel_speed:.2f}"
+        self.right_wheel_speed = f"{msg.right_wheel_speed:.2f}"
+        self.left_wheel_current = f"{msg.left_wheel_current:.2f}"
+        self.right_wheel_current = f"{msg.right_wheel_current:.2f}"
+        self.last_msg_time = time.time()
+
+    def winch_sub_callback(self, msg):
+        """Handle winch status messages"""
+        try:
+            # print(f"Received winch status message: {msg}")
+            self._winch_status = {
+                'cable_length': f"{msg.cable_length:.2f}",
+                'cable_speed': f"{msg.cable_speed:.2f}",
+                'winch_torque': f"{msg.winch_torque:.2f}",
+                'motor_temperature': f"{msg.motor_temperature:.1f}",
+                'motor_voltage': f"{msg.motor_voltage:.1f}",
+                'motor_brake': msg.motor_brake,
+                'available': msg.available
+            }
+
+            self.winchAvailableChanged.emit(msg.available)
+            self.winchLengthChanged.emit(self._winch_status['cable_length'])
+            self.winchSpeedChanged.emit(self._winch_status['cable_speed'])
+            self.winchTorqueChanged.emit(self._winch_status['winch_torque'])
+            self.winchTemperatureChanged.emit(self._winch_status['motor_temperature'])
+            self.winchVoltageChanged.emit(self._winch_status['motor_voltage'])
+            self.winchBrakeChanged.emit(msg.motor_brake)
+        except Exception as e:
+            self.get_logger().error(f'Error in winch status callback: {str(e)}')
+
+    #############################################
+    ### Steam Deck Input Properties and Signals
+    #############################################
+
+    leftStickXChanged = Signal(str)
+    leftStickYChanged = Signal(str)
+    rightStickXChanged = Signal(str)
+    rightStickYChanged = Signal(str)
+    leftTriggerChanged = Signal(str)
+    rightTriggerChanged = Signal(str)
+    aButtonPressedChanged = Signal(bool)
+    bButtonPressedChanged = Signal(bool)
+    xButtonPressedChanged = Signal(bool)
+    yButtonPressedChanged = Signal(bool)
+    l1ButtonPressedChanged = Signal(bool)
+    r1ButtonPressedChanged = Signal(bool)
+    menuButtonPressedChanged = Signal(bool)
+    dpadUpPressedChanged = Signal(bool)
+    dpadDownPressedChanged = Signal(bool)
+    dpadLeftPressedChanged = Signal(bool)
+    dpadRightPressedChanged = Signal(bool)
+    SteamImuPitchChanged = Signal(str)
+    SteamImuRollChanged = Signal(str)
+    SteamImuYawChanged = Signal(str)
+
+    @Property(str, notify=leftStickXChanged)
+    def left_stick_x(self):
+        return self._steam_input.get('left_stick_x', '0')
+    
+    @left_stick_x.setter
+    def left_stick_x(self, value):
+        if self._steam_input.get('left_stick_x') != value:
+            self._steam_input['left_stick_x'] = value
+            self.leftStickXChanged.emit(value)
+
+    @Property(str, notify=leftStickYChanged)
+    def left_stick_y(self):
+        return self._steam_input.get('left_stick_y', '0')
+    
+    @left_stick_y.setter
+    def left_stick_y(self, value):
+        if self._steam_input.get('left_stick_y') != value:
+            self._steam_input['left_stick_y'] = value
+            self.leftStickYChanged.emit(value)
+
+    @Property(str, notify=rightStickXChanged)
+    def right_stick_x(self):
+        return self._steam_input.get('right_stick_x', '0')
+    
+    @right_stick_x.setter
+    def right_stick_x(self, value):
+        if self._steam_input.get('right_stick_x') != value:
+            self._steam_input['right_stick_x'] = value
+            self.rightStickXChanged.emit(value)
+
+    @Property(str, notify=rightStickYChanged)
+    def right_stick_y(self):
+        return self._steam_input.get('right_stick_y', '0')
+    
+    @right_stick_y.setter
+    def right_stick_y(self, value):
+        if self._steam_input.get('right_stick_y') != value:
+            self._steam_input['right_stick_y'] = value
+            self.rightStickYChanged.emit(value)
+
+    # Trigger Properties
+    @Property(str, notify=leftTriggerChanged)
+    def left_trigger(self):
+        return self._steam_input.get('left_trigger', '0')
+    
+    @left_trigger.setter
+    def left_trigger(self, value):
+        if self._steam_input.get('left_trigger') != value:
+            self._steam_input['left_trigger'] = value
+            self.leftTriggerChanged.emit(value)
+
+    @Property(str, notify=rightTriggerChanged)
+    def right_trigger(self):
+        return self._steam_input.get('right_trigger', '0')
+    
+    @right_trigger.setter
+    def right_trigger(self, value):
+        if self._steam_input.get('right_trigger') != value:
+            self._steam_input['right_trigger'] = value
+            self.rightTriggerChanged.emit(value)
+
+    # Button Properties
+    @Property(bool, notify=aButtonPressedChanged)
+    def a_pressed(self):
+        return self._steam_input.get('a_pressed', False)
+    
+    @a_pressed.setter
+    def a_pressed(self, value):
+        if self._steam_input.get('a_pressed') != value:
+            self._steam_input['a_pressed'] = value
+            self.aButtonPressedChanged.emit(value)
+
+    @Property(bool, notify=bButtonPressedChanged)
+    def b_pressed(self):
+        return self._steam_input.get('b_pressed', False)
+    
+    @b_pressed.setter
+    def b_pressed(self, value):
+        if self._steam_input.get('b_pressed') != value:
+            self._steam_input['b_pressed'] = value
+            self.bButtonPressedChanged.emit(value)
+
+    @Property(bool, notify=xButtonPressedChanged)
+    def x_pressed(self):
+        return self._steam_input.get('x_pressed', False)
+    
+    @x_pressed.setter
+    def x_pressed(self, value):
+        if self._steam_input.get('x_pressed') != value:
+            self._steam_input['x_pressed'] = value
+            self.xButtonPressedChanged.emit(value)
+
+    @Property(bool, notify=yButtonPressedChanged)
+    def y_pressed(self):
+        return self._steam_input.get('y_pressed', False)
+    
+    @y_pressed.setter
+    def y_pressed(self, value):
+        if self._steam_input.get('y_pressed') != value:
+            self._steam_input['y_pressed'] = value
+            self.yButtonPressedChanged.emit(value)
+
+    @Property(bool, notify=l1ButtonPressedChanged)
+    def l1_pressed(self):
+        return self._steam_input.get('l1_pressed', False)
+    
+    @l1_pressed.setter
+    def l1_pressed(self, value):
+        if self._steam_input.get('l1_pressed') != value:
+            self._steam_input['l1_pressed'] = value
+            self.l1ButtonPressedChanged.emit(value)
+
+    @Property(bool, notify=r1ButtonPressedChanged)
+    def r1_pressed(self):
+        return self._steam_input.get('r1_pressed', False)
+    
+    @r1_pressed.setter
+    def r1_pressed(self, value):
+        if self._steam_input.get('r1_pressed') != value:
+            self._steam_input['r1_pressed'] = value
+            self.r1ButtonPressedChanged.emit(value)
+
+    @Property(bool, notify=menuButtonPressedChanged)
+    def menu_pressed(self):
+        return self._steam_input.get('menu_pressed', False)
+    
+    @menu_pressed.setter
+    def menu_pressed(self, value):
+        if self._steam_input.get('menu_pressed') != value:
+            self._steam_input['menu_pressed'] = value
+            self.menuButtonPressedChanged.emit(value)
+
+    # D-Pad Properties
+    @Property(bool, notify=dpadUpPressedChanged)
+    def dpad_up_pressed(self):
+        return self._steam_input.get('dpad_up_pressed', False)
+    
+    @dpad_up_pressed.setter
+    def dpad_up_pressed(self, value):
+        if self._steam_input.get('dpad_up_pressed') != value:
+            self._steam_input['dpad_up_pressed'] = value
+            self.dpadUpPressedChanged.emit(value)
+
+    @Property(bool, notify=dpadDownPressedChanged)
+    def dpad_down_pressed(self):
+        return self._steam_input.get('dpad_down_pressed', False)
+    
+    @dpad_down_pressed.setter
+    def dpad_down_pressed(self, value):
+        if self._steam_input.get('dpad_down_pressed') != value:
+            self._steam_input['dpad_down_pressed'] = value
+            self.dpadDownPressedChanged.emit(value)
+
+    @Property(bool, notify=dpadLeftPressedChanged)
+    def dpad_left_pressed(self):
+        return self._steam_input.get('dpad_left_pressed', False)
+    
+    @dpad_left_pressed.setter
+    def dpad_left_pressed(self, value):
+        if self._steam_input.get('dpad_left_pressed') != value:
+            self._steam_input['dpad_left_pressed'] = value
+            self.dpadLeftPressedChanged.emit(value)
+
+    @Property(bool, notify=dpadRightPressedChanged)
+    def dpad_right_pressed(self):
+        return self._steam_input.get('dpad_right_pressed', False)
+    
+    @dpad_right_pressed.setter
+    def dpad_right_pressed(self, value):
+        if self._steam_input.get('dpad_right_pressed') != value:
+            self._steam_input['dpad_right_pressed'] = value
+            self.dpadRightPressedChanged.emit(value)
+
+    # IMU Properties
+    @Property(str, notify=SteamImuPitchChanged)
+    def imu_pitch(self):
+        return self._steam_input.get('imu_pitch', '0')
+    
+    @imu_pitch.setter
+    def imu_pitch(self, value):
+        if self._steam_input.get('imu_pitch') != value:
+            self._steam_input['imu_pitch'] = value
+            self.SteamImuPitchChanged.emit(value)
+
+    @Property(str, notify=SteamImuRollChanged)
+    def imu_roll(self):
+        return self._steam_input.get('imu_roll', '0')
+    
+    @imu_roll.setter
+    def imu_roll(self, value):
+        if self._steam_input.get('imu_roll') != value:
+            self._steam_input['imu_roll'] = value
+            self.SteamImuRollChanged.emit(value)
+
+    @Property(str, notify=SteamImuYawChanged)
+    def imu_yaw(self):
+        return self._steam_input.get('imu_yaw', '0')
+    
+    @imu_yaw.setter
+    def imu_yaw(self, value):
+        if self._steam_input.get('imu_yaw') != value:
+            self._steam_input['imu_yaw'] = value
+            self.SteamImuYawChanged.emit(value)
+
+    def steam_input_callback(self, msg):
+        """Handle Steam Deck input messages"""
+        try:
+            self._steam_input = {
+                'left_stick_x': f"{msg.left_stick_x}",
+                'left_stick_y': f"{msg.left_stick_y}",
+                'right_stick_x': f"{msg.right_stick_x}",
+                'right_stick_y': f"{msg.right_stick_y}",
+                'left_trigger': f"{msg.left_trigger}",
+                'right_trigger': f"{msg.right_trigger}",
+                'a_pressed': msg.a,
+                'b_pressed': msg.b,
+                'x_pressed': msg.x,
+                'y_pressed': msg.y,
+                'l1_pressed': msg.l1,
+                'r1_pressed': msg.r1,
+                'menu_pressed': msg.menu,
+                'dpad_up_pressed': msg.dpad_up,
+                'dpad_down_pressed': msg.dpad_down,
+                'dpad_left_pressed': msg.dpad_left,
+                'dpad_right_pressed': msg.dpad_right,
+                'imu_pitch': f"{msg.imu_pitch}",
+                'imu_roll': f"{msg.imu_roll}",
+                'imu_yaw': f"{msg.imu_yaw}"
+            }
+
+            # Emit all signals with their corresponding values
+            self.leftStickXChanged.emit(self._steam_input['left_stick_x'])
+            self.leftStickYChanged.emit(self._steam_input['left_stick_y'])
+            self.rightStickXChanged.emit(self._steam_input['right_stick_x'])
+            self.rightStickYChanged.emit(self._steam_input['right_stick_y'])
+            self.leftTriggerChanged.emit(self._steam_input['left_trigger'])
+            self.rightTriggerChanged.emit(self._steam_input['right_trigger'])
+            self.aButtonPressedChanged.emit(self._steam_input['a_pressed'])
+            self.bButtonPressedChanged.emit(self._steam_input['b_pressed'])
+            self.xButtonPressedChanged.emit(self._steam_input['x_pressed'])
+            self.yButtonPressedChanged.emit(self._steam_input['y_pressed'])
+            self.l1ButtonPressedChanged.emit(self._steam_input['l1_pressed'])
+            self.r1ButtonPressedChanged.emit(self._steam_input['r1_pressed'])
+            self.menuButtonPressedChanged.emit(self._steam_input['menu_pressed'])
+            self.dpadUpPressedChanged.emit(self._steam_input['dpad_up_pressed'])
+            self.dpadDownPressedChanged.emit(self._steam_input['dpad_down_pressed'])
+            self.dpadLeftPressedChanged.emit(self._steam_input['dpad_left_pressed'])
+            self.dpadRightPressedChanged.emit(self._steam_input['dpad_right_pressed'])
+            self.SteamImuPitchChanged.emit(self._steam_input['imu_pitch'])
+            self.SteamImuRollChanged.emit(self._steam_input['imu_roll'])
+            self.SteamImuYawChanged.emit(self._steam_input['imu_yaw'])
+
+        except Exception as e:
+            self.get_logger().error(f'Error in steam input callback: {str(e)}')
+
+    #############################################
         
     @Slot(bool)
     def toggleSwitchChanged(self, checked):
@@ -281,7 +611,6 @@ class PaintController(Node, QObject):
     @Slot(np.ndarray)
     def update_frame(self, frame):
         print("Updating frame")
-        frame_provider.update_frame(frame)
         self.video_output.update()
 
     @Slot()
@@ -320,43 +649,6 @@ class PaintController(Node, QObject):
 
     def lidar_sub_callback(self, msg):
         self.latest_scan = msg
-
-    def winch_sub_callback(self, msg):
-        """Handle winch status messages"""
-        try:
-            # print(f"Received winch status message: {msg}")
-            self._winch_status = {
-                'cable_length': f"{msg.cable_length:.2f}",
-                'cable_speed': f"{msg.cable_speed:.2f}",
-                'winch_torque': f"{msg.winch_torque:.2f}",
-                'motor_temperature': f"{msg.motor_temperature:.1f}",
-                'motor_voltage': f"{msg.motor_voltage:.1f}",
-                'motor_brake': msg.motor_brake,
-                'available': msg.available
-            }
-
-            self.winchAvailableChanged.emit(msg.available)
-            self.winchLengthChanged.emit(self._winch_status['cable_length'])
-            self.winchSpeedChanged.emit(self._winch_status['cable_speed'])
-            self.winchTorqueChanged.emit(self._winch_status['winch_torque'])
-            self.winchTemperatureChanged.emit(self._winch_status['motor_temperature'])
-            self.winchVoltageChanged.emit(self._winch_status['motor_voltage'])
-            self.winchBrakeChanged.emit(msg.motor_brake)
-        except Exception as e:
-            self.get_logger().error(f'Error in winch status callback: {str(e)}')
-
-    def wheel_sub_callback(self, msg):
-        self.left_wheel_speed = f"{msg.left_wheel_speed:.2f}"
-        self.right_wheel_speed = f"{msg.right_wheel_speed:.2f}"
-        self.left_wheel_current = f"{msg.left_wheel_current:.2f}"
-        self.right_wheel_current = f"{msg.right_wheel_current:.2f}"
-        self.last_msg_time = time.time()
-
-    def camera_callback(self, msg):
-        # Decode the compressed image
-        np_arr = np.frombuffer(msg.data, np.uint8)
-        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        self.new_frame.emit(frame)
 
 
 class RosThread(QThread):
