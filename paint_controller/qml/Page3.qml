@@ -10,32 +10,19 @@ Rectangle {
     color: "#9F9F9F"
 
     // Helper function to update available options
-    function updateComboBoxModels() {
-        let allOptions = ["None", "Winch Speed", "Wheel Speed", "EF arm", "EF top rail", "EF Prop"]
-        
-        // Filter out the selected option from the other combo box
-        let leftOptions = allOptions.filter(option => 
-            option === "None" || option !== rightJoystickMapping.currentText
+    // Store the complete list of options
+    property var allControlOptions: ["None", "Winch Speed", "Wheel Speed", "EF arm", "EF top rail", "EF Prop"]
+    
+    // Properties to store current selections
+    property string leftCurrentControl: "None"
+    property string rightCurrentControl: "None"
+
+    // Helper function to get available options for a combo box
+    function getAvailableOptions(isLeftComboBox) {
+        let otherSelection = isLeftComboBox ? rightCurrentControl : leftCurrentControl
+        return allControlOptions.filter(option => 
+            option === "None" || option !== otherSelection
         )
-        let rightOptions = allOptions.filter(option => 
-            option === "None" || option !== leftJoystickMapping.currentText
-        )
-
-        // Store current selection
-        let leftCurrent = leftJoystickMapping.currentText
-        let rightCurrent = rightJoystickMapping.currentText
-
-        // Update models
-        leftJoystickMapping.model = leftOptions
-        rightJoystickMapping.model = rightOptions
-
-        // Restore selections if they're still valid
-        if (leftOptions.includes(leftCurrent)) {
-            leftJoystickMapping.currentIndex = leftOptions.indexOf(leftCurrent)
-        }
-        if (rightOptions.includes(rightCurrent)) {
-            rightJoystickMapping.currentIndex = rightOptions.indexOf(rightCurrent)
-        }
     }
 
     RowLayout {
@@ -72,15 +59,15 @@ Rectangle {
 
                     Label { text: "Status:"; font.bold: true }
                     Label { 
-                        text: backend.winch_available ? "Connected" : "Disconnected"
-                        color: backend.winch_available ? "green" : "red"
+                        text: uiData.winch_available ? "Connected" : "Disconnected"
+                        color: uiData.winch_available ? "green" : "red"
                     }
 
                     Label { text: "Enable Winch:"; font.bold: true }
                     RowLayout {
                         Switch {
                             id: winchEnableSwitch
-                            checked: backend.winch_enabled
+                            checked: uiData.winch_enabled
                             onToggled: backend.setWinchEnabled(checked)
                         }
                         Label {
@@ -90,24 +77,24 @@ Rectangle {
                     }
 
                     Label { text: "Cable Length:"; font.bold: true }
-                    Label { text: backend.winch_length + " m" }
+                    Label { text: uiData.winch_length + " m" }
 
                     Label { text: "Cable Speed:"; font.bold: true }
-                    Label { text: backend.winch_speed + " m/s" }
+                    Label { text: uiData.winch_speed + " m/s" }
 
                     Label { text: "Torque:"; font.bold: true }
-                    Label { text: backend.winch_torque + " Nm" }
+                    Label { text: uiData.winch_torque + " Nm" }
 
                     Label { text: "Temperature:"; font.bold: true }
-                    Label { text: backend.winch_temperature + " °C" }
+                    Label { text: uiData.winch_temperature + " °C" }
 
                     Label { text: "Voltage:"; font.bold: true }
-                    Label { text: backend.winch_voltage + " V" }
+                    Label { text: uiData.winch_voltage + " V" }
 
                     Label { text: "Brake:"; font.bold: true }
                     Label { 
-                        text: backend.winch_brake ? "Engaged" : "Released"
-                        color: backend.winch_brake ? "red" : "green"
+                        text: uiData.winch_brake ? "Engaged" : "Released"
+                        color: uiData.winch_brake ? "red" : "green"
                     }
                 }
             }
@@ -152,13 +139,18 @@ Rectangle {
                             ComboBox {
                                 id: leftJoystickMapping
                                 Layout.fillWidth: true
-                                model: ["None", "Winch Speed", "Wheel Speed", "EF arm", "EF top rail", "EF Prop"]
-                                onCurrentTextChanged: {
-                                    if (currentText !== "None" && currentText === rightJoystickMapping.currentText) {
-                                        rightJoystickMapping.currentIndex = rightJoystickMapping.find("None")
+                                model: getAvailableOptions(true)
+                                currentIndex: model.indexOf(leftCurrentControl)
+                                
+                                onActivated: {
+                                    let newValue = model[currentIndex]
+                                    if (newValue !== leftCurrentControl) {
+                                        leftCurrentControl = newValue
+                                        backend.setLeftJoystickControl(newValue)
+                                        // Update right combo box model
+                                        rightJoystickMapping.model = getAvailableOptions(false)
+                                        rightJoystickMapping.currentIndex = rightJoystickMapping.model.indexOf(rightCurrentControl)
                                     }
-                                    backend.setLeftJoystickControl(currentText)
-                                    updateComboBoxModels()
                                 }
                             }
                         }
@@ -175,13 +167,18 @@ Rectangle {
                             ComboBox {
                                 id: rightJoystickMapping
                                 Layout.fillWidth: true
-                                model: ["None", "Winch Speed", "Wheel Speed", "EF arm", "EF top rail", "EF Prop"]
-                                onCurrentTextChanged: {
-                                    if (currentText !== "None" && currentText === leftJoystickMapping.currentText) {
-                                        leftJoystickMapping.currentIndex = leftJoystickMapping.find("None")
+                                model: getAvailableOptions(false)
+                                currentIndex: model.indexOf(rightCurrentControl)
+                                
+                                onActivated: {
+                                    let newValue = model[currentIndex]
+                                    if (newValue !== rightCurrentControl) {
+                                        rightCurrentControl = newValue
+                                        backend.setRightJoystickControl(newValue)
+                                        // Update left combo box model
+                                        leftJoystickMapping.model = getAvailableOptions(true)
+                                        leftJoystickMapping.currentIndex = leftJoystickMapping.model.indexOf(leftCurrentControl)
                                     }
-                                    backend.setRightJoystickControl(currentText)
-                                    updateComboBoxModels()
                                 }
                             }
                         }
@@ -199,54 +196,54 @@ Rectangle {
 
                     // Analog Sticks
                     Label { text: "Left Stick:"; font.bold: true }
-                    Label { text: "X: " + backend.left_stick_x + ", Y: " + backend.left_stick_y }
+                    Label { text: "X: " + uiData.left_joystick_x + ", Y: " + uiData.left_joystick_y }
 
                     Label { text: "Right Stick:"; font.bold: true }
-                    Label { text: "X: " + backend.right_stick_x + ", Y: " + backend.right_stick_y }
+                    Label { text: "X: " + uiData.right_joystick_x + ", Y: " + uiData.right_joystick_y }
 
                     // Triggers
                     Label { text: "Left Trigger:"; font.bold: true }
-                    Label { text: backend.left_trigger }
+                    Label { text: uiData.left_trigger }
 
                     Label { text: "Right Trigger:"; font.bold: true }
-                    Label { text: backend.right_trigger }
+                    Label { text: uiData.right_trigger }
 
                     // Face Buttons
                     Label { text: "A Button:"; font.bold: true }
                     Label { 
-                        text: backend.a_pressed ? "Pressed" : "Released"
-                        color: backend.a_pressed ? "green" : "gray"
+                        text: uiData.button_a ? "Pressed" : "Released"
+                        color: uiData.button_a ? "green" : "gray"
                     }
 
                     Label { text: "B Button:"; font.bold: true }
                     Label { 
-                        text: backend.b_pressed ? "Pressed" : "Released"
-                        color: backend.b_pressed ? "green" : "gray"
+                        text: uiData.button_b ? "Pressed" : "Released"
+                        color: uiData.button_b ? "green" : "gray"
                     }
 
                     Label { text: "X Button:"; font.bold: true }
                     Label { 
-                        text: backend.x_pressed ? "Pressed" : "Released"
-                        color: backend.x_pressed ? "green" : "gray"
+                        text: uiData.button_x ? "Pressed" : "Released"
+                        color: uiData.button_x ? "green" : "gray"
                     }
 
                     Label { text: "Y Button:"; font.bold: true }
                     Label { 
-                        text: backend.y_pressed ? "Pressed" : "Released"
-                        color: backend.y_pressed ? "green" : "gray"
+                        text: uiData.button_y ? "Pressed" : "Released"
+                        color: uiData.button_y ? "green" : "gray"
                     }
 
                     // Shoulder Buttons
                     Label { text: "L1 Button:"; font.bold: true }
                     Label { 
-                        text: backend.l1_pressed ? "Pressed" : "Released"
-                        color: backend.l1_pressed ? "green" : "gray"
+                        text: uiData.button_l1 ? "Pressed" : "Released"
+                        color: uiData.button_l1 ? "green" : "gray"
                     }
 
                     Label { text: "R1 Button:"; font.bold: true }
                     Label { 
-                        text: backend.r1_pressed ? "Pressed" : "Released"
-                        color: backend.r1_pressed ? "green" : "gray"
+                        text: uiData.button_r1 ? "Pressed" : "Released"
+                        color: uiData.button_r1 ? "green" : "gray"
                     }
 
                     // D-Pad
@@ -255,22 +252,22 @@ Rectangle {
                         spacing: 5
                         Label { 
                             text: "↑"
-                            color: backend.dpad_up_pressed ? "red" : "gray"
+                            color: uiData.dpad_up ? "red" : "gray"
                             font.bold: true
                         }
                         Label { 
                             text: "↓"
-                            color: backend.dpad_down_pressed ? "red" : "gray"
+                            color: uiData.dpad_down ? "red" : "gray"
                             font.bold: true
                         }
                         Label { 
                             text: "←"
-                            color: backend.dpad_left_pressed ? "red" : "gray"
+                            color: uiData.dpad_left ? "red" : "gray"
                             font.bold: true
                         }
                         Label { 
                             text: "→"
-                            color: backend.dpad_right_pressed ? "red" : "gray"
+                            color: uiData.dpad_right ? "red" : "gray"
                             font.bold: true
                         }
                     }
@@ -278,13 +275,13 @@ Rectangle {
                     // Menu Button
                     Label { text: "Menu:"; font.bold: true }
                     Label { 
-                        text: backend.menu_pressed ? "Pressed" : "Released"
-                        color: backend.menu_pressed ? "green" : "gray"
+                        text: uiData.menu_pressed ? "Pressed" : "Released"
+                        color: uiData.menu_pressed ? "green" : "gray"
                     }
 
                     // IMU Data
                     Label { text: "IMU:"; font.bold: true }
-                    Label { text: "Pitch: " + backend.imu_pitch + "°, Roll: " + backend.imu_roll + "°, Yaw: " + backend.imu_yaw + "°" }
+                    Label { text: "Pitch: " + uiData.imu_pitch + "°, Roll: " + uiData.imu_roll + "°, Yaw: " + uiData.imu_yaw + "°" }
                 }
             }
         }

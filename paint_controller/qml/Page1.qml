@@ -36,36 +36,36 @@ Rectangle {
             Layout.fillHeight: true
             spacing: 20
 
-             Rectangle {
-                id: lidarPlotConatainer
-                Layout.fillWidth: true
-                Layout.preferredHeight: 300
-                color: "white"
-                radius: 20
-                Layout.alignment: Qt.AlignHCenter | Qt.AlignHCenter
+            //  Rectangle {
+            //     id: lidarPlotConatainer
+            //     Layout.fillWidth: true
+            //     Layout.preferredHeight: 300
+            //     color: "white"
+            //     radius: 20
+            //     Layout.alignment: Qt.AlignHCenter | Qt.AlignHCenter
 
-                Image {
-                    id: backgroundImage
-                    anchors.fill: parent
-                    source: "../resource/top_base.png"
-                    fillMode: Image.PreserveAspectFit
-                    // Scale the image (adjust as needed)
-                    scale: 0.7 // You can change this value to scale up or down
+            //     Image {
+            //         id: backgroundImage
+            //         anchors.fill: parent
+            //         source: "../resource/top_base.png"
+            //         fillMode: Image.PreserveAspectFit
+            //         // Scale the image (adjust as needed)
+            //         scale: 0.7 // You can change this value to scale up or down
 
-                    // Fine-tune position using transform
-                    transform: Translate {
-                        x: 5 // Adjust horizontal position
-                        y: 35 // Adjust vertical position
-                    }
-                }
+            //         // Fine-tune position using transform
+            //         transform: Translate {
+            //             x: 5 // Adjust horizontal position
+            //             y: 35 // Adjust vertical position
+            //         }
+            //     }
 
-                LidarPlot {
-                    id: lidarPlot
-                    anchors.fill: parent
-                    anchors.margins: 10 // This gives some padding inside the rectangle
-                    fixedMaxRange: 1.6
-                }
-            }
+            //     LidarPlot {
+            //         id: lidarPlot
+            //         anchors.fill: parent
+            //         anchors.margins: 10 // This gives some padding inside the rectangle
+            //         fixedMaxRange: 1.6
+            //     }
+            // }
 
             Rectangle {
                 id: cameraView
