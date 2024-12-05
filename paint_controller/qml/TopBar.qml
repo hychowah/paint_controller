@@ -9,6 +9,9 @@ Rectangle {
     color: "#28445E"
     z: 1  // Ensure top bar is above the StackView
 
+    // Add property but mark it as required to prevent binding loops
+    // required property var uiData
+
     // White bottom border
     Rectangle {
         anchors.bottom: parent.bottom
@@ -20,6 +23,14 @@ Rectangle {
     RowLayout {
         anchors.fill: parent
         anchors.margins: 10
+
+        Text {
+            text: uiData ? uiData.display_message || "" : ""
+            color: "white"
+            font.family: "Roboto"  // Modern sans-serif font
+            font.pixelSize: 18
+            font.weight: Font.Medium
+        }
 
         Item { Layout.fillWidth: true } // Spacer
 

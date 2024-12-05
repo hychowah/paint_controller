@@ -3,7 +3,7 @@
   <name>paint_controller</name>
   <version>0.0.0</version>
   <description>A ROS 2 package for the paint controller node with a PySide6 UI</description>
-  <maintainer email="your_email@example.com">your_name</maintainer>
+  <maintainer email="hychowah@gmail.com">c3spray_deck</maintainer>
   <license>Apache License 2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

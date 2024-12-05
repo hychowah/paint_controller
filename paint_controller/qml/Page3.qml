@@ -11,7 +11,7 @@ Rectangle {
 
     // Helper function to update available options
     // Store the complete list of options
-    property var allControlOptions: ["None", "Winch Speed", "Wheel Speed", "EF arm", "EF top rail", "EF Prop"]
+    property var allControlOptions: ["None", "Winch Speed", "Wheel Speed", "EF arm", "EF top rail", "EF prop pwm", "EF prop joint"]
     
     // Properties to store current selections
     property string leftCurrentControl: "None"
@@ -32,7 +32,7 @@ Rectangle {
 
         // Left Side: Winch Status
         Rectangle {
-            Layout.fillWidth: true
+            Layout.preferredWidth: parent.width / 4
             Layout.fillHeight: true
             color: "#FFFFFF"
             radius: 10
@@ -100,9 +100,160 @@ Rectangle {
             }
         }
 
-        // Right Side: Steam Deck Input Status
+        // teensy status
         Rectangle {
             Layout.fillWidth: true
+            Layout.fillHeight: true
+            color: "#FFFFFF"
+            radius: 10
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 15
+                spacing: 15
+
+                Label {
+                    text: "Teensy Status"
+                    font.pixelSize: 24
+                    font.bold: true
+                }
+
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+
+                    ColumnLayout {
+                        width: parent.width
+                        spacing: 20
+
+                        // Board Status Section
+                        GroupBox {
+                            title: "Board Status"
+                            Layout.fillWidth: true
+
+                            GridLayout {
+                                columns: 4
+                                rowSpacing: 10
+                                columnSpacing: 20
+                                Layout.fillWidth: true
+
+                                Label { text: "Voltage:"; font.bold: true }
+                                Label { text: uiData.teensy_voltage + " V" }
+                                Label { text: "Current:"; font.bold: true }
+                                Label { text: uiData.teensy_current + " A" }
+
+                                Label { text: "Temperature:"; font.bold: true }
+                                Label { text: uiData.teensy_temperature + " °C" }
+                                Label { text: "Runtime:"; font.bold: true }
+                                Label { text: uiData.teensy_run_time + " s" }
+
+                                Label { text: "Loop Time:"; font.bold: true }
+                                Label { text: uiData.teensy_loop_time + " µs" }
+                                Label { text: "Loop Counter:"; font.bold: true }
+                                Label { text: uiData.teensy_loop_time_counter }
+                            }
+                        }
+
+                        // Rail Status Section
+                        GroupBox {
+                            title: "Rail Status"
+                            Layout.fillWidth: true
+
+                            GridLayout {
+                                columns: 6
+                                rowSpacing: 10
+                                columnSpacing: 20
+                                Layout.fillWidth: true
+
+                                Label { text: "Top Rail"; font.bold: true; Layout.columnSpan: 6 }
+                                Label { text: "Position:" }
+                                Label { text: uiData.top_rail_position+ " m" }
+                                Label { text: "Speed:" }
+                                Label { text: uiData.top_rail_speed + " m/s" }
+                                Label { text: "Current:" }
+                                Label { text: uiData.top_rail_current + " A" }
+
+                                Label { text: "Arm Rail"; font.bold: true; Layout.columnSpan: 6 }
+                                Label { text: "Position:" }
+                                Label { text: uiData.arm_rail_position + " m" }
+                                Label { text: "Speed:" }
+                                Label { text: uiData.arm_rail_speed + " m/s" }
+                                Label { text: "Current:" }
+                                Label { text: uiData.arm_rail_current + " A" }
+                            }
+                        }
+
+                        // Propeller Status Section
+                        GroupBox {
+                            title: "Propeller Status"
+                            Layout.fillWidth: true
+
+                            GridLayout {
+                                columns: 4
+                                rowSpacing: 10
+                                columnSpacing: 20
+                                Layout.fillWidth: true
+
+                                Label { text: "Left Propeller"; font.bold: true; Layout.columnSpan: 2 }
+                                Label { text: "Right Propeller"; font.bold: true; Layout.columnSpan: 2 }
+
+                                Label { text: "Position:" }
+                                Label { text: uiData.left_prop_position + "°" }
+                                Label { text: "Position:" }
+                                Label { text: uiData.right_prop_position + "°" }
+
+                                Label { text: "PWM:" }
+                                Label { text: uiData.left_prop_pwm }
+                                Label { text: "PWM:" }
+                                Label { text: uiData.right_prop_pwm }
+                            }
+                        }
+
+                        // IMU Status Section
+                        GroupBox {
+                            title: "IMU Status"
+                            Layout.fillWidth: true
+
+                            GridLayout {
+                                columns: 6
+                                rowSpacing: 10
+                                columnSpacing: 20
+                                Layout.fillWidth: true
+
+                                Label { text: "Linear Acceleration"; font.bold: true; Layout.columnSpan: 6 }
+                                Label { text: "X:" }
+                                Label { text: uiData.teensy_imu_acc_x+ " m/s²" }
+                                Label { text: "Y:" }
+                                Label { text: uiData.teensy_imu_acc_y + " m/s²" }
+                                Label { text: "Z:" }
+                                Label { text: uiData.teensy_imu_acc_z + " m/s²" }
+
+                                Label { text: "Angular Velocity"; font.bold: true; Layout.columnSpan: 6 }
+                                Label { text: "X:" }
+                                Label { text: uiData.teensy_imu_angular_acc_x + " rad/s" }
+                                Label { text: "Y:" }
+                                Label { text: uiData.teensy_imu_angular_acc_y + " rad/s" }
+                                Label { text: "Z:" }
+                                Label { text: uiData.teensy_imu_angular_acc_z + " rad/s" }
+
+                                // Label { text: "Orientation"; font.bold: true; Layout.columnSpan: 6 }
+                                // Label { text: "X:" }
+                                // Label { text: uiData.orientation.x.toFixed(3) }
+                                // Label { text: "Y:" }
+                                // Label { text: uiData.orientation.y.toFixed(3) }
+                                // Label { text: "Z:" }
+                                // Label { text: uiData.orientation.z.toFixed(3) }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Right Side: Steam Deck Input Status
+        Rectangle {
+            Layout.preferredWidth: parent.width / 4
             Layout.fillHeight: true
             color: "#FFFFFF"
             radius: 10
@@ -121,7 +272,6 @@ Rectangle {
                 // Control Mapping Section
                  GroupBox {
                     title: "Control Mapping"
-                    Layout.fillWidth: true
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -138,7 +288,6 @@ Rectangle {
 
                             ComboBox {
                                 id: leftJoystickMapping
-                                Layout.fillWidth: true
                                 model: getAvailableOptions(true)
                                 currentIndex: model.indexOf(leftCurrentControl)
                                 
@@ -166,7 +315,6 @@ Rectangle {
 
                             ComboBox {
                                 id: rightJoystickMapping
-                                Layout.fillWidth: true
                                 model: getAvailableOptions(false)
                                 currentIndex: model.indexOf(rightCurrentControl)
                                 
@@ -279,11 +427,24 @@ Rectangle {
                         color: uiData.menu_pressed ? "green" : "gray"
                     }
 
+                       // Triggers
+                    Label { text: "Left Trigger:"; font.bold: true }
+                    Label { text: uiData.left_trigger }
+
                     // IMU Data
-                    Label { text: "IMU:"; font.bold: true }
-                    Label { text: "Pitch: " + uiData.imu_pitch + "°, Roll: " + uiData.imu_roll + "°, Yaw: " + uiData.imu_yaw + "°" }
+                    Label { text: "IMU Pitch:"; font.bold: true }
+                    Label { text: uiData.imu_pitch + "°" }
+
+                    Label { text: "IMU Roll:"; font.bold: true }
+                    Label { text: uiData.imu_roll + "°" }
+
+                    Label { text: "IMU Yaw:"; font.bold: true }
+                    Label { text: uiData.imu_yaw + "°" }
+
                 }
             }
         }
+
+        
     }
 }

@@ -12,10 +12,10 @@ import yaml
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
-from std_msgs.msg import Float64, Bool
+from std_msgs.msg import Float64, Bool, Float32, Int32
 from sensor_msgs.msg import LaserScan
 from cv_bridge import CvBridge
-from towngas_interfaces.msg import WinchStatus, WheelStatus, SteamDeckInput
+from towngas_interfaces.msg import WinchStatus, WheelStatus, SteamDeckInput, TeensyStatus
 
 from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QThread
 from PySide6.QtGui import QImage, QPixmap
@@ -100,7 +100,41 @@ class UIDataModel(QObject):
     buttonL1Changed = Signal(bool)
     buttonR1Changed = Signal(bool)
     buttonMenuChanged = Signal(bool)
+    imuPitchChanged = Signal(int)
+    imuRollChanged = Signal(int)
+    imuYawChanged = Signal(int)
 
+    displayMessageChanged = Signal(str)
+
+    # Teensy Properties
+    topRailPositionChanged = Signal(str)
+    topRailSpeedChanged = Signal(str)
+    topRailCurrentChanged = Signal(str)
+    armRailPositionChanged = Signal(str)
+    armRailSpeedChanged = Signal(str)
+    armRailCurrentChanged = Signal(str)
+
+    teensyVoltageChanged = Signal(str)
+    teensyTemperatureChanged = Signal(str)
+    teensyCurrentChanged = Signal(str)
+    teensyRunTimeChanged = Signal(str)
+    teensyLoopTimeChanged = Signal(str)
+    teensyLoopTimeCounterChanged = Signal(str)
+
+    leftPropPosiionChanged = Signal(str)
+    leftPropPWMChanged = Signal(str)
+    rightPropPositionChanged = Signal(str)
+    rightPropPWMChanged = Signal(str)
+
+    teeensyImuAccXChanged = Signal(str)
+    teeensyImuAccYChanged = Signal(str)
+    teeensyImuAccZChanged = Signal(str)
+    teeensyImuAngularAccXChanged = Signal(str)
+    teeensyImuAngularAccYChanged = Signal(str)
+    teeensyImuAngularAccZChanged = Signal(str)
+    teensyImuPitchChanged = Signal(str)
+    teensyImuRollChanged = Signal(str)
+    teensyImuYawChanged = Signal(str)
     
     def __init__(self):
         super().__init__()
@@ -149,10 +183,49 @@ class UIDataModel(QObject):
                 'l1': False,
                 'r1': False,
                 'menu': False
+            },
+            'imu': {
+                'pitch': 0,
+                'roll': 0,
+                'yaw': 0
             }
         }
 
-    # Winch Properties
+        self._display_message = ""
+        self.winch_enabled = False
+
+        self._teensy_data = {
+            'top_rail_position': '0.00',
+            'top_rail_speed': '0.00',
+            'top_rail_current': '0.00',
+            'arm_rail_position': '0.00',
+            'arm_rail_speed': '0.00',
+            'arm_rail_current': '0.00',
+            'voltage': '0.00',
+            'temperature': '0.00',
+            'current': '0.00',
+            'run_time': '0.00',
+            'loop_time': '0.00',
+            'loop_time_counter': '0.00',
+            'left_prop_position': '0.00',
+            'left_prop_pwm': '0.00',
+            'right_prop_position': '0.00',
+            'right_prop_pwm': '0.00',
+            'imu_acc_x': '0.00',
+            'imu_acc_y': '0.00',
+            'imu_acc_z': '0.00',
+            'imu_angular_acc_x': '0.00',
+            'imu_angular_acc_y': '0.00',
+            'imu_angular_acc_z': '0.00',
+            'imu_pitch': '0.00',
+            'imu_roll': '0.00',
+            'imu_yaw': '0.00'
+        }
+
+    def winch_enable(self):
+        return self._winch_data.get('brake', False)
+
+    ## Winch Properties
     @Property(str, notify=winchLengthChanged)
     def winch_length(self):
         return self._winch_data['length']
@@ -173,7 +246,6 @@ class UIDataModel(QObject):
             self._winch_data['available'] = value
             self.winchAvailableChanged.emit(value)
 
-    # Similar properties for other winch attributes...
     @Property(str, notify=winchSpeedChanged)
     def winch_speed(self):
         return self._winch_data['speed']
@@ -437,7 +509,295 @@ class UIDataModel(QObject):
             self._input_state['buttons']['menu'] = value
             self.buttonMenuChanged.emit(value)
 
+    @Property(int, notify=imuPitchChanged)
+    def imu_pitch(self):
+        return self._input_state['imu']['pitch']
     
+    @imu_pitch.setter
+    def imu_pitch(self, value):
+        if self._input_state['imu']['pitch'] != value:
+            self._input_state['imu']['pitch'] = value
+            self.imuPitchChanged.emit(value)
+
+    @Property(int, notify=imuRollChanged)
+    def imu_roll(self):
+        return self._input_state['imu']['roll']
+    
+    @imu_roll.setter
+    def imu_roll(self, value):
+        if self._input_state['imu']['roll'] != value:
+            self._input_state['imu']['roll'] = value
+            self.imuRollChanged.emit(value)
+
+    @Property(int, notify=imuYawChanged)
+    def imu_yaw(self):
+        return self._input_state['imu']['yaw']
+    
+    @imu_yaw.setter
+    def imu_yaw(self, value):
+        if self._input_state['imu']['yaw'] != value:
+            self._input_state['imu']['yaw'] = value
+            self.imuYawChanged.emit(value)
+
+    @Property(str, notify=displayMessageChanged)
+    def display_message(self):
+        return self._display_message
+    
+    @display_message.setter
+    def display_message(self, value):
+        if self._display_message != value:
+            self._display_message = value
+            self.displayMessageChanged.emit(value)
+
+    @Property(str, notify=topRailPositionChanged)
+    def top_rail_position(self):
+        return self._teensy_data['top_rail_position']
+    
+    @top_rail_position.setter
+    def top_rail_position(self, value):
+        if self._teensy_data['top_rail_position'] != value:
+            self._teensy_data['top_rail_position'] = value
+            self.topRailPositionChanged.emit(value)
+
+    @Property(str, notify=topRailSpeedChanged)
+    def top_rail_speed(self):
+        return self._teensy_data['top_rail_speed']
+    
+    @top_rail_speed.setter
+    def top_rail_speed(self, value):
+        if self._teensy_data['top_rail_speed'] != value:
+            self._teensy_data['top_rail_speed'] = value
+            self.topRailSpeedChanged.emit(value)
+
+    @Property(str, notify=topRailCurrentChanged)
+    def top_rail_current(self):
+        return self._teensy_data['top_rail_current']
+    
+    @top_rail_current.setter
+    def top_rail_current(self, value):
+        if self._teensy_data['top_rail_current'] != value:
+            self._teensy_data['top_rail_current'] = value
+            self.topRailCurrentChanged.emit(value)
+
+    @Property(str, notify=armRailPositionChanged)
+    def arm_rail_position(self):
+        return self._teensy_data['arm_rail_position']
+    
+    @arm_rail_position.setter
+    def arm_rail_position(self, value):
+        if self._teensy_data['arm_rail_position'] != value:
+            self._teensy_data['arm_rail_position'] = value
+            self.armRailPositionChanged.emit(value)
+
+    @Property(str, notify=armRailSpeedChanged)
+    def arm_rail_speed(self):
+        return self._teensy_data['arm_rail_speed']
+    
+    @arm_rail_speed.setter
+    def arm_rail_speed(self, value):
+        if self._teensy_data['arm_rail_speed'] != value:
+            self._teensy_data['arm_rail_speed'] = value
+            self.armRailSpeedChanged.emit(value)
+
+    @Property(str, notify=armRailCurrentChanged)
+    def arm_rail_current(self):
+        return self._teensy_data['arm_rail_current']
+    
+    @arm_rail_current.setter
+    def arm_rail_current(self, value):
+        if self._teensy_data['arm_rail_current'] != value:
+            self._teensy_data['arm_rail_current'] = value
+            self.armRailCurrentChanged.emit(value)
+
+    @Property(str, notify=teensyVoltageChanged)
+    def teensy_voltage(self):
+        return self._teensy_data['voltage']
+    
+    @teensy_voltage.setter
+    def teensy_voltage(self, value):
+        if self._teensy_data['voltage'] != value:
+            self._teensy_data['voltage'] = value
+            self.teensyVoltageChanged.emit(value)
+
+    @Property(str, notify=teensyTemperatureChanged)
+    def teensy_temperature(self):
+        return self._teensy_data['temperature']
+    
+    @teensy_temperature.setter
+    def teensy_temperature(self, value):
+        if self._teensy_data['temperature'] != value:
+            self._teensy_data['temperature'] = value
+            self.teensyTemperatureChanged.emit(value)
+
+    @Property(str, notify=teensyCurrentChanged)
+    def teensy_current(self):
+        return self._teensy_data['current']
+    
+    @teensy_current.setter
+    def teensy_current(self, value):
+        if self._teensy_data['current'] != value:
+            self._teensy_data['current'] = value
+            self.teensyCurrentChanged.emit(value)
+
+    @Property(str, notify=teensyRunTimeChanged)
+    def teensy_run_time(self):
+        return self._teensy_data['run_time']
+    
+    @teensy_run_time.setter
+    def teensy_run_time(self, value):
+        if self._teensy_data['run_time'] != value:
+            self._teensy_data['run_time'] = value
+            self.teensyRunTimeChanged.emit(value)
+
+    @Property(str, notify=teensyLoopTimeChanged)
+    def teensy_loop_time(self):
+        return self._teensy_data['loop_time']
+    
+    @teensy_loop_time.setter
+    def teensy_loop_time(self, value):
+        if self._teensy_data['loop_time'] != value:
+            self._teensy_data['loop_time'] = value
+            self.teensyLoopTimeChanged.emit(value)
+
+    @Property(str, notify=teensyLoopTimeCounterChanged)
+    def teensy_loop_time_counter(self):
+        return self._teensy_data['loop_time_counter']
+    
+    @teensy_loop_time_counter.setter
+    def teensy_loop_time_counter(self, value):
+        if self._teensy_data['loop_time_counter'] != value:
+            self._teensy_data['loop_time_counter'] = value
+            self.teensyLoopTimeCounterChanged.emit(value)
+
+    @Property(str, notify=leftPropPosiionChanged)
+    def left_prop_position(self):
+        return self._teensy_data['left_prop_position']
+    
+    @left_prop_position.setter
+    def left_prop_position(self, value):
+        if self._teensy_data['left_prop_position'] != value:
+            self._teensy_data['left_prop_position'] = value
+            self.leftPropPosiionChanged.emit(value)
+
+    @Property(str, notify=leftPropPWMChanged)
+    def left_prop_pwm(self):
+        return self._teensy_data['left_prop_pwm']
+    
+    @left_prop_pwm.setter
+    def left_prop_pwm(self, value):
+        if self._teensy_data['left_prop_pwm'] != value:
+            self._teensy_data['left_prop_pwm'] = value
+            self.leftPropPWMChanged.emit(value)
+
+    @Property(str, notify=rightPropPositionChanged)
+    def right_prop_position(self):
+        return self._teensy_data['right_prop_position']
+    
+    @right_prop_position.setter
+    def right_prop_position(self, value):
+        if self._teensy_data['right_prop_position'] != value:
+            self._teensy_data['right_prop_position'] = value
+            self.rightPropPositionChanged.emit(value)
+
+    @Property(str, notify=rightPropPWMChanged)
+    def right_prop_pwm(self):
+        return self._teensy_data['right_prop_pwm']
+    
+    @right_prop_pwm.setter
+    def right_prop_pwm(self, value):
+        if self._teensy_data['right_prop_pwm'] != value:
+            self._teensy_data['right_prop_pwm'] = value
+            self.rightPropPWMChanged.emit(value)
+
+    @Property(str, notify=teeensyImuAccXChanged)
+    def teensy_imu_acc_x(self):
+        return self._teensy_data['imu_acc_x']
+    
+    @teensy_imu_acc_x.setter
+    def teensy_imu_acc_x(self, value):
+        if self._teensy_data['imu_acc_x'] != value:
+            self._teensy_data['imu_acc_x'] = value
+            self.teeensyImuAccXChanged.emit(value)
+
+    @Property(str, notify=teeensyImuAccYChanged)
+    def teensy_imu_acc_y(self):
+        return self._teensy_data['imu_acc_y']
+    
+    @teensy_imu_acc_y.setter
+    def teensy_imu_acc_y(self, value):
+        if self._teensy_data['imu_acc_y'] != value:
+            self._teensy_data['imu_acc_y'] = value
+            self.teeensyImuAccYChanged.emit(value)
+
+    @Property(str, notify=teeensyImuAccZChanged)
+    def teensy_imu_acc_z(self):
+        return self._teensy_data['imu_acc_z']
+    
+    @teensy_imu_acc_z.setter
+    def teensy_imu_acc_z(self, value):
+        if self._teensy_data['imu_acc_z'] != value:
+            self._teensy_data['imu_acc_z'] = value
+            self.teeensyImuAccZChanged.emit(value)
+
+    @Property(str, notify=teeensyImuAngularAccXChanged)
+    def teensy_imu_angular_acc_x(self):
+        return self._teensy_data['imu_angular_acc_x']
+    
+    @teensy_imu_angular_acc_x.setter
+    def teensy_imu_angular_acc_x(self, value):
+        if self._teensy_data['imu_angular_acc_x'] != value:
+            self._teensy_data['imu_angular_acc_x'] = value
+            self.teeensyImuAngularAccXChanged.emit(value)
+
+    @Property(str, notify=teeensyImuAngularAccYChanged)
+    def teensy_imu_angular_acc_y(self):
+        return self._teensy_data['imu_angular_acc_y']
+    
+    @teensy_imu_angular_acc_y.setter
+    def teensy_imu_angular_acc_y(self, value):
+        if self._teensy_data['imu_angular_acc_y'] != value:
+            self._teensy_data['imu_angular_acc_y'] = value
+            self.teeensyImuAngularAccYChanged.emit(value)
+
+    @Property(str, notify=teeensyImuAngularAccZChanged)
+    def teensy_imu_angular_acc_z(self):
+        return self._teensy_data['imu_angular_acc_z']
+    
+    @teensy_imu_angular_acc_z.setter
+    def teensy_imu_angular_acc_z(self, value):
+        if self._teensy_data['imu_angular_acc_z'] != value:
+            self._teensy_data['imu_angular_acc_z'] = value
+            self.teeensyImuAngularAccZChanged.emit(value)
+
+    @Property(str, notify=teensyImuPitchChanged)
+    def teensy_imu_pitch(self):
+        return self._teensy_data['imu_pitch']
+    
+    @teensy_imu_pitch.setter
+    def teensy_imu_pitch(self, value):
+        if self._teensy_data['imu_pitch'] != value:
+            self._teensy_data['imu_pitch'] = value
+            self.teensyImuPitchChanged.emit(value)
+
+    @Property(str, notify=teensyImuRollChanged)
+    def teensy_imu_roll(self):
+        return self._teensy_data['imu_roll']
+    
+    @teensy_imu_roll.setter
+    def teensy_imu_roll(self, value):
+        if self._teensy_data['imu_roll'] != value:
+            self._teensy_data['imu_roll'] = value
+            self.teensyImuRollChanged.emit(value)
+
+    @Property(str, notify=teensyImuYawChanged)
+    def teensy_imu_yaw(self):
+        return self._teensy_data['imu_yaw']
+    
+    @teensy_imu_yaw.setter
+    def teensy_imu_yaw(self, value):
+        if self._teensy_data['imu_yaw'] != value:
+            self._teensy_data['imu_yaw'] = value
+            self.teensyImuYawChanged.emit(value)
 
 #############################################
 ### Video Streaming
@@ -505,6 +865,7 @@ class WinchController(MotorControllerBase):
         self._max_speed = max_speed
         self._setup_publishers()
         self._status_callbacks = []
+        self._status = {}
 
     def _setup_publishers(self):
         self._speed_pub = self._node.create_publisher(Float64, 'winch/cmd_speed', 1)
@@ -536,6 +897,51 @@ class WinchController(MotorControllerBase):
 
     def get_status(self) -> Dict:
         return self._status
+    
+#############################################
+### Teensy Monitor
+#############################################
+
+class TeensyMonitor:
+    def __init__(self, node: Node):
+        self._node = node
+        self._status = {}
+
+    def _status_callback(self, msg: TeensyStatus):
+        try:
+            self._status = {
+                'top_rail_position': f"{msg.top_rail_position:.2f}",
+                'top_rail_speed': f"{msg.top_rail_speed:.2f}",
+                'top_rail_current': f"{msg.top_rail_current:.2f}",
+                'arm_rail_position': f"{msg.arm_rail_position:.2f}",
+                'arm_rail_speed': f"{msg.arm_rail_speed:.2f}",
+                'arm_rail_current': f"{msg.arm_rail_current:.2f}",
+                'voltage': f"{msg.voltage:.2f}",
+                'temperature': f"{msg.temperature:.1f}",
+                'current': f"{msg.current:.2f}",
+                'run_time': f"{msg.runtime:.2f}",
+                'loop_time': f"{msg.looptime:.2f}",
+                'loop_time_counter': f"{msg.looptime_counter:.2f}",
+                'left_prop_position': f"{msg.left_prop_position:.2f}",
+                'left_prop_pwm': f"{msg.left_prop_pwm:.2f}",
+                'right_prop_position': f"{msg.right_prop_position:.2f}",
+                'right_prop_pwm': f"{msg.right_prop_pwm:.2f}",
+                'imu_acc_x': f"{msg.linear_acceleration.x:.2f}",
+                'imu_acc_y': f"{msg.linear_acceleration.y:.2f}",
+                'imu_acc_z': f"{msg.linear_acceleration.z:.2f}",
+                'imu_angular_acc_x': f"{msg.angular_velocity.x:.2f}",
+                'imu_angular_acc_y': f"{msg.angular_velocity.y:.2f}",
+                'imu_angular_acc_z': f"{msg.angular_velocity.z:.2f}",
+                'imu_pitch': f"{msg.orientation.x:.2f}",
+                'imu_roll': f"{msg.orientation.y:.2f}",
+                'imu_yaw': f"{msg.orientation.z:.2f}"
+            }
+        except Exception as e:
+            print(f"Error processing Teensy status: {e}")
+
+    def get_status(self) -> Dict:
+        return self._status
+    
 
 #############################################
 ### Input Handling
@@ -593,6 +999,11 @@ class SteamDeckHandler:
                 'l1': msg.l1,
                 'r1': msg.r1,
                 'menu': msg.menu
+            },
+            'imu': {
+                'pitch': msg.imu_pitch,
+                'roll': msg.imu_roll,
+                'yaw': msg.imu_yaw
             }
         }
         
@@ -682,6 +1093,7 @@ class RobotController(Node, QObject):
         self.image_provider = ImageProvider(config.video_width, config.video_height)
         self.video_stream = VideoStream(config.video_port)
         self.winch_controller = WinchController(self, config.max_winch_speed)
+        self.teensyMonitor = TeensyMonitor(self)
         
         self.input_manager = InputManager()
         self.steam_deck = SteamDeckHandler(config.joystick_deadzone)
@@ -702,46 +1114,115 @@ class RobotController(Node, QObject):
         """Update UI elements with latest data"""
         # Update Winch UI
         winch_status = self.winch_controller.get_status()
-        self.ui_data_model.winch_length = winch_status['cable_length']
-        self.ui_data_model.winch_speed = winch_status['cable_speed']
-        self.ui_data_model.winch_torque = winch_status['winch_torque']
-        self.ui_data_model.winch_temperature = winch_status['motor_temperature']
-        self.ui_data_model.winch_voltage = winch_status['motor_voltage']
-        self.ui_data_model.winch_brake = winch_status['motor_brake']
-        self.ui_data_model.winch_available = winch_status['available']
+        self.ui_data_model.winch_length = winch_status.get('cable_length', '0.00')
+        self.ui_data_model.winch_speed = winch_status.get('cable_speed', '0.00')
+        self.ui_data_model.winch_current = winch_status.get('winch_torque', '0.00')
+        self.ui_data_model.winch_available = winch_status.get('available', False)
+        self.ui_data_model.winch_torque = winch_status.get('winch_torque', '0.00')
+        self.ui_data_model.winch_temperature = winch_status.get('motor_temperature', '0.00')
+        self.ui_data_model.winch_voltage = winch_status.get('motor_voltage', '0.00')
+        self.ui_data_model.winch_brake = winch_status.get('motor_brake', False)
 
         # Update Steam Deck Controls
         input_state = self.steam_deck.get_current_state()
-        self.ui_data_model.left_joystick_x = input_state['left_stick']['x']
-        self.ui_data_model.left_joystick_y = input_state['left_stick']['y']
-        self.ui_data_model.right_joystick_x = input_state['right_stick']['x']
-        self.ui_data_model.right_joystick_y = input_state['right_stick']['y']
-        self.ui_data_model.left_trigger = input_state['triggers']['left']
-        self.ui_data_model.right_trigger = input_state['triggers']['right']
-        self.ui_data_model.dpad_up = input_state['dpad']['up']
-        self.ui_data_model.dpad_down = input_state['dpad']['down']
-        self.ui_data_model.dpad_left = input_state['dpad']['left']
-        self.ui_data_model.dpad_right = input_state['dpad']['right']
-        self.ui_data_model.button_a = input_state['buttons']['a']
-        self.ui_data_model.button_b = input_state['buttons']['b']
-        self.ui_data_model.button_x = input_state['buttons']['x']
-        self.ui_data_model.button_y = input_state['buttons']['y']
-        self.ui_data_model.button_l1 = input_state['buttons']['l1']
-        self.ui_data_model.button_r1 = input_state['buttons']['r1']
-        self.ui_data_model.button_menu = input_state['buttons']['menu']
+        self.ui_data_model.left_joystick_x = input_state.get('left_stick', {}).get('x', 0)
+        self.ui_data_model.left_joystick_y = input_state.get('left_stick', {}).get('y', 0)
+        self.ui_data_model.right_joystick_x = input_state.get('right_stick', {}).get('x', 0)
+        self.ui_data_model.right_joystick_y = input_state.get('right_stick', {}).get('y', 0)
+        self.ui_data_model.left_trigger = input_state.get('triggers', {}).get('left', 0)
+        self.ui_data_model.right_trigger = input_state.get('triggers', {}).get('right', 0)
+        self.ui_data_model.dpad_up = input_state.get('dpad', {}).get('up', False)
+        self.ui_data_model.dpad_down = input_state.get('dpad', {}).get('down', False)
+        self.ui_data_model.dpad_left = input_state.get('dpad', {}).get('left', False)
+        self.ui_data_model.dpad_right = input_state.get('dpad', {}).get('right', False)
+        self.ui_data_model.button_a = input_state.get('buttons', {}).get('a', False)
+        self.ui_data_model.button_b = input_state.get('buttons', {}).get('b', False)
+        self.ui_data_model.button_x = input_state.get('buttons', {}).get('x', False)
+        self.ui_data_model.button_y = input_state.get('buttons', {}).get('y', False)
+        self.ui_data_model.button_l1 = input_state.get('buttons', {}).get('l1', False)
+        self.ui_data_model.button_r1 = input_state.get('buttons', {}).get('r1', False)
+        self.ui_data_model.button_menu = input_state.get('buttons', {}).get('menu', False)
+        self.ui_data_model.imu_pitch = input_state.get('imu', {}).get('pitch', 0)
+        self.ui_data_model.imu_roll = input_state.get('imu', {}).get('roll', 0)
+        self.ui_data_model.imu_yaw = input_state.get('imu', {}).get('yaw', 0)
+
+        self.ui_data_model.display_message = self.ui_data_model.display_message
+
+        teensy_status = self.teensyMonitor.get_status()
+        self.ui_data_model.top_rail_position = teensy_status.get('top_rail_position', '0.00')
+        self.ui_data_model.top_rail_speed = teensy_status.get('top_rail_speed', '0.00')
+        self.ui_data_model.top_rail_current = teensy_status.get('top_rail_current', '0.00')
+        self.ui_data_model.arm_rail_position = teensy_status.get('arm_rail_position', '0.00')
+        self.ui_data_model.arm_rail_speed = teensy_status.get('arm_rail_speed', '0.00')
+        self.ui_data_model.arm_rail_current = teensy_status.get('arm_rail_current', '0.00')
+        self.ui_data_model.teensy_voltage = teensy_status.get('voltage', '0.00')
+        self.ui_data_model.teensy_temperature = teensy_status.get('temperature', '0.00')
+        self.ui_data_model.teensy_current = teensy_status.get('current', '0.00')
+        self.ui_data_model.teensy_run_time = teensy_status.get('run_time', '0.00')
+        self.ui_data_model.teensy_loop_time = teensy_status.get('loop_time', '0.00')
+        self.ui_data_model.teensy_loop_time_counter = teensy_status.get('loop_time_counter', '0.00')
+        self.ui_data_model.left_prop_position = teensy_status.get('left_prop_position', '0.00')
+        self.ui_data_model.left_prop_pwm = teensy_status.get('left_prop_pwm', '0.00')
+        self.ui_data_model.right_prop_position = teensy_status.get('right_prop_position', '0.00')
+        self.ui_data_model.right_prop_pwm = teensy_status.get('right_prop_pwm', '0.00')
+        self.ui_data_model.teensy_imu_acc_x = teensy_status.get('imu_acc_x', '0.00')
+        self.ui_data_model.teensy_imu_acc_y = teensy_status.get('imu_acc_y', '0.00')
+        self.ui_data_model.teensy_imu_acc_z = teensy_status.get('imu_acc_z', '0.00')
+        self.ui_data_model.teensy_imu_angular_acc_x = teensy_status.get('imu_angular_acc_x', '0.00')
+        self.ui_data_model.teensy_imu_angular_acc_y = teensy_status.get('imu_angular_acc_y', '0.00')
+        self.ui_data_model.teensy_imu_angular_acc_z = teensy_status.get('imu_angular_acc_z', '0.00')
+        self.ui_data_model.teensy_imu_pitch = teensy_status.get('imu_pitch', '0.00')
+        self.ui_data_model.teensy_imu_roll = teensy_status.get('imu_roll', '0.00')
+        self.ui_data_model.teensy_imu_yaw = teensy_status.get('imu_yaw', '0.00')
 
         # Process control inputs
         self._process_control_input(input_state)
-        
 
+    def display_message(self, message: str):
+        self.ui_data_model.display_message = message
+        
     def _process_control_input(self, input_state: Dict):
         """Process control inputs and update UI accordingly"""
         # Process joystick inputs
+        if self.ui_data_model.left_joystick_control == "EF arm":
+            command_speed = input_state['left_stick']['y'] * 1000 / 32768
+            msg = Float32(data=command_speed)
+            self.ef_move_arm_rail_speed_pub.publish(msg)
+            self.display_message(f"Sending EF Arm Rail Speed: {command_speed:.2f}")
+
+        if self.ui_data_model.left_joystick_control == "EF prop joint":
+            command_angle = input_state['left_stick']['x'] * 60.0 / 32768.0
+            print(f"Command Angle: {command_angle}")
+            left_msg = Float32(data=command_angle)
+            right_msg = Float32(data=-command_angle)
+            self.prop_left_joint_pub.publish(right_msg)
+            self.prop_right_joint_pub.publish(right_msg)
+            # self.display_message(f"Sending EF Prop Speed: {command_speed:.2f}, Angle: {command_angle:.2f}")
+                
+
         if self.ui_data_model.right_joystick_control == "Winch Speed":
-            print(f"Right Joystick Y: {input_state['right_stick']['y']}")
-            if self.ui_data_model.winch_available and self.ui_data_model.winch_enabled:
+            if self.ui_data_model.winch_available and self.winch_controller.get_status().get('available', False):
                 command_speed = input_state['right_stick']['y'] * self.config.max_winch_speed / 32768
                 self.winch_controller.command_speed(command_speed)
+                self.display_message(f"Sending Winch Speed: {command_speed:.2f}")
+            else:
+                self.display_message("Winch not available")
+        elif self.ui_data_model.right_joystick_control == "EF top rail":
+                command_speed = input_state['right_stick']['y'] * 1000 / 32768
+                msg = Float32(data=command_speed)
+                self.ef_move_top_rail_speed_pub.publish(msg)
+                self.display_message(f"Sending EF Top Rail Speed: {command_speed:.2f}")
+        elif self.ui_data_model.right_joystick_control == "EF prop pwm":
+            if input_state['right_stick']['y'] > 0:
+                command_speed = input_state['right_stick']['y'] * 600 / 32768
+                command_speed = int(command_speed) + 1000
+                msg = Int32(data=command_speed)
+                self.prop_left_pwm_pub.publish(msg)
+                self.prop_right_pwm_pub.publish(msg)
+
+        
+
+            
 
     def _setup_subscribers(self):
         self.create_subscription(
@@ -765,9 +1246,22 @@ class RobotController(Node, QObject):
             1
         )
 
+        self.create_subscription(
+            TeensyStatus,
+            'teensy/status',
+            self.teensyMonitor._status_callback,
+            1
+        )
+
     def _setup_publishers(self):
         self.winch_enable_pub = self.create_publisher(Bool, 'winch/enable', 1)
         self.winch_move_speed_pub = self.create_publisher(Float64, 'winch/cmd_speed', 1)
+        self.ef_move_top_rail_speed_pub = self.create_publisher(Float32, 'top_rail/speed/cmd', 1)
+        self.ef_move_arm_rail_speed_pub = self.create_publisher(Float32, 'arm_rail/speed/cmd', 1)
+        self.prop_left_pwm_pub = self.create_publisher(Int32, 'prop/left/pwm/cmd', 1)
+        self.prop_right_pwm_pub = self.create_publisher(Int32, 'prop/right/pwm/cmd', 1)
+        self.prop_left_joint_pub = self.create_publisher(Float32, 'prop/left/joint/cmd', 1)
+        self.prop_right_joint_pub = self.create_publisher(Float32, 'prop/right/joint/cmd', 1)
 
     def _on_steam_deck_input(self, msg: SteamDeckInput):
         changes = self.steam_deck.process_input(msg)
@@ -832,6 +1326,7 @@ class RobotController(Node, QObject):
         """Set right joystick control mode"""
         self.ui_data_model.right_joystick_control = control
         self.get_logger().info(f'Right joystick control set to: {control}')
+        self.display_message(f'Right joystick control set to: {control}')
 
     @Slot()
     def terminateNodes(self):
