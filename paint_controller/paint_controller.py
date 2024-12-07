@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Dict, Optional, List, Any, Callable
 import yaml
+import math
 
 import rclpy
 from rclpy.node import Node
@@ -36,9 +37,9 @@ from gi.repository import Gst, GstApp
 class RobotConfig:
     """Robot configuration parameters"""
     video_port: int = 5000
-    update_rate: float = 100.0  # Hz
+    update_rate: float = 30.0  # Hz
     watchdog_timeout: float = 1.0  # seconds
-    joystick_deadzone: float = 2400.0
+    joystick_deadzone: float = 0.1
     max_winch_speed: float = 1000.0
     video_width: int = 640
     video_height: int = 480
@@ -135,6 +136,9 @@ class UIDataModel(QObject):
     teensyImuPitchChanged = Signal(str)
     teensyImuRollChanged = Signal(str)
     teensyImuYawChanged = Signal(str)
+
+    teensyRelay1Changed = Signal(bool)
+    teensyEnabledChanged = Signal(bool)
     
     def __init__(self):
         super().__init__()
@@ -146,7 +150,7 @@ class UIDataModel(QObject):
             'torque': '0.00',
             'temperature': '0.00',
             'voltage': '0.00',
-            'brake': False,
+            'brake': True,
             'enabled': False
         }
         
@@ -157,8 +161,6 @@ class UIDataModel(QObject):
             'right_current': '0.00',
             'available': False
         }
-
-        self.winch_enabled = False
         
         self._control_modes = {
             'left_joystick': 'None',
@@ -192,8 +194,10 @@ class UIDataModel(QObject):
         }
 
         self._display_message = ""
-        self.winch_enabled = False
+        self._winch_enabled = False
 
+        self._teensy_relay_enabled = False
+        self._teensy_enabled = False
         self._teensy_data = {
             'top_rail_position': '0.00',
             'top_rail_speed': '0.00',
@@ -222,10 +226,17 @@ class UIDataModel(QObject):
             'imu_yaw': '0.00'
         }
 
-    def winch_enable(self):
-        return self._winch_data.get('brake', False)
-
     ## Winch Properties
+    @Property(bool, notify=winchEnabledChanged)
+    def winch_enabled(self):
+        return self._winch_enabled
+    
+    @winch_enabled.setter
+    def winch_enabled(self, value):
+        if self._winch_enabled != value:
+            self._winch_enabled = value
+            self.winchEnabledChanged.emit(value)
+
     @Property(str, notify=winchLengthChanged)
     def winch_length(self):
         return self._winch_data['length']
@@ -548,6 +559,27 @@ class UIDataModel(QObject):
         if self._display_message != value:
             self._display_message = value
             self.displayMessageChanged.emit(value)
+
+    # Teensy Properties
+    @Property(bool, notify=teensyEnabledChanged)
+    def teensy_enabled(self):
+        return self._teensy_enabled
+    
+    @teensy_enabled.setter
+    def teensy_enabled(self, value):
+        if self._teensy_enabled != value:
+            self._teensy_enabled = value
+            self.teensyEnabledChanged.emit(value)
+
+    @Property(bool, notify=teensyRelay1Changed)
+    def teensy_relay_enabled(self):
+        return self._teensy_relay_enabled
+    
+    @teensy_relay_enabled.setter
+    def teensy_relay_enabled(self, value):
+        if self._teensy_relay_enabled != value:
+            self._teensy_relay_enabled = value
+            self.teensyRelay1Changed.emit(value)
 
     @Property(str, notify=topRailPositionChanged)
     def top_rail_position(self):
@@ -972,15 +1004,20 @@ class InputManager:
         self._callbacks[event_type].append(callback)
 
 class SteamDeckHandler:
-    def __init__(self, deadzone: float):
+    def __init__(self, deadzone: float, smoothing_factor: float = 0.1):
         self._deadzone = deadzone
+        self._smoothing_factor = max(0.0, min(1.0, smoothing_factor))  # Clamp between 0 and 1
         self._input_state = {}
         self._callbacks = {}
+        self._prev_stick_values = {
+            'left_stick': {'x': 0.0, 'y': 0.0},
+            'right_stick': {'x': 0.0, 'y': 0.0}
+        }
 
     def process_input(self, msg: SteamDeckInput):
         new_state = {
-            'left_stick': self._process_stick(msg.left_stick_x, msg.left_stick_y),
-            'right_stick': self._process_stick(msg.right_stick_x, msg.right_stick_y),
+            'left_stick': self._process_stick(msg.left_stick_x, msg.left_stick_y, 'left_stick'),
+            'right_stick': self._process_stick(msg.right_stick_x, msg.right_stick_y, 'right_stick'),
             'triggers': {
                 'left': msg.left_trigger,
                 'right': msg.right_trigger
@@ -1009,16 +1046,62 @@ class SteamDeckHandler:
         
         self._input_state = new_state
 
-    def _process_stick(self, x: float, y: float) -> Dict[str, float]:
-        magnitude = (x*x + y*y)**0.5
-        if magnitude < self._deadzone:
-            return {'x': 0, 'y': 0}
+    def _process_stick(self, x: float, y: float, stick_id: str) -> Dict[str, float]:
+        # Normalize inputs to -1.0 to 1.0 range
+        x = x / 32768.0
+        y = y / 32768.0
         
-        scale = (magnitude - self._deadzone) / (32768 - self._deadzone)
+        # Calculate magnitude and direction
+        magnitude = math.sqrt(x*x + y*y)
+        if magnitude < self._deadzone:
+            self._prev_stick_values[stick_id] = {'x': 0.0, 'y': 0.0}
+            return {'x': 0.0, 'y': 0.0}
+        
+        # Calculate normalized direction
+        if magnitude > 0:
+            normalized_x = x / magnitude
+            normalized_y = y / magnitude
+        else:
+            normalized_x = 0
+            normalized_y = 0
+        
+        # Apply deadzone scaling
+        scaled_magnitude = self._scale_deadzone(magnitude)
+        
+        # Apply the scaled magnitude back to the normalized direction
+        processed_x = normalized_x * scaled_magnitude
+        processed_y = normalized_y * scaled_magnitude
+        
+        # Apply smoothing
+        smoothed_x = self._apply_smoothing(processed_x, self._prev_stick_values[stick_id]['x'])
+        smoothed_y = self._apply_smoothing(processed_y, self._prev_stick_values[stick_id]['y'])
+        
+        # Store current values for next frame
+        self._prev_stick_values[stick_id] = {'x': smoothed_x, 'y': smoothed_y}
+        
         return {
-            'x': x,
-            'y': y
+            'x': smoothed_x * 32768,
+            'y': smoothed_y * 32768
         }
+
+    def _scale_deadzone(self, magnitude: float) -> float:
+        """
+        Scales the input magnitude accounting for deadzone.
+        Returns a value between 0 and 1.
+        """
+        if magnitude < self._deadzone:
+            return 0.0
+        
+        # Rescale the input from [deadzone, 1.0] to [0.0, 1.0]
+        scaled = (magnitude - self._deadzone) / (1.0 - self._deadzone)
+        return min(scaled, 1.0)  # Clamp to maximum of 1.0
+
+    def _apply_smoothing(self, current: float, previous: float) -> float:
+        """
+        Applies exponential smoothing to the input values.
+        smoothing_factor of 1.0 means no smoothing, 0.0 means maximum smoothing.
+        """
+        return current * self._smoothing_factor + previous * (1.0 - self._smoothing_factor)
 
     def _detect_changes(self, new_state: Dict) -> Dict[str, Any]:
         changes = {}
@@ -1121,7 +1204,7 @@ class RobotController(Node, QObject):
         self.ui_data_model.winch_torque = winch_status.get('winch_torque', '0.00')
         self.ui_data_model.winch_temperature = winch_status.get('motor_temperature', '0.00')
         self.ui_data_model.winch_voltage = winch_status.get('motor_voltage', '0.00')
-        self.ui_data_model.winch_brake = winch_status.get('motor_brake', False)
+        self.ui_data_model.winch_brake = winch_status.get('motor_brake', True)
 
         # Update Steam Deck Controls
         input_state = self.steam_deck.get_current_state()
@@ -1220,9 +1303,6 @@ class RobotController(Node, QObject):
                 self.prop_left_pwm_pub.publish(msg)
                 self.prop_right_pwm_pub.publish(msg)
 
-        
-
-            
 
     def _setup_subscribers(self):
         self.create_subscription(
@@ -1256,12 +1336,14 @@ class RobotController(Node, QObject):
     def _setup_publishers(self):
         self.winch_enable_pub = self.create_publisher(Bool, 'winch/enable', 1)
         self.winch_move_speed_pub = self.create_publisher(Float64, 'winch/cmd_speed', 1)
-        self.ef_move_top_rail_speed_pub = self.create_publisher(Float32, 'top_rail/speed/cmd', 1)
-        self.ef_move_arm_rail_speed_pub = self.create_publisher(Float32, 'arm_rail/speed/cmd', 1)
-        self.prop_left_pwm_pub = self.create_publisher(Int32, 'prop/left/pwm/cmd', 1)
-        self.prop_right_pwm_pub = self.create_publisher(Int32, 'prop/right/pwm/cmd', 1)
-        self.prop_left_joint_pub = self.create_publisher(Float32, 'prop/left/joint/cmd', 1)
-        self.prop_right_joint_pub = self.create_publisher(Float32, 'prop/right/joint/cmd', 1)
+        self.ef_move_top_rail_speed_pub = self.create_publisher(Float32, 'teensy/top_rail/speed/cmd', 1)
+        self.ef_move_arm_rail_speed_pub = self.create_publisher(Float32, 'teensy/arm_rail/speed/cmd', 1)
+        self.prop_left_pwm_pub = self.create_publisher(Int32, 'teensy/prop/left/pwm/cmd', 1)
+        self.prop_right_pwm_pub = self.create_publisher(Int32, 'teensy/prop/right/pwm/cmd', 1)
+        self.prop_left_joint_pub = self.create_publisher(Float32, 'teensy/prop/left/joint/cmd', 1)
+        self.prop_right_joint_pub = self.create_publisher(Float32, 'teensy/prop/right/joint/cmd', 1)
+        self.teensy_relay_pub = self.create_publisher(Bool, 'teensy/relay/cmd', 1)
+        self.teensy_enable_pub = self.create_publisher(Bool, 'teensy/enable/cmd', 1)
 
     def _on_steam_deck_input(self, msg: SteamDeckInput):
         changes = self.steam_deck.process_input(msg)
@@ -1307,6 +1389,15 @@ class RobotController(Node, QObject):
     #############################################
 
     @Slot(bool)
+    def setTeensyEnabled(self, enabled: bool):
+        """Enable/disable Teensy control"""
+        self.ui_data_model.teensy_enabled = enabled
+        msg = Bool()
+        msg.data = enabled
+        self.teensy_enable_pub.publish(msg)
+        self.get_logger().info(f'Teensy {"enabled" if enabled else "disabled"}')
+
+    @Slot(bool)
     def setWinchEnabled(self, enabled: bool):
         """Enable/disable winch control"""
         self.ui_data_model.winch_enabled = enabled
@@ -1314,6 +1405,15 @@ class RobotController(Node, QObject):
         msg.data = enabled
         self.winch_enable_pub.publish(msg)
         self.get_logger().info(f'Winch {"enabled" if enabled else "disabled"}')
+
+    @Slot(bool)
+    def setTeensyRelayEnabled(self, enabled: bool):
+        """Enable/disable Teensy relay"""
+        self.ui_data_model.teensy_relay_enabled = enabled
+        msg = Bool()
+        msg.data = enabled
+        self.teensy_relay_pub.publish(msg)
+        self.get_logger().info(f'Teensy relay {"enabled" if enabled else "disabled"}')
 
     @Slot(str)
     def setLeftJoystickControl(self, control: str):

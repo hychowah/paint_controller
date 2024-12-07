@@ -42,11 +42,22 @@ Rectangle {
                 anchors.margins: 15
                 spacing: 15
 
-                Label {
-                    text: "Winch Status"
-                    font.pixelSize: 24
-                    font.bold: true
-                    Layout.alignment: Qt.AlignTop
+                RowLayout {
+                    spacing: 10
+                    Label {
+                        text: "Winch Status"
+                        font.pixelSize: 24
+                        font.bold: true
+                    }
+                    // rectange for spacing
+                    Rectangle {
+                        Layout.fillWidth: true
+                    }
+                    TouchSwitch {
+                            id: winchEnableSwitch
+                            checked: uiData.winch_enabled
+                            onToggled: backend.setWinchEnabled(checked)
+                        }
                 }
 
                 GridLayout {
@@ -65,15 +76,7 @@ Rectangle {
 
                     Label { text: "Enable Winch:"; font.bold: true }
                     RowLayout {
-                        Switch {
-                            id: winchEnableSwitch
-                            checked: uiData.winch_enabled
-                            onToggled: backend.setWinchEnabled(checked)
-                        }
-                        Label {
-                            text: winchEnableSwitch.checked ? "Enabled" : "Disabled"
-                            color: winchEnableSwitch.checked ? "green" : "red"
-                        }
+                        
                     }
 
                     Label { text: "Cable Length:"; font.bold: true }
@@ -112,10 +115,37 @@ Rectangle {
                 anchors.margins: 15
                 spacing: 15
 
-                Label {
-                    text: "Teensy Status"
-                    font.pixelSize: 24
-                    font.bold: true
+                RowLayout {
+                    spacing: 10
+                    Label {
+                        text: "Teensy Status"
+                        font.pixelSize: 24
+                        font.bold: true
+                    }
+                    // rectange for spacing
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                    }
+                    Label { text: "Enable:"; font.bold: true }
+                    
+                    RowLayout {
+                        TouchSwitch {
+                            id: teensyEnableSwitch
+                            checked: uiData.teensy_enabled
+                            onToggled: backend.setTeensyEnabled(checked)
+                        }
+                    }
+
+                    Label { text: "Relay:"; font.bold: true }
+                    
+                    RowLayout {
+                        TouchSwitch {
+                            id: teensyRelayEnableSwitch
+                            checked: uiData.teensy_relay_enabled
+                            onToggled: backend.setTeensyRelayEnabled(checked)
+                        }
+                    }
                 }
 
                 ScrollView {
@@ -124,7 +154,6 @@ Rectangle {
                     clip: true
 
                     ColumnLayout {
-                        width: parent.width
                         spacing: 20
 
                         // Board Status Section
@@ -136,7 +165,7 @@ Rectangle {
                                 columns: 4
                                 rowSpacing: 10
                                 columnSpacing: 20
-                                Layout.fillWidth: true
+                                anchors.fill: parent  
 
                                 Label { text: "Voltage:"; font.bold: true }
                                 Label { text: uiData.teensy_voltage + " V" }
