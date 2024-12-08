@@ -941,6 +941,14 @@ class TeensyMonitor:
 
     def _status_callback(self, msg: TeensyStatus):
         try:
+            # Convert milliseconds to hours, minutes, seconds
+            total_seconds = int(msg.runtime / 1000)  # Convert ms to seconds
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            seconds = total_seconds % 60
+            
+            formatted_runtime = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
             self._status = {
                 'top_rail_position': f"{msg.top_rail_position:.2f}",
                 'top_rail_speed': f"{msg.top_rail_speed:.2f}",
@@ -951,7 +959,7 @@ class TeensyMonitor:
                 'voltage': f"{msg.voltage:.2f}",
                 'temperature': f"{msg.temperature:.1f}",
                 'current': f"{msg.current:.2f}",
-                'run_time': f"{msg.runtime:.2f}",
+                'run_time': formatted_runtime,
                 'loop_time': f"{msg.looptime:.2f}",
                 'loop_time_counter': f"{msg.looptime_counter:.2f}",
                 'left_prop_position': f"{msg.left_prop_position:.2f}",
@@ -1296,8 +1304,9 @@ class RobotController(Node, QObject):
                 self.ef_move_top_rail_speed_pub.publish(msg)
                 self.display_message(f"Sending EF Top Rail Speed: {command_speed:.2f}")
         elif self.ui_data_model.right_joystick_control == "EF prop pwm":
-            if input_state['right_stick']['y'] > 0:
                 command_speed = input_state['right_stick']['y'] * 600 / 32768
+                if command_speed < 0:
+                    return
                 command_speed = int(command_speed) + 1000
                 msg = Int32(data=command_speed)
                 self.prop_left_pwm_pub.publish(msg)

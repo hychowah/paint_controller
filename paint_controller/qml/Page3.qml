@@ -175,7 +175,7 @@ Rectangle {
                                 Label { text: "Temperature:"; font.bold: true }
                                 Label { text: uiData.teensy_temperature + " °C" }
                                 Label { text: "Runtime:"; font.bold: true }
-                                Label { text: uiData.teensy_run_time + " s" }
+                                Label { text: uiData.teensy_run_time  }
 
                                 Label { text: "Loop Time:"; font.bold: true }
                                 Label { text: uiData.teensy_loop_time + " µs" }
@@ -266,13 +266,13 @@ Rectangle {
                                 Label { text: "Z:" }
                                 Label { text: uiData.teensy_imu_angular_acc_z + " rad/s" }
 
-                                // Label { text: "Orientation"; font.bold: true; Layout.columnSpan: 6 }
-                                // Label { text: "X:" }
-                                // Label { text: uiData.orientation.x.toFixed(3) }
-                                // Label { text: "Y:" }
-                                // Label { text: uiData.orientation.y.toFixed(3) }
-                                // Label { text: "Z:" }
-                                // Label { text: uiData.orientation.z.toFixed(3) }
+                                Label { text: "Orientation"; font.bold: true; Layout.columnSpan: 6 }
+                                Label { text: ":" }
+                                Label { text: uiData.teensy_imu_pitch }
+                                Label { text: "Y:" }
+                                Label { text: uiData.teensy_imu_roll }
+                                Label { text: "Yaw:" }
+                                Label { text: uiData.teensy_imu_yaw }
                             }
                         }
                     }
