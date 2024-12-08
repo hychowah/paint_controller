@@ -461,14 +461,17 @@ Rectangle {
                     Label { text: uiData.left_trigger }
 
                     // IMU Data
-                    Label { text: "IMU Pitch:"; font.bold: true }
-                    Label { text: uiData.imu_pitch + "°" }
+                    Label { 
+                        text: "IMU Pitch: " + uiData.teensy_imu_pitch.toFixed(2) + "°"
+                    }
 
-                    Label { text: "IMU Roll:"; font.bold: true }
-                    Label { text: uiData.imu_roll + "°" }
+                    Label { 
+                        text: "IMU Roll: " + uiData.teensy_imu_roll.toFixed(2) + "°"
+                    }
 
-                    Label { text: "IMU Yaw:"; font.bold: true }
-                    Label { text: uiData.imu_yaw + "°" }
+                    Label { 
+                        text: "IMU Yaw: " + uiData.teensy_imu_yaw.toFixed(2) + "°"
+                    }
 
                 }
             }

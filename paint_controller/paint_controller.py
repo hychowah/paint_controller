@@ -133,9 +133,9 @@ class UIDataModel(QObject):
     teeensyImuAngularAccXChanged = Signal(str)
     teeensyImuAngularAccYChanged = Signal(str)
     teeensyImuAngularAccZChanged = Signal(str)
-    teensyImuPitchChanged = Signal(str)
-    teensyImuRollChanged = Signal(str)
-    teensyImuYawChanged = Signal(str)
+    teensyImuPitchChanged = Signal(float)
+    teensyImuRollChanged = Signal(float)
+    teensyImuYawChanged = Signal(float)
 
     teensyRelay1Changed = Signal(bool)
     teensyEnabledChanged = Signal(bool)
@@ -801,32 +801,35 @@ class UIDataModel(QObject):
             self._teensy_data['imu_angular_acc_z'] = value
             self.teeensyImuAngularAccZChanged.emit(value)
 
-    @Property(str, notify=teensyImuPitchChanged)
+    @Property(float, notify=teensyImuPitchChanged)  # Changed from str to float
     def teensy_imu_pitch(self):
-        return self._teensy_data['imu_pitch']
-    
+        return float(self._teensy_data['imu_pitch'])  # Convert to float
+        
     @teensy_imu_pitch.setter
     def teensy_imu_pitch(self, value):
+        value = float(value)  # Ensure value is float
         if self._teensy_data['imu_pitch'] != value:
             self._teensy_data['imu_pitch'] = value
             self.teensyImuPitchChanged.emit(value)
 
-    @Property(str, notify=teensyImuRollChanged)
+    @Property(float, notify=teensyImuRollChanged)  # Changed from str to float
     def teensy_imu_roll(self):
-        return self._teensy_data['imu_roll']
-    
+        return float(self._teensy_data['imu_roll'])
+        
     @teensy_imu_roll.setter
     def teensy_imu_roll(self, value):
+        value = float(value)
         if self._teensy_data['imu_roll'] != value:
             self._teensy_data['imu_roll'] = value
             self.teensyImuRollChanged.emit(value)
 
-    @Property(str, notify=teensyImuYawChanged)
+    @Property(float, notify=teensyImuYawChanged)  # Changed from str to float
     def teensy_imu_yaw(self):
-        return self._teensy_data['imu_yaw']
-    
+        return float(self._teensy_data['imu_yaw'])
+        
     @teensy_imu_yaw.setter
     def teensy_imu_yaw(self, value):
+        value = float(value)
         if self._teensy_data['imu_yaw'] != value:
             self._teensy_data['imu_yaw'] = value
             self.teensyImuYawChanged.emit(value)
@@ -972,9 +975,9 @@ class TeensyMonitor:
                 'imu_angular_acc_x': f"{msg.angular_velocity.x:.2f}",
                 'imu_angular_acc_y': f"{msg.angular_velocity.y:.2f}",
                 'imu_angular_acc_z': f"{msg.angular_velocity.z:.2f}",
-                'imu_pitch': f"{msg.orientation.x:.2f}",
-                'imu_roll': f"{msg.orientation.y:.2f}",
-                'imu_yaw': f"{msg.orientation.z:.2f}"
+                'imu_pitch': msg.orientation.x,
+                'imu_roll': msg.orientation.y,
+                'imu_yaw': msg.orientation.z
             }
         except Exception as e:
             print(f"Error processing Teensy status: {e}")
@@ -1262,9 +1265,10 @@ class RobotController(Node, QObject):
         self.ui_data_model.teensy_imu_angular_acc_x = teensy_status.get('imu_angular_acc_x', '0.00')
         self.ui_data_model.teensy_imu_angular_acc_y = teensy_status.get('imu_angular_acc_y', '0.00')
         self.ui_data_model.teensy_imu_angular_acc_z = teensy_status.get('imu_angular_acc_z', '0.00')
-        self.ui_data_model.teensy_imu_pitch = teensy_status.get('imu_pitch', '0.00')
-        self.ui_data_model.teensy_imu_roll = teensy_status.get('imu_roll', '0.00')
-        self.ui_data_model.teensy_imu_yaw = teensy_status.get('imu_yaw', '0.00')
+        self.ui_data_model.teensy_imu_pitch = round(float(teensy_status.get('imu_pitch', '0.00')), 2)
+        self.ui_data_model.teensy_imu_roll = round(float(teensy_status.get('imu_roll', '0.00')), 2)
+        self.ui_data_model.teensy_imu_yaw = round(float(teensy_status.get('imu_yaw', '0.00')), 2)
+
 
         # Process control inputs
         self._process_control_input(input_state)
