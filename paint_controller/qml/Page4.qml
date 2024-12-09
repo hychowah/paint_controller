@@ -6,20 +6,18 @@ import QtCharts 6.7
 Item {
     id: pidTuningPage
     
-    // Properties for storing PID values
     property real currentP: 0.0
     property real currentI: 0.0
     property real currentD: 0.0
+    property real currentTarget: 0.0
+    property int pwmValue: 1000
+    property bool controlEnabled: false
     
-    // Properties for time axis
-    property int timeWindow: 30000  // 30 seconds in milliseconds
+    property int timeWindow: 30000
     property var startTime: new Date().getTime()
-    
-    // Properties for Y-axis range
     property real yAxisMin: -180
     property real yAxisMax: 180
 
-    // Chart update timer
     Timer {
         id: updateTimer
         interval: 100
@@ -48,7 +46,67 @@ Item {
         anchors.fill: parent
         spacing: 10
 
-        // Y-Axis Range Controls
+        // Enable Switch and PWM Slider
+        Rectangle {
+            Layout.fillWidth: true
+            height: 80
+            color: "#FFFFFF"
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 5
+                spacing: 10
+
+                Label { text: "Enable:"; font.bold: true }
+                    
+                    RowLayout {
+                        TouchSwitch {
+                            id: teensyEnableSwitch
+                            checked: uiData.teensy_enabled
+                            onToggled: backend.setTeensyEnabled(checked)
+                        }
+                    }
+
+                Label { text: "Relay:"; font.bold: true }
+                    
+                    RowLayout {
+                        TouchSwitch {
+                            id: teensyRelayEnableSwitch
+                            checked: uiData.teensy_relay_enabled
+                            onToggled: backend.setTeensyRelayEnabled(checked)
+                        }
+                    }
+
+                Switch {
+                    id: enableSwitch
+                    text: "Enable Control"
+                    checked: controlEnabled
+                    onCheckedChanged: controlEnabled = checked
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 5
+
+                    Label {
+                        text: "PWM Value: " + pwmSlider.value
+                        color: "white"
+                    }
+
+                    Slider {
+                        id: pwmSlider
+                        Layout.fillWidth: true
+                        from: 1000
+                        to: 1500
+                        value: pwmValue
+                        stepSize: 1
+                        onValueChanged: pwmValue = value
+                    }
+                }
+            }
+        }
+
+        // Y-Axis Range Controls [Previous code remains the same]
         Rectangle {
             Layout.fillWidth: true
             height: 50
@@ -126,11 +184,11 @@ Item {
                     }
                 }
 
-                Item { Layout.fillWidth: true } // Spacer
+                Item { Layout.fillWidth: true }
             }
         }
 
-        // Chart Area
+        // Chart View [Previous code remains the same]
         ChartView {
             id: chartView
             Layout.fillWidth: true
@@ -182,7 +240,7 @@ Item {
             }
         }
 
-        // PID Controls Area (Bottom Half)
+        // PID Controls Area
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: parent.height * 0.3
@@ -195,7 +253,6 @@ Item {
                 rowSpacing: 15
                 columnSpacing: 20
 
-                // P Parameter
                 Label {
                     text: "P Value"
                     font.bold: true
@@ -212,11 +269,10 @@ Item {
                     }
                 }
                 Label {
-                    text: "Current P: " + currentP.toFixed(3)
+                    text: "Current P: " + uiData.teensy_yaw_pid_p
                     color: "white"
                 }
 
-                // I Parameter
                 Label {
                     text: "I Value"
                     font.bold: true
@@ -233,11 +289,10 @@ Item {
                     }
                 }
                 Label {
-                    text: "Current I: " + currentI.toFixed(3)
+                    text: "Current I: " + uiData.teensy_yaw_pid_i
                     color: "white"
                 }
 
-                // D Parameter
                 Label {
                     text: "D Value"
                     font.bold: true
@@ -254,11 +309,29 @@ Item {
                     }
                 }
                 Label {
-                    text: "Current D: " + currentD.toFixed(3)
+                    text: "Current D: " + uiData.teensy_yaw_pid_d
                     color: "white"
                 }
+                Label {
+                    text: "Current Target: " + uiData.teensy_yaw_command
+                    color: "white"
+                }
+                TextField {
+                    id: targetInput
+                    Layout.preferredWidth: 100
+                    placeholderText: "Enter Target"
+                    validator: DoubleValidator {}
+                    background: Rectangle {
+                        color: "#ffffff"
+                        radius: 5
+                    }
+                }
+                Label {
+                    text: "Current Yaw: " + uiData.teensy_imu_yaw
+                    color: "white"
+                }
+        
 
-                // Send Button
                 Rectangle {
                     Layout.columnSpan: 3
                     Layout.alignment: Qt.AlignHCenter
@@ -281,13 +354,10 @@ Item {
                             if (pInput.text !== "") currentP = parseFloat(pInput.text)
                             if (iInput.text !== "") currentI = parseFloat(iInput.text)
                             if (dInput.text !== "") currentD = parseFloat(dInput.text)
+                            if (targetInput.text !== "") currentTarget = parseFloat(targetInput.text)
                             
-                            // Add your backend communication here
-                            // backend.setPIDValues(currentP, currentI, currentD)
+                            backend.setYawControl(controlEnabled, currentTarget, currentP, currentI, currentD, pwmValue)
                             
-                            pInput.text = ""
-                            iInput.text = ""
-                            dInput.text = ""
                         }
                     }
                 }

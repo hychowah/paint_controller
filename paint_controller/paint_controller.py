@@ -16,7 +16,7 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPo
 from std_msgs.msg import Float64, Bool, Float32, Int32
 from sensor_msgs.msg import LaserScan
 from cv_bridge import CvBridge
-from towngas_interfaces.msg import WinchStatus, WheelStatus, SteamDeckInput, TeensyStatus
+from towngas_interfaces.msg import WinchStatus, WheelStatus, SteamDeckInput, TeensyStatus, TeensyYaw
 
 from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QThread
 from PySide6.QtGui import QImage, QPixmap
@@ -137,6 +137,13 @@ class UIDataModel(QObject):
     teensyImuRollChanged = Signal(float)
     teensyImuYawChanged = Signal(float)
 
+    teensyYawEnabledChanged = Signal(bool)
+    teensyYawCommandChanged = Signal(str)
+    teensyYawPidPChanged = Signal(str)
+    teensyYawPidIChanged = Signal(str)
+    teensyYawPidDChanged = Signal(str)
+    teensyYawPWMChanged = Signal(str)
+
     teensyRelay1Changed = Signal(bool)
     teensyEnabledChanged = Signal(bool)
     
@@ -223,7 +230,13 @@ class UIDataModel(QObject):
             'imu_angular_acc_z': '0.00',
             'imu_pitch': '0.00',
             'imu_roll': '0.00',
-            'imu_yaw': '0.00'
+            'imu_yaw': '0.00',
+            'yaw_enabled': False,
+            'yaw_command': '0.00',
+            'yaw_pid_p': '0.00',
+            'yaw_pid_i': '0.00',
+            'yaw_pid_d': '0.00',
+            'yaw_pwm': '0.00'
         }
 
     ## Winch Properties
@@ -834,6 +847,66 @@ class UIDataModel(QObject):
             self._teensy_data['imu_yaw'] = value
             self.teensyImuYawChanged.emit(value)
 
+    @Property(bool, notify=teensyYawEnabledChanged)
+    def teensy_yaw_enabled(self):
+        return self._teensy_data['yaw_enabled']
+    
+    @teensy_yaw_enabled.setter
+    def teensy_yaw_enabled(self, value):
+        if self._teensy_data['yaw_enabled'] != value:
+            self._teensy_data['yaw_enabled'] = value
+            self.teensyYawEnabledChanged.emit(value)
+
+    @Property(str, notify=teensyYawCommandChanged)
+    def teensy_yaw_command(self):
+        return self._teensy_data['yaw_command']
+    
+    @teensy_yaw_command.setter
+    def teensy_yaw_command(self, value):
+        if self._teensy_data['yaw_command'] != value:
+            self._teensy_data['yaw_command'] = value
+            self.teensyYawCommandChanged.emit(value)
+
+    @Property(str, notify=teensyYawPidPChanged)
+    def teensy_yaw_pid_p(self):
+        return self._teensy_data['yaw_pid_p']
+    
+    @teensy_yaw_pid_p.setter
+    def teensy_yaw_pid_p(self, value):
+        if self._teensy_data['yaw_pid_p'] != value:
+            self._teensy_data['yaw_pid_p'] = value
+            self.teensyYawPidPChanged.emit(value)
+
+    @Property(str, notify=teensyYawPidIChanged)
+    def teensy_yaw_pid_i(self):
+        return self._teensy_data['yaw_pid_i']
+    
+    @teensy_yaw_pid_i.setter
+    def teensy_yaw_pid_i(self, value):
+        if self._teensy_data['yaw_pid_i'] != value:
+            self._teensy_data['yaw_pid_i'] = value
+            self.teensyYawPidIChanged.emit(value)
+
+    @Property(str, notify=teensyYawPidDChanged)
+    def teensy_yaw_pid_d(self):
+        return self._teensy_data['yaw_pid_d']
+    
+    @teensy_yaw_pid_d.setter
+    def teensy_yaw_pid_d(self, value):
+        if self._teensy_data['yaw_pid_d'] != value:
+            self._teensy_data['yaw_pid_d'] = value
+            self.teensyYawPidDChanged.emit(value)
+
+    @Property(str, notify=teensyYawPWMChanged)
+    def teensy_yaw_pwm(self):
+        return self._teensy_data['yaw_pwm']
+    
+    @teensy_yaw_pwm.setter
+    def teensy_yaw_pwm(self, value):
+        if self._teensy_data['yaw_pwm'] != value:
+            self._teensy_data['yaw_pwm'] = value
+            self.teensyYawPWMChanged.emit(value)
+
 #############################################
 ### Video Streaming
 #############################################
@@ -977,7 +1050,13 @@ class TeensyMonitor:
                 'imu_angular_acc_z': f"{msg.angular_velocity.z:.2f}",
                 'imu_pitch': msg.orientation.x,
                 'imu_roll': msg.orientation.y,
-                'imu_yaw': msg.orientation.z
+                'imu_yaw': msg.orientation.z,
+                'yaw_enabled': msg.yaw_enabled,
+                'yaw_command': f"{msg.yaw_command:.2f}",
+                'yaw_pid_p': f"{msg.yaw_pid_p:.2f}",
+                'yaw_pid_i': f"{msg.yaw_pid_i:.2f}",
+                'yaw_pid_d': f"{msg.yaw_pid_d:.2f}",
+                'yaw_pwm': f"{msg.yaw_pwm:.2f}"
             }
         except Exception as e:
             print(f"Error processing Teensy status: {e}")
@@ -1268,6 +1347,12 @@ class RobotController(Node, QObject):
         self.ui_data_model.teensy_imu_pitch = round(float(teensy_status.get('imu_pitch', '0.00')), 2)
         self.ui_data_model.teensy_imu_roll = round(float(teensy_status.get('imu_roll', '0.00')), 2)
         self.ui_data_model.teensy_imu_yaw = round(float(teensy_status.get('imu_yaw', '0.00')), 2)
+        self.ui_data_model.teensy_yaw_enabled = teensy_status.get('yaw_enabled', False)
+        self.ui_data_model.teensy_yaw_command = teensy_status.get('yaw_command', '0.00')
+        self.ui_data_model.teensy_yaw_pid_p = teensy_status.get('yaw_pid_p', '0.00')
+        self.ui_data_model.teensy_yaw_pid_i = teensy_status.get('yaw_pid_i', '0.00')
+        self.ui_data_model.teensy_yaw_pid_d = teensy_status.get('yaw_pid_d', '0.00')
+        self.ui_data_model.teensy_yaw_pwm = teensy_status.get('yaw_pwm', '0.00')
 
 
         # Process control inputs
@@ -1284,8 +1369,7 @@ class RobotController(Node, QObject):
             msg = Float32(data=command_speed)
             self.ef_move_arm_rail_speed_pub.publish(msg)
             self.display_message(f"Sending EF Arm Rail Speed: {command_speed:.2f}")
-
-        if self.ui_data_model.left_joystick_control == "EF prop joint":
+        elif self.ui_data_model.left_joystick_control == "EF prop joint":
             command_angle = input_state['left_stick']['x'] * 60.0 / 32768.0
             print(f"Command Angle: {command_angle}")
             left_msg = Float32(data=command_angle)
@@ -1293,6 +1377,13 @@ class RobotController(Node, QObject):
             self.prop_left_joint_pub.publish(right_msg)
             self.prop_right_joint_pub.publish(right_msg)
             # self.display_message(f"Sending EF Prop Speed: {command_speed:.2f}, Angle: {command_angle:.2f}")
+        elif self.ui_data_model.left_joystick_control == "EF spray trigger":
+            command_value = 1000 + input_state['left_stick']['y'] * 1000 / 32768
+            if command_value < 1000:
+                return
+            command_value = int(command_value)
+            msg = Int32(data=command_value)
+            self.ef_spray_trigger_pub.publish(msg)
                 
 
         if self.ui_data_model.right_joystick_control == "Winch Speed":
@@ -1315,6 +1406,12 @@ class RobotController(Node, QObject):
                 msg = Int32(data=command_speed)
                 self.prop_left_pwm_pub.publish(msg)
                 self.prop_right_pwm_pub.publish(msg)
+        elif self.ui_data_model.right_joystick_control == "EF spray gimbal":
+                command_speed = int(input_state['right_stick']['y'] * 100 / 32768)
+                msg = Int32(data=command_speed)
+                self.ef_spray_gimbal_speed_pub.publish(msg)
+                self.display_message(f"Sending EF Spray Gimbal Speed: {command_speed}")
+        
 
 
     def _setup_subscribers(self):
@@ -1357,6 +1454,9 @@ class RobotController(Node, QObject):
         self.prop_right_joint_pub = self.create_publisher(Float32, 'teensy/prop/right/joint/cmd', 1)
         self.teensy_relay_pub = self.create_publisher(Bool, 'teensy/relay/cmd', 1)
         self.teensy_enable_pub = self.create_publisher(Bool, 'teensy/enable/cmd', 1)
+        self.ef_spray_trigger_pub = self.create_publisher(Int32, 'teensy/spray_gun/trigger/cmd', 1)
+        self.ef_spray_gimbal_speed_pub = self.create_publisher(Int32, 'teensy/spray_gun/gimbal/speed/cmd', 1)
+        self.ef_yaw_control_pub = self.create_publisher(TeensyYaw, 'teensy/yaw/control/cmd', 1)
 
     def _on_steam_deck_input(self, msg: SteamDeckInput):
         changes = self.steam_deck.process_input(msg)
@@ -1440,6 +1540,19 @@ class RobotController(Node, QObject):
         self.ui_data_model.right_joystick_control = control
         self.get_logger().info(f'Right joystick control set to: {control}')
         self.display_message(f'Right joystick control set to: {control}')
+
+    @Slot(bool, float, float, float, float, int)
+    def setYawControl(self, enabled: bool, target: float, p: float, i: float, d: float, pwm: int):
+        """Set yaw control parameters and enable state"""
+        msg = TeensyYaw()
+        msg.yaw_enabled = enabled
+        msg.yaw_command = target  # Use current yaw as target
+        msg.yaw_pid_p = p
+        msg.yaw_pid_i = i
+        msg.yaw_pid_d = d
+        msg.yaw_pwm = pwm
+        self.ef_yaw_control_pub.publish(msg)
+        self.display_message(f'Yaw control {"enabled" if enabled else "disabled"} with Target: {target} P:{p} I:{i} D:{d} PWM:{pwm}')
 
     @Slot()
     def terminateNodes(self):

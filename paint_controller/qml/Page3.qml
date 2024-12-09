@@ -11,7 +11,7 @@ Rectangle {
 
     // Helper function to update available options
     // Store the complete list of options
-    property var allControlOptions: ["None", "Winch Speed", "Wheel Speed", "EF arm", "EF top rail", "EF prop pwm", "EF prop joint"]
+    property var allControlOptions: ["None", "Winch Speed", "Wheel Speed", "EF arm", "EF top rail", "EF prop pwm", "EF prop joint", "EF spray trigger", "EF spray gimbal"]
     
     // Properties to store current selections
     property string leftCurrentControl: "None"
