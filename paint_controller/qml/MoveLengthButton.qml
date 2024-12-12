@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 
+
 Item {
     id: root
     width: 400
@@ -12,6 +13,107 @@ Item {
 
     signal arrowAboveClicked()
     signal arrowBelowClicked()
+
+    Text {
+        id: sliderValueDisplay
+        text: verticalSlider.value.toFixed(0) + " mm/s"
+        anchors.bottom: verticalSlider.top
+        anchors.horizontalCenter: verticalSlider.horizontalCenter
+        font.pixelSize: 16
+        color: "#2c3e50"
+    }
+
+    Dialog {
+        id: warningDialog
+        title: "Warning"
+        modal: true
+        padding: 20
+        width: 100
+        height: 150
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        parent: applicationRoot  // Add this line
+        x: (applicationRoot.width - width) / 2   // Center horizontally
+        y: (applicationRoot.height - height) / 2  // Center vertically
+        
+        background: Rectangle {
+            color: "#ffffff"
+            radius: 10
+            border.color: "#e0e0e0"
+            border.width: 1
+        }
+        
+        header: Rectangle {
+            color: "transparent"
+            height: 40
+            
+            Label {
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.leftMargin: 20
+                text: warningDialog.title
+                font.bold: true
+                font.pixelSize: 16
+                color: "#2c3e50"
+            }
+        }
+        
+        contentItem: Column {
+            spacing: 20
+            padding: 20
+            
+            Row {
+                spacing: 10
+                
+                Text {
+                text: "⚠️"
+                font.pixelSize: 24
+                anchors.verticalCenter: parent.verticalCenter
+            }
+                
+                Label {
+                    text: "Please enter both length and speed values"
+                    font.pixelSize: 14
+                    color: "#2c3e50"
+                    wrapMode: Text.WordWrap
+                    width: warningDialog.width - 100
+                }
+            }
+        }
+        
+        footer: Rectangle {
+            color: "transparent"
+            height: 60
+            
+            Button {
+                anchors.right: parent.right
+                anchors.rightMargin: 20
+                anchors.verticalCenter: parent.verticalCenter
+                text: "OK"
+                width: 100
+                height: 36
+                
+                background: Rectangle {
+                    color: parent.down ? "#2980b9" : "#3498db"
+                    radius: 5
+                    
+                    Behavior on color {
+                        ColorAnimation { duration: 100 }
+                    }
+                }
+                
+                contentItem: Text {
+                    text: parent.text
+                    color: "white"
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    font.pixelSize: 14
+                    font.bold: true
+                }
+                
+                onClicked: warningDialog.close()
+            }
+        }
+    }
 
     Rectangle {
         width: 100
@@ -30,7 +132,13 @@ Item {
             onPressed: arrowAbove.opacity = 0.5
             onReleased: {
                 arrowAbove.opacity = 1.0
-                root.arrowAboveClicked()
+                // Add validation before triggering the backend function
+                if (inputField.text.trim() === "" || verticalSlider.value === 0) {
+                    warningDialog.open()
+                } else {
+                    root.arrowAboveClicked()
+                    backend.moveWinchIncrement(parseInt(inputField.text), verticalSlider.value)
+                }
             }
         }
     }
@@ -44,6 +152,10 @@ Item {
         verticalAlignment: Text.AlignBottom
         bottomPadding: 5
         rightPadding: 30
+        validator: IntValidator {
+            bottom: 0
+            top: 20000  // Set an appropriate maximum value
+            }
         background: Rectangle {
             color: "#9F9F9F"
             border.color: "gray"
@@ -97,7 +209,13 @@ Item {
             onPressed: arrowBelow.opacity = 0.5
             onReleased: {
                 arrowBelow.opacity = 1.0
-                root.arrowBelowClicked()
+                // Add validation before triggering the backend function
+                if (inputField.text.trim() === "" || verticalSlider.value === 0) {
+                    warningDialog.open()
+                } else {
+                    root.arrowBelowClicked()
+                    backend.moveWinchIncrement(-1 * parseInt(inputField.text), verticalSlider.value)
+                }
             }
         }
     }
@@ -111,7 +229,7 @@ Item {
         width: 60
         height: 300
         from: 0
-        to: 100
+        to: 500
         stepSize: 1
         value: 50
 

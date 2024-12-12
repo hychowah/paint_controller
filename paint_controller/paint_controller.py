@@ -16,13 +16,14 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPo
 from std_msgs.msg import Float64, Bool, Float32, Int32
 from sensor_msgs.msg import LaserScan
 from cv_bridge import CvBridge
-from towngas_interfaces.msg import WinchStatus, WheelStatus, SteamDeckInput, TeensyStatus, TeensyYaw
+from towngas_interfaces.msg import WinchStatus, WheelStatus, SteamDeckInput, TeensyStatus, TeensyYaw, MoveWinchLength
 
 from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QThread
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType
 from PySide6.QtWidgets import QApplication
 from PySide6.QtQuick import QQuickImageProvider
+from UIDataModel import UIDataModel
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -40,7 +41,7 @@ class RobotConfig:
     update_rate: float = 30.0  # Hz
     watchdog_timeout: float = 1.0  # seconds
     joystick_deadzone: float = 0.1
-    max_winch_speed: float = 1000.0
+    max_winch_speed: float = 1500.0
     video_width: int = 640
     video_height: int = 480
 
@@ -60,852 +61,144 @@ class ConfigLoader:
 ### UI Data Model
 #############################################
 
-class UIDataModel(QObject):
-    # Motor Status Signals
-    winchLengthChanged = Signal(str)
-    winchSpeedChanged = Signal(str)
-    winchCurrentChanged = Signal(str)
-    winchAvailableChanged = Signal(bool)
-    winchTorqueChanged = Signal(str)
-    winchTemperatureChanged = Signal(str)
-    winchVoltageChanged = Signal(str)
-    winchBrakeChanged = Signal(bool)
-    winchEnabledChanged = Signal(bool)
+class OverlayController(QObject):
+    """Controller class for managing dual joystick menu state"""
     
-    # Wheel Status Signals
-    leftSpeedChanged = Signal(str)
-    leftCurrentChanged = Signal(str)
-    rightCurrentChanged = Signal(str)
-    rightSpeedChanged = Signal(str)
-    wheelAvailableChanged = Signal(bool)
+    leftSelectedIndexChanged = Signal(int)
+    rightSelectedIndexChanged = Signal(int)
+    overlayChanged = Signal(bool)
+    controlOptionsChanged = Signal(list)
+    activeMenuChanged = Signal(str)
     
-    # Control Mode Signals
-    leftJoystickControlChanged = Signal(str)
-    rightJoystickControlChanged = Signal(str)
+    def __init__(self, parent=None):
+        super().__init__(parent)
 
-    # Input Signals
-    leftJoystickXChanged = Signal(int)
-    leftJoystickYChanged = Signal(int)
-    rightJoystickXChanged = Signal(int)
-    rightJoystickYChanged = Signal(int)
-    leftTriggerChanged = Signal(int)
-    rightTriggerChanged = Signal(int)
-    dpadUpChanged = Signal(bool)
-    dpadDownChanged = Signal(bool)
-    dpadLeftChanged = Signal(bool)
-    dpadRightChanged = Signal(bool)
-    buttonAChanged = Signal(bool)
-    buttonBChanged = Signal(bool)
-    buttonXChanged = Signal(bool)
-    buttonYChanged = Signal(bool)
-    buttonL1Changed = Signal(bool)
-    buttonR1Changed = Signal(bool)
-    buttonMenuChanged = Signal(bool)
-    imuPitchChanged = Signal(int)
-    imuRollChanged = Signal(int)
-    imuYawChanged = Signal(int)
+        self._control_options = [
+            "None",
+            "Winch Speed",
+            "Wheel Speed",
+            "EF arm",
+            "EF top rail",
+            "EF prop pwm",
+            "EF prop joint",
+            "EF spray trigger",
+            "EF spray gimbal"
+        ]
 
-    displayMessageChanged = Signal(str)
-
-    # Teensy Properties
-    topRailPositionChanged = Signal(str)
-    topRailSpeedChanged = Signal(str)
-    topRailCurrentChanged = Signal(str)
-    armRailPositionChanged = Signal(str)
-    armRailSpeedChanged = Signal(str)
-    armRailCurrentChanged = Signal(str)
-
-    teensyVoltageChanged = Signal(str)
-    teensyTemperatureChanged = Signal(str)
-    teensyCurrentChanged = Signal(str)
-    teensyRunTimeChanged = Signal(str)
-    teensyLoopTimeChanged = Signal(str)
-    teensyLoopTimeCounterChanged = Signal(str)
-
-    leftPropPosiionChanged = Signal(str)
-    leftPropPWMChanged = Signal(str)
-    rightPropPositionChanged = Signal(str)
-    rightPropPWMChanged = Signal(str)
-
-    teeensyImuAccXChanged = Signal(str)
-    teeensyImuAccYChanged = Signal(str)
-    teeensyImuAccZChanged = Signal(str)
-    teeensyImuAngularAccXChanged = Signal(str)
-    teeensyImuAngularAccYChanged = Signal(str)
-    teeensyImuAngularAccZChanged = Signal(str)
-    teensyImuPitchChanged = Signal(float)
-    teensyImuRollChanged = Signal(float)
-    teensyImuYawChanged = Signal(float)
-
-    teensyYawEnabledChanged = Signal(bool)
-    teensyYawCommandChanged = Signal(str)
-    teensyYawPidPChanged = Signal(str)
-    teensyYawPidIChanged = Signal(str)
-    teensyYawPidDChanged = Signal(str)
-    teensyYawPWMChanged = Signal(str)
-
-    teensyRelay1Changed = Signal(bool)
-    teensyEnabledChanged = Signal(bool)
-    
-    def __init__(self):
-        super().__init__()
-        self._winch_data = {
-            'length': '0.00',
-            'speed': '0.00',
-            'current': '0.00',
-            'available': False,
-            'torque': '0.00',
-            'temperature': '0.00',
-            'voltage': '0.00',
-            'brake': True,
-            'enabled': False
-        }
+        # Separate indices for left and right joysticks
+        self._left_selected_index = 0
+        self._right_selected_index = 0
+        self._max_index = len(self._control_options) - 1
+        self._show_overlay = False
+        self._active_menu = "left"
         
-        self._wheel_data = {
-            'left_speed': '0.00',
-            'right_speed': '0.00',
-            'left_current': '0.00',
-            'right_current': '0.00',
-            'available': False
-        }
+        # Initialize timer
+        self._input_timer = QTimer(self)
+        self._input_timer.setInterval(200)
+        self._input_timer.timeout.connect(self._reset_input_lock)
+        self._input_locked = False
+
+    @Property(list, notify=controlOptionsChanged)
+    def control_options(self):
+        return self._control_options
         
-        self._control_modes = {
-            'left_joystick': 'None',
-            'right_joystick': 'None'
-        }
-
-        self._input_state = {
-            'left_stick': {'x': 0, 'y': 0},
-            'right_stick': {'x': 0, 'y': 0},
-            'triggers': {'left': 0, 'right': 0},
-            'dpad': {
-                'up': False,
-                'down': False,
-                'left': False,
-                'right': False
-            },
-            'buttons': {
-                'a': False,
-                'b': False,
-                'x': False,
-                'y': False,
-                'l1': False,
-                'r1': False,
-                'menu': False
-            },
-            'imu': {
-                'pitch': 0,
-                'roll': 0,
-                'yaw': 0
-            }
-        }
-
-        self._display_message = ""
-        self._winch_enabled = False
-
-        self._teensy_relay_enabled = False
-        self._teensy_enabled = False
-        self._teensy_data = {
-            'top_rail_position': '0.00',
-            'top_rail_speed': '0.00',
-            'top_rail_current': '0.00',
-            'arm_rail_position': '0.00',
-            'arm_rail_speed': '0.00',
-            'arm_rail_current': '0.00',
-            'voltage': '0.00',
-            'temperature': '0.00',
-            'current': '0.00',
-            'run_time': '0.00',
-            'loop_time': '0.00',
-            'loop_time_counter': '0.00',
-            'left_prop_position': '0.00',
-            'left_prop_pwm': '0.00',
-            'right_prop_position': '0.00',
-            'right_prop_pwm': '0.00',
-            'imu_acc_x': '0.00',
-            'imu_acc_y': '0.00',
-            'imu_acc_z': '0.00',
-            'imu_angular_acc_x': '0.00',
-            'imu_angular_acc_y': '0.00',
-            'imu_angular_acc_z': '0.00',
-            'imu_pitch': '0.00',
-            'imu_roll': '0.00',
-            'imu_yaw': '0.00',
-            'yaw_enabled': False,
-            'yaw_command': '0.00',
-            'yaw_pid_p': '0.00',
-            'yaw_pid_i': '0.00',
-            'yaw_pid_d': '0.00',
-            'yaw_pwm': '0.00'
-        }
-
-    ## Winch Properties
-    @Property(bool, notify=winchEnabledChanged)
-    def winch_enabled(self):
-        return self._winch_enabled
-    
-    @winch_enabled.setter
-    def winch_enabled(self, value):
-        if self._winch_enabled != value:
-            self._winch_enabled = value
-            self.winchEnabledChanged.emit(value)
-
-    @Property(str, notify=winchLengthChanged)
-    def winch_length(self):
-        return self._winch_data['length']
-    
-    @winch_length.setter
-    def winch_length(self, value):
-        if self._winch_data['length'] != value:
-            self._winch_data['length'] = value
-            self.winchLengthChanged.emit(value)
-
-    @Property(bool, notify=winchAvailableChanged)
-    def winch_available(self):
-        return self._winch_data['available']
-    
-    @winch_available.setter
-    def winch_available(self, value):
-        if self._winch_data['available'] != value:
-            self._winch_data['available'] = value
-            self.winchAvailableChanged.emit(value)
-
-    @Property(str, notify=winchSpeedChanged)
-    def winch_speed(self):
-        return self._winch_data['speed']
-    
-    @winch_speed.setter
-    def winch_speed(self, value):
-        if self._winch_data['speed'] != value:
-            self._winch_data['speed'] = value
-            self.winchSpeedChanged.emit(value)
-    
-    @Property(str, notify=winchCurrentChanged)
-    def winch_current(self):
-        return self._winch_data['current']
-    
-    @winch_current.setter
-    def winch_current(self, value):
-        if self._winch_data['current'] != value:
-            self._winch_data['current'] = value
-            self.winchCurrentChanged.emit(value)
-    
-    @Property(str, notify=winchTorqueChanged)
-    def winch_torque(self):
-        return self._winch_data['torque']
-    
-    @winch_torque.setter
-    def winch_torque(self, value):
-        if self._winch_data['torque'] != value:
-            self._winch_data['torque'] = value
-            self.winchTorqueChanged.emit(value)
-
-    @Property(str, notify=winchTemperatureChanged)
-    def winch_temperature(self):
-        return self._winch_data['temperature']
-    
-    @winch_temperature.setter
-    def winch_temperature(self, value):
-        if self._winch_data['temperature'] != value:
-            self._winch_data['temperature'] = value
-            self.winchTemperatureChanged.emit(value)
-    
-    @Property(str, notify=winchVoltageChanged)
-    def winch_voltage(self):
-        return self._winch_data['voltage']
-    
-    @winch_voltage.setter
-    def winch_voltage(self, value):
-        if self._winch_data['voltage'] != value:
-            self._winch_data['voltage'] = value
-            self.winchVoltageChanged.emit(value)
-
-    @Property(bool, notify=winchBrakeChanged)
-    def winch_brake(self):
-        return self._winch_data['brake']
-    
-    @winch_brake.setter
-    def winch_brake(self, value):
-        if self._winch_data['brake'] != value:
-            self._winch_data['brake'] = value
-            self.winchBrakeChanged.emit(value)
-
-    # Wheel Properties
-    @Property(str, notify=leftSpeedChanged)
-    def left_wheel_speed(self):
-        return self._wheel_data['left_speed']
-    
-    @left_wheel_speed.setter
-    def left_wheel_speed(self, value):
-        if self._wheel_data['left_speed'] != value:
-            self._wheel_data['left_speed'] = value
-            self.leftSpeedChanged.emit(value)
-
-    # Control Mode Properties
-    @Property(str, notify=leftJoystickControlChanged)
-    def left_joystick_control(self):
-        return self._control_modes['left_joystick']
-    
-    @left_joystick_control.setter
-    def left_joystick_control(self, value):
-        if self._control_modes['left_joystick'] != value:
-            self._control_modes['left_joystick'] = value
-            self.leftJoystickControlChanged.emit(value)
-
-    @Property(str, notify=rightJoystickControlChanged)
-    def right_joystick_control(self):
-        return self._control_modes['right_joystick']
-    
-    @right_joystick_control.setter
-    def right_joystick_control(self, value):
-        if self._control_modes['right_joystick'] != value:
-            self._control_modes['right_joystick'] = value
-            self.rightJoystickControlChanged.emit(value)
-
-    # Input Properties
-    @Property(int, notify=leftJoystickXChanged)
-    def left_joystick_x(self):
-        return self._input_state['left_stick']['x']
-    
-    @left_joystick_x.setter
-    def left_joystick_x(self, value):
-        if self._input_state['left_stick']['x'] != value:
-            self._input_state['left_stick']['x'] = value
-            self.leftJoystickXChanged.emit(value)
-
-    @Property(int, notify=leftJoystickYChanged)
-    def left_joystick_y(self):
-        return self._input_state['left_stick']['y']
-    
-    @left_joystick_y.setter
-    def left_joystick_y(self, value):
-        if self._input_state['left_stick']['y'] != value:
-            self._input_state['left_stick']['y'] = value
-            self.leftJoystickYChanged.emit(value)
-
-    @Property(int, notify=rightJoystickXChanged)
-    def right_joystick_x(self):
-        return self._input_state['right_stick']['x']
-    
-    @right_joystick_x.setter
-    def right_joystick_x(self, value):
-        if self._input_state['right_stick']['x'] != value:
-            self._input_state['right_stick']['x'] = value
-            self.rightJoystickXChanged.emit(value)
-
-    @Property(int, notify=rightJoystickYChanged)
-    def right_joystick_y(self):
-        return self._input_state['right_stick']['y']
-    
-    @right_joystick_y.setter
-    def right_joystick_y(self, value):
-        if self._input_state['right_stick']['y'] != value:
-            self._input_state['right_stick']['y'] = value
-            self.rightJoystickYChanged.emit(value)
-
-    @Property(int, notify=leftTriggerChanged)
-    def left_trigger(self):
-        return self._input_state['triggers']['left']
-    
-    @left_trigger.setter
-    def left_trigger(self, value):
-        if self._input_state['triggers']['left'] != value:
-            self._input_state['triggers']['left'] = value
-            self.leftTriggerChanged.emit(value)
-
-    @Property(int, notify=rightTriggerChanged)
-    def right_trigger(self):
-        return self._input_state['triggers']['right']
-    
-    @right_trigger.setter
-    def right_trigger(self, value):
-        if self._input_state['triggers']['right'] != value:
-            self._input_state['triggers']['right'] = value
-            self.rightTriggerChanged.emit(value)
-
-    @Property(bool, notify=dpadUpChanged)
-    def dpad_up(self):
-        return self._input_state['dpad']['up']
-    
-    @dpad_up.setter
-    def dpad_up(self, value):
-        if self._input_state['dpad']['up'] != value:
-            self._input_state['dpad']['up'] = value
-            self.dpadUpChanged.emit(value)
-
-    @Property(bool, notify=dpadDownChanged)
-    def dpad_down(self):
-        return self._input_state['dpad']['down']
-    
-    @dpad_down.setter
-    def dpad_down(self, value):
-        if self._input_state['dpad']['down'] != value:
-            self._input_state['dpad']['down'] = value
-            self.dpadDownChanged.emit(value)
-
-    @Property(bool, notify=dpadLeftChanged)
-    def dpad_left(self):
-        return self._input_state['dpad']['left']
-    
-    @dpad_left.setter
-    def dpad_left(self, value):
-        if self._input_state['dpad']['left'] != value:
-            self._input_state['dpad']['left'] = value
-            self.dpadLeftChanged.emit(value)
-
-    @Property(bool, notify=dpadRightChanged)
-    def dpad_right(self):
-        return self._input_state['dpad']['right']
-    
-    @dpad_right.setter
-    def dpad_right(self, value):
-        if self._input_state['dpad']['right'] != value:
-            self._input_state['dpad']['right'] = value
-            self.dpadRightChanged.emit(value)
-
-    @Property(bool, notify=buttonAChanged)
-    def button_a(self):
-        return self._input_state['buttons']['a']
-    
-    @button_a.setter
-    def button_a(self, value):
-        if self._input_state['buttons']['a'] != value:
-            self._input_state['buttons']['a'] = value
-            self.buttonAChanged.emit(value)
-
-    @Property(bool, notify=buttonBChanged)
-    def button_b(self):
-        return self._input_state['buttons']['b']
-    
-    @button_b.setter
-    def button_b(self, value):
-        if self._input_state['buttons']['b'] != value:
-            self._input_state['buttons']['b'] = value
-            self.buttonBChanged.emit(value)
-
-    @Property(bool, notify=buttonXChanged)
-    def button_x(self):
-        return self._input_state['buttons']['x']
-    
-    @button_x.setter
-    def button_x(self, value):
-        if self._input_state['buttons']['x'] != value:
-            self._input_state['buttons']['x'] = value
-            self.buttonXChanged.emit(value)
-
-    @Property(bool, notify=buttonYChanged)
-    def button_y(self):
-        return self._input_state['buttons']['y']
-    
-    @button_y.setter
-    def button_y(self, value):
-        if self._input_state['buttons']['y'] != value:
-            self._input_state['buttons']['y'] = value
-            self.buttonYChanged.emit(value)
-
-    @Property(bool, notify=buttonL1Changed)
-    def button_l1(self):
-        return self._input_state['buttons']['l1']
-    
-    @button_l1.setter
-    def button_l1(self, value):
-        if self._input_state['buttons']['l1'] != value:
-            self._input_state['buttons']['l1'] = value
-            self.buttonL1Changed.emit(value)
-
-    @Property(bool, notify=buttonR1Changed)
-    def button_r1(self):
-        return self._input_state['buttons']['r1']
-    
-    @button_r1.setter
-    def button_r1(self, value):
-        if self._input_state['buttons']['r1'] != value:
-            self._input_state['buttons']['r1'] = value
-            self.buttonR1Changed.emit(value)
-
-    @Property(bool, notify=buttonMenuChanged)
-    def button_menu(self):
-        return self._input_state['buttons']['menu']
-    
-    @button_menu.setter
-    def button_menu(self, value):
-        if self._input_state['buttons']['menu'] != value:
-            self._input_state['buttons']['menu'] = value
-            self.buttonMenuChanged.emit(value)
-
-    @Property(int, notify=imuPitchChanged)
-    def imu_pitch(self):
-        return self._input_state['imu']['pitch']
-    
-    @imu_pitch.setter
-    def imu_pitch(self, value):
-        if self._input_state['imu']['pitch'] != value:
-            self._input_state['imu']['pitch'] = value
-            self.imuPitchChanged.emit(value)
-
-    @Property(int, notify=imuRollChanged)
-    def imu_roll(self):
-        return self._input_state['imu']['roll']
-    
-    @imu_roll.setter
-    def imu_roll(self, value):
-        if self._input_state['imu']['roll'] != value:
-            self._input_state['imu']['roll'] = value
-            self.imuRollChanged.emit(value)
-
-    @Property(int, notify=imuYawChanged)
-    def imu_yaw(self):
-        return self._input_state['imu']['yaw']
-    
-    @imu_yaw.setter
-    def imu_yaw(self, value):
-        if self._input_state['imu']['yaw'] != value:
-            self._input_state['imu']['yaw'] = value
-            self.imuYawChanged.emit(value)
-
-    @Property(str, notify=displayMessageChanged)
-    def display_message(self):
-        return self._display_message
-    
-    @display_message.setter
-    def display_message(self, value):
-        if self._display_message != value:
-            self._display_message = value
-            self.displayMessageChanged.emit(value)
-
-    # Teensy Properties
-    @Property(bool, notify=teensyEnabledChanged)
-    def teensy_enabled(self):
-        return self._teensy_enabled
-    
-    @teensy_enabled.setter
-    def teensy_enabled(self, value):
-        if self._teensy_enabled != value:
-            self._teensy_enabled = value
-            self.teensyEnabledChanged.emit(value)
-
-    @Property(bool, notify=teensyRelay1Changed)
-    def teensy_relay_enabled(self):
-        return self._teensy_relay_enabled
-    
-    @teensy_relay_enabled.setter
-    def teensy_relay_enabled(self, value):
-        if self._teensy_relay_enabled != value:
-            self._teensy_relay_enabled = value
-            self.teensyRelay1Changed.emit(value)
-
-    @Property(str, notify=topRailPositionChanged)
-    def top_rail_position(self):
-        return self._teensy_data['top_rail_position']
-    
-    @top_rail_position.setter
-    def top_rail_position(self, value):
-        if self._teensy_data['top_rail_position'] != value:
-            self._teensy_data['top_rail_position'] = value
-            self.topRailPositionChanged.emit(value)
-
-    @Property(str, notify=topRailSpeedChanged)
-    def top_rail_speed(self):
-        return self._teensy_data['top_rail_speed']
-    
-    @top_rail_speed.setter
-    def top_rail_speed(self, value):
-        if self._teensy_data['top_rail_speed'] != value:
-            self._teensy_data['top_rail_speed'] = value
-            self.topRailSpeedChanged.emit(value)
-
-    @Property(str, notify=topRailCurrentChanged)
-    def top_rail_current(self):
-        return self._teensy_data['top_rail_current']
-    
-    @top_rail_current.setter
-    def top_rail_current(self, value):
-        if self._teensy_data['top_rail_current'] != value:
-            self._teensy_data['top_rail_current'] = value
-            self.topRailCurrentChanged.emit(value)
-
-    @Property(str, notify=armRailPositionChanged)
-    def arm_rail_position(self):
-        return self._teensy_data['arm_rail_position']
-    
-    @arm_rail_position.setter
-    def arm_rail_position(self, value):
-        if self._teensy_data['arm_rail_position'] != value:
-            self._teensy_data['arm_rail_position'] = value
-            self.armRailPositionChanged.emit(value)
-
-    @Property(str, notify=armRailSpeedChanged)
-    def arm_rail_speed(self):
-        return self._teensy_data['arm_rail_speed']
-    
-    @arm_rail_speed.setter
-    def arm_rail_speed(self, value):
-        if self._teensy_data['arm_rail_speed'] != value:
-            self._teensy_data['arm_rail_speed'] = value
-            self.armRailSpeedChanged.emit(value)
-
-    @Property(str, notify=armRailCurrentChanged)
-    def arm_rail_current(self):
-        return self._teensy_data['arm_rail_current']
-    
-    @arm_rail_current.setter
-    def arm_rail_current(self, value):
-        if self._teensy_data['arm_rail_current'] != value:
-            self._teensy_data['arm_rail_current'] = value
-            self.armRailCurrentChanged.emit(value)
-
-    @Property(str, notify=teensyVoltageChanged)
-    def teensy_voltage(self):
-        return self._teensy_data['voltage']
-    
-    @teensy_voltage.setter
-    def teensy_voltage(self, value):
-        if self._teensy_data['voltage'] != value:
-            self._teensy_data['voltage'] = value
-            self.teensyVoltageChanged.emit(value)
-
-    @Property(str, notify=teensyTemperatureChanged)
-    def teensy_temperature(self):
-        return self._teensy_data['temperature']
-    
-    @teensy_temperature.setter
-    def teensy_temperature(self, value):
-        if self._teensy_data['temperature'] != value:
-            self._teensy_data['temperature'] = value
-            self.teensyTemperatureChanged.emit(value)
-
-    @Property(str, notify=teensyCurrentChanged)
-    def teensy_current(self):
-        return self._teensy_data['current']
-    
-    @teensy_current.setter
-    def teensy_current(self, value):
-        if self._teensy_data['current'] != value:
-            self._teensy_data['current'] = value
-            self.teensyCurrentChanged.emit(value)
-
-    @Property(str, notify=teensyRunTimeChanged)
-    def teensy_run_time(self):
-        return self._teensy_data['run_time']
-    
-    @teensy_run_time.setter
-    def teensy_run_time(self, value):
-        if self._teensy_data['run_time'] != value:
-            self._teensy_data['run_time'] = value
-            self.teensyRunTimeChanged.emit(value)
-
-    @Property(str, notify=teensyLoopTimeChanged)
-    def teensy_loop_time(self):
-        return self._teensy_data['loop_time']
-    
-    @teensy_loop_time.setter
-    def teensy_loop_time(self, value):
-        if self._teensy_data['loop_time'] != value:
-            self._teensy_data['loop_time'] = value
-            self.teensyLoopTimeChanged.emit(value)
-
-    @Property(str, notify=teensyLoopTimeCounterChanged)
-    def teensy_loop_time_counter(self):
-        return self._teensy_data['loop_time_counter']
-    
-    @teensy_loop_time_counter.setter
-    def teensy_loop_time_counter(self, value):
-        if self._teensy_data['loop_time_counter'] != value:
-            self._teensy_data['loop_time_counter'] = value
-            self.teensyLoopTimeCounterChanged.emit(value)
-
-    @Property(str, notify=leftPropPosiionChanged)
-    def left_prop_position(self):
-        return self._teensy_data['left_prop_position']
-    
-    @left_prop_position.setter
-    def left_prop_position(self, value):
-        if self._teensy_data['left_prop_position'] != value:
-            self._teensy_data['left_prop_position'] = value
-            self.leftPropPosiionChanged.emit(value)
-
-    @Property(str, notify=leftPropPWMChanged)
-    def left_prop_pwm(self):
-        return self._teensy_data['left_prop_pwm']
-    
-    @left_prop_pwm.setter
-    def left_prop_pwm(self, value):
-        if self._teensy_data['left_prop_pwm'] != value:
-            self._teensy_data['left_prop_pwm'] = value
-            self.leftPropPWMChanged.emit(value)
-
-    @Property(str, notify=rightPropPositionChanged)
-    def right_prop_position(self):
-        return self._teensy_data['right_prop_position']
-    
-    @right_prop_position.setter
-    def right_prop_position(self, value):
-        if self._teensy_data['right_prop_position'] != value:
-            self._teensy_data['right_prop_position'] = value
-            self.rightPropPositionChanged.emit(value)
-
-    @Property(str, notify=rightPropPWMChanged)
-    def right_prop_pwm(self):
-        return self._teensy_data['right_prop_pwm']
-    
-    @right_prop_pwm.setter
-    def right_prop_pwm(self, value):
-        if self._teensy_data['right_prop_pwm'] != value:
-            self._teensy_data['right_prop_pwm'] = value
-            self.rightPropPWMChanged.emit(value)
-
-    @Property(str, notify=teeensyImuAccXChanged)
-    def teensy_imu_acc_x(self):
-        return self._teensy_data['imu_acc_x']
-    
-    @teensy_imu_acc_x.setter
-    def teensy_imu_acc_x(self, value):
-        if self._teensy_data['imu_acc_x'] != value:
-            self._teensy_data['imu_acc_x'] = value
-            self.teeensyImuAccXChanged.emit(value)
-
-    @Property(str, notify=teeensyImuAccYChanged)
-    def teensy_imu_acc_y(self):
-        return self._teensy_data['imu_acc_y']
-    
-    @teensy_imu_acc_y.setter
-    def teensy_imu_acc_y(self, value):
-        if self._teensy_data['imu_acc_y'] != value:
-            self._teensy_data['imu_acc_y'] = value
-            self.teeensyImuAccYChanged.emit(value)
-
-    @Property(str, notify=teeensyImuAccZChanged)
-    def teensy_imu_acc_z(self):
-        return self._teensy_data['imu_acc_z']
-    
-    @teensy_imu_acc_z.setter
-    def teensy_imu_acc_z(self, value):
-        if self._teensy_data['imu_acc_z'] != value:
-            self._teensy_data['imu_acc_z'] = value
-            self.teeensyImuAccZChanged.emit(value)
-
-    @Property(str, notify=teeensyImuAngularAccXChanged)
-    def teensy_imu_angular_acc_x(self):
-        return self._teensy_data['imu_angular_acc_x']
-    
-    @teensy_imu_angular_acc_x.setter
-    def teensy_imu_angular_acc_x(self, value):
-        if self._teensy_data['imu_angular_acc_x'] != value:
-            self._teensy_data['imu_angular_acc_x'] = value
-            self.teeensyImuAngularAccXChanged.emit(value)
-
-    @Property(str, notify=teeensyImuAngularAccYChanged)
-    def teensy_imu_angular_acc_y(self):
-        return self._teensy_data['imu_angular_acc_y']
-    
-    @teensy_imu_angular_acc_y.setter
-    def teensy_imu_angular_acc_y(self, value):
-        if self._teensy_data['imu_angular_acc_y'] != value:
-            self._teensy_data['imu_angular_acc_y'] = value
-            self.teeensyImuAngularAccYChanged.emit(value)
-
-    @Property(str, notify=teeensyImuAngularAccZChanged)
-    def teensy_imu_angular_acc_z(self):
-        return self._teensy_data['imu_angular_acc_z']
-    
-    @teensy_imu_angular_acc_z.setter
-    def teensy_imu_angular_acc_z(self, value):
-        if self._teensy_data['imu_angular_acc_z'] != value:
-            self._teensy_data['imu_angular_acc_z'] = value
-            self.teeensyImuAngularAccZChanged.emit(value)
-
-    @Property(float, notify=teensyImuPitchChanged)  # Changed from str to float
-    def teensy_imu_pitch(self):
-        return float(self._teensy_data['imu_pitch'])  # Convert to float
+    @Property(int, notify=leftSelectedIndexChanged)
+    def left_selected_index(self):
+        return self._left_selected_index
         
-    @teensy_imu_pitch.setter
-    def teensy_imu_pitch(self, value):
-        value = float(value)  # Ensure value is float
-        if self._teensy_data['imu_pitch'] != value:
-            self._teensy_data['imu_pitch'] = value
-            self.teensyImuPitchChanged.emit(value)
-
-    @Property(float, notify=teensyImuRollChanged)  # Changed from str to float
-    def teensy_imu_roll(self):
-        return float(self._teensy_data['imu_roll'])
+    @Property(int, notify=rightSelectedIndexChanged)
+    def right_selected_index(self):
+        return self._right_selected_index
         
-    @teensy_imu_roll.setter
-    def teensy_imu_roll(self, value):
-        value = float(value)
-        if self._teensy_data['imu_roll'] != value:
-            self._teensy_data['imu_roll'] = value
-            self.teensyImuRollChanged.emit(value)
-
-    @Property(float, notify=teensyImuYawChanged)  # Changed from str to float
-    def teensy_imu_yaw(self):
-        return float(self._teensy_data['imu_yaw'])
+    @Property(bool, notify=overlayChanged)
+    def show_overlay(self):
+        return self._show_overlay
         
-    @teensy_imu_yaw.setter
-    def teensy_imu_yaw(self, value):
-        value = float(value)
-        if self._teensy_data['imu_yaw'] != value:
-            self._teensy_data['imu_yaw'] = value
-            self.teensyImuYawChanged.emit(value)
+    @Property(str, notify=activeMenuChanged)
+    def active_menu(self):
+        return self._active_menu
 
-    @Property(bool, notify=teensyYawEnabledChanged)
-    def teensy_yaw_enabled(self):
-        return self._teensy_data['yaw_enabled']
+    def _reset_input_lock(self):
+        self._input_locked = False
+        self._input_timer.stop()
     
-    @teensy_yaw_enabled.setter
-    def teensy_yaw_enabled(self, value):
-        if self._teensy_data['yaw_enabled'] != value:
-            self._teensy_data['yaw_enabled'] = value
-            self.teensyYawEnabledChanged.emit(value)
+    @Slot(str)
+    def set_active_menu(self, menu):
+        """Set active menu and show overlay"""
+        if menu in ["left", "right"]:
+            print(f"Set Active Menu: {menu}")
+            self._active_menu = menu
+            self.activeMenuChanged.emit(menu)
+    
+    @Slot()
+    def show_menu(self):
+        """Show the menu overlay"""
+        print("Show Menu")
+        self._show_overlay = True
+        self.overlayChanged.emit(True)
+    
+    @Slot()
+    def hide_menu(self):
+        """Hide the menu overlay"""
+        self._show_overlay = False
+        self.overlayChanged.emit(False)
+    
+    def _can_select_option(self, index):
+        """Check if an option can be selected"""
+        if self._active_menu == "left":
+            return index == 0 or index != self._right_selected_index
+        else:
+            return index == 0 or index != self._left_selected_index
+            
+    @Slot()
+    def move_up(self):
+        """Move selection up in the active menu"""
+        if not self._show_overlay or self._input_locked:
+            return
+            
+        current_index = self._left_selected_index if self._active_menu == "left" else self._right_selected_index
+        
+        for index in range(current_index - 1, -1, -1):
+            if self._can_select_option(index):
+                if self._active_menu == "left":
+                    self._left_selected_index = index
+                    self.leftSelectedIndexChanged.emit(index)
+                else:
+                    self._right_selected_index = index
+                    self.rightSelectedIndexChanged.emit(index)
+                break
+                
+        self._input_locked = True
+        self._input_timer.start()
+            
+    @Slot()
+    def move_down(self):
+        """Move selection down in the active menu"""
+        if not self._show_overlay or self._input_locked:
+            return
+            
+        current_index = self._left_selected_index if self._active_menu == "left" else self._right_selected_index
+        
+        for index in range(current_index + 1, len(self._control_options)):
+            if self._can_select_option(index):
+                if self._active_menu == "left":
+                    self._left_selected_index = index
+                    self.leftSelectedIndexChanged.emit(index)
+                else:
+                    self._right_selected_index = index
+                    self.rightSelectedIndexChanged.emit(index)
+                break
+                
+        self._input_locked = True
+        self._input_timer.start()
 
-    @Property(str, notify=teensyYawCommandChanged)
-    def teensy_yaw_command(self):
-        return self._teensy_data['yaw_command']
+    @Slot()
+    def get_left_selected_option(self):
+        return self._control_options[self._left_selected_index]
     
-    @teensy_yaw_command.setter
-    def teensy_yaw_command(self, value):
-        if self._teensy_data['yaw_command'] != value:
-            self._teensy_data['yaw_command'] = value
-            self.teensyYawCommandChanged.emit(value)
-
-    @Property(str, notify=teensyYawPidPChanged)
-    def teensy_yaw_pid_p(self):
-        return self._teensy_data['yaw_pid_p']
-    
-    @teensy_yaw_pid_p.setter
-    def teensy_yaw_pid_p(self, value):
-        if self._teensy_data['yaw_pid_p'] != value:
-            self._teensy_data['yaw_pid_p'] = value
-            self.teensyYawPidPChanged.emit(value)
-
-    @Property(str, notify=teensyYawPidIChanged)
-    def teensy_yaw_pid_i(self):
-        return self._teensy_data['yaw_pid_i']
-    
-    @teensy_yaw_pid_i.setter
-    def teensy_yaw_pid_i(self, value):
-        if self._teensy_data['yaw_pid_i'] != value:
-            self._teensy_data['yaw_pid_i'] = value
-            self.teensyYawPidIChanged.emit(value)
-
-    @Property(str, notify=teensyYawPidDChanged)
-    def teensy_yaw_pid_d(self):
-        return self._teensy_data['yaw_pid_d']
-    
-    @teensy_yaw_pid_d.setter
-    def teensy_yaw_pid_d(self, value):
-        if self._teensy_data['yaw_pid_d'] != value:
-            self._teensy_data['yaw_pid_d'] = value
-            self.teensyYawPidDChanged.emit(value)
-
-    @Property(str, notify=teensyYawPWMChanged)
-    def teensy_yaw_pwm(self):
-        return self._teensy_data['yaw_pwm']
-    
-    @teensy_yaw_pwm.setter
-    def teensy_yaw_pwm(self, value):
-        if self._teensy_data['yaw_pwm'] != value:
-            self._teensy_data['yaw_pwm'] = value
-            self.teensyYawPWMChanged.emit(value)
+    @Slot()
+    def get_right_selected_option(self):
+        return self._control_options[self._right_selected_index]
 
 #############################################
 ### Video Streaming
@@ -976,8 +269,8 @@ class WinchController(MotorControllerBase):
         self._status = {}
 
     def _setup_publishers(self):
-        self._speed_pub = self._node.create_publisher(Float64, 'winch/cmd_speed', 1)
-        self._enable_pub = self._node.create_publisher(Bool, 'winch/enable', 1)
+        self._speed_pub = self._node.create_publisher(Float64, 'winch/move/speed/rpm/cmd', 1)
+        self._enable_pub = self._node.create_publisher(Bool, 'winch/enable/cmd', 1)
 
     def command_speed(self, speed: float) -> bool:
         safe_speed = self._apply_safety_limits(speed)
@@ -1125,7 +418,8 @@ class SteamDeckHandler:
                 'y': msg.y,
                 'l1': msg.l1,
                 'r1': msg.r1,
-                'menu': msg.menu
+                'menu': msg.menu,
+                'quick_access': msg.quick_access
             },
             'imu': {
                 'pitch': msg.imu_pitch,
@@ -1266,6 +560,7 @@ class RobotController(Node, QObject):
         self.image_provider = ImageProvider(config.video_width, config.video_height)
         self.video_stream = VideoStream(config.video_port)
         self.winch_controller = WinchController(self, config.max_winch_speed)
+        self.overlayController = OverlayController()
         self.teensyMonitor = TeensyMonitor(self)
         
         self.input_manager = InputManager()
@@ -1304,8 +599,20 @@ class RobotController(Node, QObject):
         self.ui_data_model.right_joystick_y = input_state.get('right_stick', {}).get('y', 0)
         self.ui_data_model.left_trigger = input_state.get('triggers', {}).get('left', 0)
         self.ui_data_model.right_trigger = input_state.get('triggers', {}).get('right', 0)
+
         self.ui_data_model.dpad_up = input_state.get('dpad', {}).get('up', False)
+        if input_state.get('dpad', {}).get('up', False) and \
+            (input_state.get('buttons', {}).get('menu', False) or \
+             input_state.get('buttons', {}).get('quick_access', False)):
+            print("Menu Up")
+            self.overlayController.move_up()
         self.ui_data_model.dpad_down = input_state.get('dpad', {}).get('down', False)
+        if input_state.get('dpad', {}).get('down', False) and \
+            (input_state.get('buttons', {}).get('menu', False) or \
+             input_state.get('buttons', {}).get('quick_access', False)):
+            print("Menu Down")
+            self.overlayController.move_down()
+
         self.ui_data_model.dpad_left = input_state.get('dpad', {}).get('left', False)
         self.ui_data_model.dpad_right = input_state.get('dpad', {}).get('right', False)
         self.ui_data_model.button_a = input_state.get('buttons', {}).get('a', False)
@@ -1314,7 +621,21 @@ class RobotController(Node, QObject):
         self.ui_data_model.button_y = input_state.get('buttons', {}).get('y', False)
         self.ui_data_model.button_l1 = input_state.get('buttons', {}).get('l1', False)
         self.ui_data_model.button_r1 = input_state.get('buttons', {}).get('r1', False)
+
         self.ui_data_model.button_menu = input_state.get('buttons', {}).get('menu', False)
+        self.ui_data_model.button_quick_access = input_state.get('buttons', {}).get('quick_access', False)
+        if input_state.get('buttons', {}).get('menu', False):
+            self.overlayController.set_active_menu("right")
+            print("Menu")
+            self.overlayController.show_menu()
+        elif input_state.get('buttons', {}).get('quick_access', False):
+            self.overlayController.set_active_menu("left")
+            print("Quick Access")
+            self.overlayController.show_menu()
+        else:
+            self.overlayController.hide_menu()
+
+        
         self.ui_data_model.imu_pitch = input_state.get('imu', {}).get('pitch', 0)
         self.ui_data_model.imu_roll = input_state.get('imu', {}).get('roll', 0)
         self.ui_data_model.imu_yaw = input_state.get('imu', {}).get('yaw', 0)
@@ -1354,7 +675,6 @@ class RobotController(Node, QObject):
         self.ui_data_model.teensy_yaw_pid_d = teensy_status.get('yaw_pid_d', '0.00')
         self.ui_data_model.teensy_yaw_pwm = teensy_status.get('yaw_pwm', '0.00')
 
-
         # Process control inputs
         self._process_control_input(input_state)
 
@@ -1386,19 +706,22 @@ class RobotController(Node, QObject):
             self.ef_spray_trigger_pub.publish(msg)
                 
 
-        if self.ui_data_model.right_joystick_control == "Winch Speed":
-            if self.ui_data_model.winch_available and self.winch_controller.get_status().get('available', False):
+        right_joystick_control_mode = self.overlayController.get_right_selected_option()
+
+        # print(f"Right Joystick Control Mode: {right_joystick_control_mode}")
+        if right_joystick_control_mode == "Winch Speed":
+            if self.ui_data_model.winch_available and not self.ui_data_model.winch_brake:
                 command_speed = input_state['right_stick']['y'] * self.config.max_winch_speed / 32768
-                self.winch_controller.command_speed(command_speed)
+                # self.winch_controller.command_speed(command_speed)
                 self.display_message(f"Sending Winch Speed: {command_speed:.2f}")
             else:
                 self.display_message("Winch not available")
-        elif self.ui_data_model.right_joystick_control == "EF top rail":
+        elif right_joystick_control_mode == "EF top rail":
                 command_speed = input_state['right_stick']['y'] * 1000 / 32768
                 msg = Float32(data=command_speed)
                 self.ef_move_top_rail_speed_pub.publish(msg)
                 self.display_message(f"Sending EF Top Rail Speed: {command_speed:.2f}")
-        elif self.ui_data_model.right_joystick_control == "EF prop pwm":
+        elif right_joystick_control_mode == "EF prop pwm":
                 command_speed = input_state['right_stick']['y'] * 600 / 32768
                 if command_speed < 0:
                     return
@@ -1406,7 +729,7 @@ class RobotController(Node, QObject):
                 msg = Int32(data=command_speed)
                 self.prop_left_pwm_pub.publish(msg)
                 self.prop_right_pwm_pub.publish(msg)
-        elif self.ui_data_model.right_joystick_control == "EF spray gimbal":
+        elif right_joystick_control_mode == "EF spray gimbal":
                 command_speed = int(input_state['right_stick']['y'] * 100 / 32768)
                 msg = Int32(data=command_speed)
                 self.ef_spray_gimbal_speed_pub.publish(msg)
@@ -1444,8 +767,9 @@ class RobotController(Node, QObject):
         )
 
     def _setup_publishers(self):
-        self.winch_enable_pub = self.create_publisher(Bool, 'winch/enable', 1)
-        self.winch_move_speed_pub = self.create_publisher(Float64, 'winch/cmd_speed', 1)
+        self.winch_enable_pub = self.create_publisher(Bool, 'winch/enable/cmd', 1)
+        self.winch_move_speed_pub = self.create_publisher(Float64, 'winch/move/speed/rpm/cmd', 1)
+        self.winch_move_increment_pub = self.create_publisher(MoveWinchLength, 'winch/move/increment/cmd', 1)
         self.ef_move_top_rail_speed_pub = self.create_publisher(Float32, 'teensy/top_rail/speed/cmd', 1)
         self.ef_move_arm_rail_speed_pub = self.create_publisher(Float32, 'teensy/arm_rail/speed/cmd', 1)
         self.prop_left_pwm_pub = self.create_publisher(Int32, 'teensy/prop/left/pwm/cmd', 1)
@@ -1500,6 +824,18 @@ class RobotController(Node, QObject):
     #############################################
     ### UI Control Methods
     #############################################
+
+    @Slot(int, int)
+    def moveWinchIncrement(self, length_mm, speed_mm_s):
+        """Move winch by a specified increment"""
+        try:
+            msg = MoveWinchLength()
+            msg.length_mm = int(length_mm)
+            msg.speed_mm_s = int(speed_mm_s)
+            self.winch_move_increment_pub.publish(msg)
+            self.get_logger().info(f'Moving winch by: {length_mm} mm at {speed_mm_s} mm/s')
+        except Exception as e:
+            self.get_logger().error(f'Error moving winch: {e}, {length_mm}, {speed_mm_s}')
 
     @Slot(bool)
     def setTeensyEnabled(self, enabled: bool):
@@ -1606,6 +942,7 @@ def main():
     # Set context properties
     engine.rootContext().setContextProperty("backend", controller)
     engine.rootContext().setContextProperty("uiData", controller.ui_data_model)
+    engine.rootContext().setContextProperty("overlayController", controller.overlayController)
     
     # Start status update timer
     status_timer = QTimer()

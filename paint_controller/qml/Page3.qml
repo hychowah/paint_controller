@@ -99,6 +99,17 @@ Rectangle {
                         text: uiData.winch_brake ? "Engaged" : "Released"
                         color: uiData.winch_brake ? "red" : "green"
                     }
+
+                    MoveLengthButton {
+                        id: moveWinchButton
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+                        applicationRoot: page3Rect
+                        onArrowAboveClicked: console.log("Arrow above clicked")
+                        onArrowBelowClicked: console.log("Arrow below clicked")
+                        onInputValueChanged: console.log("Input value changed to:", inputValue)
+                        onSliderValueChanged: console.log("Slider value changed to:", sliderValue)
+                    }
                 }
             }
         }
@@ -267,9 +278,9 @@ Rectangle {
                                 Label { text: uiData.teensy_imu_angular_acc_z + " rad/s" }
 
                                 Label { text: "Orientation"; font.bold: true; Layout.columnSpan: 6 }
-                                Label { text: ":" }
+                                Label { text: "Pitch:" }
                                 Label { text: uiData.teensy_imu_pitch }
-                                Label { text: "Y:" }
+                                Label { text: "Roll:" }
                                 Label { text: uiData.teensy_imu_roll }
                                 Label { text: "Yaw:" }
                                 Label { text: uiData.teensy_imu_yaw }
@@ -303,6 +314,7 @@ Rectangle {
                     title: "Control Mapping"
 
                     ColumnLayout {
+                        height: 80
                         anchors.fill: parent
                         spacing: 10
 
@@ -311,7 +323,7 @@ Rectangle {
                             spacing: 10
 
                             Label {
-                                text: "Left Joystick:"
+                                text: "Left:"
                                 font.bold: true
                             }
 
@@ -319,6 +331,7 @@ Rectangle {
                                 id: leftJoystickMapping
                                 model: getAvailableOptions(true)
                                 currentIndex: model.indexOf(leftCurrentControl)
+                                Layout.preferredHeight: 40
                                 
                                 onActivated: {
                                     let newValue = model[currentIndex]
@@ -338,7 +351,7 @@ Rectangle {
                             spacing: 10
 
                             Label {
-                                text: "Right Joystick:"
+                                text: "Right:"
                                 font.bold: true
                             }
 
@@ -346,6 +359,7 @@ Rectangle {
                                 id: rightJoystickMapping
                                 model: getAvailableOptions(false)
                                 currentIndex: model.indexOf(rightCurrentControl)
+                                Layout.preferredHeight: 40
                                 
                                 onActivated: {
                                     let newValue = model[currentIndex]
@@ -456,27 +470,8 @@ Rectangle {
                         color: uiData.menu_pressed ? "green" : "gray"
                     }
 
-                       // Triggers
-                    Label { text: "Left Trigger:"; font.bold: true }
-                    Label { text: uiData.left_trigger }
-
-                    // IMU Data
-                    Label { 
-                        text: "IMU Pitch: " + uiData.teensy_imu_pitch.toFixed(2) + "°"
-                    }
-
-                    Label { 
-                        text: "IMU Roll: " + uiData.teensy_imu_roll.toFixed(2) + "°"
-                    }
-
-                    Label { 
-                        text: "IMU Yaw: " + uiData.teensy_imu_yaw.toFixed(2) + "°"
-                    }
-
                 }
             }
         }
-
-        
     }
 }

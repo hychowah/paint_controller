@@ -50,14 +50,14 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             height: 80
-            color: "#FFFFFF"
+            color: "#9F9F9F"
 
             RowLayout {
                 anchors.fill: parent
                 anchors.margins: 5
                 spacing: 10
 
-                Label { text: "Enable:"; font.bold: true }
+                Label { text: "Enable:"; color: "white" ;font.bold: true }
                     
                     RowLayout {
                         TouchSwitch {
@@ -67,7 +67,7 @@ Item {
                         }
                     }
 
-                Label { text: "Relay:"; font.bold: true }
+                Label { text: "Relay:"; color: "white" ; font.bold: true }
                     
                     RowLayout {
                         TouchSwitch {
@@ -90,17 +90,52 @@ Item {
 
                     Label {
                         text: "PWM Value: " + pwmSlider.value
-                        color: "white"
+                        color: "black"
                     }
 
                     Slider {
                         id: pwmSlider
                         Layout.fillWidth: true
-                        from: 1000
-                        to: 1500
+                        Layout.preferredHeight: 60  // Make the overall slider taller
+                        from: 1100
+                        to: 1600
                         value: pwmValue
                         stepSize: 1
                         onValueChanged: pwmValue = value
+
+                        // Customize the handle and background
+                        background: Rectangle {
+                            x: pwmSlider.leftPadding
+                            y: pwmSlider.topPadding + pwmSlider.availableHeight / 2 - height / 2
+                            width: pwmSlider.availableWidth
+                            height: 20  // Thicker track
+                            radius: 10
+                            color: "#e0e0e0"
+
+                            Rectangle {
+                                width: pwmSlider.visualPosition * parent.width
+                                height: parent.height
+                                color: "#21be2b"
+                                radius: 10
+                            }
+                        }
+
+                        // Larger handle
+                        handle: Rectangle {
+                            x: pwmSlider.leftPadding + pwmSlider.visualPosition * (pwmSlider.availableWidth - width)
+                            y: pwmSlider.topPadding + pwmSlider.availableHeight / 2 - height / 2
+                            width: 40  // Wider handle
+                            height: 40 // Taller handle
+                            radius: width / 2
+                            color: pwmSlider.pressed ? "#f0f0f0" : "#f6f6f6"
+                            border.color: "#bdbebf"
+                            border.width: 2
+
+                            // Optional: Add a pressed state effect
+                            Behavior on color {
+                                ColorAnimation { duration: 100 }
+                            }
+                        }
                     }
                 }
             }
@@ -261,7 +296,7 @@ Item {
                 TextField {
                     id: pInput
                     Layout.preferredWidth: 100
-                    placeholderText: "Enter P"
+                    placeholderText: uiData.teensy_yaw_pid_p
                     validator: DoubleValidator {}
                     background: Rectangle {
                         color: "#ffffff"
@@ -281,7 +316,7 @@ Item {
                 TextField {
                     id: iInput
                     Layout.preferredWidth: 100
-                    placeholderText: "Enter I"
+                    placeholderText: uiData.teensy_yaw_pid_i
                     validator: DoubleValidator {}
                     background: Rectangle {
                         color: "#ffffff"
@@ -301,7 +336,7 @@ Item {
                 TextField {
                     id: dInput
                     Layout.preferredWidth: 100
-                    placeholderText: "Enter D"
+                    placeholderText: uiData.teensy_yaw_pid_d
                     validator: DoubleValidator {}
                     background: Rectangle {
                         color: "#ffffff"
@@ -319,7 +354,7 @@ Item {
                 TextField {
                     id: targetInput
                     Layout.preferredWidth: 100
-                    placeholderText: "Enter Target"
+                    placeholderText: uiData.teensy_yaw_command
                     validator: DoubleValidator {}
                     background: Rectangle {
                         color: "#ffffff"
@@ -351,13 +386,13 @@ Item {
                         id: sendMouseArea
                         anchors.fill: parent
                         onClicked: {
-                            if (pInput.text !== "") currentP = parseFloat(pInput.text)
-                            if (iInput.text !== "") currentI = parseFloat(iInput.text)
-                            if (dInput.text !== "") currentD = parseFloat(dInput.text)
-                            if (targetInput.text !== "") currentTarget = parseFloat(targetInput.text)
+                            // Use original values from uiData if input fields are empty
+                            let p = pInput.text !== "" ? parseFloat(pInput.text) : uiData.teensy_yaw_pid_p
+                            let i = iInput.text !== "" ? parseFloat(iInput.text) : uiData.teensy_yaw_pid_i
+                            let d = dInput.text !== "" ? parseFloat(dInput.text) : uiData.teensy_yaw_pid_d
+                            let target = targetInput.text !== "" ? parseFloat(targetInput.text) : uiData.teensy_yaw_command
                             
-                            backend.setYawControl(controlEnabled, currentTarget, currentP, currentI, currentD, pwmValue)
-                            
+                            backend.setYawControl(controlEnabled, target, p, i, d, pwmValue)
                         }
                     }
                 }
