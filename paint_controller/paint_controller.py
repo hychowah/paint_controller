@@ -24,6 +24,7 @@ from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType
 from PySide6.QtWidgets import QApplication
 from PySide6.QtQuick import QQuickImageProvider
 from UIDataModel import UIDataModel
+from OverlayController import OverlayController
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -56,149 +57,6 @@ class ConfigLoader:
             print(f"Error loading config: {e}")
             return RobotConfig()
         
-
-#############################################
-### UI Data Model
-#############################################
-
-class OverlayController(QObject):
-    """Controller class for managing dual joystick menu state"""
-    
-    leftSelectedIndexChanged = Signal(int)
-    rightSelectedIndexChanged = Signal(int)
-    overlayChanged = Signal(bool)
-    controlOptionsChanged = Signal(list)
-    activeMenuChanged = Signal(str)
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-        self._control_options = [
-            "None",
-            "Winch Speed",
-            "Wheel Speed",
-            "EF arm",
-            "EF top rail",
-            "EF prop pwm",
-            "EF prop joint",
-            "EF spray trigger",
-            "EF spray gimbal"
-        ]
-
-        # Separate indices for left and right joysticks
-        self._left_selected_index = 0
-        self._right_selected_index = 0
-        self._max_index = len(self._control_options) - 1
-        self._show_overlay = False
-        self._active_menu = "left"
-        
-        # Initialize timer
-        self._input_timer = QTimer(self)
-        self._input_timer.setInterval(200)
-        self._input_timer.timeout.connect(self._reset_input_lock)
-        self._input_locked = False
-
-    @Property(list, notify=controlOptionsChanged)
-    def control_options(self):
-        return self._control_options
-        
-    @Property(int, notify=leftSelectedIndexChanged)
-    def left_selected_index(self):
-        return self._left_selected_index
-        
-    @Property(int, notify=rightSelectedIndexChanged)
-    def right_selected_index(self):
-        return self._right_selected_index
-        
-    @Property(bool, notify=overlayChanged)
-    def show_overlay(self):
-        return self._show_overlay
-        
-    @Property(str, notify=activeMenuChanged)
-    def active_menu(self):
-        return self._active_menu
-
-    def _reset_input_lock(self):
-        self._input_locked = False
-        self._input_timer.stop()
-    
-    @Slot(str)
-    def set_active_menu(self, menu):
-        """Set active menu and show overlay"""
-        if menu in ["left", "right"]:
-            print(f"Set Active Menu: {menu}")
-            self._active_menu = menu
-            self.activeMenuChanged.emit(menu)
-    
-    @Slot()
-    def show_menu(self):
-        """Show the menu overlay"""
-        print("Show Menu")
-        self._show_overlay = True
-        self.overlayChanged.emit(True)
-    
-    @Slot()
-    def hide_menu(self):
-        """Hide the menu overlay"""
-        self._show_overlay = False
-        self.overlayChanged.emit(False)
-    
-    def _can_select_option(self, index):
-        """Check if an option can be selected"""
-        if self._active_menu == "left":
-            return index == 0 or index != self._right_selected_index
-        else:
-            return index == 0 or index != self._left_selected_index
-            
-    @Slot()
-    def move_up(self):
-        """Move selection up in the active menu"""
-        if not self._show_overlay or self._input_locked:
-            return
-            
-        current_index = self._left_selected_index if self._active_menu == "left" else self._right_selected_index
-        
-        for index in range(current_index - 1, -1, -1):
-            if self._can_select_option(index):
-                if self._active_menu == "left":
-                    self._left_selected_index = index
-                    self.leftSelectedIndexChanged.emit(index)
-                else:
-                    self._right_selected_index = index
-                    self.rightSelectedIndexChanged.emit(index)
-                break
-                
-        self._input_locked = True
-        self._input_timer.start()
-            
-    @Slot()
-    def move_down(self):
-        """Move selection down in the active menu"""
-        if not self._show_overlay or self._input_locked:
-            return
-            
-        current_index = self._left_selected_index if self._active_menu == "left" else self._right_selected_index
-        
-        for index in range(current_index + 1, len(self._control_options)):
-            if self._can_select_option(index):
-                if self._active_menu == "left":
-                    self._left_selected_index = index
-                    self.leftSelectedIndexChanged.emit(index)
-                else:
-                    self._right_selected_index = index
-                    self.rightSelectedIndexChanged.emit(index)
-                break
-                
-        self._input_locked = True
-        self._input_timer.start()
-
-    @Slot()
-    def get_left_selected_option(self):
-        return self._control_options[self._left_selected_index]
-    
-    @Slot()
-    def get_right_selected_option(self):
-        return self._control_options[self._right_selected_index]
 
 #############################################
 ### Video Streaming
@@ -302,6 +160,24 @@ class WinchController(MotorControllerBase):
 #############################################
 ### Teensy Monitor
 #############################################
+
+class WindMonitor:
+    def __init__(self, node: Node):
+        self._node = node
+        self._speed = 0
+        self._direction = 0
+
+    def _speed_callback(self, msg: Float32):
+        self._speed = f"{msg.data:.2f}"
+
+    def _direction_callback(self, msg: Float32):
+        self._direction = f"{msg.data:.2f}"
+
+    def get_speed(self) -> str:
+        return self._speed
+    
+    def get_direction(self) -> str:
+        return self._direction
 
 class TeensyMonitor:
     def __init__(self, node: Node):
@@ -418,6 +294,8 @@ class SteamDeckHandler:
                 'y': msg.y,
                 'l1': msg.l1,
                 'r1': msg.r1,
+                'l4': msg.l4,
+                'r4': msg.r4,
                 'menu': msg.menu,
                 'quick_access': msg.quick_access
             },
@@ -427,7 +305,6 @@ class SteamDeckHandler:
                 'yaw': msg.imu_yaw
             }
         }
-        
         self._input_state = new_state
 
     def _process_stick(self, x: float, y: float, stick_id: str) -> Dict[str, float]:
@@ -562,6 +439,7 @@ class RobotController(Node, QObject):
         self.winch_controller = WinchController(self, config.max_winch_speed)
         self.overlayController = OverlayController()
         self.teensyMonitor = TeensyMonitor(self)
+        self.windMonitor = WindMonitor(self)    
         
         self.input_manager = InputManager()
         self.steam_deck = SteamDeckHandler(config.joystick_deadzone)
@@ -601,18 +479,7 @@ class RobotController(Node, QObject):
         self.ui_data_model.right_trigger = input_state.get('triggers', {}).get('right', 0)
 
         self.ui_data_model.dpad_up = input_state.get('dpad', {}).get('up', False)
-        if input_state.get('dpad', {}).get('up', False) and \
-            (input_state.get('buttons', {}).get('menu', False) or \
-             input_state.get('buttons', {}).get('quick_access', False)):
-            print("Menu Up")
-            self.overlayController.move_up()
         self.ui_data_model.dpad_down = input_state.get('dpad', {}).get('down', False)
-        if input_state.get('dpad', {}).get('down', False) and \
-            (input_state.get('buttons', {}).get('menu', False) or \
-             input_state.get('buttons', {}).get('quick_access', False)):
-            print("Menu Down")
-            self.overlayController.move_down()
-
         self.ui_data_model.dpad_left = input_state.get('dpad', {}).get('left', False)
         self.ui_data_model.dpad_right = input_state.get('dpad', {}).get('right', False)
         self.ui_data_model.button_a = input_state.get('buttons', {}).get('a', False)
@@ -624,13 +491,21 @@ class RobotController(Node, QObject):
 
         self.ui_data_model.button_menu = input_state.get('buttons', {}).get('menu', False)
         self.ui_data_model.button_quick_access = input_state.get('buttons', {}).get('quick_access', False)
-        if input_state.get('buttons', {}).get('menu', False):
+        
+        if input_state.get('dpad', {}).get('up', False) and \
+            (input_state.get('buttons', {}).get('l4', False) or \
+             input_state.get('buttons', {}).get('r4', False)):
+            self.overlayController.move_up()
+        elif input_state.get('dpad', {}).get('down', False) and \
+            (input_state.get('buttons', {}).get('l4', False) or \
+             input_state.get('buttons', {}).get('r4', False)):
+            self.overlayController.move_down()
+
+        if input_state.get('buttons', {}).get('r4', False):
             self.overlayController.set_active_menu("right")
-            print("Menu")
             self.overlayController.show_menu()
-        elif input_state.get('buttons', {}).get('quick_access', False):
+        elif input_state.get('buttons', {}).get('l4', False):
             self.overlayController.set_active_menu("left")
-            print("Quick Access")
             self.overlayController.show_menu()
         else:
             self.overlayController.hide_menu()
@@ -763,6 +638,20 @@ class RobotController(Node, QObject):
             TeensyStatus,
             'teensy/status',
             self.teensyMonitor._status_callback,
+            1
+        )
+        
+        self.create_subscription(
+            Float32,
+            'wind/speed',
+            self.windMonitor._speed_callback,
+            1
+        )
+
+        self.create_subscription(
+            Float32,
+            'wind/direction',
+            self.windMonitor._direction_callback,
             1
         )
 

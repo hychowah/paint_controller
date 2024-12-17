@@ -64,6 +64,8 @@ class UIDataModel(QObject):
     buttonYChanged = Signal(bool)
     buttonL1Changed = Signal(bool)
     buttonR1Changed = Signal(bool)
+    buttonL4Changed = Signal(bool)
+    buttonR4Changed = Signal(bool)
     buttonMenuChanged = Signal(bool)
     buttonQuickAccessChanged = Signal(bool)
     imuPitchChanged = Signal(int)
@@ -111,6 +113,9 @@ class UIDataModel(QObject):
 
     teensyRelay1Changed = Signal(bool)
     teensyEnabledChanged = Signal(bool)
+
+    windSpeedChanged = Signal(str)
+    windDirectionChanged = Signal(str)
     
     def __init__(self):
         super().__init__()
@@ -156,6 +161,8 @@ class UIDataModel(QObject):
                 'y': False,
                 'l1': False,
                 'r1': False,
+                'l4': False,
+                'r4': False,
                 'menu': False,
                 'quick_access': False
             },
@@ -203,6 +210,11 @@ class UIDataModel(QObject):
             'yaw_pid_i': '0.00',
             'yaw_pid_d': '0.00',
             'yaw_pwm': '0.00'
+        }
+
+        self._wind_data = {
+            'speed': '0.00',
+            'direction': '0.00'
         }
 
     ## Winch Properties
@@ -488,6 +500,20 @@ class UIDataModel(QObject):
         if self._input_state['buttons']['r1'] != value:
             self._input_state['buttons']['r1'] = value
             self.buttonR1Changed.emit(value)
+
+    @Property(bool, notify=buttonL4Changed)
+    def button_l4(self):
+        return self._input_state['buttons']['l4']
+    
+    @button_l4.setter
+    def button_l4(self, value):
+        if self._input_state['buttons']['l4'] != value:
+            self._input_state['buttons']['l4'] = value
+            self.buttonL4Changed.emit(value)
+
+    @Property(bool, notify=buttonR4Changed)
+    def button_r4(self):
+        return self._input_state['buttons']['r4']
 
     @Property(bool, notify=buttonMenuChanged)
     def button_menu(self):
@@ -882,3 +908,24 @@ class UIDataModel(QObject):
         if self._teensy_data['yaw_pwm'] != value:
             self._teensy_data['yaw_pwm'] = value
             self.teensyYawPWMChanged.emit(value)
+
+    # Wind Properties
+    @Property(str, notify=windSpeedChanged)
+    def wind_speed(self):
+        return self._wind_data['speed']
+    
+    @wind_speed.setter
+    def wind_speed(self, value):
+        if self._wind_data['speed'] != value:
+            self._wind_data['speed'] = value
+            self.windSpeedChanged.emit(value)
+
+    @Property(str, notify=windDirectionChanged)
+    def wind_direction(self):
+        return self._wind_data['direction']
+    
+    @wind_direction.setter
+    def wind_direction(self, value):
+        if self._wind_data['direction'] != value:
+            self._wind_data['direction'] = value
+            self.windDirectionChanged.emit(value)

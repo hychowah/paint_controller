@@ -119,6 +119,11 @@ ApplicationWindow {
         Page4 {}
     }
 
+    Component {
+        id: page5Component
+        Page5 {}
+    }
+
     // Overlay layer
     Item {
         id: overlayLayer

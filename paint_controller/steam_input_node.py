@@ -27,6 +27,12 @@ class SteamInputState:
     l2_click_pressed: bool = False
     r2_click: bool = False
     r2_click_pressed: bool = False
+    l3: bool = False
+    l3_pressed: bool = False
+    l4: bool = False
+    r4: bool = False
+    r5: bool = False
+    r5_pressed: bool = False
     l5: bool = False
     l5_pressed: bool = False
     menu: bool = False
@@ -43,10 +49,6 @@ class SteamInputState:
     dpad_left_pressed: bool = False
     dpad_right: bool = False
     dpad_right_pressed: bool = False
-    l3: bool = False
-    l3_pressed: bool = False
-    r5: bool = False
-    r5_pressed: bool = False
     right_touchpad_touch: bool = False
     right_touchpad_touch_pressed: bool = False
     left_touchpad_touch: bool = False
@@ -98,8 +100,9 @@ class SteamDeckNode(Node):
             raise RuntimeError('Steam Deck not found')
         
         # Initialize device and states
-        self.device = hid.Device(path=device_info['path'])
-        self.device.nonblocking = 1
+        self.device = hid.device()
+        self.device.open_path(device_info['path'])
+        self.device.set_nonblocking(1)
         self._lock = threading.Lock()
         self._prev_state = SteamInputState()
         self._current_state = SteamInputState()
@@ -116,7 +119,7 @@ class SteamDeckNode(Node):
             'a', 'b', 'x', 'y', 'l1', 'r1', 'l2_click', 'r2_click', 
             'l5', 'menu', 'steam', 'quick_access', 'dpad_up', 'dpad_down',
             'dpad_left', 'dpad_right', 'l3', 'r5', 'right_touchpad_touch',
-            'left_touchpad_touch'
+            'left_touchpad_touch', 'l4', 'r4'
         ]
         
         for btn in buttons:
@@ -157,6 +160,10 @@ class SteamDeckNode(Node):
         self._current_state.left_touchpad_touch = bool(button_byte3 & (1 << 3))
         self._current_state.right_touchpad_touch = bool(button_byte3 & (1 << 4))
         self._current_state.l3 = bool(button_byte3 & (1 << 6))
+
+        button_byte4 = data[13]
+        self._current_state.l4 = bool(button_byte4 & (1 << 1))
+        self._current_state.r4 = bool(button_byte4 & (1 << 2))
         
         # Process analog inputs
         self._current_state.imu_pitch = struct.unpack('<h', bytes([data[38], data[39]]))[0]

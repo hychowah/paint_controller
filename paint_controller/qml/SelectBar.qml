@@ -26,6 +26,7 @@ Rectangle {
                 case 1: targetComponent = page2Component; break;
                 case 2: targetComponent = page3Component; break;
                 case 3: targetComponent = page4Component; break;
+                case 4: targetComponent = page5Component; break;
                 // Add more cases for additional pages
             }
             
@@ -151,7 +152,7 @@ Rectangle {
                 }
             }
 
-            // Page 3 Button
+            // Page 4 Button
             Rectangle {
                 id: buttonPage4
                 width: buttonSize
@@ -179,6 +180,33 @@ Rectangle {
                 }
             }
 
+
+            // Page 5 Button
+            Rectangle {
+                id: buttonPage5
+                width: buttonSize
+                height: buttonSize
+                radius: 20
+                color: selectBar.selectedButton === "buttonPage5" ? "#E2E2E2" : "#70A3D2"
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                Text {
+                    text: "Top Sensor"
+                    anchors.centerIn: parent
+                    color: "#FFFFFF"
+                    font.pixelSize: 20
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        if (selectBar.selectedButton !== "buttonPage5") {
+                            selectBar.navigateToPage(4)
+                            selectBar.selectedButton = "buttonPage5"
+                        }
+                    }
+                }
+            }
             // Template for additional buttons
             // Copy and modify this structure for new pages
             // Rectangle {

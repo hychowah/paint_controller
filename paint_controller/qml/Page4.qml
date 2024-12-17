@@ -284,14 +284,22 @@ Item {
             GridLayout {
                 anchors.fill: parent
                 anchors.margins: 20
-                columns: 3
+                columns: 5  // Increased to accommodate the new buttons
                 rowSpacing: 15
-                columnSpacing: 20
+                columnSpacing: 10
 
+                // P Value Row
                 Label {
                     text: "P Value"
                     font.bold: true
                     color: "white"
+                }
+                Button {
+                    text: "-10%"
+                    onClicked: {
+                        let currentP = uiData.teensy_yaw_pid_p
+                        pInput.text = (currentP * 0.9).toFixed(6)
+                    }
                 }
                 TextField {
                     id: pInput
@@ -303,15 +311,30 @@ Item {
                         radius: 5
                     }
                 }
+                Button {
+                    text: "+10%"
+                    onClicked: {
+                        let currentP = uiData.teensy_yaw_pid_p
+                        pInput.text = (currentP * 1.1).toFixed(6)
+                    }
+                }
                 Label {
                     text: "Current P: " + uiData.teensy_yaw_pid_p
                     color: "white"
                 }
 
+                // I Value Row
                 Label {
                     text: "I Value"
                     font.bold: true
                     color: "white"
+                }
+                Button {
+                    text: "-10%"
+                    onClicked: {
+                        let currentI = uiData.teensy_yaw_pid_i
+                        iInput.text = (currentI * 0.9).toFixed(6)
+                    }
                 }
                 TextField {
                     id: iInput
@@ -323,15 +346,30 @@ Item {
                         radius: 5
                     }
                 }
+                Button {
+                    text: "+10%"
+                    onClicked: {
+                        let currentI = uiData.teensy_yaw_pid_i
+                        iInput.text = (currentI * 1.1).toFixed(6)
+                    }
+                }
                 Label {
                     text: "Current I: " + uiData.teensy_yaw_pid_i
                     color: "white"
                 }
 
+                // D Value Row
                 Label {
                     text: "D Value"
                     font.bold: true
                     color: "white"
+                }
+                Button {
+                    text: "-10%"
+                    onClicked: {
+                        let currentD = uiData.teensy_yaw_pid_d
+                        dInput.text = (currentD * 0.9).toFixed(6)
+                    }
                 }
                 TextField {
                     id: dInput
@@ -343,13 +381,30 @@ Item {
                         radius: 5
                     }
                 }
+                Button {
+                    text: "+10%"
+                    onClicked: {
+                        let currentD = uiData.teensy_yaw_pid_d
+                        dInput.text = (currentD * 1.1).toFixed(6)
+                    }
+                }
                 Label {
                     text: "Current D: " + uiData.teensy_yaw_pid_d
                     color: "white"
                 }
+
+                // Target Value Row
                 Label {
-                    text: "Current Target: " + uiData.teensy_yaw_command
+                    text: "Target"
+                    font.bold: true
                     color: "white"
+                }
+                Button {
+                    text: "-10%"
+                    onClicked: {
+                        let currentTarget = uiData.teensy_yaw_command
+                        targetInput.text = (currentTarget * 0.9).toFixed(6)
+                    }
                 }
                 TextField {
                     id: targetInput
@@ -361,14 +416,21 @@ Item {
                         radius: 5
                     }
                 }
+                Button {
+                    text: "+10%"
+                    onClicked: {
+                        let currentTarget = uiData.teensy_yaw_command
+                        targetInput.text = (currentTarget * 1.1).toFixed(6)
+                    }
+                }
                 Label {
-                    text: "Current Yaw: " + uiData.teensy_imu_yaw
+                    text: "Target: " + uiData.teensy_yaw_command + "current: " + uiData.teensy_imu_yaw
                     color: "white"
                 }
-        
 
+                // Send Button (spanning all columns)
                 Rectangle {
-                    Layout.columnSpan: 3
+                    Layout.columnSpan: 5
                     Layout.alignment: Qt.AlignHCenter
                     width: 120
                     height: 40
@@ -386,7 +448,6 @@ Item {
                         id: sendMouseArea
                         anchors.fill: parent
                         onClicked: {
-                            // Use original values from uiData if input fields are empty
                             let p = pInput.text !== "" ? parseFloat(pInput.text) : uiData.teensy_yaw_pid_p
                             let i = iInput.text !== "" ? parseFloat(iInput.text) : uiData.teensy_yaw_pid_i
                             let d = dInput.text !== "" ? parseFloat(dInput.text) : uiData.teensy_yaw_pid_d
