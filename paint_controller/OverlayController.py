@@ -25,6 +25,7 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtQuick import QQuickImageProvider
 
 
+
 class OverlayController(QObject):
     """Controller class for managing dual joystick menu state"""
     
@@ -49,9 +50,14 @@ class OverlayController(QObject):
             "EF spray gimbal"
         ]
 
-        # Separate indices for left and right joysticks
+        # Current active indices
         self._left_selected_index = 0
         self._right_selected_index = 0
+        
+        # Temporary indices for selection in overlay
+        self._temp_left_index = 0
+        self._temp_right_index = 0
+        
         self._max_index = len(self._control_options) - 1
         self._show_overlay = False
         self._active_menu = "left"
@@ -68,11 +74,13 @@ class OverlayController(QObject):
         
     @Property(int, notify=leftSelectedIndexChanged)
     def left_selected_index(self):
-        return self._left_selected_index
+        # Return temporary index when overlay is shown
+        return self._temp_left_index if self._show_overlay else self._left_selected_index
         
     @Property(int, notify=rightSelectedIndexChanged)
     def right_selected_index(self):
-        return self._right_selected_index
+        # Return temporary index when overlay is shown
+        return self._temp_right_index if self._show_overlay else self._right_selected_index
         
     @Property(bool, notify=overlayChanged)
     def show_overlay(self):
@@ -93,6 +101,31 @@ class OverlayController(QObject):
             self._active_menu = menu
             self.activeMenuChanged.emit(menu)
     
+    def toggle_left_menu(self):
+        if self._active_menu != "left":
+            return
+        if self._show_overlay:
+            self.hide_menu()
+        else:
+            # Initialize temporary selection with current selection
+            self._temp_left_index = self._left_selected_index
+            self._temp_right_index = self._right_selected_index
+            self.show_menu()
+
+    def toggle_right_menu(self):
+        if self._active_menu != "right":
+            return
+        if self._show_overlay:
+            self.hide_menu()
+        else:
+            # Initialize temporary selection with current selection
+            self._temp_left_index = self._left_selected_index
+            self._temp_right_index = self._right_selected_index
+            self.show_menu()
+
+    def is_showing_menu(self):
+        return self._show_overlay
+    
     @Slot()
     def show_menu(self):
         """Show the menu overlay"""
@@ -101,16 +134,25 @@ class OverlayController(QObject):
     
     @Slot()
     def hide_menu(self):
-        """Hide the menu overlay"""
+        """Hide the menu overlay and apply selections"""
+        if self._show_overlay:
+            # Apply temporary selections to actual selections
+            self._left_selected_index = self._temp_left_index
+            self._right_selected_index = self._temp_right_index
+            
+            # Emit signals for the final selections
+            self.leftSelectedIndexChanged.emit(self._left_selected_index)
+            self.rightSelectedIndexChanged.emit(self._right_selected_index)
+            
         self._show_overlay = False
         self.overlayChanged.emit(False)
     
     def _can_select_option(self, index):
         """Check if an option can be selected"""
         if self._active_menu == "left":
-            return index == 0 or index != self._right_selected_index
+            return index == 0 or index != self._temp_right_index
         else:
-            return index == 0 or index != self._left_selected_index
+            return index == 0 or index != self._temp_left_index
             
     @Slot()
     def move_up(self):
@@ -118,15 +160,15 @@ class OverlayController(QObject):
         if not self._show_overlay or self._input_locked:
             return
             
-        current_index = self._left_selected_index if self._active_menu == "left" else self._right_selected_index
+        current_index = self._temp_left_index if self._active_menu == "left" else self._temp_right_index
         
         for index in range(current_index - 1, -1, -1):
             if self._can_select_option(index):
                 if self._active_menu == "left":
-                    self._left_selected_index = index
+                    self._temp_left_index = index
                     self.leftSelectedIndexChanged.emit(index)
                 else:
-                    self._right_selected_index = index
+                    self._temp_right_index = index
                     self.rightSelectedIndexChanged.emit(index)
                 break
                 
@@ -139,15 +181,15 @@ class OverlayController(QObject):
         if not self._show_overlay or self._input_locked:
             return
             
-        current_index = self._left_selected_index if self._active_menu == "left" else self._right_selected_index
+        current_index = self._temp_left_index if self._active_menu == "left" else self._temp_right_index
         
         for index in range(current_index + 1, len(self._control_options)):
             if self._can_select_option(index):
                 if self._active_menu == "left":
-                    self._left_selected_index = index
+                    self._temp_left_index = index
                     self.leftSelectedIndexChanged.emit(index)
                 else:
-                    self._right_selected_index = index
+                    self._temp_right_index = index
                     self.rightSelectedIndexChanged.emit(index)
                 break
                 
@@ -161,3 +203,40 @@ class OverlayController(QObject):
     @Slot()
     def get_right_selected_option(self):
         return self._control_options[self._right_selected_index]
+    
+    @Slot()
+    def move_to_first(self):
+        """Move selection to the first available item in the active menu"""
+        if not self._show_overlay or self._input_locked:
+            return
+            
+        # Always try to select index 0 (None) first since it's always available
+        if self._active_menu == "left":
+            self._temp_left_index = 0
+            self.leftSelectedIndexChanged.emit(0)
+        else:
+            self._temp_right_index = 0
+            self.rightSelectedIndexChanged.emit(0)
+                
+        self._input_locked = True
+        self._input_timer.start()
+
+    @Slot()
+    def move_to_last(self):
+        """Move selection to the last available item in the active menu"""
+        if not self._show_overlay or self._input_locked:
+            return
+            
+        # Start from the last index and move up until we find a valid option
+        for index in range(len(self._control_options) - 1, -1, -1):
+            if self._can_select_option(index):
+                if self._active_menu == "left":
+                    self._temp_left_index = index
+                    self.leftSelectedIndexChanged.emit(index)
+                else:
+                    self._temp_right_index = index
+                    self.rightSelectedIndexChanged.emit(index)
+                break
+                
+        self._input_locked = True
+        self._input_timer.start()

@@ -25,6 +25,8 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtQuick import QQuickImageProvider
 from UIDataModel import UIDataModel
 from OverlayController import OverlayController
+from UIControlProcessor import ControlProcessor
+from UISteamDeckHandler import SteamDeckHandler
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -39,7 +41,7 @@ from gi.repository import Gst, GstApp
 class RobotConfig:
     """Robot configuration parameters"""
     video_port: int = 5000
-    update_rate: float = 30.0  # Hz
+    update_rate: float = 60.0  # Hz
     watchdog_timeout: float = 1.0  # seconds
     joystick_deadzone: float = 0.1
     max_winch_speed: float = 1500.0
@@ -235,151 +237,6 @@ class TeensyMonitor:
     
 
 #############################################
-### Input Handling
-#############################################
-
-class InputDevice(Enum):
-    STEAM_DECK = auto()
-    KEYBOARD = auto()
-    GAMEPAD = auto()
-
-class InputManager:
-    def __init__(self):
-        self._handlers = {}
-        self._active_device = None
-        self._callbacks = {}
-
-    def register_device(self, device: InputDevice, handler: Any):
-        self._handlers[device] = handler
-
-    def set_active_device(self, device: InputDevice):
-        if device not in self._handlers:
-            raise ValueError(f"Device {device} not registered")
-        self._active_device = device
-
-    def register_callback(self, event_type: str, callback: Callable):
-        if event_type not in self._callbacks:
-            self._callbacks[event_type] = []
-        self._callbacks[event_type].append(callback)
-
-class SteamDeckHandler:
-    def __init__(self, deadzone: float, smoothing_factor: float = 0.1):
-        self._deadzone = deadzone
-        self._smoothing_factor = max(0.0, min(1.0, smoothing_factor))  # Clamp between 0 and 1
-        self._input_state = {}
-        self._callbacks = {}
-        self._prev_stick_values = {
-            'left_stick': {'x': 0.0, 'y': 0.0},
-            'right_stick': {'x': 0.0, 'y': 0.0}
-        }
-
-    def process_input(self, msg: SteamDeckInput):
-        new_state = {
-            'left_stick': self._process_stick(msg.left_stick_x, msg.left_stick_y, 'left_stick'),
-            'right_stick': self._process_stick(msg.right_stick_x, msg.right_stick_y, 'right_stick'),
-            'triggers': {
-                'left': msg.left_trigger,
-                'right': msg.right_trigger
-            },
-            'dpad': {
-                'up': msg.dpad_up,
-                'down': msg.dpad_down,
-                'left': msg.dpad_left,
-                'right': msg.dpad_right
-            },
-            'buttons': {
-                'a': msg.a,
-                'b': msg.b,
-                'x': msg.x,
-                'y': msg.y,
-                'l1': msg.l1,
-                'r1': msg.r1,
-                'l4': msg.l4,
-                'r4': msg.r4,
-                'menu': msg.menu,
-                'quick_access': msg.quick_access
-            },
-            'imu': {
-                'pitch': msg.imu_pitch,
-                'roll': msg.imu_roll,
-                'yaw': msg.imu_yaw
-            }
-        }
-        self._input_state = new_state
-
-    def _process_stick(self, x: float, y: float, stick_id: str) -> Dict[str, float]:
-        # Normalize inputs to -1.0 to 1.0 range
-        x = x / 32768.0
-        y = y / 32768.0
-        
-        # Calculate magnitude and direction
-        magnitude = math.sqrt(x*x + y*y)
-        if magnitude < self._deadzone:
-            self._prev_stick_values[stick_id] = {'x': 0.0, 'y': 0.0}
-            return {'x': 0.0, 'y': 0.0}
-        
-        # Calculate normalized direction
-        if magnitude > 0:
-            normalized_x = x / magnitude
-            normalized_y = y / magnitude
-        else:
-            normalized_x = 0
-            normalized_y = 0
-        
-        # Apply deadzone scaling
-        scaled_magnitude = self._scale_deadzone(magnitude)
-        
-        # Apply the scaled magnitude back to the normalized direction
-        processed_x = normalized_x * scaled_magnitude
-        processed_y = normalized_y * scaled_magnitude
-        
-        # Apply smoothing
-        smoothed_x = self._apply_smoothing(processed_x, self._prev_stick_values[stick_id]['x'])
-        smoothed_y = self._apply_smoothing(processed_y, self._prev_stick_values[stick_id]['y'])
-        
-        # Store current values for next frame
-        self._prev_stick_values[stick_id] = {'x': smoothed_x, 'y': smoothed_y}
-        
-        return {
-            'x': smoothed_x * 32768,
-            'y': smoothed_y * 32768
-        }
-
-    def _scale_deadzone(self, magnitude: float) -> float:
-        """
-        Scales the input magnitude accounting for deadzone.
-        Returns a value between 0 and 1.
-        """
-        if magnitude < self._deadzone:
-            return 0.0
-        
-        # Rescale the input from [deadzone, 1.0] to [0.0, 1.0]
-        scaled = (magnitude - self._deadzone) / (1.0 - self._deadzone)
-        return min(scaled, 1.0)  # Clamp to maximum of 1.0
-
-    def _apply_smoothing(self, current: float, previous: float) -> float:
-        """
-        Applies exponential smoothing to the input values.
-        smoothing_factor of 1.0 means no smoothing, 0.0 means maximum smoothing.
-        """
-        return current * self._smoothing_factor + previous * (1.0 - self._smoothing_factor)
-
-    def _detect_changes(self, new_state: Dict) -> Dict[str, Any]:
-        changes = {}
-        for key in new_state:
-            if key not in self._input_state or new_state[key] != self._input_state[key]:
-                changes[key] = new_state[key]
-        return changes
-    
-    def get_current_state(self) -> Dict:
-        """Get current input state"""
-        return self._input_state
-
-    def has_new_input(self) -> bool:
-        """Check if there are new inputs to process"""
-        return bool(self._detect_changes(self._input_state))
-
-#############################################
 ### ROS Integration
 #############################################
 
@@ -440,13 +297,12 @@ class RobotController(Node, QObject):
         self.overlayController = OverlayController()
         self.teensyMonitor = TeensyMonitor(self)
         self.windMonitor = WindMonitor(self)    
-        
-        self.input_manager = InputManager()
+        self.controlProcessor = ControlProcessor(self)
+
         self.steam_deck = SteamDeckHandler(config.joystick_deadzone)
-        self.input_manager.register_device(InputDevice.STEAM_DECK, self.steam_deck)
 
         self.ui_data_model = UIDataModel()
-        self.status_updated.connect(self._update_ui)
+        self.status_updated.connect(self._timer_callback)
         
         # Setup ROS subscribers and publishers
         self._setup_subscribers()
@@ -456,7 +312,7 @@ class RobotController(Node, QObject):
         self.video_stream.connect_new_sample_callback(self.on_new_video_frame)
         self.video_stream.start()
 
-    def _update_ui(self):
+    def _timer_callback(self):
         """Update UI elements with latest data"""
         # Update Winch UI
         winch_status = self.winch_controller.get_status()
@@ -478,10 +334,10 @@ class RobotController(Node, QObject):
         self.ui_data_model.left_trigger = input_state.get('triggers', {}).get('left', 0)
         self.ui_data_model.right_trigger = input_state.get('triggers', {}).get('right', 0)
 
-        self.ui_data_model.dpad_up = input_state.get('dpad', {}).get('up', False)
-        self.ui_data_model.dpad_down = input_state.get('dpad', {}).get('down', False)
-        self.ui_data_model.dpad_left = input_state.get('dpad', {}).get('left', False)
-        self.ui_data_model.dpad_right = input_state.get('dpad', {}).get('right', False)
+        self.ui_data_model.dpad_up = input_state.get('buttons', {}).get('up', False)
+        self.ui_data_model.dpad_down = input_state.get('buttons', {}).get('down', False)
+        self.ui_data_model.dpad_left = input_state.get('buttons', {}).get('left', False)
+        self.ui_data_model.dpad_right = input_state.get('buttons', {}).get('right', False)
         self.ui_data_model.button_a = input_state.get('buttons', {}).get('a', False)
         self.ui_data_model.button_b = input_state.get('buttons', {}).get('b', False)
         self.ui_data_model.button_x = input_state.get('buttons', {}).get('x', False)
@@ -491,25 +347,6 @@ class RobotController(Node, QObject):
 
         self.ui_data_model.button_menu = input_state.get('buttons', {}).get('menu', False)
         self.ui_data_model.button_quick_access = input_state.get('buttons', {}).get('quick_access', False)
-        
-        if input_state.get('dpad', {}).get('up', False) and \
-            (input_state.get('buttons', {}).get('l4', False) or \
-             input_state.get('buttons', {}).get('r4', False)):
-            self.overlayController.move_up()
-        elif input_state.get('dpad', {}).get('down', False) and \
-            (input_state.get('buttons', {}).get('l4', False) or \
-             input_state.get('buttons', {}).get('r4', False)):
-            self.overlayController.move_down()
-
-        if input_state.get('buttons', {}).get('r4', False):
-            self.overlayController.set_active_menu("right")
-            self.overlayController.show_menu()
-        elif input_state.get('buttons', {}).get('l4', False):
-            self.overlayController.set_active_menu("left")
-            self.overlayController.show_menu()
-        else:
-            self.overlayController.hide_menu()
-
         
         self.ui_data_model.imu_pitch = input_state.get('imu', {}).get('pitch', 0)
         self.ui_data_model.imu_roll = input_state.get('imu', {}).get('roll', 0)
@@ -553,8 +390,24 @@ class RobotController(Node, QObject):
         self.ui_data_model.wind_speed = round(float(self.windMonitor.get_speed()), 2)
         self.ui_data_model.wind_direction = round(float(self.windMonitor.get_direction()), 2)
 
+        if self.steam_deck.get_button_pressed('up') and self.overlayController.is_showing_menu():
+            self.overlayController.move_up()
+        elif self.steam_deck.get_button_pressed('down') and self.overlayController.is_showing_menu():
+            self.overlayController.move_down()
+        elif self.steam_deck.get_button_pressed('left') and self.overlayController.is_showing_menu():
+            self.overlayController.move_to_first()
+        elif self.steam_deck.get_button_pressed('right') and self.overlayController.is_showing_menu():
+            self.overlayController.move_to_last()
+
+        if self.steam_deck.get_button_pressed('r4'):
+            self.overlayController.set_active_menu("right")
+            self.overlayController.toggle_right_menu()
+        elif self.steam_deck.get_button_pressed('l4'):
+            self.overlayController.set_active_menu("left")
+            self.overlayController.toggle_left_menu()
+
         # Process control inputs
-        self._process_control_input(input_state)
+        self.controlProcessor.process_input(input_state)
 
     def display_message(self, message: str):
         self.ui_data_model.display_message = message
