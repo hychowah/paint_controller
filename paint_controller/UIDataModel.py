@@ -114,8 +114,8 @@ class UIDataModel(QObject):
     teensyRelay1Changed = Signal(bool)
     teensyEnabledChanged = Signal(bool)
 
-    windSpeedChanged = Signal(str)
-    windDirectionChanged = Signal(str)
+    windSpeedChanged = Signal(float)
+    windDirectionChanged = Signal(float)
     
     def __init__(self):
         super().__init__()
@@ -910,7 +910,7 @@ class UIDataModel(QObject):
             self.teensyYawPWMChanged.emit(value)
 
     # Wind Properties
-    @Property(str, notify=windSpeedChanged)
+    @Property(float, notify=windSpeedChanged)
     def wind_speed(self):
         return self._wind_data['speed']
     
@@ -920,7 +920,7 @@ class UIDataModel(QObject):
             self._wind_data['speed'] = value
             self.windSpeedChanged.emit(value)
 
-    @Property(str, notify=windDirectionChanged)
+    @Property(float, notify=windDirectionChanged)
     def wind_direction(self):
         return self._wind_data['direction']
     

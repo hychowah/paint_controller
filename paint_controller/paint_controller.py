@@ -168,15 +168,15 @@ class WindMonitor:
         self._direction = 0
 
     def _speed_callback(self, msg: Float32):
-        self._speed = f"{msg.data:.2f}"
+        self._speed = msg.data
 
     def _direction_callback(self, msg: Float32):
-        self._direction = f"{msg.data:.2f}"
+        self._direction = msg.data
 
-    def get_speed(self) -> str:
+    def get_speed(self) -> float:
         return self._speed
     
-    def get_direction(self) -> str:
+    def get_direction(self) -> float:
         return self._direction
 
 class TeensyMonitor:
@@ -549,6 +549,9 @@ class RobotController(Node, QObject):
         self.ui_data_model.teensy_yaw_pid_i = teensy_status.get('yaw_pid_i', '0.00')
         self.ui_data_model.teensy_yaw_pid_d = teensy_status.get('yaw_pid_d', '0.00')
         self.ui_data_model.teensy_yaw_pwm = teensy_status.get('yaw_pwm', '0.00')
+        
+        self.ui_data_model.wind_speed = round(float(self.windMonitor.get_speed()), 2)
+        self.ui_data_model.wind_direction = round(float(self.windMonitor.get_direction()), 2)
 
         # Process control inputs
         self._process_control_input(input_state)
@@ -559,12 +562,14 @@ class RobotController(Node, QObject):
     def _process_control_input(self, input_state: Dict):
         """Process control inputs and update UI accordingly"""
         # Process joystick inputs
-        if self.ui_data_model.left_joystick_control == "EF arm":
+        left_joystick_control_mode = self.overlayController.get_left_selected_option()
+
+        if left_joystick_control_mode == "EF arm":
             command_speed = input_state['left_stick']['y'] * 1000 / 32768
             msg = Float32(data=command_speed)
             self.ef_move_arm_rail_speed_pub.publish(msg)
             self.display_message(f"Sending EF Arm Rail Speed: {command_speed:.2f}")
-        elif self.ui_data_model.left_joystick_control == "EF prop joint":
+        elif left_joystick_control_mode == "EF prop joint":
             command_angle = input_state['left_stick']['x'] * 60.0 / 32768.0
             print(f"Command Angle: {command_angle}")
             left_msg = Float32(data=command_angle)
@@ -572,7 +577,7 @@ class RobotController(Node, QObject):
             self.prop_left_joint_pub.publish(right_msg)
             self.prop_right_joint_pub.publish(right_msg)
             # self.display_message(f"Sending EF Prop Speed: {command_speed:.2f}, Angle: {command_angle:.2f}")
-        elif self.ui_data_model.left_joystick_control == "EF spray trigger":
+        elif left_joystick_control_mode == "EF spray trigger":
             command_value = 1000 + input_state['left_stick']['y'] * 1000 / 32768
             if command_value < 1000:
                 return
@@ -587,7 +592,7 @@ class RobotController(Node, QObject):
         if right_joystick_control_mode == "Winch Speed":
             if self.ui_data_model.winch_available and not self.ui_data_model.winch_brake:
                 command_speed = input_state['right_stick']['y'] * self.config.max_winch_speed / 32768
-                # self.winch_controller.command_speed(command_speed)
+                self.winch_controller.command_speed(command_speed)
                 self.display_message(f"Sending Winch Speed: {command_speed:.2f}")
             else:
                 self.display_message("Winch not available")

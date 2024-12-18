@@ -85,6 +85,16 @@ Rectangle {
                     fillMode: Image.PreserveAspectFit
                 }
 
+                Text {
+                    text: "Base"
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 5
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    color: "black"
+                    font.pixelSize: 15
+                    font.bold: true
+                }
+
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
@@ -113,6 +123,16 @@ Rectangle {
                     fillMode: Image.PreserveAspectFit
                 }
 
+                Text {
+                    text: "Winch"
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 5
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    color: "black"
+                    font.pixelSize: 15
+                    font.bold: true
+                }
+
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
@@ -134,11 +154,24 @@ Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 Image {
-                    source: "../resource/lidar.webp"
+                    source: "../resource/monitor.svg" 
                     anchors.centerIn: parent
                     width: parent.width * 0.6
                     height: parent.height * 0.6
                     fillMode: Image.PreserveAspectFit
+                    antialiasing: true  
+                    smooth: true 
+                    sourceSize: Qt.size(96, 96)  // Force higher resolution rendering     
+                }
+
+                Text {
+                    text: "Monitor"
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 5
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    color: "black"
+                    font.pixelSize: 15
+                    font.bold: true
                 }
 
                 MouseArea {
@@ -169,6 +202,16 @@ Rectangle {
                     fillMode: Image.PreserveAspectFit
                 }
 
+                Text {
+                    text: "Tuning"
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 5
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    color: "black"
+                    font.pixelSize: 15
+                    font.bold: true
+                }
+
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
@@ -190,11 +233,25 @@ Rectangle {
                 color: selectBar.selectedButton === "buttonPage5" ? "#E2E2E2" : "#70A3D2"
                 anchors.horizontalCenter: parent.horizontalCenter
 
-                Text {
-                    text: "Top Sensor"
+                Image {
+                    source: "../resource/radio.svg"
                     anchors.centerIn: parent
-                    color: "#FFFFFF"
-                    font.pixelSize: 20
+                    width: parent.width * 0.6
+                    height: parent.height * 0.6
+                    fillMode: Image.PreserveAspectFit
+                    antialiasing: true  
+                    smooth: true 
+                    sourceSize: Qt.size(96, 96) 
+                }
+
+                Text {
+                    text: "Lidar"
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 5
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    color: "black"
+                    font.pixelSize: 15
+                    font.bold: true
                 }
 
                 MouseArea {

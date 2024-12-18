@@ -71,8 +71,8 @@ Rectangle {
                 id: cameraView
                 objectName: "cameraView"
                 color: "transparent"
-                width: 480
-                height: 320
+                width: 600
+                height: 400
                 Layout.alignment: Qt.AlignHCenter | Qt.AlignTop
 
                 layer.enabled: true
