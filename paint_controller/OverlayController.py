@@ -41,7 +41,8 @@ class OverlayController(QObject):
         self._control_options = [
             "None",
             "Winch Speed",
-            "Wheel Speed",
+            "Left Wheel Speed",
+            "Right Wheel Speed",
             "EF arm",
             "EF top rail",
             "EF prop pwm",

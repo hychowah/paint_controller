@@ -31,6 +31,14 @@ class ControlProcessor:
                 scale=1500/32768,
                 min_interval=0.1  # 10Hz
             ),
+            "Left Wheel Speed": ControlConfig(
+                scale=40/32768,
+                min_interval=0.1  # 10Hz
+            ),
+            "Right Wheel Speed": ControlConfig(
+                scale=40/32768,
+                min_interval=0.1  # 10Hz
+            ),
             "EF arm": ControlConfig(
                 scale=1000/32768,
                 min_interval=0.1  # 10Hz
@@ -153,7 +161,9 @@ class ControlProcessor:
                 "EF spray trigger": self.robot.ef_spray_trigger_pub,
                 "EF top rail": self.robot.ef_move_top_rail_speed_pub,
                 "EF prop pwm": [self.robot.prop_left_pwm_pub, self.robot.prop_right_pwm_pub],
-                "EF spray gimbal": self.robot.ef_spray_gimbal_speed_pub
+                "EF spray gimbal": self.robot.ef_spray_gimbal_speed_pub,
+                "Left Wheel Speed": self.robot.wheel_controller._left_wheel_speed_pub,
+                "Right Wheel Speed": self.robot.wheel_controller._right_wheel_speed_pub
             }
             
             if publisher := publishers.get(mode):

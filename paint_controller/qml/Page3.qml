@@ -57,7 +57,7 @@ Rectangle {
                             id: winchEnableSwitch
                             checked: uiData.winch_enabled
                             onToggled: backend.setWinchEnabled(checked)
-                        }
+                    }
                 }
 
                 GridLayout {

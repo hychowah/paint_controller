@@ -16,7 +16,7 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPo
 from std_msgs.msg import Float64, Bool, Float32, Int32
 from sensor_msgs.msg import LaserScan
 from cv_bridge import CvBridge
-from towngas_interfaces.msg import WinchStatus, WheelStatus, SteamDeckInput, TeensyStatus, TeensyYaw, MoveWinchLength
+from towngas_interfaces.msg import WinchStatus, WheelStatus, SteamDeckInput, TeensyStatus, TeensyYaw, MoveWinchLength, MoveWheelSpeeds
 
 from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QThread
 from PySide6.QtGui import QImage, QPixmap
@@ -235,6 +235,54 @@ class TeensyMonitor:
     def get_status(self) -> Dict:
         return self._status
     
+class WheelController(MotorControllerBase):
+    def __init__(self, node: Node):
+        super().__init__()
+        self._node = node
+        self._setup_publishers()
+        self._status = {}
+        self._status_callbacks = []
+
+    def _setup_publishers(self):
+        """Setup ROS publishers for wheel control"""
+        self._left_wheel_speed_pub = self._node.create_publisher(Float32, 'wheel/left/speed/cmd', 1)
+        self._right_wheel_speed_pub = self._node.create_publisher(Float32, 'wheel/right/speed/cmd', 1)
+        self._disable_pub = self._node.create_publisher(Bool, 'wheel/disable/cmd', 1)
+
+    def command_left_wheel_speed(self, speed: float):
+        msg = Float32()
+        msg.data = speed
+        self._left_wheel_speed_pub.publish(msg)
+        self._last_command_time = time.time()
+
+    def command_right_wheel_speed(self, speed: float): 
+        msg = Float32()
+        msg.data = speed
+        self._right_wheel_speed_pub.publish(msg)
+        self._last_command_time = time.time()
+
+    def update_status(self, msg: WheelStatus):
+        self._status = {
+            'left_wheel_speed': msg.left_wheel_speed,
+            'right_wheel_speed': msg.right_wheel_speed,
+            'left_motor_current': msg.left_wheel_current,
+            'right_motor_current': msg.right_wheel_current
+        }
+
+    def get_status(self) -> Dict:
+        return self._status
+
+    def set_enabled(self, enabled: bool):
+        """
+        Enable or disable wheel control
+        
+        Args:
+            enabled (bool): True to enable, False to disable
+        """
+        self._enabled = enabled
+        msg = Bool()
+        msg.data = not enabled
+        self._disable_pub.publish(msg)
 
 #############################################
 ### ROS Integration
@@ -294,6 +342,7 @@ class RobotController(Node, QObject):
         self.image_provider = ImageProvider(config.video_width, config.video_height)
         self.video_stream = VideoStream(config.video_port)
         self.winch_controller = WinchController(self, config.max_winch_speed)
+        self.wheel_controller = WheelController(self)   
         self.overlayController = OverlayController()
         self.teensyMonitor = TeensyMonitor(self)
         self.windMonitor = WindMonitor(self)    
@@ -324,6 +373,13 @@ class RobotController(Node, QObject):
         self.ui_data_model.winch_temperature = winch_status.get('motor_temperature', '0.00')
         self.ui_data_model.winch_voltage = winch_status.get('motor_voltage', '0.00')
         self.ui_data_model.winch_brake = winch_status.get('motor_brake', True)
+
+        # Update Wheel UI
+        wheel_status = self.wheel_controller.get_status()
+        self.ui_data_model.left_wheel_speed = str(wheel_status.get('left_wheel_speed', '0.00'))
+        self.ui_data_model.right_wheel_speed = str(wheel_status.get('right_wheel_speed', '0.00'))
+        self.ui_data_model.left_wheel_current = str(wheel_status.get('left_motor_current', '0.00'))
+        self.ui_data_model.right_wheel_current = str(wheel_status.get('right_motor_current', '0.00'))
 
         # Update Steam Deck Controls
         input_state = self.steam_deck.get_current_state()
@@ -467,10 +523,14 @@ class RobotController(Node, QObject):
                 msg = Int32(data=command_speed)
                 self.ef_spray_gimbal_speed_pub.publish(msg)
                 self.display_message(f"Sending EF Spray Gimbal Speed: {command_speed}")
-        
-
 
     def _setup_subscribers(self):
+        self.create_subscription(
+            WheelStatus,
+            'wheel_motor_status',
+            self.wheel_controller.update_status,
+            1
+        )
         self.create_subscription(
             WinchStatus,
             'winch/status',
@@ -601,6 +661,13 @@ class RobotController(Node, QObject):
         msg.data = enabled
         self.winch_enable_pub.publish(msg)
         self.get_logger().info(f'Winch {"enabled" if enabled else "disabled"}')
+
+    @Slot(bool)
+    def setWheelEnabled(self, enabled: bool):
+        """Enable/disable wheel control"""
+        self.ui_data_model.wheel_enabled = enabled
+        self.wheel_controller.set_enabled(enabled)
+        self.get_logger().info(f'Wheel control {"enabled" if enabled else "disabled"}')
 
     @Slot(bool)
     def setTeensyRelayEnabled(self, enabled: bool):

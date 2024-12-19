@@ -105,9 +105,15 @@ Rectangle {
             Layout.fillHeight: true
             spacing: 20
 
+            TouchSwitch {
+                    id: wheelEnableSwitch
+                    checked: uiData.wheel_enabled
+                    onToggled: backend.setWheelEnabled(checked)
+            }
+
             DataDisplay {
                 title: "LEFT SPEED"
-                value: backend.left_wheel_speed
+                value: uiData.left_wheel_speed
                 unit: "RPM"
                 backgroundColor: "#F0F0F0"
                 lineColor: "blue"
@@ -120,7 +126,7 @@ Rectangle {
 
             DataDisplay {
                 title: "RIGHT SPEED"
-                value: backend.right_wheel_speed
+                value: uiData.right_wheel_speed
                 unit: "RPM"
                 backgroundColor: "#F0F0F0"
                 lineColor: "blue"
@@ -133,7 +139,7 @@ Rectangle {
 
             DataDisplay {
                 title: "LEFT CURRENT"
-                value: backend.left_wheel_current
+                value: uiData.left_wheel_current
                 unit: "A"
                 backgroundColor: "#F0F0F0"
                 lineColor: "blue"
@@ -146,7 +152,7 @@ Rectangle {
 
             DataDisplay {
                 title: "RIGHT CURRENT"
-                value: backend.right_wheel_current
+                value: uiData.right_wheel_current
                 unit: "A"
                 backgroundColor: "#F0F0F0"
                 lineColor: "blue"

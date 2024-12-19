@@ -42,6 +42,7 @@ class UIDataModel(QObject):
     rightCurrentChanged = Signal(str)
     rightSpeedChanged = Signal(str)
     wheelAvailableChanged = Signal(bool)
+    wheelEnabledChanged = Signal(bool)
     
     # Control Mode Signals
     leftJoystickControlChanged = Signal(str)
@@ -136,7 +137,8 @@ class UIDataModel(QObject):
             'right_speed': '0.00',
             'left_current': '0.00',
             'right_current': '0.00',
-            'available': False
+            'available': False,
+            'enabled': False
         }
         
         self._control_modes = {
@@ -318,6 +320,56 @@ class UIDataModel(QObject):
         if self._wheel_data['left_speed'] != value:
             self._wheel_data['left_speed'] = value
             self.leftSpeedChanged.emit(value)
+
+    @Property(str, notify=rightSpeedChanged)
+    def right_wheel_speed(self):
+        return self._wheel_data['right_speed']
+    
+    @right_wheel_speed.setter
+    def right_wheel_speed(self, value):
+        if self._wheel_data['right_speed'] != value:
+            self._wheel_data['right_speed'] = value
+            self.rightSpeedChanged.emit(value)
+
+    @Property(str, notify=leftCurrentChanged)
+    def left_wheel_current(self):
+        return self._wheel_data['left_current']
+    
+    @left_wheel_current.setter
+    def left_wheel_current(self, value):
+        if self._wheel_data['left_current'] != value:
+            self._wheel_data['left_current'] = value
+            self.leftCurrentChanged.emit(value)
+
+    @Property(str, notify=rightCurrentChanged)
+    def right_wheel_current(self):
+        return self._wheel_data['right_current']
+    
+    @right_wheel_current.setter
+    def right_wheel_current(self, value):
+        if self._wheel_data['right_current'] != value:
+            self._wheel_data['right_current'] = value
+            self.rightCurrentChanged.emit(value)
+
+    @Property(bool, notify=wheelAvailableChanged)
+    def wheel_available(self):
+        return self._wheel_data['available']
+    
+    @wheel_available.setter
+    def wheel_available(self, value):
+        if self._wheel_data['available'] != value:
+            self._wheel_data['available'] = value
+            self.wheelAvailableChanged.emit(value)
+
+    @Property(bool, notify=wheelEnabledChanged)
+    def wheel_enabled(self):
+        return self._wheel_data['enabled']
+    
+    @wheel_enabled.setter
+    def wheel_enabled(self, value):
+        if self._wheel_data['enabled'] != value:
+            self._wheel_data['enabled'] = value
+            self.wheelEnabledChanged.emit(value)
 
     # Control Mode Properties
     @Property(str, notify=leftJoystickControlChanged)
