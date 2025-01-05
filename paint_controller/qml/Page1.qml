@@ -71,8 +71,8 @@ Rectangle {
                 id: cameraView
                 objectName: "cameraView"
                 color: "transparent"
-                width: 600
-                height: 400
+                Layout.fillWidth: true
+                Layout.fillHeight: true
                 Layout.alignment: Qt.AlignHCenter | Qt.AlignTop
 
                 layer.enabled: true
@@ -181,7 +181,7 @@ Rectangle {
     }
 
     Connections {
-                    target: videoStreamer
+                    target: baseStreamer
                     function onFrame_ready() {
                         videoFrame.source = ""
                         videoFrame.source = "image://live/frame"

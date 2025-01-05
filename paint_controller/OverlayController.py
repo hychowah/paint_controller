@@ -65,7 +65,7 @@ class OverlayController(QObject):
         
         # Initialize timer
         self._input_timer = QTimer(self)
-        self._input_timer.setInterval(300)
+        self._input_timer.setInterval(100)
         self._input_timer.timeout.connect(self._reset_input_lock)
         self._input_locked = False
 

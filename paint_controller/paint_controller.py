@@ -12,10 +12,8 @@ import math
 
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
 from std_msgs.msg import Float64, Bool, Float32, Int32
 from sensor_msgs.msg import LaserScan
-from cv_bridge import CvBridge
 from towngas_interfaces.msg import WinchStatus, WheelStatus, SteamDeckInput, TeensyStatus, TeensyYaw, MoveWinchLength, MoveWheelSpeeds
 
 from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QThread
@@ -23,6 +21,7 @@ from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType
 from PySide6.QtWidgets import QApplication
 from PySide6.QtQuick import QQuickImageProvider
+
 from UIDataModel import UIDataModel
 from OverlayController import OverlayController
 from UIControlProcessor import ControlProcessor
@@ -65,21 +64,12 @@ class ConfigLoader:
 #############################################
 
 class ImageProvider(QQuickImageProvider):
-    def __init__(self, width: int, height: int):
+    def __init__(self):
         super().__init__(QQuickImageProvider.Image)
-        self._width = width
-        self._height = height
-        self._format = QImage.Format_RGB888
-        self.image = QImage(self._width, self._height, self._format)
-        self._lock = threading.Lock()
+        self.image = QImage(640, 480, QImage.Format_RGB888)
 
-    def update_image(self, new_image: QImage):
-        with self._lock:
-            self.image = new_image.copy()
-
-    def requestImage(self, id: str, size, requestedSize) -> QImage:
-        with self._lock:
-            return self.image
+    def requestImage(self, id, size, requestedSize):
+        return self.image
 
 class VideoStream:
     def __init__(self, port: int):
@@ -127,6 +117,8 @@ class WinchController(MotorControllerBase):
         self._setup_publishers()
         self._status_callbacks = []
         self._status = {}
+        self._last_status_update_time = 0
+        self.connection_timeout = 1.0
 
     def _setup_publishers(self):
         self._speed_pub = self._node.create_publisher(Float64, 'winch/move/speed/rpm/cmd', 1)
@@ -153,10 +145,14 @@ class WinchController(MotorControllerBase):
             'motor_brake': msg.motor_brake,
             'available': msg.available
         }
+
+        self._last_status_update_time = time.time()
         for callback in self._status_callbacks:
             callback(self._status)
 
     def get_status(self) -> Dict:
+        if time.time() - self._last_status_update_time > self.connection_timeout:
+            self._status['available'] = False
         return self._status
     
 #############################################
@@ -185,6 +181,8 @@ class TeensyMonitor:
     def __init__(self, node: Node):
         self._node = node
         self._status = {}
+        self._last_status_update_time = 0
+        self._connection_timeout = 1.0
 
     def _status_callback(self, msg: TeensyStatus):
         try:
@@ -197,6 +195,7 @@ class TeensyMonitor:
             formatted_runtime = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
             self._status = {
+                'available': True,
                 'top_rail_position': f"{msg.top_rail_position:.2f}",
                 'top_rail_speed': f"{msg.top_rail_speed:.2f}",
                 'top_rail_current': f"{msg.top_rail_current:.2f}",
@@ -229,10 +228,14 @@ class TeensyMonitor:
                 'yaw_pid_d': f"{msg.yaw_pid_d:.2f}",
                 'yaw_pwm': f"{msg.yaw_pwm:.2f}"
             }
+
+            self._last_status_update_time = time.time()
         except Exception as e:
             print(f"Error processing Teensy status: {e}")
 
     def get_status(self) -> Dict:
+        if time.time() - self._last_status_update_time > self._connection_timeout:
+            self._status['available'] = False
         return self._status
     
 class WheelController(MotorControllerBase):
@@ -336,10 +339,19 @@ class RobotController(Node, QObject):
     def __init__(self, config: RobotConfig):
         Node.__init__(self, 'robot_controller')
         QObject.__init__(self)
+        Gst.init(None)
         
         # Initialize components
+        self.image_provider = ImageProvider()
+        self.pipeline = Gst.parse_launch(
+            "udpsrc port=5000 caps=\"application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96\" ! rtph264depay ! avdec_h264 ! videoconvert ! video/x-raw,format=RGB ! appsink name=sink"
+        )
+        self.sink = self.pipeline.get_by_name('sink')
+        self.sink.set_property('emit-signals', True)
+        self.sink.connect('new-sample', self.on_new_sample)
+        self.pipeline.set_state(Gst.State.PLAYING)
+        
         self.config = config
-        self.image_provider = ImageProvider(config.video_width, config.video_height)
         self.video_stream = VideoStream(config.video_port)
         self.winch_controller = WinchController(self, config.max_winch_speed)
         self.wheel_controller = WheelController(self)   
@@ -357,9 +369,30 @@ class RobotController(Node, QObject):
         self._setup_subscribers()
         self._setup_publishers()
         
-        # Start video stream
-        self.video_stream.connect_new_sample_callback(self.on_new_video_frame)
-        self.video_stream.start()
+
+    def on_new_sample(self, sink):
+        sample = sink.emit('pull-sample')
+        buffer = sample.get_buffer()
+        caps = sample.get_caps()
+        
+        structure = caps.get_structure(0)
+        width = structure.get_value('width')
+        height = structure.get_value('height')
+        
+        _, map_info = buffer.map(Gst.MapFlags.READ)
+        
+        # Ensure the data is in the correct format (RGB)
+        data = map_info.data
+        
+        # Create QImage directly from the buffer data
+        image = QImage(data, width, height, width * 3, QImage.Format_RGB888)
+        
+        self.image_provider.image = image.copy()  # Create a deep copy of the image
+        buffer.unmap(map_info)
+        
+        self.frame_ready.emit()
+        
+        return Gst.FlowReturn.OK
 
     def _timer_callback(self):
         """Update UI elements with latest data"""
@@ -408,8 +441,7 @@ class RobotController(Node, QObject):
         self.ui_data_model.imu_roll = input_state.get('imu', {}).get('roll', 0)
         self.ui_data_model.imu_yaw = input_state.get('imu', {}).get('yaw', 0)
 
-        self.ui_data_model.display_message = self.ui_data_model.display_message
-
+        # Update teensy status
         teensy_status = self.teensyMonitor.get_status()
         self.ui_data_model.top_rail_position = teensy_status.get('top_rail_position', '0.00')
         self.ui_data_model.top_rail_speed = teensy_status.get('top_rail_speed', '0.00')
@@ -443,8 +475,11 @@ class RobotController(Node, QObject):
         self.ui_data_model.teensy_yaw_pid_d = teensy_status.get('yaw_pid_d', '0.00')
         self.ui_data_model.teensy_yaw_pwm = teensy_status.get('yaw_pwm', '0.00')
         
+        # Update Wind Monitor
         self.ui_data_model.wind_speed = round(float(self.windMonitor.get_speed()), 2)
         self.ui_data_model.wind_direction = round(float(self.windMonitor.get_direction()), 2)
+
+        self.ui_data_model.display_message = self.ui_data_model.display_message
 
         if self.steam_deck.get_button_pressed('up') and self.overlayController.is_showing_menu():
             self.overlayController.move_up()
@@ -468,62 +503,6 @@ class RobotController(Node, QObject):
     def display_message(self, message: str):
         self.ui_data_model.display_message = message
         
-    def _process_control_input(self, input_state: Dict):
-        """Process control inputs and update UI accordingly"""
-        # Process joystick inputs
-        left_joystick_control_mode = self.overlayController.get_left_selected_option()
-
-        if left_joystick_control_mode == "EF arm":
-            command_speed = input_state['left_stick']['y'] * 1000 / 32768
-            msg = Float32(data=command_speed)
-            self.ef_move_arm_rail_speed_pub.publish(msg)
-            self.display_message(f"Sending EF Arm Rail Speed: {command_speed:.2f}")
-        elif left_joystick_control_mode == "EF prop joint":
-            command_angle = input_state['left_stick']['x'] * 60.0 / 32768.0
-            print(f"Command Angle: {command_angle}")
-            left_msg = Float32(data=command_angle)
-            right_msg = Float32(data=-command_angle)
-            self.prop_left_joint_pub.publish(right_msg)
-            self.prop_right_joint_pub.publish(right_msg)
-            # self.display_message(f"Sending EF Prop Speed: {command_speed:.2f}, Angle: {command_angle:.2f}")
-        elif left_joystick_control_mode == "EF spray trigger":
-            command_value = 1000 + input_state['left_stick']['y'] * 1000 / 32768
-            if command_value < 1000:
-                return
-            command_value = int(command_value)
-            msg = Int32(data=command_value)
-            self.ef_spray_trigger_pub.publish(msg)
-                
-
-        right_joystick_control_mode = self.overlayController.get_right_selected_option()
-
-        # print(f"Right Joystick Control Mode: {right_joystick_control_mode}")
-        if right_joystick_control_mode == "Winch Speed":
-            if self.ui_data_model.winch_available and not self.ui_data_model.winch_brake:
-                command_speed = input_state['right_stick']['y'] * self.config.max_winch_speed / 32768
-                self.winch_controller.command_speed(command_speed)
-                self.display_message(f"Sending Winch Speed: {command_speed:.2f}")
-            else:
-                self.display_message("Winch not available")
-        elif right_joystick_control_mode == "EF top rail":
-                command_speed = input_state['right_stick']['y'] * 1000 / 32768
-                msg = Float32(data=command_speed)
-                self.ef_move_top_rail_speed_pub.publish(msg)
-                self.display_message(f"Sending EF Top Rail Speed: {command_speed:.2f}")
-        elif right_joystick_control_mode == "EF prop pwm":
-                command_speed = input_state['right_stick']['y'] * 600 / 32768
-                if command_speed < 0:
-                    return
-                command_speed = int(command_speed) + 1000
-                msg = Int32(data=command_speed)
-                self.prop_left_pwm_pub.publish(msg)
-                self.prop_right_pwm_pub.publish(msg)
-        elif right_joystick_control_mode == "EF spray gimbal":
-                command_speed = int(input_state['right_stick']['y'] * 100 / 32768)
-                msg = Int32(data=command_speed)
-                self.ef_spray_gimbal_speed_pub.publish(msg)
-                self.display_message(f"Sending EF Spray Gimbal Speed: {command_speed}")
-
     def _setup_subscribers(self):
         self.create_subscription(
             WheelStatus,
@@ -603,31 +582,6 @@ class RobotController(Node, QObject):
             msg.range_max
         )
 
-    def on_new_video_frame(self, sink):
-        sample = sink.emit('pull-sample')
-        buffer = sample.get_buffer()
-        caps = sample.get_caps()
-        
-        structure = caps.get_structure(0)
-        width = structure.get_value('width')
-        height = structure.get_value('height')
-        
-        _, map_info = buffer.map(Gst.MapFlags.READ)
-        
-        image = QImage(
-            map_info.data, 
-            width, 
-            height, 
-            width * 3, 
-            QImage.Format_RGB888
-        )
-        
-        self.image_provider.update_image(image)
-        buffer.unmap(map_info)
-        self.frame_ready.emit()
-        
-        return Gst.FlowReturn.OK
-    
     #############################################
     ### UI Control Methods
     #############################################
@@ -755,6 +709,7 @@ def main():
     
     # Set context properties
     engine.rootContext().setContextProperty("backend", controller)
+    engine.rootContext().setContextProperty("baseStreamer", controller)
     engine.rootContext().setContextProperty("uiData", controller.ui_data_model)
     engine.rootContext().setContextProperty("overlayController", controller.overlayController)
     
