@@ -12,7 +12,7 @@ import math
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float64, Bool, Float32, Int32
+from std_msgs.msg import Float64, Bool, Float32, Int32, String
 from sensor_msgs.msg import LaserScan
 from towngas_interfaces.msg import WinchStatus, WheelStatus, SteamDeckInput, TeensyStatus, TeensyYaw, MoveWinchLength, MoveWheelSpeeds
 
@@ -238,6 +238,39 @@ class TeensyMonitor:
             self._status['available'] = False
         return self._status
     
+class NetworkMonitor:
+    def __init__(self):
+        self.ef_ip = ""
+        self.ef_signal_strength = 0
+        self.base_ip = ""
+        self.base_signal_strength = 0
+
+    def _ef_ip_callback(self, msg: String):
+        self.ef_ip = msg.data
+    
+    def _ef_signal_strength_callback(self, msg: Int32):
+        self.ef_signal_strength = msg.data
+
+    def _base_ip_callback(self, msg: String):
+        self.base_ip = msg.data
+
+    def _base_signal_strength_callback(self, msg: Int32):
+        self.base_signal_strength = msg.data
+
+    def get_ef_ip(self) -> str:
+        return self.ef_ip
+    
+    def get_ef_signal_strength(self) -> int:
+        return self.ef_signal_strength
+    
+    def get_base_ip(self) -> str:
+        return self.base_ip
+    
+    def get_base_signal_strength(self) -> int:
+        return self.base_signal_strength
+
+
+    
 class WheelController(MotorControllerBase):
     def __init__(self, node: Node):
         super().__init__()
@@ -342,19 +375,20 @@ class RobotController(Node, QObject):
         Gst.init(None)
         
         # Initialize components
-        self.image_provider = ImageProvider()
-        self.pipeline = Gst.parse_launch(
-            "udpsrc port=5000 caps=\"application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96\" ! rtph264depay ! avdec_h264 ! videoconvert ! video/x-raw,format=RGB ! appsink name=sink"
+        self.ef_image_provider = ImageProvider()
+        self.ef_pipeline = Gst.parse_launch(
+            "udpsrc port=5001 caps=\"application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96\" ! rtph264depay ! avdec_h264 ! videoconvert ! video/x-raw,format=RGB ! appsink name=sink"
         )
-        self.sink = self.pipeline.get_by_name('sink')
-        self.sink.set_property('emit-signals', True)
-        self.sink.connect('new-sample', self.on_new_sample)
-        self.pipeline.set_state(Gst.State.PLAYING)
+        self.ef_sink = self.ef_pipeline.get_by_name('sink')
+        self.ef_sink.set_property('emit-signals', True)
+        self.ef_sink.connect('new-sample', self.on_new_ef_sample)
+        self.ef_pipeline.set_state(Gst.State.PLAYING)
         
         self.config = config
         self.video_stream = VideoStream(config.video_port)
         self.winch_controller = WinchController(self, config.max_winch_speed)
-        self.wheel_controller = WheelController(self)   
+        self.wheel_controller = WheelController(self)
+        self.netowrk_monitor = NetworkMonitor()   
         self.overlayController = OverlayController()
         self.teensyMonitor = TeensyMonitor(self)
         self.windMonitor = WindMonitor(self)    
@@ -370,7 +404,7 @@ class RobotController(Node, QObject):
         self._setup_publishers()
         
 
-    def on_new_sample(self, sink):
+    def on_new_ef_sample(self, sink):
         sample = sink.emit('pull-sample')
         buffer = sample.get_buffer()
         caps = sample.get_caps()
@@ -385,9 +419,9 @@ class RobotController(Node, QObject):
         data = map_info.data
         
         # Create QImage directly from the buffer data
-        image = QImage(data, width, height, width * 3, QImage.Format_RGB888)
+        ef_image = QImage(data, width, height, width * 3, QImage.Format_RGB888)
         
-        self.image_provider.image = image.copy()  # Create a deep copy of the image
+        self.ef_image_provider.image = ef_image.copy()  # Create a deep copy of the image
         buffer.unmap(map_info)
         
         self.frame_ready.emit()
@@ -449,6 +483,7 @@ class RobotController(Node, QObject):
         self.ui_data_model.arm_rail_position = teensy_status.get('arm_rail_position', '0.00')
         self.ui_data_model.arm_rail_speed = teensy_status.get('arm_rail_speed', '0.00')
         self.ui_data_model.arm_rail_current = teensy_status.get('arm_rail_current', '0.00')
+        self.ui_data_model.teensy_available = teensy_status.get('available', False)
         self.ui_data_model.teensy_voltage = teensy_status.get('voltage', '0.00')
         self.ui_data_model.teensy_temperature = teensy_status.get('temperature', '0.00')
         self.ui_data_model.teensy_current = teensy_status.get('current', '0.00')
@@ -479,6 +514,12 @@ class RobotController(Node, QObject):
         self.ui_data_model.wind_speed = round(float(self.windMonitor.get_speed()), 2)
         self.ui_data_model.wind_direction = round(float(self.windMonitor.get_direction()), 2)
 
+        # Update Network Monitor
+        self.ui_data_model.ef_ip = self.netowrk_monitor.get_ef_ip()
+        self.ui_data_model.ef_signal_strength = self.netowrk_monitor.get_ef_signal_strength()
+        self.ui_data_model.base_ip = self.netowrk_monitor.get_base_ip()
+        self.ui_data_model.base_signal_strength = self.netowrk_monitor.get_base_signal_strength()
+
         self.ui_data_model.display_message = self.ui_data_model.display_message
 
         if self.steam_deck.get_button_pressed('up') and self.overlayController.is_showing_menu():
@@ -508,7 +549,7 @@ class RobotController(Node, QObject):
             WheelStatus,
             'wheel_motor_status',
             self.wheel_controller.update_status,
-            1
+            5
         )
         self.create_subscription(
             WinchStatus,
@@ -535,7 +576,7 @@ class RobotController(Node, QObject):
             TeensyStatus,
             'teensy/status',
             self.teensyMonitor._status_callback,
-            1
+            10
         )
         
         self.create_subscription(
@@ -549,6 +590,34 @@ class RobotController(Node, QObject):
             Float32,
             'wind/direction',
             self.windMonitor._direction_callback,
+            1
+        )
+
+        self.create_subscription(
+            String,
+            'connection/ef/ip',
+            self.netowrk_monitor._ef_ip_callback,
+            1
+        )
+
+        self.create_subscription(
+            Int32,
+            'connection/ef/signal_strength',
+            self.netowrk_monitor._ef_signal_strength_callback,
+            1
+        )
+
+        self.create_subscription(
+            String,
+            'connection/base/ip',
+            self.netowrk_monitor._base_ip_callback,
+            1
+        )
+
+        self.create_subscription(
+            Int32,
+            'connection/base/signal_strength',
+            self.netowrk_monitor._base_signal_strength_callback,
             1
         )
 
@@ -701,7 +770,7 @@ def main():
     
     # Setup QML engine
     engine = QQmlApplicationEngine()
-    engine.addImageProvider("live", controller.image_provider)
+    engine.addImageProvider("ef_live", controller.ef_image_provider)
     
     # Load QML interface
     qml_path = os.path.join(os.path.dirname(__file__), 'qml', 'MainWindow.qml')

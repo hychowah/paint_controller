@@ -83,6 +83,7 @@ class UIDataModel(QObject):
     armRailSpeedChanged = Signal(str)
     armRailCurrentChanged = Signal(str)
 
+    teensyAvailableChanged = Signal(bool)
     teensyVoltageChanged = Signal(str)
     teensyTemperatureChanged = Signal(str)
     teensyCurrentChanged = Signal(str)
@@ -117,6 +118,12 @@ class UIDataModel(QObject):
 
     windSpeedChanged = Signal(float)
     windDirectionChanged = Signal(float)
+
+    efIpChanged = Signal(str)
+    efSignalStrengthChanged = Signal(Int32)
+    baseIpChanged = Signal(str)
+    baseSignalStrengthChanged = Signal(Int32)
+
     
     def __init__(self):
         super().__init__()
@@ -180,6 +187,7 @@ class UIDataModel(QObject):
 
         self._teensy_relay_enabled = False
         self._teensy_enabled = False
+        self._teensy_available = False
         self._teensy_data = {
             'top_rail_position': '0.00',
             'top_rail_speed': '0.00',
@@ -218,6 +226,14 @@ class UIDataModel(QObject):
             'speed': '0.00',
             'direction': '0.00'
         }
+
+        self._network_data = {
+            'ef_ip': "",
+            'ef_signal_strength': 0,
+            'base_ip': "",
+            'base_signal_strength': 0
+        }
+
 
     ## Winch Properties
     @Property(bool, notify=winchEnabledChanged)
@@ -638,6 +654,16 @@ class UIDataModel(QObject):
             self._teensy_enabled = value
             self.teensyEnabledChanged.emit(value)
 
+    @Property(bool, notify=teensyAvailableChanged)
+    def teensy_available(self):
+        return self._teensy_available
+    
+    @teensy_available.setter
+    def teensy_available(self, value):
+        if self._teensy_available != value:
+            self._teensy_available = value
+            self.teensyAvailableChanged.emit(value)
+
     @Property(bool, notify=teensyRelay1Changed)
     def teensy_relay_enabled(self):
         return self._teensy_relay_enabled
@@ -981,3 +1007,46 @@ class UIDataModel(QObject):
         if self._wind_data['direction'] != value:
             self._wind_data['direction'] = value
             self.windDirectionChanged.emit(value)
+
+
+    # Network Properties
+
+    @Property(str, notify=efIpChanged)
+    def ef_ip(self):
+        return self._network_data['ef_ip']
+    
+    @ef_ip.setter
+    def ef_ip(self, value):
+        if self._network_data['ef_ip'] != value:
+            self._network_data['ef_ip'] = value
+            self.efIpChanged.emit(value)
+
+    @Property(int, notify=efSignalStrengthChanged)
+    def ef_signal_strength(self):
+        return self._network_data['ef_signal_strength']
+    
+    @ef_signal_strength.setter
+    def ef_signal_strength(self, value):
+        if self._network_data['ef_signal_strength'] != value:
+            self._network_data['ef_signal_strength'] = value
+            self.efSignalStrengthChanged.emit(value)
+
+    @Property(str, notify=baseIpChanged)
+    def base_ip(self):
+        return self._network_data['base_ip']
+    
+    @base_ip.setter
+    def base_ip(self, value):
+        if self._network_data['base_ip'] != value:
+            self._network_data['base_ip'] = value
+            self.baseIpChanged.emit(value)
+
+    @Property(int, notify=baseSignalStrengthChanged)
+    def base_signal_strength(self):
+        return self._network_data['base_signal_strength']
+    
+    @base_signal_strength.setter
+    def base_signal_strength(self, value):
+        if self._network_data['base_signal_strength'] != value:
+            self._network_data['base_signal_strength'] = value
+            self.baseSignalStrengthChanged.emit(value)

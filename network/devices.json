@@ -1,0 +1,22 @@
+{
+    "base_system": {
+        "primary": {
+            "name": "base_pi",
+            "mac": "2C:CF:67:3B:24:03"
+        },
+        "fallback": {
+            "name": "base_pi_router",
+            "mac": "2c:cf:67:3b:24:02"
+        }
+    },
+    "end_effector_system": {
+        "primary": {
+            "name": "end_effector",
+            "mac": "00:e0:4c:02:dd:c9"
+        },
+        "fallback": {
+            "name": "end_effector_bridge",
+            "mac": "00:17:13:A0:BC:95"
+        }
+    }
+}

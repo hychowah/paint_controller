@@ -27,6 +27,7 @@ Rectangle {
                 case 2: targetComponent = page3Component; break;
                 case 3: targetComponent = page4Component; break;
                 case 4: targetComponent = page5Component; break;
+                case 5: targetComponent = page6Component; break;
                 // Add more cases for additional pages
             }
             
@@ -264,6 +265,44 @@ Rectangle {
                     }
                 }
             }
+
+            // Page 5 Button
+            Rectangle {
+                id: buttonPage6
+                width: buttonSize
+                height: buttonSize
+                radius: 20
+                color: selectBar.selectedButton === "buttonPage6" ? "#E2E2E2" : "#70A3D2"
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                Image {
+                    source: "../resource/spray.png"
+                    anchors.centerIn: parent
+                    width: parent.width * 0.6
+                    height: parent.height * 0.6
+                    fillMode: Image.PreserveAspectFit
+                }
+
+                Text {
+                    text: "Spray"
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 5
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    color: "black"
+                    font.pixelSize: 15
+                    font.bold: true
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        if (selectBar.selectedButton !== "buttonPage6") {
+                            selectBar.navigateToPage(5)
+                            selectBar.selectedButton = "buttonPage6"
+                        }
+                    }
+                }
+            }
             // Template for additional buttons
             // Copy and modify this structure for new pages
             // Rectangle {
@@ -307,78 +346,153 @@ Rectangle {
     Rectangle {
         id: connectionStatusRow
         width: parent.width
-        height: 80
+        height: 100
         color: "#A4A589"
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: buttonExit.top 
         anchors.bottomMargin: 50
+
+        // Add state property to track which view is shown
+        property bool showDeviceStatus: true
+
+        // Make the rectangle clickable
+        MouseArea {
+            anchors.fill: parent
+            onClicked: parent.showDeviceStatus = !parent.showDeviceStatus
+        }
 
         Column {
             anchors.fill: parent
             spacing: 5
             anchors.margins: 10
 
-            Row {
-                spacing: 5
+            // Device Status View
+            Column {
+                visible: parent.parent.showDeviceStatus
                 width: parent.width
+                spacing: parent.spacing
 
-                Text {
-                    text: "WINCH"
-                    color: "white"
-                    font.pixelSize: 12
-                    font.bold: true
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: selectBar.width * 0.7
+                Row {
+                    spacing: 5
+                    width: parent.width
+
+                    Text {
+                        text: "WINCH"
+                        color: "white"
+                        font.pixelSize: 12
+                        font.bold: true
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: selectBar.width * 0.7
+                    }
+                    Rectangle {
+                        width: 15
+                        height: 15
+                        radius: 7.5
+                        color: uiData.winch_available ? "#00e600" : "yellow"
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
                 }
-                Rectangle {
-                    width: 15
-                    height: 15
-                    radius: 7.5
-                    color: uiData.winch_available ? "#00e600" : "yellow"
-                    anchors.verticalCenter: parent.verticalCenter
+
+                Row {
+                    spacing: 5
+                    width: parent.width
+
+                    Text {
+                        text: "WHEEL"
+                        color: "white"
+                        font.pixelSize: 12
+                        font.bold: true
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: selectBar.width * 0.7
+                    }
+                    Rectangle {
+                        width: 15
+                        height: 15
+                        radius: 7.5
+                        color: uiData.wheel_available ? "#00e600" : "yellow"
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+
+                Row {
+                    spacing: 5
+                    width: parent.width
+
+                    Text {
+                        text: "END-EFFECTOR"
+                        color: "white"
+                        font.pixelSize: 12
+                        font.bold: true
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: selectBar.width * 0.7
+                    }
+                    Rectangle {
+                        width: 15
+                        height: 15
+                        radius: 7.5
+                        color: uiData.teensy_available ? "#00e600" : "yellow"
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
                 }
             }
 
-            Row {
-                spacing: 5
+            // IP Status View
+            Column {
+                visible: !parent.parent.showDeviceStatus
                 width: parent.width
+                spacing: parent.spacing
 
-                Text {
-                    text: "WHEEL"
-                    color: "white"
-                    font.pixelSize: 12
-                    font.bold: true
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: selectBar.width * 0.7
+                Row {
+                    spacing: 5
+                    width: parent.width
+
+                    Text {
+                        text: "EF IP:"
+                        color: "WHITE"
+                        font.pixelSize: 12
+                        font.bold: true
+                        width: selectBar.width * 0.7
+                    }
+                    Text {
+                        text: uiData.ef_ip
+                        color: "black"
+                        font.bold: true
+                        font.pixelSize: 10
+                        Layout.fillWidth: true
+                        anchors.right: parent.right
+                    }
                 }
-                Rectangle {
-                    width: 15
-                    height: 15
-                    radius: 7.5
-                    color: uiData.wheel_available ? "#00e600" : "yellow"
-                    anchors.verticalCenter: parent.verticalCenter
+
+                Row {
+                    spacing: 5
+                    width: parent.width
+
+                    Text {
+                        text: "BASE IP:"
+                        color: "WHITE"
+                        font.pixelSize: 12
+                        font.bold: true
+                        width: selectBar.width * 0.7
+                    }
+                    Text {
+                        text: uiData.base_ip
+                        color: "black"
+                        font.bold: true
+                        font.pixelSize: 10
+                        Layout.fillWidth: true
+                        anchors.right: parent.right
+                    }
                 }
             }
 
-            Row {
-                spacing: 5
-                width: parent.width
-
-                Text {
-                    text: "END-EFFECTOR"
-                    color: "white"
-                    font.pixelSize: 12
-                    font.bold: true
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: selectBar.width * 0.7
-                }
-                Rectangle {
-                    width: 15
-                    height: 15
-                    radius: 7.5
-                    color: "yellow"
-                    anchors.verticalCenter: parent.verticalCenter
-                }
+            // Optional: Add an indicator to show which view is currently displayed
+            Text {
+                anchors.bottom: parent.bottom
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: parent.parent.showDeviceStatus ? "Touch to show IP" : "Touch to show Device Status"
+                color: "white"
+                font.pixelSize: 10
+                font.italic: true
             }
         }
     }
