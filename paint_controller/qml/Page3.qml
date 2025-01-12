@@ -82,11 +82,11 @@ Rectangle {
                     Label { text: "Cable Length:"; font.bold: true }
                     Label { text: uiData.winch_length + " m" }
 
-                    Label { text: "Cable Speed:"; font.bold: true }
-                    Label { text: uiData.winch_speed + " m/s" }
+                    Label {text: "Cable Speed:"; font.bold: true}
+                    Label {text: String(uiData.winch_speed) + " m/s"}
 
                     Label { text: "Torque:"; font.bold: true }
-                    Label { text: uiData.winch_torque + " Nm" }
+                    Label { text: String(uiData.winch_torque) + " Nm" }
 
                     Label { text: "Temperature:"; font.bold: true }
                     Label { text: uiData.winch_temperature + " °C" }
@@ -108,7 +108,7 @@ Rectangle {
                         onArrowAboveClicked: console.log("Arrow above clicked")
                         onArrowBelowClicked: console.log("Arrow below clicked")
                         onInputValueChanged: console.log("Input value changed to:", inputValue)
-                        onSliderValueChanged: console.log("Slider value changed to:", sliderValue)
+                        onSliderValueChanged: backend.set_winch_spd_limit(sliderValue)
                     }
                 }
             }

@@ -138,8 +138,8 @@ class WinchController(MotorControllerBase):
     def update_status(self, msg: WinchStatus):
         self._status = {
             'cable_length': f"{msg.cable_length:.2f}",
-            'cable_speed': f"{msg.cable_speed:.2f}",
-            'winch_torque': f"{msg.winch_torque:.2f}",
+            'cable_speed': int(msg.cable_speed),
+            'winch_torque': int(msg.winch_torque),
             'motor_temperature': f"{msg.motor_temperature:.1f}",
             'motor_voltage': f"{msg.motor_voltage:.1f}",
             'motor_brake': msg.motor_brake,
@@ -433,8 +433,8 @@ class RobotController(Node, QObject):
         # Update Winch UI
         winch_status = self.winch_controller.get_status()
         self.ui_data_model.winch_length = winch_status.get('cable_length', '0.00')
-        self.ui_data_model.winch_speed = winch_status.get('cable_speed', '0.00')
-        self.ui_data_model.winch_current = winch_status.get('winch_torque', '0.00')
+        self.ui_data_model.winch_speed = winch_status.get('cable_speed', 0)
+        self.ui_data_model.winch_current = winch_status.get('winch_torque', 0)
         self.ui_data_model.winch_available = winch_status.get('available', False)
         self.ui_data_model.winch_torque = winch_status.get('winch_torque', '0.00')
         self.ui_data_model.winch_temperature = winch_status.get('motor_temperature', '0.00')
@@ -654,6 +654,12 @@ class RobotController(Node, QObject):
     #############################################
     ### UI Control Methods
     #############################################
+
+    @Slot(int)
+    def set_winch_spd_limit(self, speed: int):
+        """Set winch speed limit"""
+        self.controlProcessor.set_winch_speed_limit(speed)
+        self.get_logger().info(f'Set winch speed limit to: {speed}')
 
     @Slot(int, int)
     def moveWinchIncrement(self, length_mm, speed_mm_s):

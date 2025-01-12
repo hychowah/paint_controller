@@ -9,6 +9,7 @@ class ControlConfig:
     min_interval: float  # Minimum time between commands in seconds
     offset: float = 0
     min_value: float = float('-inf')
+    max_value: float = float('inf')
     msg_type: type = Float32
 
 class ControlProcessor:
@@ -28,8 +29,8 @@ class ControlProcessor:
         # Control configurations
         self.controls = {
             "Winch Speed": ControlConfig(
-                scale=1500/32768,
-                min_interval=0.1  # 10Hz
+                scale=2000/32768,
+                min_interval=0.1,  # 10Hz
             ),
             "Left Wheel Speed": ControlConfig(
                 scale=40/32768,
@@ -151,6 +152,7 @@ class ControlProcessor:
         if mode == "Winch Speed":
             if not self.robot.ui_data_model.winch_available or self.robot.ui_data_model.winch_brake:
                 return
+            
             self.robot.winch_controller.command_speed(value)
             return
 
@@ -197,4 +199,10 @@ class ControlProcessor:
             self._update_display()
 
         except Exception as e:
+            print(f"Error processing control input: {str(e)}")
             self.robot.display_message(f"Error processing control input: {str(e)}")
+
+
+    def set_winch_speed_limit(self, limit):
+        """Set the winch speed limit"""
+        self.controls["Winch Speed"].scale = abs(limit) / 32768

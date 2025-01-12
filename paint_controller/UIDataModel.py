@@ -27,8 +27,8 @@ from PySide6.QtQuick import QQuickImageProvider
 class UIDataModel(QObject):
     # Motor Status Signals
     winchLengthChanged = Signal(str)
-    winchSpeedChanged = Signal(str)
-    winchCurrentChanged = Signal(str)
+    winchSpeedChanged = Signal(int)
+    winchCurrentChanged = Signal(int)
     winchAvailableChanged = Signal(bool)
     winchTorqueChanged = Signal(str)
     winchTemperatureChanged = Signal(str)
@@ -120,17 +120,17 @@ class UIDataModel(QObject):
     windDirectionChanged = Signal(float)
 
     efIpChanged = Signal(str)
-    efSignalStrengthChanged = Signal(Int32)
+    efSignalStrengthChanged = Signal(int)
     baseIpChanged = Signal(str)
-    baseSignalStrengthChanged = Signal(Int32)
+    baseSignalStrengthChanged = Signal(int)
 
     
     def __init__(self):
         super().__init__()
         self._winch_data = {
             'length': '0.00',
-            'speed': '0.00',
-            'current': '0.00',
+            'speed': 0,
+            'current': 0,
             'available': False,
             'torque': '0.00',
             'temperature': '0.00',
@@ -266,7 +266,7 @@ class UIDataModel(QObject):
             self._winch_data['available'] = value
             self.winchAvailableChanged.emit(value)
 
-    @Property(str, notify=winchSpeedChanged)
+    @Property(int, notify=winchSpeedChanged)
     def winch_speed(self):
         return self._winch_data['speed']
     
@@ -276,7 +276,7 @@ class UIDataModel(QObject):
             self._winch_data['speed'] = value
             self.winchSpeedChanged.emit(value)
     
-    @Property(str, notify=winchCurrentChanged)
+    @Property(int, notify=winchCurrentChanged)
     def winch_current(self):
         return self._winch_data['current']
     
@@ -286,7 +286,7 @@ class UIDataModel(QObject):
             self._winch_data['current'] = value
             self.winchCurrentChanged.emit(value)
     
-    @Property(str, notify=winchTorqueChanged)
+    @Property(int, notify=winchTorqueChanged)
     def winch_torque(self):
         return self._winch_data['torque']
     

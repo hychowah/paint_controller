@@ -229,9 +229,9 @@ Item {
         width: 60
         height: 300
         from: 0
-        to: 500
+        to: 2000
         stepSize: 1
-        value: 50
+        value: 1000
 
         handle: Rectangle {
             x: verticalSlider.leftPadding + verticalSlider.availableWidth / 2 - width / 2
