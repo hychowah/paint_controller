@@ -98,9 +98,20 @@ class OverlayController(QObject):
     @Slot(str)
     def set_active_menu(self, menu):
         """Set active menu and show overlay"""
-        if menu in ["left", "right"]:
+        if menu in ["left", "right", "power"]:
             self._active_menu = menu
             self.activeMenuChanged.emit(menu)
+
+    def toggle_power_menu(self):
+        if self._active_menu != "power":
+            return
+        if self._show_overlay:
+            self.hide_menu()
+        else:
+            # # Initialize temporary selection with current selection
+            # self._temp_left_index = self._left_selected_index
+            # self._temp_right_index = self._right_selected_index
+            self.show_menu()
     
     def toggle_left_menu(self):
         if self._active_menu != "left":

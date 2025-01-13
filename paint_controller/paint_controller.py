@@ -537,6 +537,9 @@ class RobotController(Node, QObject):
         elif self.steam_deck.get_button_pressed('l4'):
             self.overlayController.set_active_menu("left")
             self.overlayController.toggle_left_menu()
+        elif self.steam_deck.get_button_pressed('menu'):
+            self.overlayController.set_active_menu("power")
+            self.overlayController.toggle_power_menu()
 
         # Process control inputs
         self.controlProcessor.process_input(input_state)
