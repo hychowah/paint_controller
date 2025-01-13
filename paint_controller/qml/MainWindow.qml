@@ -131,23 +131,11 @@ ApplicationWindow {
     }
 
     PowerControlMenu {
+        anchors.fill: parent
         id: powerControlMenu
         z: 1001
-        isVisible: showPowerMenu
-        visible: opacity > 0
-
-        onMainPowerChanged: {
-            console.log("Main power changed:", checked)
-            // Handle main power change
-        }
-        onAuxPowerChanged: {
-            console.log("Aux power changed:", checked)
-            // Handle aux power change
-        }
-        onBatteryBackupChanged: {
-            console.log("Battery backup changed:", checked)
-            // Handle battery backup change
-        }
+        showOverlay: overlayController.show_overlay
+        activeMenu: overlayController.active_menu
     }
 
     OverlayLayer {

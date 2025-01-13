@@ -2,181 +2,210 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
-Rectangle {
-    id: powerMenuContainer
-    width: 400
-    height: 300
-    radius: 20
-    color: "#4374A2"
-    opacity: visible ? 1 : 0
-    border.color: "#28445E"
-    border.width: 4
-    
-    // Properties
-    property bool isVisible: false
-    
-    // Signals for switch state changes
-    signal mainPowerChanged(bool checked)
-    signal auxPowerChanged(bool checked)
-    signal batteryBackupChanged(bool checked)
+Item {
+    id: powerControlMenu
 
-    // Position and animation setup
-    anchors {
-        horizontalCenter: parent.horizontalCenter
-        top: parent.top
-        topMargin: isVisible ? (parent.height - height) / 2 : -height
-    }
+    property bool showOverlay: false
+    property string activeMenu: ""
+    property bool showPowerMenu: showOverlay && activeMenu === "power"
 
-    Behavior on anchors.topMargin {
-        NumberAnimation {
-            duration: 300
-            easing.type: Easing.OutBack
-            easing.overshoot: 0.5
+    Rectangle {
+        id: powerOverlayBackground
+        anchors.fill: parent
+        color: "#000000"
+        opacity: showPowerMenu ? 0.7 : 0
+        visible: opacity > 0  // Only visible when opacity > 0
+        
+        Behavior on opacity {
+            NumberAnimation { 
+                duration: 300
+                easing.type: Easing.InOutQuad 
+            }
         }
     }
 
-    ColumnLayout {
+    Rectangle {
+        id: powerMenuContainer
+        width: 400
+        height: 300
+        radius: 20
+        color: "#4374A2"
+        opacity: showPowerMenu ? 1 : 0
+        visible: opacity > 0  // Only visible when opacity > 0
+        border.color: "#28445E"
+        border.width: 4
+        
+        // Position and animation setup
         anchors {
-            fill: parent
-            margins: 20
+            horizontalCenter: parent.horizontalCenter
+            top: parent.top
+            topMargin: showPowerMenu ? (parent.height - height) / 2 : -height
         }
 
-        Text {
-            text: "Power Control"
-            color: "#E2E2E2"
-            font.pixelSize: 30
-            font.bold: true
-            Layout.alignment: Qt.AlignHCenter
+        Behavior on anchors.topMargin {
+            NumberAnimation {
+                duration: 300
+                easing.type: Easing.OutBack
+                easing.overshoot: 0.5
+            }
         }
 
-        Rectangle {
-            height: 3
-            anchors.horizontalCenter: parent.horizontalCenter
-            width: parent.width * 0.8
-            color: "#28445E"
+        Behavior on opacity {
+            NumberAnimation {
+                duration: 300
+                easing.type: Easing.InOutQuad
+            }
         }
 
-        Item { Layout.fillHeight: true }
+        ColumnLayout {
+            anchors {
+                fill: parent
+                margins: 20
+            }
 
-        Switch {
-            id: menuWinchEnableSwitch
-            text: "Winch Enable" 
-            checked: uiData.winch_enabled
-            Layout.fillWidth: true
-            
-            onCheckedChanged: backend.setWinchEnabled(checked)
-            
-            indicator: Rectangle {
-                implicitWidth: parent.width * 0.2
-                implicitHeight: implicitWidth * 0.5
-                x: mainPowerSwitch.leftPadding
-                y: parent.height / 2 - height / 2
-                radius: implicitHeight / 2
-                color: uiData.winch_enabled ? "#4CAF50" : "#666666"
+            Text {
+                text: "Power Control"
+                color: "#E2E2E2"
+                font.family: "Helvetica"
+                font.pixelSize: 30
+                font.bold: true
+                Layout.alignment: Qt.AlignHCenter
+            }
 
-                Rectangle {
-                    x: menuWinchEnableSwitch.checked ? parent.width - width - 2 : 2
-                    y: height * 0.1
-                    width: parent.height * 0.8
-                    height: parent.height * 0.8
-                    radius: parent.height * 0.4
-                    color: "white"
+            Rectangle {
+                height: 6
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: parent.width * 0.8
+                color: "#28445E"
+            }
 
-                    Behavior on x {
-                        NumberAnimation { duration: 200 }
+            Item { Layout.fillHeight: true }
+
+            Switch {
+                id: menuWinchEnableSwitch
+                text: "Winch Enable" 
+                checked: uiData.winch_enabled
+                Layout.fillWidth: true
+                
+                onCheckedChanged: backend.setWinchEnabled(checked)
+                
+                indicator: Rectangle {
+                    implicitWidth: parent.width * 0.2
+                    implicitHeight: implicitWidth * 0.5
+                    x: mainPowerSwitch.leftPadding
+                    y: parent.height / 2 - height / 2
+                    radius: implicitHeight / 2
+                    color: uiData.winch_enabled ? "#4CAF50" : "#666666"
+
+                    Rectangle {
+                        x: menuWinchEnableSwitch.checked ? parent.width - width - 2 : 2
+                        y: height * 0.1
+                        width: parent.height * 0.8
+                        height: parent.height * 0.8
+                        radius: parent.height * 0.4
+                        color: "white"
+
+                        Behavior on x {
+                            NumberAnimation { duration: 200 }
+                        }
                     }
+                }
+
+                contentItem: Text {
+                    text: menuWinchEnableSwitch.text
+                    font.family: "Helvetica"
+                    font.pixelSize: 20
+                    font.bold: true
+                    color: "black"
+                    verticalAlignment: Text.AlignVCenter
+                    leftPadding: menuWinchEnableSwitch.indicator.width + 12
                 }
             }
 
-            contentItem: Text {
-                text: menuWinchEnableSwitch.text
-                font.pixelSize: 20
-                font.bold: true
-                color: "black"
-                verticalAlignment: Text.AlignVCenter
-                leftPadding: menuWinchEnableSwitch.indicator.width + 12
-            }
-        }
+            Switch {
+                id: menuTeensyRelaySwitch
+                text: "Teensy Relay"
+                checked: uiData.teensy_relay_enabled
+                Layout.fillWidth: true
+                
+                onToggled: backend.setTeensyRelayEnabled(checked)
 
-        Switch {
-            id: menuTeensyRelaySwitch
-            text: "Teensy Relay"
-            checked: uiData.teensy_enabled
-            Layout.fillWidth: true
-            
-            onToggled: backend.setTeensyEnabled(checked)
+                indicator: Rectangle {
+                    implicitWidth: parent.width * 0.2
+                    implicitHeight: implicitWidth * 0.5
+                    x: mainPowerSwitch.leftPadding
+                    y: parent.height / 2 - height / 2
+                    radius: implicitHeight / 2
+                    color: uiData.teensy_relay_enabled ? "#4CAF50" : "#666666"
 
-            indicator: Rectangle {
-                implicitWidth: parent.width * 0.2
-                implicitHeight: implicitWidth * 0.5
-                x: mainPowerSwitch.leftPadding
-                y: parent.height / 2 - height / 2
-                radius: implicitHeight / 2
-                color: uiData.teensy_enabled ? "#4CAF50" : "#666666"
+                    Rectangle {
+                        x: menuTeensyRelaySwitch.checked ? parent.width - width - 2 : 2
+                        y: height * 0.1
+                        width: parent.height * 0.8
+                        height: parent.height * 0.8
+                        radius: parent.height * 0.4
+                        color: "white"
 
-                Rectangle {
-                    x: menuTeensyRelaySwitch.checked ? parent.width - width - 2 : 2
-                    y: height * 0.1
-                    width: parent.height * 0.8
-                    height: parent.height * 0.8
-                    radius: parent.height * 0.4
-                    color: "white"
-
-                    Behavior on x {
-                        NumberAnimation { duration: 200 }
+                        Behavior on x {
+                            NumberAnimation { duration: 200 }
+                        }
                     }
+                }
+
+                contentItem: Text {
+                    text: menuTeensyRelaySwitch.text
+                    font.pixelSize: 20
+                    font.bold: true
+                    font.family: "Helvetica"
+                    color: "black"
+                    verticalAlignment: Text.AlignVCenter
+                    leftPadding: menuTeensyRelaySwitch.indicator.width + 12
                 }
             }
 
-            contentItem: Text {
-                text: menuTeensyRelaySwitch.text
-                font.pixelSize: 20
-                font.bold: true
-                color: "black"
-                verticalAlignment: Text.AlignVCenter
-                leftPadding: menuTeensyRelaySwitch.indicator.width + 12
-            }
-        }
+            Switch {
+                id: menuTeensyEnableSwitch
+                text: "Teensy Enable"
+                checked: uiData.teensy_enabled
+                Layout.fillWidth: true
+                
+                onToggled: backend.setTeensyEnabled(checked)
 
-        Switch {
-            id: menuTeensyEnableSwitch
-            text: "Teensy Enable"
-            checked: false
-            Layout.fillWidth: true
-            
-            onCheckedChanged: batteryBackupChanged(checked)
+                indicator: Rectangle {
+                    implicitWidth: parent.width * 0.2
+                    implicitHeight: implicitWidth * 0.5
+                    x: mainPowerSwitch.leftPadding
+                    y: parent.height / 2 - height / 2
+                    radius: implicitHeight / 2
+                    color: uiData.teensy_enabled ? "#4CAF50" : "#666666"
 
-            indicator: Rectangle {
-                implicitWidth: parent.width * 0.2
-                implicitHeight: implicitWidth * 0.5
-                x: mainPowerSwitch.leftPadding
-                y: parent.height / 2 - height / 2
-                radius: implicitHeight / 2
-                color: batterySwitch.checked ? "#4CAF50" : "#666666"
+                    Rectangle {
+                        x: menuTeensyEnableSwitch.checked ? parent.width - width - 2 : 2
+                        y: height * 0.1
+                        width: parent.height * 0.8
+                        height: parent.height * 0.8
+                        radius: parent.height * 0.4
+                        color: "white"
 
-                Rectangle {
-                    x: batterySwitch.checked ? parent.width - width - 2 : 2
-                    y: height * 0.1
-                    width: parent.height * 0.8
-                    height: parent.height * 0.8
-                    radius: parent.height * 0.4
-                    color: "white"
-
-                    Behavior on x {
-                        NumberAnimation { duration: 200 }
+                        Behavior on x {
+                            NumberAnimation { duration: 200 }
+                        }s
                     }
+                }
+
+                contentItem: Text {
+                    text: menuTeensyEnableSwitch.text
+                    font.pixelSize: 20
+                    font.bold: true
+                    font.family: "Helvetica"
+                    color: "black"
+                    verticalAlignment: Text.AlignVCenter
+                    leftPadding: menuTeensyEnableSwitch.indicator.width + 12
                 }
             }
 
-            contentItem: Text {
-                font.pixelSize: 20
-                font.bold: true
-                color: "black"
-                verticalAlignment: Text.AlignVCenter
-                leftPadding: batterySwitch.indicator.width + 12
-            }
+            Item { Layout.fillHeight: true }
         }
-
-        Item { Layout.fillHeight: true }
     }
 }
+
