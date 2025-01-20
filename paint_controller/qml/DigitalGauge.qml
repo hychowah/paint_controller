@@ -167,10 +167,10 @@ Item {
     // Center display for speed
     Rectangle {
         id: centerDisplay
-        width: root.width * 0.3
+        width: root.width * 0.45
         height: root.height * 0.2
-        radius: Math.min(width, height) * 0.1
-        color: "#000000"
+        radius: Math.min(width, height) * 0.2
+        color: Qt.rgba(0, 0, 0, 0.2)
         anchors.centerIn: parent
 
         Column {
@@ -181,7 +181,7 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Math.round(speed).toString() 
                 color: "#FFFFFF"
-                font.pixelSize: Math.min(centerDisplay.width * 0.6, centerDisplay.height * 0.6)
+                font.pixelSize: Math.min(centerDisplay.width * 1, centerDisplay.height * 1)
                 font.bold: true
             }
         }

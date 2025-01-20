@@ -80,8 +80,8 @@ Item {
                 Switch {
                     id: enableSwitch
                     text: "Enable Control"
-                    checked: controlEnabled
-                    onCheckedChanged: controlEnabled = checked
+                    checked: uiData.teensy_yaw_enabled
+                    onCheckedChanged: backend.setYawControl(checked, uiData.teensy_yaw_command, uiData.teensy_yaw_pid_p, uiData.teensy_yaw_pid_i, uiData.teensy_yaw_pid_d, uiData.teensy_yaw_pwm)
                 }
 
                 ColumnLayout {
@@ -453,7 +453,7 @@ Item {
                             let d = dInput.text !== "" ? parseFloat(dInput.text) : uiData.teensy_yaw_pid_d
                             let target = targetInput.text !== "" ? parseFloat(targetInput.text) : uiData.teensy_yaw_command
                             
-                            backend.setYawControl(controlEnabled, target, p, i, d, pwmValue)
+                            backend.setYawControl(enableSwitch.checked, target, p, i, d, pwmValue)
                         }
                     }
                 }

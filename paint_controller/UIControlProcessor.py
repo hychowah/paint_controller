@@ -70,6 +70,10 @@ class ControlProcessor:
                 scale=100/32768,
                 min_interval=0.2,  # 5Hz
                 msg_type=Int32
+            ),
+            "EF Yaw Angle": ControlConfig(
+                scale=1500/32768,
+                min_interval=0.1  # 10Hz
             )
         }
 
@@ -120,6 +124,21 @@ class ControlProcessor:
         # Update current values
         if stick == 'left':
             self.current_values['left_mode'] = mode
+            self.current_values['left_value'] = -command_angle
+        else:
+            self.current_values['right_mode'] = mode
+            self.current_values['right_value'] = command_angle
+
+    def _process_yaw_control(self, input_state: Dict, mode: str, stick: str):
+        """Handle EF Yaw Angle specific control"""
+        config = self.controls[mode]
+        command_angle = - float(input_state[f'{stick}_stick']['x']) * config.scale + config.offset
+        config.offset = command_angle
+        self.robot.setYawControl(command_angle)
+
+        # Update current values
+        if stick == 'left':
+            self.current_values['left_mode'] = mode
             self.current_values['left_value'] = command_angle
         else:
             self.current_values['right_mode'] = mode
@@ -155,6 +174,7 @@ class ControlProcessor:
             
             self.robot.winch_controller.command_speed(value)
             return
+        
 
         if value >= config.min_value:
             # Map modes to their publishers
@@ -183,6 +203,8 @@ class ControlProcessor:
             if left_mode in self.controls and self._can_send_command(left_mode):
                 if left_mode == "EF prop joint":
                     self._process_joint_control(input_state, left_mode, 'left')
+                elif left_mode == "EF Yaw Angle":
+                    self._process_yaw_control(input_state, left_mode, 'left')
                 else:
                     self._process_standard_control(input_state, left_mode, 'left')
             
@@ -192,8 +214,14 @@ class ControlProcessor:
             if right_mode in self.controls and self._can_send_command(right_mode):
                 if right_mode == "EF prop joint":
                     self._process_joint_control(input_state, right_mode, 'right')
+                elif right_mode == "EF Yaw Angle":
+                    self._process_yaw_control(input_state, right_mode, 'right')
                 else:
                     self._process_standard_control(input_state, right_mode, 'right')
+
+            if left_mode != "EF Yaw Angle" and right_mode != "EF Yaw Angle":
+                self.controls["EF Yaw Angle"].offset = float(self.robot.ui_data_model.teensy_imu_yaw) * 100
+                print("Resetting EF Yaw Angle offset to:", self.controls["EF Yaw Angle"].offset)
 
             # Update display at 5Hz
             self._update_display()

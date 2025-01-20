@@ -61,7 +61,7 @@ Rectangle {
                         anchors.fill: parent
                         fillMode: Image.PreserveAspectCrop
                         cache: false
-                        source: "image://ef_live/frame"
+                        source: "image://base_live/frame"
 
                     }
                 }
@@ -148,7 +148,7 @@ Rectangle {
             target: baseStreamer
             function onFrame_ready() {
                 videoFrame.source = ""
-                videoFrame.source = "image://ef_live/frame"
+                videoFrame.source = "image://base/frame"
             }
         }
     }

@@ -29,7 +29,7 @@ Item {
         width: 400
         height: 300
         radius: 20
-        color: "#4374A2"
+        color: "#2c2c2c"
         opacity: showPowerMenu ? 1 : 0
         visible: opacity > 0  // Only visible when opacity > 0
         border.color: "#28445E"
@@ -115,8 +115,7 @@ Item {
                     text: menuWinchEnableSwitch.text
                     font.family: "Helvetica"
                     font.pixelSize: 20
-                    font.bold: true
-                    color: "black"
+                    color: "#cccccc"
                     verticalAlignment: Text.AlignVCenter
                     leftPadding: menuWinchEnableSwitch.indicator.width + 12
                 }
@@ -155,9 +154,8 @@ Item {
                 contentItem: Text {
                     text: menuTeensyRelaySwitch.text
                     font.pixelSize: 20
-                    font.bold: true
                     font.family: "Helvetica"
-                    color: "black"
+                    color: "#cccccc"
                     verticalAlignment: Text.AlignVCenter
                     leftPadding: menuTeensyRelaySwitch.indicator.width + 12
                 }
@@ -189,18 +187,57 @@ Item {
 
                         Behavior on x {
                             NumberAnimation { duration: 200 }
-                        }s
+                        }
                     }
                 }
 
                 contentItem: Text {
                     text: menuTeensyEnableSwitch.text
                     font.pixelSize: 20
-                    font.bold: true
                     font.family: "Helvetica"
-                    color: "black"
+                    color: "#cccccc"
                     verticalAlignment: Text.AlignVCenter
                     leftPadding: menuTeensyEnableSwitch.indicator.width + 12
+                }
+            }
+
+            Switch {
+                id: menuYawEnableSwitch
+                text: "Yaw Control Enable"
+                checked: uiData.teensy_yaw_enabled
+                Layout.fillWidth: true
+                
+                onToggled: backend.setYawControl(checked, uiData.teensy_yaw_command, uiData.teensy_yaw_pid_p, uiData.teensy_yaw_pid_i, uiData.teensy_yaw_pid_d, uiData.teensy_yaw_pwm)
+
+                indicator: Rectangle {
+                    implicitWidth: parent.width * 0.2
+                    implicitHeight: implicitWidth * 0.5
+                    x: mainPowerSwitch.leftPadding
+                    y: parent.height / 2 - height / 2
+                    radius: implicitHeight / 2
+                    color: uiData.teensy_yaw_enabled ? "#4CAF50" : "#666666"
+
+                    Rectangle {
+                        x: menuYawEnableSwitch.checked ? parent.width - width - 2 : 2
+                        y: height * 0.1
+                        width: parent.height * 0.8
+                        height: parent.height * 0.8
+                        radius: parent.height * 0.4
+                        color: "white"
+
+                        Behavior on x {
+                            NumberAnimation { duration: 200 }
+                        }
+                    }
+                }
+
+                contentItem: Text {
+                    text: menuYawEnableSwitch.text
+                    font.pixelSize: 20
+                    font.family: "Helvetica"
+                    color: "#cccccc"
+                    verticalAlignment: Text.AlignVCenter
+                    leftPadding: menuYawEnableSwitch.indicator.width + 12
                 }
             }
 

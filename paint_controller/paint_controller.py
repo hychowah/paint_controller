@@ -6,7 +6,7 @@ import time
 import threading
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Dict, Optional, List, Any, Callable
+from typing import Dict, Optional, List, Any, Callable, overload
 import yaml
 import math
 
@@ -393,6 +393,7 @@ class RobotController(Node, QObject):
         self.teensyMonitor = TeensyMonitor(self)
         self.windMonitor = WindMonitor(self)    
         self.controlProcessor = ControlProcessor(self)
+        self.target_yaw = 0
 
         self.steam_deck = SteamDeckHandler(config.joystick_deadzone)
 
@@ -723,12 +724,32 @@ class RobotController(Node, QObject):
         self.get_logger().info(f'Right joystick control set to: {control}')
         self.display_message(f'Right joystick control set to: {control}')
 
+    @overload
+    def setYawControl(self, target: float) -> None:
+        ...
+
+    @overload
+    def setYawControl(self, enabled: bool, target: float, p: float, i: float, d: float, pwm: int) -> None:
+        ...
+
     @Slot(bool, float, float, float, float, int)
-    def setYawControl(self, enabled: bool, target: float, p: float, i: float, d: float, pwm: int):
+    def setYawControl(self, *args):
         """Set yaw control parameters and enable state"""
+        if len(args) == 1:
+            target = args[0]
+            teensy_status = self.teensyMonitor.get_status()
+            enabled = teensy_status.get('yaw_enabled', False)
+            p = float(teensy_status.get('yaw_pid_p', 0.0))
+            i = float(teensy_status.get('yaw_pid_i', 0.0))
+            d = float(teensy_status.get('yaw_pid_d', 0.0))
+            pwm = int(float(teensy_status.get('yaw_pwm', 0)))
+        elif len(args) == 6:
+            enabled, target, p, i, d, pwm = args
+
         msg = TeensyYaw()
         msg.yaw_enabled = enabled
         msg.yaw_command = target  # Use current yaw as target
+        print(f"Setting yaw control: {enabled}, {target}, {p}, {i}, {d}, {pwm}")
         msg.yaw_pid_p = p
         msg.yaw_pid_i = i
         msg.yaw_pid_d = d
