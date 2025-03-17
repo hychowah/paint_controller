@@ -130,6 +130,11 @@ ApplicationWindow {
         PageSpray {}
     }
 
+    Component {
+        id: page7Component
+        PageTrajectory {}
+    }
+
     PowerControlMenu {
         anchors.fill: parent
         id: powerControlMenu

@@ -1,13 +1,31 @@
-# WinchNode
+# Paint Controller
 
-The `WinchNode` is a ROS 2 node designed to control a winch driven by teknic motor
+The `Paint Controller` is a ROS 2 node designed to provide a user interface for controlling the robot
 
-## Running the Node with GUI
-To run the WinchNode with the Tkinter GUI, use the following command:
+## Running the Controller
+To run the Controller, use the following command:
 ```bash
-python3 path/to/winch_node.py --gui
+python paint_controller.py
 ```
-or
+
+## Running the Steam Input Node
+To run the Steam Input Node, use the following command:
 ```bash
-ros2 run paint_base winch_node --gui
+python steam_input_node.py
+```
+
+### Remarks:
+You should set the permissions for the Steam Deck device before running the Steam Input Node.
+
+Use the command below to fix device permissions permanently:
+```bash
+sudo tee /etc/udev/rules.d/99-steam-deck.rules <<EOF
+# Steam Deck HID
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="28de", ATTRS{idProduct}=="1205", MODE="0666"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="28de", ATTRS{idProduct}=="1205", MODE="0666"
+EOF
+
+# Reload udev rules
+sudo udevadm control --reload-rules
+sudo udevadm trigger
 ```

@@ -26,6 +26,7 @@ from UIDataModel import UIDataModel
 from OverlayController import OverlayController
 from UIControlProcessor import ControlProcessor
 from UISteamDeckHandler import SteamDeckHandler
+from TrajectoryHandler import TrajectoryHandler
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -403,6 +404,8 @@ class RobotController(Node, QObject):
         # Setup ROS subscribers and publishers
         self._setup_subscribers()
         self._setup_publishers()
+
+        self.trajectoryHandler = TrajectoryHandler(self.winch_move_increment_pub)
         
 
     def on_new_ef_sample(self, sink):
@@ -811,6 +814,7 @@ def main():
     engine.rootContext().setContextProperty("baseStreamer", controller)
     engine.rootContext().setContextProperty("uiData", controller.ui_data_model)
     engine.rootContext().setContextProperty("overlayController", controller.overlayController)
+    engine.rootContext().setContextProperty("trajectoryHandler", controller.trajectoryHandler)
     
     # Start status update timer
     status_timer = QTimer()
