@@ -27,6 +27,7 @@ from OverlayController import OverlayController
 from UIControlProcessor import ControlProcessor
 from UISteamDeckHandler import SteamDeckHandler
 from TrajectoryHandler import TrajectoryHandler
+from WarningHandler import WarningHandler
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -376,6 +377,8 @@ class RobotController(Node, QObject):
         Gst.init(None)
         
         # Initialize components
+        self.warningHandler = WarningHandler()
+
         self.ef_image_provider = ImageProvider()
         self.ef_pipeline = Gst.parse_launch(
             "udpsrc port=5001 caps=\"application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96\" ! rtph264depay ! avdec_h264 ! videoconvert ! video/x-raw,format=RGB ! appsink name=sink"
@@ -406,7 +409,6 @@ class RobotController(Node, QObject):
         self._setup_publishers()
 
         self.trajectoryHandler = TrajectoryHandler(self.winch_move_increment_pub)
-        
 
     def on_new_ef_sample(self, sink):
         sample = sink.emit('pull-sample')
@@ -815,6 +817,7 @@ def main():
     engine.rootContext().setContextProperty("uiData", controller.ui_data_model)
     engine.rootContext().setContextProperty("overlayController", controller.overlayController)
     engine.rootContext().setContextProperty("trajectoryHandler", controller.trajectoryHandler)
+    engine.rootContext().setContextProperty("warningHandler", controller.warningHandler)
     
     # Start status update timer
     status_timer = QTimer()

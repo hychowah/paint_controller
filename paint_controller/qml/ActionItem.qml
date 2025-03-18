@@ -16,6 +16,7 @@ Rectangle {
     signal addDescendNSpray // signal to add descend & spray action
     signal addSpray // signal to add spray action
     signal addStopSpray // signal to add stop spray action
+    signal addResetYaw // signal to add reset yaw action
 
     ColumnLayout {
         anchors.fill: parent
@@ -212,6 +213,36 @@ Rectangle {
                     anchors.fill: parent
                     onClicked: {
                         actionItem.addStopSpray()
+                    }
+                }
+            }
+
+            // action: reset yaw
+            Rectangle {
+                width: parent.width - 20
+                height: 70
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.children[5].bottom
+                anchors.topMargin: 10
+                color: Qt.rgba(255, 255, 255, 0.5)
+                border.color: "#E0E0E0"
+                border.width: 1
+                radius: 15
+
+                Text {
+                    anchors.left: parent.left
+                    anchors.margins: 10
+                    anchors.leftMargin: 20
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Reset Yaw"
+                    font.pixelSize: 20
+                    font.bold: true
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        actionItem.addResetYaw()
                     }
                 }
             }

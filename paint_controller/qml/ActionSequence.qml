@@ -89,7 +89,7 @@ Rectangle {
 
                 delegate: Item {
                     width: parent.width
-                    height: 150
+                    height: (model.id === "4" || model.id === "5") ? 250 : 150
                     
                     ColumnLayout {
                         anchors.fill: parent
@@ -100,7 +100,7 @@ Rectangle {
                         
                         Rectangle {
                             width: parent.width
-                            height: 100
+                            height: (model.id === "4" || model.id === "5") ? 200 : 120
                             color: Qt.rgba(255, 255, 255, 0.5)
                             radius: 20
                             border.color: "#000000"
@@ -113,11 +113,12 @@ Rectangle {
 
                                 ColumnLayout {
                                     Layout.fillHeight: true
+                                    Layout.fillWidth: true
                                     Layout.alignment: Qt.AlignVCenter
                                     spacing: 10
-                                    anchors.margins: 10
-                                    width: parent.width
-                                    height: parent.height
+                                    //anchors.margins: 10
+                                    //width: parent.width
+                                    //height: parent.height
 
                                     Text {
                                         text: model.title
@@ -129,19 +130,19 @@ Rectangle {
                                     RowLayout {
                                         Layout.fillWidth: true
                                         Layout.alignment: Qt.AlignVCenter
-                                        spacing: 10
+                                        spacing: 20
                                         anchors.margins: 10
                                         width: parent.width
                                         height: parent.height
-                                        opacity: model.id === "3" ? 0 : 1
-                                        enabled: model.id !== "3"
+                                        opacity: (model.id === "3" || model.id === "6") ? 0 : 1
+                                        enabled: model.id !== "3" && model.id !== "6"
 
                                         ColumnLayout {
                                             Layout.fillHeight: true
                                             Layout.alignment: Qt.AlignVCenter
 
                                             Text {
-                                                text: "Length"
+                                                text: (model.id === "4" || model.id === "5") ? "W_Length" : "Length"
                                                 Layout.preferredWidth: 40
                                             }
 
@@ -163,7 +164,63 @@ Rectangle {
                                             Layout.alignment: Qt.AlignVCenter
 
                                             Text {
-                                                text: "Speed"
+                                                text: (model.id === "4" || model.id === "5") ? "W_Speed" : "Speed"
+                                                Layout.preferredWidth: 40
+                                            }
+
+                                            Button {
+                                                text: model.input2
+                                                Layout.preferredWidth: 60
+                                                background: Rectangle {
+                                                    color: (selectedInputField.itemInx === index && selectedInputField.inputInx === 1) ? "#58ff86" : "white"
+                                                }
+                                                onClicked: {
+                                                    selectedInputField.itemInx = index
+                                                    selectedInputField.inputInx = 1
+                                                }
+                                            }
+                                        }
+                                    }
+
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        Layout.alignment: Qt.AlignVCenter
+                                        spacing: 20
+                                        anchors.margins: 10
+                                        width: parent.width
+                                        height: parent.height
+                                        opacity: model.id === "4" || model.id === "5" ? 1 : 0
+                                        enabled: model.id === "4" || model.id === "5"
+
+                                        ColumnLayout {
+                                            Layout.fillHeight: true
+                                            Layout.alignment: Qt.AlignVCenter
+
+                                            Text {
+                                                text: "S_Length"
+                                                Layout.preferredWidth: 40
+                                            }
+
+                                            Button {
+                                                text: model.input1
+                                                Layout.preferredWidth: 60
+                                                background: Rectangle {
+                                                    color: (selectedInputField.itemInx === index && selectedInputField.inputInx === 0) ? "#58ff86" : "white"
+                                                }
+                                                onClicked: {
+                                                    selectedInputField.itemInx = index
+                                                    selectedInputField.inputInx = 0
+                                                }
+                                            }
+                                        }
+
+                                        ColumnLayout {
+                                            Layout.fillHeight: true
+                                            Layout.alignment: Qt.AlignVCenter
+
+                                            Text {
+                                                text: "S_Speed"
                                                 Layout.preferredWidth: 40
                                             }
 
@@ -181,13 +238,11 @@ Rectangle {
                                         }
                                     }
                                 }
-                                
-
-                                
 
                                 ColumnLayout {
                                     Layout.fillHeight: true
                                     Layout.alignment: Qt.AlignVCenter
+                                    Layout.preferredWidth: 40
 
                                     Button {
                                         text: "▲"

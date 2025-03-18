@@ -103,6 +103,19 @@ class TrajectoryHandler(QObject):
                     self._currentTrajCmd.append(["moveGun", "0"])
                     self._currentTrajDescription.append("Retract gun")
                     self._currentTrajCmd.append(["spray", "0"])
+                elif temp[0] == "aNs":
+                    self._currentTrajDescription.append("Move gun to " + temp[3] + "mm")
+                    self._currentTrajCmd.append(["moveGun", temp[3]])
+                    self._currentTrajDescription.append("Ascent " + temp[1] + "mm with \n speed " + temp[2] + "mm/s \n and spray with speed " + temp[4] + "mm/s")
+                    self._currentTrajCmd.append(["winchNspray", temp[1], temp[2], temp[4]])
+                elif temp[0] == "dNs":
+                    self._currentTrajDescription.append("Move gun to " + temp[3] + "mm")
+                    self._currentTrajCmd.append(["moveGun", temp[3]])
+                    self._currentTrajDescription.append("Descent " + temp[1] + "mm with \n speed " + temp[2] + "mm/s \n and spray with speed " + temp[4] + "mm/s")
+                    self._currentTrajCmd.append(["winchNspray", "-"+temp[1], temp[2], temp[4]])
+                elif temp[0] == "resetYaw":
+                    self._currentTrajDescription.append("Reset yaw")
+                    self._currentTrajCmd.append(["resetYaw"])
 
     @Slot(result=list)
     def getSelectedActions(self):
@@ -111,12 +124,17 @@ class TrajectoryHandler(QObject):
     @Slot(int)
     def startExecution(self, index):
         if 0 <= index < len(self._currentTrajCmd):
-            #self._currentActionInx = index
-            #self.actionChanged.emit()
-
             if self._currentTrajCmd[index][0] == "winch":
                 self.pubWinchCmd(self._currentTrajCmd[index])
             elif self._currentTrajCmd[index][0] == "moveGun":
-                pass
+                pass # TODO
             elif self._currentTrajCmd[index][0] == "spray":
-                pass
+                pass # TODO
+            elif self._currentTrajCmd[index][0] == "winchNspray":
+                pass # TODO
+            elif self._currentTrajCmd[index][0] == "resetYaw":
+                pass # TODO
+
+    @Slot()
+    def stopAll(self):
+        pass # TODO

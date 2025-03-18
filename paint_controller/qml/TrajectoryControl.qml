@@ -10,8 +10,6 @@ Rectangle {
     border.color: "#e0e0e0"
     border.width: 1
 
-    signal startExecution
-
     property bool selected: false
     property var currentActions: []
     property int currentActionIndex: -1
@@ -114,7 +112,7 @@ Rectangle {
                     Rectangle {
                         id: actionItem
                         width: parent.width
-                        height: 40
+                        height: 60
                         color: control.isExecuting && index === control.currentActionIndex ? 
                                "#51aef3" : "#d1eafc"
                         border.color: "#e0e0e0"
@@ -152,6 +150,33 @@ Rectangle {
         }
 
         // Control Panel
+        Rectangle {
+            id: eStopButton
+            Layout.fillWidth: true
+            Layout.preferredHeight: 70
+            color: "#ec3939"
+            border.color: "#e0e0e0"
+            radius: 3
+
+            Text {
+                text: "E-Stop"
+                anchors.centerIn: parent
+                verticalAlignment: Text.AlignVCenter
+                font.pixelSize: 16
+                font.bold: true
+            }
+
+
+            MouseArea {
+                enabled: !control.isExecuting
+                anchors.fill: parent
+                onClicked: {
+                    control.isExecuting = false
+                    trajectoryHandler.stopAll()
+                }
+            }
+        }
+
         Rectangle {
             id: executionButton
             Layout.fillWidth: true
