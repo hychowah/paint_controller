@@ -28,6 +28,7 @@ from UIControlProcessor import ControlProcessor
 from UISteamDeckHandler import SteamDeckHandler
 from TrajectoryHandler import TrajectoryHandler
 from WarningHandler import WarningHandler
+from BaseVideoStreamHandler import BaseVideoStreamHandler
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -409,6 +410,9 @@ class RobotController(Node, QObject):
         self._setup_publishers()
 
         self.trajectoryHandler = TrajectoryHandler(self.winch_move_increment_pub)
+
+        # base video stream handler
+        self.base_video_stream_handler = BaseVideoStreamHandler()
 
     def on_new_ef_sample(self, sink):
         sample = sink.emit('pull-sample')
@@ -806,6 +810,8 @@ def main():
     # Setup QML engine
     engine = QQmlApplicationEngine()
     engine.addImageProvider("ef_live", controller.ef_image_provider)
+    engine.addImageProvider("base_front_live", controller.base_video_stream_handler.front_image_provider)
+    engine.addImageProvider("base_rear_live", controller.base_video_stream_handler.rear_image_provider)
     
     # Load QML interface
     qml_path = os.path.join(os.path.dirname(__file__), 'qml', 'MainWindow.qml')
@@ -818,6 +824,7 @@ def main():
     engine.rootContext().setContextProperty("overlayController", controller.overlayController)
     engine.rootContext().setContextProperty("trajectoryHandler", controller.trajectoryHandler)
     engine.rootContext().setContextProperty("warningHandler", controller.warningHandler)
+    engine.rootContext().setContextProperty("baseStreamHandler", controller.base_video_stream_handler)
     
     # Start status update timer
     status_timer = QTimer()
