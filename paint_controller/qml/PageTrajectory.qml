@@ -49,38 +49,48 @@ Rectangle {
                     anchors.topMargin: 100
                     spacing: 20
 
-                    // Sequence List
-                    SequenceList {
+                    ColumnLayout {
                         Layout.preferredWidth: parent.width / 4
                         Layout.fillHeight: true
-                        currentSeq: currentSeq
 
-                        onResetSequence: function() {
-                            sequenceModel.clear()
+                        PlannerPageStatus {
+                            Layout.preferredWidth: parent.width
+                            Layout.fillHeight: true
                         }
 
-                        onAddAction: function(item) {
-                            var action = item.split("_")
-                            if(action[0] == "ascent") {
-                                sequenceModel.append({id: "0", title: "Ascend", input1: action[1], input2: action[2], input3: -1, input4: -1})
+                        // Sequence List
+                        SequenceList {
+                            Layout.preferredWidth: parent.width
+                            Layout.preferredHeight: parent.height / 2
+                            currentSeq: currentSeq
+
+                            onResetSequence: function() {
+                                sequenceModel.clear()
                             }
-                            else if(action[0] == "descent") {
-                                sequenceModel.append({id: "1", title: "Descend", input1: action[1], input2: action[2], input3: -1, input4: -1})
-                            }
-                            else if(action[0] == "spray") {
-                                sequenceModel.append({id: "2", title: "Spray", input1: action[1], input2: action[2], input3: -1, input4: -1})
-                            }
-                            else if(action[0] == "stopSpray") {
-                                sequenceModel.append({id: "3", title: "Stop Spray", input1: -1, input2: -1, input3: -1, input4: -1})
-                            }
-                            else if(action[0] == "aNs") {
-                                sequenceModel.append({id: "4", title: "Ascend & Spray", input1: action[1], input2: action[2], input3: action[3], input4: action[4]})
-                            }
-                            else if(action[0] == "dNs") {
-                                sequenceModel.append({id: "5", title: "Descend & Spray", input1: action[1], input2: action[2], input3: action[3], input4: action[4]})
-                            }
-                            else if(action[0] == "resetYaw") {
-                                sequenceModel.append({id: "6", title: "Reset Yaw", input1: -1, input2: -1, input3: -1, input4: -1})
+
+                            onAddAction: function(item) {
+                                var action = item.split("_")
+                                if(action[0] == "ascent") {
+                                    sequenceModel.append({id: "0", title: "Ascend", input1: action[1], input2: action[2], input3: "-1", input4: "-1"})
+                                }
+                                else if(action[0] == "descent") {
+                                    sequenceModel.append({id: "1", title: "Descend", input1: action[1], input2: action[2], input3: "-1", input4: "-1"})
+                                }
+                                else if(action[0] == "spray") {
+                                    sequenceModel.append({id: "2", title: "Spray", input1: action[1], input2: action[2], input3: "-1", input4: "-1"})
+                                }
+                                else if(action[0] == "stopSpray") {
+                                    sequenceModel.append({id: "3", title: "Stop Spray", input1: "-1", input2: "-1", input3: "-1", input4: "-1"})
+                                }
+                                else if(action[0] == "aNs") {
+                                    sequenceModel.append({id: "4", title: "Ascend & Spray", input1: action[1], input2: action[2], input3: action[3], input4: action[4]})
+                                }
+                                else if(action[0] == "dNs") {
+                                    sequenceModel.append({id: "5", title: "Descend & Spray", input1: action[1], input2: action[2], input3: action[3], input4: action[4]})
+                                }
+                                else if(action[0] == "resetYaw") {
+                                    sequenceModel.append({id: "6", title: "Reset Yaw", input1: "-1", input2: "-1", input3: "-1", input4: "-1"})
+                                }
                             }
                         }
                     }
@@ -243,6 +253,15 @@ Rectangle {
                             cache: false
                             source: "image://ef_live/frame"
                         }
+
+                        ExecutorPageStatus {
+                            anchors {
+                                top: parent.top
+                                left: parent.left
+                                right: parent.right
+                            }
+                            height: 100
+                        }
                     }
 
                     // action item
@@ -262,26 +281,6 @@ Rectangle {
                 }
             }
         }
-    }
-
-    Text {
-        id: angleText
-        text: "Angle:" //TODO: get angle from py
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.margins: 30
-        font.pixelSize: 20
-        font.bold: true
-    }
-
-    Text {
-        text: "Distance:" // TODO: get distance from py
-        anchors.top: parent.top
-        anchors.left: angleText.right
-        anchors.margins: 30
-        anchors.leftMargin: 40
-        font.pixelSize: 20
-        font.bold: true
     }
 
     RowLayout {

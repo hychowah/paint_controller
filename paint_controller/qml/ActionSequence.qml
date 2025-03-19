@@ -17,6 +17,9 @@ Rectangle {
     property var itemInx
     property var inputInx
 
+    property var showInputField1: ["0", "1", "2", "4", "5"]
+    property var showInputField2: ["4", "5"]
+
     signal saveSequence
 
     KeyboardPopup {
@@ -89,198 +92,175 @@ Rectangle {
 
                 delegate: Item {
                     width: parent.width
-                    height: (model.id === "4" || model.id === "5") ? 250 : 150
-                    
-                    ColumnLayout {
-                        anchors.fill: parent
-                        spacing: 10
-                        anchors.margins: 10
-                        width: parent.width
-                        height: parent.height
-                        
-                        Rectangle {
-                            width: parent.width
-                            height: (model.id === "4" || model.id === "5") ? 200 : 120
+                    height: (model.id === "4" || model.id === "5") ? 180 : 130
+
+                    Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            height: (model.id === "4" || model.id === "5") ? 130 : 100
                             color: Qt.rgba(255, 255, 255, 0.5)
                             radius: 20
                             border.color: "#000000"
+                    
+                        Text {
+                            text: (index+1).toString() + ") " + model.title
+                            font.pixelSize: 20
+                            font.bold: true
+                            anchors.margins: 10
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            Layout.alignment: Qt.AlignVCenter
+                        }
 
+                        RowLayout {
+                            id: inputRowLayout1
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            spacing: 20
+                            anchors.leftMargin: 20
+                            anchors.topMargin: 40
+                            Layout.fillWidth: true
+                            opacity: showInputField1.indexOf(model.id) !== -1
+                            enabled: showInputField1.indexOf(model.id) !== -1
 
-                            RowLayout {
-                                anchors.fill: parent
-                                spacing: 10
-                                anchors.margins: 10
-
-                                ColumnLayout {
-                                    Layout.fillHeight: true
-                                    Layout.fillWidth: true
-                                    Layout.alignment: Qt.AlignVCenter
-                                    spacing: 10
-                                    //anchors.margins: 10
-                                    //width: parent.width
-                                    //height: parent.height
-
-                                    Text {
-                                        text: model.title
-                                        font.pixelSize: 20
-                                        font.bold: true
-                                        Layout.alignment: Qt.AlignVCenter
-                                    }
-
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        Layout.alignment: Qt.AlignVCenter
-                                        spacing: 20
-                                        anchors.margins: 10
-                                        width: parent.width
-                                        height: parent.height
-                                        opacity: (model.id === "3" || model.id === "6") ? 0 : 1
-                                        enabled: model.id !== "3" && model.id !== "6"
-
-                                        ColumnLayout {
-                                            Layout.fillHeight: true
-                                            Layout.alignment: Qt.AlignVCenter
-
-                                            Text {
-                                                text: (model.id === "4" || model.id === "5") ? "W_Length" : "Length"
-                                                Layout.preferredWidth: 40
-                                            }
-
-                                            Button {
-                                                text: model.input1
-                                                Layout.preferredWidth: 60
-                                                background: Rectangle {
-                                                    color: (selectedInputField.itemInx === index && selectedInputField.inputInx === 0) ? "#58ff86" : "white"
-                                                }
-                                                onClicked: {
-                                                    selectedInputField.itemInx = index
-                                                    selectedInputField.inputInx = 0
-                                                }
-                                            }
-                                        }
-
-                                        ColumnLayout {
-                                            Layout.fillHeight: true
-                                            Layout.alignment: Qt.AlignVCenter
-
-                                            Text {
-                                                text: (model.id === "4" || model.id === "5") ? "W_Speed" : "Speed"
-                                                Layout.preferredWidth: 40
-                                            }
-
-                                            Button {
-                                                text: model.input2
-                                                Layout.preferredWidth: 60
-                                                background: Rectangle {
-                                                    color: (selectedInputField.itemInx === index && selectedInputField.inputInx === 1) ? "#58ff86" : "white"
-                                                }
-                                                onClicked: {
-                                                    selectedInputField.itemInx = index
-                                                    selectedInputField.inputInx = 1
-                                                }
-                                            }
-                                        }
-                                    }
-
-
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        Layout.alignment: Qt.AlignVCenter
-                                        spacing: 20
-                                        anchors.margins: 10
-                                        width: parent.width
-                                        height: parent.height
-                                        opacity: model.id === "4" || model.id === "5" ? 1 : 0
-                                        enabled: model.id === "4" || model.id === "5"
-
-                                        ColumnLayout {
-                                            Layout.fillHeight: true
-                                            Layout.alignment: Qt.AlignVCenter
-
-                                            Text {
-                                                text: "S_Length"
-                                                Layout.preferredWidth: 40
-                                            }
-
-                                            Button {
-                                                text: model.input1
-                                                Layout.preferredWidth: 60
-                                                background: Rectangle {
-                                                    color: (selectedInputField.itemInx === index && selectedInputField.inputInx === 0) ? "#58ff86" : "white"
-                                                }
-                                                onClicked: {
-                                                    selectedInputField.itemInx = index
-                                                    selectedInputField.inputInx = 0
-                                                }
-                                            }
-                                        }
-
-                                        ColumnLayout {
-                                            Layout.fillHeight: true
-                                            Layout.alignment: Qt.AlignVCenter
-
-                                            Text {
-                                                text: "S_Speed"
-                                                Layout.preferredWidth: 40
-                                            }
-
-                                            Button {
-                                                text: model.input2
-                                                Layout.preferredWidth: 60
-                                                background: Rectangle {
-                                                    color: (selectedInputField.itemInx === index && selectedInputField.inputInx === 1) ? "#58ff86" : "white"
-                                                }
-                                                onClicked: {
-                                                    selectedInputField.itemInx = index
-                                                    selectedInputField.inputInx = 1
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                ColumnLayout {
-                                    Layout.fillHeight: true
-                                    Layout.alignment: Qt.AlignVCenter
+                            ColumnLayout {
+                                Text {
+                                    text: (model.id === "4" || model.id === "5") ? "W_Length" : "Length"
                                     Layout.preferredWidth: 40
-
-                                    Button {
-                                        text: "▲"
-                                        Layout.preferredWidth: 40
-                                        onClicked: {
-                                            selectedInputField.itemInx = -1
-                                            selectedInputField.inputInx = -1
-                                            if (index > 0) {
-                                                actionSequence.sequence.move(index, index - 1, 1)
-                                            }
-                                        }
-                                    }
-
-                                    Button {
-                                        text: "▼"
-                                        Layout.preferredWidth: 40
-                                        onClicked: {
-                                            selectedInputField.itemInx = -1
-                                            selectedInputField.inputInx = -1
-                                            if (index < actionSequence.sequence.count - 1) {
-                                                actionSequence.sequence.move(index, index + 1, 1)
-                                            }
-                                        }
-                                    }
                                 }
 
                                 Button {
-                                    text: "<font color='#ffffff'>X</font>"
-                                    Layout.preferredWidth: 40
-                                    Layout.preferredHeight: 40
+                                    text: model.input1
+                                    Layout.preferredWidth: 60
                                     background: Rectangle {
-                                        color: "red"
-                                        radius: 1
+                                        color: (selectedInputField.itemInx === index && selectedInputField.inputInx === 0) ? "#58ff86" : "white"
                                     }
                                     onClicked: {
-                                        selectedInputField.itemInx = -1
-                                        selectedInputField.inputInx = -1
-                                        actionSequence.sequence.remove(index)
+                                        selectedInputField.itemInx = index
+                                        selectedInputField.inputInx = 0
+                                    }
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillHeight: true
+                                Layout.alignment: Qt.AlignVCenter
+
+                                Text {
+                                    text: (model.id === "4" || model.id === "5") ? "W_Speed" : "Speed"
+                                    Layout.preferredWidth: 40
+                                }
+
+                                Button {
+                                    text: model.input2
+                                    Layout.preferredWidth: 60
+                                    background: Rectangle {
+                                        color: (selectedInputField.itemInx === index && selectedInputField.inputInx === 1) ? "#58ff86" : "white"
+                                    }
+                                    onClicked: {
+                                        selectedInputField.itemInx = index
+                                        selectedInputField.inputInx = 1
+                                    }
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            anchors.top: inputRowLayout1.bottom
+                            anchors.left: parent.left
+                            spacing: 20
+                            anchors.leftMargin: 20
+                            anchors.topMargin: 5
+                            Layout.fillWidth: true
+                            opacity: showInputField2.indexOf(model.id) !== -1
+                            enabled: showInputField2.indexOf(model.id) !== -1
+
+                            ColumnLayout {
+                                Text {
+                                    text: "S_Length"
+                                    Layout.preferredWidth: 40
+                                }
+
+                                Button {
+                                    text: model.input3
+                                    Layout.preferredWidth: 60
+                                    background: Rectangle {
+                                        color: (selectedInputField.itemInx === index && selectedInputField.inputInx === 2) ? "#58ff86" : "white"
+                                    }
+                                    onClicked: {
+                                        selectedInputField.itemInx = index
+                                        selectedInputField.inputInx = 2
+                                    }
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillHeight: true
+                                Layout.alignment: Qt.AlignVCenter
+
+                                Text {
+                                    text: "S_Speed"
+                                    Layout.preferredWidth: 40
+                                }
+
+                                Button {
+                                    text: model.input4
+                                    Layout.preferredWidth: 60
+                                    background: Rectangle {
+                                        color: (selectedInputField.itemInx === index && selectedInputField.inputInx === 3) ? "#58ff86" : "white"
+                                    }
+                                    onClicked: {
+                                        selectedInputField.itemInx = index
+                                        selectedInputField.inputInx = 3
+                                    }
+                                }
+                            }
+                        }
+
+                        Button {
+                            id: removeButton
+                            text: "<font color='#ffffff'>X</font>"
+                            width: 40
+                            height: 40
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.right: parent.right
+                            anchors.margins: 40
+                            background: Rectangle {
+                                color: "red"
+                                radius: 1
+                            }
+                            onClicked: {
+                                selectedInputField.itemInx = -1
+                                selectedInputField.inputInx = -1
+                                actionSequence.sequence.remove(index)
+                            }
+                        }
+
+                        ColumnLayout {
+                            anchors.right: removeButton.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.margins: 30
+
+                            Button {
+                                text: "▲"
+                                Layout.preferredWidth: 40
+                                onClicked: {
+                                    selectedInputField.itemInx = -1
+                                    selectedInputField.inputInx = -1
+                                    if (index > 0) {
+                                        actionSequence.sequence.move(index, index - 1, 1)
+                                    }
+                                }
+                            }
+
+                            Button {
+                                text: "▼"
+                                Layout.preferredWidth: 40
+                                onClicked: {
+                                    selectedInputField.itemInx = -1
+                                    selectedInputField.inputInx = -1
+                                    if (index < actionSequence.sequence.count - 1) {
+                                        actionSequence.sequence.move(index, index + 1, 1)
                                     }
                                 }
                             }

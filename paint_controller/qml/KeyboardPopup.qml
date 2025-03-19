@@ -4,8 +4,8 @@ import QtQuick.Layouts 1.15
 
 Popup {
     id: keyboardPopup
-    width: 600
-    height: 400
+    width: 900
+    height: 600
     modal: true
     focus: true
     anchors.centerIn: parent
@@ -33,6 +33,7 @@ Popup {
         TextField {
             id: textField
             Layout.fillWidth: true
+            Layout.preferredHeight: 50
             font.pixelSize: 20
             text: currentText
             //readOnly: true
@@ -42,147 +43,85 @@ Popup {
         // Letter rows
         GridLayout {
             Layout.fillWidth: true
-            rows: 3
-            columns: 10
+            rows: 5
+            columns: 8
             rowSpacing: 5
             columnSpacing: 5
 
-            Button {
+            component CustomButton: Button {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 50
+                background: Rectangle {
+                    color: "#ffffff"
+                    radius: 3
+                }
+            }
+
+            CustomButton {
                 text: "1"
-                Layout.fillWidth: true
                 onClicked: currentText += text
-                background: Rectangle {
-                    color: "#ffffff"
-                    radius: 3
-                }
             }
-
-            Button {
+            CustomButton {
                 text: "2"
-                Layout.fillWidth: true
                 onClicked: currentText += text
-                background: Rectangle {
-                    color: "#ffffff"
-                    radius: 3
-                }
             }
-
-            Button {
+            CustomButton {
                 text: "3"
-                Layout.fillWidth: true
                 onClicked: currentText += text
-                background: Rectangle {
-                    color: "#ffffff"
-                    radius: 3
-                }
             }
-
-            Button {
+            CustomButton {
                 text: "4"
-                Layout.fillWidth: true
                 onClicked: currentText += text
-                background: Rectangle {
-                    color: "#ffffff"
-                    radius: 3
-                }
             }
-
-            Button {
+            CustomButton {
                 text: "5"
-                Layout.fillWidth: true
                 onClicked: currentText += text
-                background: Rectangle {
-                    color: "#ffffff"
-                    radius: 3
-                }
             }
-
-            Button {
+            CustomButton {
                 text: "6"
-                Layout.fillWidth: true
                 onClicked: currentText += text
-                background: Rectangle {
-                    color: "#ffffff"
-                    radius: 3
-                }
             }
-
-            Button {
+            CustomButton {
                 text: "7"
-                Layout.fillWidth: true
                 onClicked: currentText += text
-                background: Rectangle {
-                    color: "#ffffff"
-                    radius: 3
-                }
             }
-
-            Button {
+            CustomButton {
                 text: "8"
-                Layout.fillWidth: true
                 onClicked: currentText += text
-                background: Rectangle {
-                    color: "#ffffff"
-                    radius: 3
-                }
             }
-
-            Button {
+            CustomButton {
                 text: "9"
-                Layout.fillWidth: true
                 onClicked: currentText += text
-                background: Rectangle {
-                    color: "#ffffff"
-                    radius: 3
-                }
             }
-
-            Button {
+            CustomButton {
                 text: "0"
-                Layout.fillWidth: true
                 onClicked: currentText += text
-                background: Rectangle {
-                    color: "#ffffff"
-                    radius: 3
+            }
+
+            Repeater {
+                model: "ABCDEFGHI"
+
+                CustomButton {
+                    text: modelData
+                    onClicked: currentText += shiftPressed ? text : text.toLowerCase()
                 }
             }
 
             Repeater {
-                model: "QWERTYUIOP"
-                Button {
+                model: "JKLMNOPQR"
+
+                CustomButton {
                     text: modelData
-                    Layout.fillWidth: true
                     onClicked: currentText += shiftPressed ? text : text.toLowerCase()
-                    background: Rectangle {
-                        color: "#ffffff"
-                        radius: 3
-                    }
                 }
             }
 
             Repeater {
-                model: "ASDFGHJKL"
-                Button {
-                    text: modelData
-                    Layout.fillWidth: true
-                    onClicked: currentText += shiftPressed ? text : text.toLowerCase()
-                    background: Rectangle {
-                        color: "#ffffff"
-                        radius: 3
-                    }
-                }
-            }
+                model: "STUVWXYZ"
 
-            Repeater {
-                model: "ZXCVBNM"
-                Button {
+                CustomButton {
                     text: modelData
-                    Layout.fillWidth: true
                     onClicked: currentText += shiftPressed ? text : text.toLowerCase()
-                    background: Rectangle {
-                        color: "#ffffff"
-                        radius: 3
-                    }
                 }
             }
         }
@@ -192,23 +131,11 @@ Popup {
             Layout.fillWidth: true
             spacing: 5
 
-            /*Repeater {
-                model: "1234567890"
-                Button {
-                    text: modelData
-                    Layout.fillWidth: true
-                    onClicked: currentText += text
-                    background: Rectangle {
-                        color: "#ffffff"
-                        radius: 3
-                    }
-                }
-            }*/
-
             // Control buttons
             Button {
                 text: "⌫"
                 Layout.fillWidth: true
+                Layout.preferredHeight: 50
                 onClicked: currentText = currentText.slice(0, -1)
                 background: Rectangle {
                     color: "#ff9999"
@@ -220,6 +147,7 @@ Popup {
                 id: shiftButton
                 text: "⇧"
                 Layout.fillWidth: true
+                Layout.preferredHeight: 50
                 onClicked: shiftPressed = !shiftPressed
                 background: Rectangle {
                     color: shiftPressed ? "#99ccff" : "#cccccc"
@@ -230,6 +158,7 @@ Popup {
             Button {
                 text: "Clear"
                 Layout.fillWidth: true
+                Layout.preferredHeight: 50
                 onClicked: currentText = ""
                 background: Rectangle {
                     color: "#99ff99"
@@ -240,6 +169,7 @@ Popup {
             Button {
                 text: "Close"
                 Layout.fillWidth: true
+                Layout.preferredHeight: 50
                 onClicked: keyboardPopup.close()
                 background: Rectangle {
                     color: "#cccccc"
