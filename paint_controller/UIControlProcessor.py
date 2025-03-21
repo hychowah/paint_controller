@@ -29,7 +29,7 @@ class ControlProcessor:
         # Control configurations
         self.controls = {
             "Winch Speed": ControlConfig(
-                scale=2000/32768,
+                scale=40/32768,
                 min_interval=0.1,  # 10Hz
             ),
             "Left Wheel Speed": ControlConfig(
@@ -221,7 +221,7 @@ class ControlProcessor:
 
             if left_mode != "EF Yaw Angle" and right_mode != "EF Yaw Angle":
                 self.controls["EF Yaw Angle"].offset = float(self.robot.ui_data_model.teensy_imu_yaw) * 100
-                print("Resetting EF Yaw Angle offset to:", self.controls["EF Yaw Angle"].offset)
+                # print("Resetting EF Yaw Angle offset to:", self.controls["EF Yaw Angle"].offset)
 
             # Update display at 5Hz
             self._update_display()
