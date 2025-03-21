@@ -28,6 +28,7 @@ Rectangle {
                 case 3: targetComponent = page4Component; break;
                 case 4: targetComponent = page5Component; break;
                 case 5: targetComponent = page6Component; break;
+                case 6: targetComponent = page7Component; break;
                 // Add more cases for additional pages
             }
             
@@ -299,6 +300,44 @@ Rectangle {
                         if (selectBar.selectedButton !== "buttonPage6") {
                             selectBar.navigateToPage(5)
                             selectBar.selectedButton = "buttonPage6"
+                        }
+                    }
+                }
+            }
+
+            // Page 6 Button
+            Rectangle {
+                id: buttonPage7
+                width: buttonSize
+                height: buttonSize
+                radius: 20
+                color: selectBar.selectedButton === "buttonPage7" ? "#E2E2E2" : "#70A3D2"
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                Image {
+                    source: "../resource/trajectory.svg"
+                    anchors.centerIn: parent
+                    width: parent.width * 0.6
+                    height: parent.height * 0.6
+                    fillMode: Image.PreserveAspectFit
+                }
+
+                Text {
+                    text: "Trajectory"
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 5
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    color: "black"
+                    font.pixelSize: 15
+                    font.bold: true
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        if (selectBar.selectedButton !== "buttonPage7") {
+                            selectBar.navigateToPage(6)
+                            selectBar.selectedButton = "buttonPage7"
                         }
                     }
                 }

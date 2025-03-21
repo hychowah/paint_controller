@@ -15,6 +15,61 @@ Rectangle {
 
     property int dataRectHeight: 150
 
+    property string camSource: "image://base_front_live/frame"
+
+    RowLayout {
+        anchors.top: parent.top
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.margins: 20
+        height: 50
+
+        Rectangle {
+            width: 100
+            height: parent.height
+            color: camSource == "image://base_front_live/frame" ? "#007bff" : "#e0e0e0"
+            radius: 20
+
+            Text {
+                text: "Front"
+                anchors.centerIn: parent
+                anchors.horizontalCenter: parent.horizontalCenter
+                color: camSource == "image://base_front_live/frame" ? "#ffffff" : "#6c757d"
+                font.pixelSize: 15
+                font.bold: true
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: {
+                    camSource = "image://base_front_live/frame"
+                }
+            }
+        }
+
+        Rectangle {
+            width: 100
+            height: parent.height
+            color: camSource == "image://base_rear_live/frame" ? "#007bff" : "#e0e0e0"
+            radius: 20
+
+            Text {
+                text: "Rear"
+                anchors.centerIn: parent
+                anchors.horizontalCenter: parent.horizontalCenter
+                color: camSource == "image://base_rear_live/frame" ? "#ffffff" : "#6c757d"
+                font.pixelSize: 15
+                font.bold: true
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: {
+                    camSource = "image://base_rear_live/frame"
+                }
+            }
+        }
+    }
+
     Rectangle {
         id: dataRect
         Layout.fillWidth: true  
@@ -35,9 +90,26 @@ Rectangle {
                 spacing: 20
 
                 Rectangle {
+                    id: baseView
+                    objectName: "baseView"
+                    //anchors.fill: parent
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    color: "transparent"
+                    
+                    Image {
+                        id: baseFrame
+                        anchors.fill: parent
+                        fillMode: Image.PreserveAspectCrop
+                        cache: false
+                        source: camSource
+                    }
+                }
+
+                /*Rectangle {
                     id: cameraView
                     objectName: "cameraView"
-                    color: "transparent"
+                    color: "#ff0000"
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.alignment: Qt.AlignHCenter | Qt.AlignTop
@@ -64,7 +136,7 @@ Rectangle {
                         source: "image://base_live/frame"
 
                     }
-                }
+                }*/
             }
 
             ColumnLayout {
@@ -145,10 +217,19 @@ Rectangle {
         }
 
         Connections {
-            target: baseStreamer
-            function onFrame_ready() {
-                videoFrame.source = ""
-                videoFrame.source = "image://base/frame"
+            target: baseStreamHandler
+            function onBaseFrontFrameReady() {
+                if (camSource == "image://base_front_live/frame"){
+                    baseFrame.source = ""
+                    baseFrame.source = "image://base_front_live/frame"
+                }
+            }
+
+            function onBaseRearFrameReady() {
+                if (camSource == "image://base_rear_live/frame"){
+                    baseFrame.source = ""
+                    baseFrame.source = "image://base_rear_live/frame"
+                }
             }
         }
     }
