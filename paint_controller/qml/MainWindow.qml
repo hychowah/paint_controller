@@ -102,7 +102,7 @@ ApplicationWindow {
     // Components
     Component {
         id: page1Component
-        Page1 {}
+        PageWheel {}
     }
     
     Component {

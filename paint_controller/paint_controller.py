@@ -305,7 +305,10 @@ class WheelController(MotorControllerBase):
             'left_wheel_speed': msg.left_wheel_speed,
             'right_wheel_speed': msg.right_wheel_speed,
             'left_motor_current': msg.left_wheel_current,
-            'right_motor_current': msg.right_wheel_current
+            'right_motor_current': msg.right_wheel_current,
+            'left_wheel_position': msg.left_wheel_pos,
+            'right_wheel_position': msg.right_wheel_pos
+
         }
 
     def get_status(self) -> Dict:
@@ -457,6 +460,8 @@ class RobotController(Node, QObject):
         self.ui_data_model.right_wheel_speed = str(wheel_status.get('right_wheel_speed', '0.00'))
         self.ui_data_model.left_wheel_current = str(wheel_status.get('left_motor_current', '0.00'))
         self.ui_data_model.right_wheel_current = str(wheel_status.get('right_motor_current', '0.00'))
+        self.ui_data_model.left_wheel_travel = str(wheel_status.get('left_wheel_position', '0.00'))
+        self.ui_data_model.right_wheel_travel = str(wheel_status.get('right_wheel_position', '0.00'))
 
         # Update Steam Deck Controls
         input_state = self.steam_deck.get_current_state()

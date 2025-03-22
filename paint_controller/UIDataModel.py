@@ -18,8 +18,10 @@ class UIDataModel(QObject):
     # Wheel Status Signals
     leftSpeedChanged = Signal(str)
     leftCurrentChanged = Signal(str)
+    leftTravelChanged = Signal(str)
     rightCurrentChanged = Signal(str)
     rightSpeedChanged = Signal(str)
+    rightTravelChanged = Signal(str)
     wheelAvailableChanged = Signal(bool)
     wheelEnabledChanged = Signal(bool)
     
@@ -123,6 +125,8 @@ class UIDataModel(QObject):
             'right_speed': '0.00',
             'left_current': '0.00',
             'right_current': '0.00',
+            'left_travel': '0.00',
+            'right_travel': '0.00',
             'available': False,
             'enabled': False
         }
@@ -345,6 +349,26 @@ class UIDataModel(QObject):
         if self._wheel_data['right_current'] != value:
             self._wheel_data['right_current'] = value
             self.rightCurrentChanged.emit(value)
+
+    @Property(str, notify=leftTravelChanged)
+    def left_wheel_travel(self):
+        return self._wheel_data['left_travel']
+    
+    @left_wheel_travel.setter
+    def left_wheel_travel(self, value):
+        if self._wheel_data['left_travel'] != value:
+            self._wheel_data['left_travel'] = value
+            self.leftTravelChanged.emit(value)
+
+    @Property(str, notify=rightTravelChanged)
+    def right_wheel_travel(self):
+        return self._wheel_data['right_travel']
+    
+    @right_wheel_travel.setter
+    def right_wheel_travel(self, value):
+        if self._wheel_data['right_travel'] != value:
+            self._wheel_data['right_travel'] = value
+            self.rightTravelChanged.emit(value)
 
     @Property(bool, notify=wheelAvailableChanged)
     def wheel_available(self):
