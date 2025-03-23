@@ -4,7 +4,7 @@ from typing import Dict
 from rclpy.node import Node
 from std_msgs.msg import Float64, Bool
 from towngas_interfaces.msg import WinchStatus, MoveWinchLength
-from PySide6.QtCore import QObject, Signal, Property, Slot
+from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 
 class WinchController(QObject):
     # Define signals for property changes
@@ -36,16 +36,21 @@ class WinchController(QObject):
         # Status tracking
         self._last_command_time = time.time()
         self._last_status_update_time = 0
-        self._connection_timeout = 1.0
+        self._connection_timeout = 1.0  # Time in seconds before considering the winch disconnected
         self._watchdog_timeout = 1.0
         
         # Throttle variables
         self._last_update_time = 0
-        self._min_update_interval = 0.05  # 50ms minimum between UI updates
+        self._min_update_interval = 0.1  # 50ms minimum between UI updates
         
         # Setup publishers and subscribers
         self._setup_publishers()
         self._setup_subscribers()
+        
+        # Create availability check timer
+        self._availability_timer = QTimer(self)
+        self._availability_timer.timeout.connect(self._check_availability)
+        self._availability_timer.start(200)  # Check every 200ms
     
     def _setup_publishers(self):
         """Setup ROS publishers for winch control"""
@@ -70,12 +75,40 @@ class WinchController(QObject):
         except Exception as e:
             print(f"Error in winch status callback: {e}")
     
+    def _check_availability(self):
+        """
+        Periodically check if winch is still connected based on time since last message
+        This runs on a timer to ensure we detect disconnections even when no new messages arrive
+        """
+        current_time = time.time()
+        
+        # Calculate time since last status update
+        time_since_last_update = current_time - self._last_status_update_time
+        
+        # If it's been too long since the last update, consider the winch disconnected
+        if time_since_last_update > self._connection_timeout:
+            # Only emit if there's a change in availability
+            if self._available:
+                self._available = False
+                self.available_changed.emit()
+                print(f"Winch considered disconnected: {time_since_last_update:.1f}s since last message")
+    
     def update_status(self, msg: WinchStatus):
         """Update property values from incoming status message"""
         current_time = time.time()
+        self._last_status_update_time = current_time
+        
+        # If message is received, the device is considered connected
+        # even if msg.available is False (that would indicate a connected device in error state)
+        was_available = self._available
+        self._available = True
+        if not was_available:
+            self.available_changed.emit()
+            print("Winch connection restored")
+        
+        # Update other properties with throttling
         if current_time - self._last_update_time >= self._min_update_interval:
             self._last_update_time = current_time
-            self._last_status_update_time = current_time
             
             # Update property values
             self.set_cable_length(msg.cable_length)
@@ -84,11 +117,13 @@ class WinchController(QObject):
             self.set_motor_temperature(msg.motor_temperature)
             self.set_motor_voltage(msg.motor_voltage)
             self.set_motor_brake(msg.motor_brake)
-            self.set_available(msg.available)
-            # print(f"Winch status updated: {msg}")
     
     def command_speed(self, speed: float) -> bool:
         """Command winch speed with safety limits"""
+        if not self._available:
+            print("Cannot command speed: Winch not available")
+            return False
+            
         safe_speed = self._apply_safety_limits(speed)
         msg = Float64()
         msg.data = safe_speed
@@ -98,6 +133,10 @@ class WinchController(QObject):
     
     def move_increment(self, length_mm: int, speed_mm_s: int) -> bool:
         """Move winch by an increment"""
+        if not self._available:
+            print("Cannot move increment: Winch not available")
+            return False
+            
         try:
             msg = MoveWinchLength()
             msg.length_mm = int(length_mm)
@@ -112,11 +151,6 @@ class WinchController(QObject):
     def _apply_safety_limits(self, speed: float) -> float:
         """Apply safety limits to winch speed"""
         return max(min(speed, self._max_speed), -self._max_speed)
-    
-    @property
-    def is_connected(self) -> bool:
-        """Check if winch is connected based on recent status updates"""
-        return time.time() - self._last_status_update_time < self._connection_timeout
     
     @property
     def is_enabled(self) -> bool:
@@ -177,7 +211,7 @@ class WinchController(QObject):
             self.motor_brake_changed.emit()
     
     def get_available(self) -> bool:
-        return self._available and self.is_connected
+        return self._available
     
     def set_available(self, value: bool):
         if self._available != value:
@@ -188,6 +222,10 @@ class WinchController(QObject):
         return self._enabled
     
     def set_enabled(self, value: bool):
+        if not self._available and value:
+            print("Cannot enable winch: Winch not available")
+            return
+            
         if self._enabled != value:
             self._enabled = value
             self.enabled_changed.emit()
@@ -205,7 +243,7 @@ class WinchController(QObject):
     motor_temperature = Property(float, get_motor_temperature, set_motor_temperature, notify=motor_temperature_changed)
     motor_voltage = Property(float, get_motor_voltage, set_motor_voltage, notify=motor_voltage_changed)
     motor_brake = Property(bool, get_motor_brake, set_motor_brake, notify=motor_brake_changed)
-    available = Property(bool, get_available, set_available, notify=available_changed)
+    available = Property(bool, get_available, notify=available_changed)
     enabled = Property(bool, get_enabled, set_enabled, notify=enabled_changed)
     
     # Slot methods for QML
@@ -223,3 +261,8 @@ class WinchController(QObject):
     def setEnabled(self, enabled: bool):
         """Enable/disable winch from QML"""
         self.set_enabled(enabled)
+    
+    def cleanup(self):
+        """Clean up resources when shutting down"""
+        if self._availability_timer.isActive():
+            self._availability_timer.stop()
