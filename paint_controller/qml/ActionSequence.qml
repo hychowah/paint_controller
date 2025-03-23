@@ -78,7 +78,6 @@ Rectangle {
             }
         }
         
-
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -86,12 +85,13 @@ Rectangle {
             clip: true
 
             ListView {
+                id: actionListView
                 anchors.fill: parent
                 model: actionSequence.sequence
-                width: parent.width
+                // Removed redundant width property that was causing the error
 
                 delegate: Item {
-                    width: parent.width
+                    width: actionListView.width
                     height: (model.id === "4" || model.id === "5") ? 180 : 130
 
                     Rectangle {

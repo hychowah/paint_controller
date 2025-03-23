@@ -94,7 +94,7 @@ Rectangle {
                     DataDisplay {
                         id: winchLengthDisplay
                         backgroundColor: "#F0F0F0"
-                        value: backend.winch_length
+                        value: winchController.cable_length
                         Layout.fillWidth: true
                         Layout.preferredHeight: 150
                         title: "Length"
@@ -104,7 +104,7 @@ Rectangle {
                     DataDisplay {
                         id: winchSpeedDisplay
                         backgroundColor: "#F0F0F0"
-                        value: backend.winch_speed
+                        value: winchController.cable_speed
                         Layout.fillWidth: true
                         Layout.preferredHeight: 150
                         title: "Speed"
@@ -114,7 +114,7 @@ Rectangle {
                     DataDisplay {
                         id: winchCurrentDisplay
                         backgroundColor: "#F0F0F0"
-                        value: backend.winch_current
+                        value: winchController.winch_torque
                         Layout.fillWidth: true
                         Layout.preferredHeight: 150
                         title: "Torque"

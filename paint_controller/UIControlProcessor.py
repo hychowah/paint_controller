@@ -169,10 +169,17 @@ class ControlProcessor:
 
         # Special handling for Winch Speed
         if mode == "Winch Speed":
-            if not self.robot.ui_data_model.winch_available or self.robot.ui_data_model.winch_brake:
-                return
-            
-            self.robot.winch_controller.command_speed(value)
+            try:
+                if not self.robot.winch_controller.get_available():
+                    print("Winch not available")
+                    return
+                if self.robot.winch_controller.get_motor_brake():
+                    print("Winch motor brake is on")
+                    return
+                print(f"Commanding winch speed: {value}")
+                self.robot.winch_controller.command_speed(value)
+            except Exception as e:
+                print(f"Error commanding winch speed: {str(e)}")
             return
         
 

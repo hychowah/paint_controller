@@ -307,341 +307,53 @@ Rectangle {
                         }
                     }
                     
-                    // Metrics cards using built-in components
-                    // Left Speed
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 75
-                        color: "#F5F5F5"
-                        radius: 10
-                        
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 4
-                            
-                            Label {
-                                text: "LEFT SPEED"
-                                font.pixelSize: 14
-                                font.bold: true
-                                color: "#555555"
-                            }
-                            
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                
-                                Label {
-                                    text: Number(uiData.left_wheel_speed || 0).toFixed(3)
-                                    font.pixelSize: 28
-                                    font.bold: true
-                                    Layout.alignment: Qt.AlignVCenter
-                                }
-                                
-                                Label {
-                                    text: "RPM"
-                                    font.pixelSize: 14
-                                    color: "#777777"
-                                    Layout.alignment: Qt.AlignVCenter | Qt.AlignBottom
-                                    Layout.bottomMargin: 3
-                                }
-                                
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 6
-                                    Layout.alignment: Qt.AlignVCenter
-                                    Layout.leftMargin: 10
-                                    radius: 3
-                                    
-                                    Rectangle {
-                                        width: parent.width * Math.min(Math.abs(Number(uiData.left_wheel_speed || 0)) / 40, 1)
-                                        height: parent.height
-                                        color: "#2196F3"
-                                        radius: 3
-                                    }
-                                }
-                            }
-                        }
+                    // Metrics cards using the MetricPanel component
+                    MetricPanel {
+                        title: "LEFT SPEED"
+                        value: wheelController.left_wheel_speed || 0
+                        unit: "RPM" 
+                        maxValue: 5
+                        barColor: "#2196F3"
                     }
                     
-                    // Right Speed
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 75
-                        color: "#F5F5F5"
-                        radius: 10
-                        
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 4
-                            
-                            Label {
-                                text: "RIGHT SPEED"
-                                font.pixelSize: 14
-                                font.bold: true
-                                color: "#555555"
-                            }
-                            
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                
-                                Label {
-                                    text: Number(uiData.right_wheel_speed || 0).toFixed(3)
-                                    font.pixelSize: 28
-                                    font.bold: true
-                                    Layout.alignment: Qt.AlignVCenter
-                                }
-                                
-                                Label {
-                                    text: "RPM"
-                                    font.pixelSize: 14
-                                    color: "#777777"
-                                    Layout.alignment: Qt.AlignVCenter | Qt.AlignBottom
-                                    Layout.bottomMargin: 3
-                                }
-                                
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 6
-                                    Layout.alignment: Qt.AlignVCenter
-                                    Layout.leftMargin: 10
-                                    radius: 3
-                                    
-                                    Rectangle {
-                                        width: parent.width * Math.min(Math.abs(Number(uiData.right_wheel_speed || 0)) / 40, 1)
-                                        height: parent.height
-                                        color: "#2196F3"
-                                        radius: 3
-                                    }
-                                }
-                            }
-                        }
+                    MetricPanel {
+                        title: "RIGHT SPEED"
+                        value: wheelController.right_wheel_speed || 0
+                        unit: "RPM"
+                        maxValue: 5
+                        barColor: "#2196F3"
                     }
                     
-                    // Left Current
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 75
-                        color: "#F5F5F5"
-                        radius: 10
-                        
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 4
-                            
-                            Label {
-                                text: "LEFT CURRENT"
-                                font.pixelSize: 14
-                                font.bold: true
-                                color: "#555555"
-                            }
-                            
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                
-                                Label {
-                                    text: Number(uiData.left_wheel_current || 0).toFixed(3)
-                                    font.pixelSize: 28
-                                    font.bold: true
-                                    Layout.alignment: Qt.AlignVCenter
-                                }
-                                
-                                Label {
-                                    text: "A"
-                                    font.pixelSize: 14
-                                    color: "#777777"
-                                    Layout.alignment: Qt.AlignVCenter | Qt.AlignBottom
-                                    Layout.bottomMargin: 3
-                                }
-                                
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 6
-                                    Layout.alignment: Qt.AlignVCenter
-                                    Layout.leftMargin: 10
-                                    radius: 3
-                                    
-                                    Rectangle {
-                                        width: parent.width * Math.min(Math.abs(Number(uiData.left_wheel_current || 0)) / 5, 1)
-                                        height: parent.height
-                                        color: "#FF5722"
-                                        radius: 3
-                                    }
-                                }
-                            }
-                        }
+                    MetricPanel {
+                        title: "LEFT CURRENT"
+                        value: wheelController.left_wheel_current || 0
+                        unit: "A"
+                        maxValue: 8
+                        barColor: "#FF5722"
                     }
                     
-                    // Right Current
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 75
-                        color: "#F5F5F5"
-                        radius: 10
-                        
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 4
-                            
-                            Label {
-                                text: "RIGHT CURRENT"
-                                font.pixelSize: 14
-                                font.bold: true
-                                color: "#555555"
-                            }
-                            
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                
-                                Label {
-                                    text: Number(uiData.right_wheel_current || 0).toFixed(3)
-                                    font.pixelSize: 28
-                                    font.bold: true
-                                    Layout.alignment: Qt.AlignVCenter
-                                }
-                                
-                                Label {
-                                    text: "A"
-                                    font.pixelSize: 14
-                                    color: "#777777"
-                                    Layout.alignment: Qt.AlignVCenter | Qt.AlignBottom
-                                    Layout.bottomMargin: 3
-                                }
-                                
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 6
-                                    Layout.alignment: Qt.AlignVCenter
-                                    Layout.leftMargin: 10
-                                    radius: 3
-                                    
-                                    Rectangle {
-                                        width: parent.width * Math.min(Math.abs(Number(uiData.right_wheel_current || 0)) / 5, 1)
-                                        height: parent.height
-                                        color: "#FF5722"
-                                        radius: 3
-                                    }
-                                }
-                            }
-                        }
+                    MetricPanel {
+                        title: "RIGHT CURRENT"
+                        value: wheelController.right_wheel_current || 0
+                        unit: "A"
+                        maxValue: 8
+                        barColor: "#FF5722"
                     }
                     
-                    // Left Wheel Travel
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 75
-                        color: "#F5F5F5"
-                        radius: 10
-                        
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 4
-                            
-                            Label {
-                                text: "LEFT WHEEL TRAVEL"
-                                font.pixelSize: 14
-                                font.bold: true
-                                color: "#555555"
-                            }
-                            
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                
-                                Label {
-                                    text: Number(uiData.left_wheel_travel || 0).toFixed(3)
-                                    font.pixelSize: 28
-                                    font.bold: true
-                                    Layout.alignment: Qt.AlignVCenter
-                                }
-                                
-                                Label {
-                                    text: "m"
-                                    font.pixelSize: 14
-                                    color: "#777777"
-                                    Layout.alignment: Qt.AlignVCenter | Qt.AlignBottom
-                                    Layout.bottomMargin: 3
-                                }
-                                
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 6
-                                    Layout.alignment: Qt.AlignVCenter
-                                    Layout.leftMargin: 10
-                                    radius: 3
-                                    
-                                    Rectangle {
-                                        width: parent.width * Math.min(Math.abs(Number(uiData.left_wheel_travel || 0)) / 100, 1)
-                                        height: parent.height
-                                        color: "#4CAF50"
-                                        radius: 3
-                                    }
-                                }
-                            }
-                        }
+                    MetricPanel {
+                        title: "LEFT WHEEL TRAVEL"
+                        value: wheelController.left_wheel_travel || 0
+                        unit: "m"
+                        maxValue: 100
+                        barColor: "#4CAF50"
                     }
                     
-                    // Right Wheel Travel
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 75
-                        color: "#F5F5F5"
-                        radius: 10
-                        
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 4
-                            
-                            Label {
-                                text: "RIGHT WHEEL TRAVEL"
-                                font.pixelSize: 14
-                                font.bold: true
-                                color: "#555555"
-                            }
-                            
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                
-                                Label {
-                                    text: Number(uiData.right_wheel_travel || 0).toFixed(3)
-                                    font.pixelSize: 28
-                                    font.bold: true
-                                    Layout.alignment: Qt.AlignVCenter
-                                }
-                                
-                                Label {
-                                    text: "m"
-                                    font.pixelSize: 14
-                                    color: "#777777"
-                                    Layout.alignment: Qt.AlignVCenter | Qt.AlignBottom
-                                    Layout.bottomMargin: 3
-                                }
-                                
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 6
-                                    Layout.alignment: Qt.AlignVCenter
-                                    Layout.leftMargin: 10
-                                    radius: 3
-                                    
-                                    Rectangle {
-                                        width: parent.width * Math.min(Math.abs(Number(uiData.right_wheel_travel || 0)) / 100, 1)
-                                        height: parent.height
-                                        color: "#4CAF50"
-                                        radius: 3
-                                    }
-                                }
-                            }
-                        }
+                    MetricPanel {
+                        title: "RIGHT WHEEL TRAVEL"
+                        value: wheelController.right_wheel_travel || 0
+                        unit: "m"
+                        maxValue: 100
+                        barColor: "#4CAF50"
                     }
                 }
             }

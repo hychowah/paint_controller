@@ -29,6 +29,8 @@ from UISteamDeckHandler import SteamDeckHandler
 from TrajectoryHandler import TrajectoryHandler
 from WarningHandler import WarningHandler
 from BaseVideoStreamHandler import BaseVideoStreamHandler
+from UIWheelController import WheelController
+from UIWinchController import WinchController
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -94,70 +96,6 @@ class VideoStream:
     def connect_new_sample_callback(self, callback: Callable):
         self.sink.connect('new-sample', callback)
 
-#############################################
-### Motor Control
-#############################################
-
-class MotorControllerBase:
-    def __init__(self):
-        self._enabled = False
-        self._status = {}
-        self._last_command_time = 0
-        self._watchdog_timeout = 1.0
-
-    @property
-    def is_enabled(self) -> bool:
-        return self._enabled and self._check_watchdog()
-
-    def _check_watchdog(self) -> bool:
-        return time.time() - self._last_command_time < self._watchdog_timeout
-
-class WinchController(MotorControllerBase):
-    def __init__(self, node: Node, max_speed: float):
-        super().__init__()
-        self._node = node
-        self._max_speed = max_speed
-        self._setup_publishers()
-        self._status_callbacks = []
-        self._status = {}
-        self._last_status_update_time = 0
-        self.connection_timeout = 1.0
-
-    def _setup_publishers(self):
-        self._speed_pub = self._node.create_publisher(Float64, 'winch/move/speed/rpm/cmd', 1)
-        self._enable_pub = self._node.create_publisher(Bool, 'winch/enable/cmd', 1)
-
-    def command_speed(self, speed: float) -> bool:
-        safe_speed = self._apply_safety_limits(speed)
-        msg = Float64()
-        msg.data = safe_speed
-        self._speed_pub.publish(msg)
-        self._last_command_time = time.time()
-        return True
-
-    def _apply_safety_limits(self, speed: float) -> float:
-        return max(min(speed, self._max_speed), -self._max_speed)
-
-    def update_status(self, msg: WinchStatus):
-        self._status = {
-            'cable_length': f"{msg.cable_length:.2f}",
-            'cable_speed': int(msg.cable_speed),
-            'winch_torque': int(msg.winch_torque),
-            'motor_temperature': f"{msg.motor_temperature:.1f}",
-            'motor_voltage': f"{msg.motor_voltage:.1f}",
-            'motor_brake': msg.motor_brake,
-            'available': msg.available
-        }
-
-        self._last_status_update_time = time.time()
-        for callback in self._status_callbacks:
-            callback(self._status)
-
-    def get_status(self) -> Dict:
-        if time.time() - self._last_status_update_time > self.connection_timeout:
-            self._status['available'] = False
-        return self._status
-    
 #############################################
 ### Teensy Monitor
 #############################################
@@ -274,57 +212,7 @@ class NetworkMonitor:
 
 
     
-class WheelController(MotorControllerBase):
-    def __init__(self, node: Node):
-        super().__init__()
-        self._node = node
-        self._setup_publishers()
-        self._status = {}
-        self._status_callbacks = []
 
-    def _setup_publishers(self):
-        """Setup ROS publishers for wheel control"""
-        self._left_wheel_speed_pub = self._node.create_publisher(Float32, 'wheel/left/speed/cmd', 1)
-        self._right_wheel_speed_pub = self._node.create_publisher(Float32, 'wheel/right/speed/cmd', 1)
-        self._disable_pub = self._node.create_publisher(Bool, 'wheel/disable/cmd', 1)
-
-    def command_left_wheel_speed(self, speed: float):
-        msg = Float32()
-        msg.data = speed
-        self._left_wheel_speed_pub.publish(msg)
-        self._last_command_time = time.time()
-
-    def command_right_wheel_speed(self, speed: float): 
-        msg = Float32()
-        msg.data = speed
-        self._right_wheel_speed_pub.publish(msg)
-        self._last_command_time = time.time()
-
-    def update_status(self, msg: WheelStatus):
-        self._status = {
-            'left_wheel_speed': msg.left_wheel_speed,
-            'right_wheel_speed': msg.right_wheel_speed,
-            'left_motor_current': msg.left_wheel_current,
-            'right_motor_current': msg.right_wheel_current,
-            'left_wheel_position': msg.left_wheel_pos,
-            'right_wheel_position': msg.right_wheel_pos
-
-        }
-
-    def get_status(self) -> Dict:
-        return self._status
-
-    def set_enabled(self, enabled: bool):
-        """
-        Enable or disable wheel control
-        
-        Args:
-            enabled (bool): True to enable, False to disable
-        """
-        self._enabled = enabled
-        msg = Bool()
-        msg.data = not enabled
-        self._disable_pub.publish(msg)
 
 #############################################
 ### ROS Integration
@@ -394,7 +282,7 @@ class RobotController(Node, QObject):
         
         self.config = config
         self.video_stream = VideoStream(config.video_port)
-        self.winch_controller = WinchController(self, config.max_winch_speed)
+        self.winch_controller = WinchController(self)
         self.wheel_controller = WheelController(self)
         self.netowrk_monitor = NetworkMonitor()   
         self.overlayController = OverlayController()
@@ -443,25 +331,16 @@ class RobotController(Node, QObject):
 
     def _timer_callback(self):
         """Update UI elements with latest data"""
-        # Update Winch UI
-        winch_status = self.winch_controller.get_status()
-        self.ui_data_model.winch_length = winch_status.get('cable_length', '0.00')
-        self.ui_data_model.winch_speed = winch_status.get('cable_speed', 0)
-        self.ui_data_model.winch_current = winch_status.get('winch_torque', 0)
-        self.ui_data_model.winch_available = winch_status.get('available', False)
-        self.ui_data_model.winch_torque = winch_status.get('winch_torque', '0.00')
-        self.ui_data_model.winch_temperature = winch_status.get('motor_temperature', '0.00')
-        self.ui_data_model.winch_voltage = winch_status.get('motor_voltage', '0.00')
-        self.ui_data_model.winch_brake = winch_status.get('motor_brake', True)
-
-        # Update Wheel UI
-        wheel_status = self.wheel_controller.get_status()
-        self.ui_data_model.left_wheel_speed = str(wheel_status.get('left_wheel_speed', '0.00'))
-        self.ui_data_model.right_wheel_speed = str(wheel_status.get('right_wheel_speed', '0.00'))
-        self.ui_data_model.left_wheel_current = str(wheel_status.get('left_motor_current', '0.00'))
-        self.ui_data_model.right_wheel_current = str(wheel_status.get('right_motor_current', '0.00'))
-        self.ui_data_model.left_wheel_travel = str(wheel_status.get('left_wheel_position', '0.00'))
-        self.ui_data_model.right_wheel_travel = str(wheel_status.get('right_wheel_position', '0.00'))
+        # # Update Winch UI
+        # winch_status = self.winch_controller.get_status()
+        # self.ui_data_model.winch_length = winch_status.get('cable_length', '0.00')
+        # self.ui_data_model.winch_speed = winch_status.get('cable_speed', 0)
+        # self.ui_data_model.winch_current = winch_status.get('winch_torque', 0)
+        # self.ui_data_model.winch_available = winch_status.get('available', False)
+        # self.ui_data_model.winch_torque = winch_status.get('winch_torque', '0.00')
+        # self.ui_data_model.winch_temperature = winch_status.get('motor_temperature', '0.00')
+        # self.ui_data_model.winch_voltage = winch_status.get('motor_voltage', '0.00')
+        # self.ui_data_model.winch_brake = winch_status.get('motor_brake', True)
 
         # Update Steam Deck Controls
         input_state = self.steam_deck.get_current_state()
@@ -563,19 +442,6 @@ class RobotController(Node, QObject):
         self.ui_data_model.display_message = message
         
     def _setup_subscribers(self):
-        self.create_subscription(
-            WheelStatus,
-            'wheel_motor_status',
-            self.wheel_controller.update_status,
-            5
-        )
-        self.create_subscription(
-            WinchStatus,
-            'winch/status',
-            self.winch_controller.update_status,
-            1
-        )
-        
         self.create_subscription(
             SteamDeckInput,
             'steam_deck/input',
@@ -830,6 +696,8 @@ def main():
     engine.rootContext().setContextProperty("trajectoryHandler", controller.trajectoryHandler)
     engine.rootContext().setContextProperty("warningHandler", controller.warningHandler)
     engine.rootContext().setContextProperty("baseStreamHandler", controller.base_video_stream_handler)
+    engine.rootContext().setContextProperty("wheelController", controller.wheel_controller)
+    engine.rootContext().setContextProperty("winchController", controller.winch_controller)
     
     # Start status update timer
     status_timer = QTimer()

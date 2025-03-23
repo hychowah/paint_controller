@@ -427,7 +427,7 @@ Rectangle {
                         width: 15
                         height: 15
                         radius: 7.5
-                        color: uiData.winch_available ? "#00e600" : "yellow"
+                        color: winch_controller.available ? "#00e600" : "yellow"
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }
