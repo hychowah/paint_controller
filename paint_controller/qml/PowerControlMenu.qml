@@ -27,7 +27,7 @@ Item {
     Rectangle {
         id: powerMenuContainer
         width: 400
-        height: 300
+        height: 400
         radius: 20
         color: "#2c2c2c"
         opacity: showPowerMenu ? 1 : 0
@@ -84,10 +84,10 @@ Item {
             Switch {
                 id: menuWinchEnableSwitch
                 text: "Winch Enable" 
-                checked: uiData.winch_enabled
+                checked: winchController.enabled
                 Layout.fillWidth: true
                 
-                onCheckedChanged: backend.setWinchEnabled(checked)
+                onCheckedChanged: winchController.setEnabled(checked)
                 
                 indicator: Rectangle {
                     implicitWidth: parent.width * 0.2
@@ -95,10 +95,50 @@ Item {
                     x: mainPowerSwitch.leftPadding
                     y: parent.height / 2 - height / 2
                     radius: implicitHeight / 2
-                    color: uiData.winch_enabled ? "#4CAF50" : "#666666"
+                    color: winchController.enabled ? "#4CAF50" : "#666666"
 
                     Rectangle {
                         x: menuWinchEnableSwitch.checked ? parent.width - width - 2 : 2
+                        y: height * 0.1
+                        width: parent.height * 0.8
+                        height: parent.height * 0.8
+                        radius: parent.height * 0.4
+                        color: "white"
+
+                        Behavior on x {
+                            NumberAnimation { duration: 200 }
+                        }
+                    }
+                }
+
+                contentItem: Text {
+                    text: menuWinchEnableSwitch.text
+                    font.family: "Helvetica"
+                    font.pixelSize: 20
+                    color: "#cccccc"
+                    verticalAlignment: Text.AlignVCenter
+                    leftPadding: menuWinchEnableSwitch.indicator.width + 12
+                }
+            }
+
+            Switch {
+                id: menuWinchLoadDetectionSwitch
+                text: "Load Detection" 
+                checked: winchController.load_detection_enabled
+                Layout.fillWidth: true
+                
+                onCheckedChanged: winchController.setLoadDetectionEnabled(checked)
+                
+                indicator: Rectangle {
+                    implicitWidth: parent.width * 0.2
+                    implicitHeight: implicitWidth * 0.5
+                    x: mainPowerSwitch.leftPadding
+                    y: parent.height / 2 - height / 2
+                    radius: implicitHeight / 2
+                    color: winchController.load_detection_enabled ? "#4CAF50" : "#666666"
+
+                    Rectangle {
+                        x: menuWinchLoadDetectionSwitch.checked ? parent.width - width - 2 : 2
                         y: height * 0.1
                         width: parent.height * 0.8
                         height: parent.height * 0.8

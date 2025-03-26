@@ -16,6 +16,8 @@ class WinchController(QObject):
     motor_brake_changed = Signal()
     available_changed = Signal()
     enabled_changed = Signal()
+    load_detection_changed = Signal()  
+    unusual_load_detected_changed = Signal()  
 
     def __init__(self, node: Node):
         super().__init__()
@@ -32,6 +34,8 @@ class WinchController(QObject):
         self._motor_brake = True
         self._available = False
         self._enabled = False
+        self._load_detection_enabled = False 
+        self._unusual_load_detected = False  
         
         # Status tracking
         self._last_command_time = time.time()
@@ -57,6 +61,8 @@ class WinchController(QObject):
         self._speed_pub = self._node.create_publisher(Float64, 'winch/move/speed/rpm/cmd', 1)
         self._enable_pub = self._node.create_publisher(Bool, 'winch/enable/cmd', 1)
         self._move_increment_pub = self._node.create_publisher(MoveWinchLength, 'winch/move/increment/cmd', 1)
+        self._load_detection_pub = self._node.create_publisher(Bool, 'winch/load_detection/cmd', 1)
+        self._move_absolute_pub = self._node.create_publisher(MoveWinchLength, 'winch/move/abosulte/cmd', 1)
     
     def _setup_subscribers(self):
         """Setup ROS subscribers for winch status"""
@@ -111,12 +117,15 @@ class WinchController(QObject):
             self._last_update_time = current_time
             
             # Update property values
+            self.set_enabled(msg.enabled)
             self.set_cable_length(msg.cable_length)
             self.set_cable_speed(msg.cable_speed)
             self.set_winch_torque(msg.winch_torque)
             self.set_motor_temperature(msg.motor_temperature)
             self.set_motor_voltage(msg.motor_voltage)
             self.set_motor_brake(msg.motor_brake)
+            self.set_load_detection_enabled(msg.load_detection_mode)  
+            self.set_unusual_load_detected(msg.unusual_load_detected)  
     
     def command_speed(self, speed: float) -> bool:
         """Command winch speed with safety limits"""
@@ -146,6 +155,37 @@ class WinchController(QObject):
             return True
         except Exception as e:
             print(f'Error moving winch: {e}')
+            return False
+        
+    def move_abosulte(self, length_mm: int, speed_mm_s: int) -> bool:
+        """Move winch to an absolute position"""
+        if not self._available:
+            print("Cannot move absolute: Winch not available")
+            return False
+            
+        try:
+            msg = MoveWinchLength()
+            msg.length_mm = int(length_mm)
+            msg.speed_mm_s = int(speed_mm_s)
+            self._move_absolute_pub.publish(msg)
+            print(f'Moving winch to: {length_mm} mm at {speed_mm_s} mm/s')
+            return True
+        except Exception as e:
+            print(f'Error moving winch: {e}')
+            return
+        
+    def set_load_detection_mode(self, enable: bool):
+        if not self.available:
+            print("Cannot set load detection: Winch not available")
+
+        try:
+            msg = Bool()
+            msg.data = enable
+            self._load_detection_pub.publish(msg)
+            print(f'Load detection mode set to: {enable}')
+            return True
+        except Exception as e:
+            print(f'Error setting load detection mode: {e}')
             return False
     
     def _apply_safety_limits(self, speed: float) -> float:
@@ -222,19 +262,27 @@ class WinchController(QObject):
         return self._enabled
     
     def set_enabled(self, value: bool):
-        if not self._available and value:
-            print("Cannot enable winch: Winch not available")
-            return
-            
         if self._enabled != value:
             self._enabled = value
             self.enabled_changed.emit()
-            
-            # Send command to enable/disable winch
-            msg = Bool()
-            msg.data = value
-            self._enable_pub.publish(msg)
-            print(f'Winch {"enabled" if value else "disabled"}')
+           
+
+    def get_load_detection_enabled(self) -> bool:
+        return self._load_detection_enabled
+    
+    def set_load_detection_enabled(self, value: bool):
+        if self._load_detection_enabled != value:
+            self._load_detection_enabled = value
+            self.load_detection_changed.emit()
+
+    
+    def get_unusual_load_detected(self) -> bool:
+        return self._unusual_load_detected
+    
+    def set_unusual_load_detected(self, value: bool):
+        if self._unusual_load_detected != value:
+            self._unusual_load_detected = value
+            self.unusual_load_detected_changed.emit()
     
     # Define Qt properties
     cable_length = Property(float, get_cable_length, set_cable_length, notify=cable_length_changed)
@@ -245,6 +293,9 @@ class WinchController(QObject):
     motor_brake = Property(bool, get_motor_brake, set_motor_brake, notify=motor_brake_changed)
     available = Property(bool, get_available, notify=available_changed)
     enabled = Property(bool, get_enabled, set_enabled, notify=enabled_changed)
+    load_detection_enabled = Property(bool, get_load_detection_enabled, set_load_detection_enabled, notify=load_detection_changed)
+    unusual_load_detected = Property(bool, get_unusual_load_detected, notify=unusual_load_detected_changed)
+
     
     # Slot methods for QML
     @Slot(float)
@@ -257,10 +308,29 @@ class WinchController(QObject):
         """Move winch by increment from QML"""
         return self.move_increment(length_mm, speed_mm_s)
     
+    @Slot(int, int)
+    def moveAbosulte(self, length_mm: int, speed_mm_s: int):
+        """Move winch to absolute position from QML"""
+        return self.move_abosulte(length_mm, speed_mm_s)
+    
     @Slot(bool)
     def setEnabled(self, enabled: bool):
         """Enable/disable winch from QML"""
-        self.set_enabled(enabled)
+        if not self._available:
+            print("Cannot enable winch: Winch not available")
+            return
+        
+         # Send command to enable/disable winch
+        msg = Bool()
+        msg.data = enabled
+        self._enable_pub.publish(msg)
+        print(f'Winch {"enabled" if enabled else "disabled"}')
+
+    @Slot(bool)
+    def setLoadDetectionEnabled(self, enabled: bool):
+        """Enable/disable load detection from QML"""
+        self.set_load_detection_mode(enabled)
+        
     
     def cleanup(self):
         """Clean up resources when shutting down"""

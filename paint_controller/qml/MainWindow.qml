@@ -107,12 +107,12 @@ ApplicationWindow {
     
     Component {
         id: page2Component
-        Page2 {}
+        PageWinch {}
     }
     
     Component {
         id: page3Component
-        Page3 {}
+        PageStatus {}
     }
 
     Component {

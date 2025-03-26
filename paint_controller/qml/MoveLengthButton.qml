@@ -137,7 +137,7 @@ Item {
                     warningDialog.open()
                 } else {
                     root.arrowAboveClicked()
-                    backend.moveWinchIncrement(parseInt(inputField.text), verticalSlider.value)
+                    winchController.moveIncrement(parseInt(inputField.text), verticalSlider.value)
                 }
             }
         }

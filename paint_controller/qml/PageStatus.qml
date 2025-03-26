@@ -55,8 +55,8 @@ Rectangle {
                     }
                     TouchSwitch {
                             id: winchEnableSwitch
-                            checked: uiData.winch_enabled
-                            onToggled: backend.setWinchEnabled(checked)
+                            checked: winchController.enabled
+                            onToggled: winchController.setEnabled(checked)
                     }
                 }
 
@@ -70,8 +70,8 @@ Rectangle {
 
                     Label { text: "Status:"; font.bold: true }
                     Label { 
-                        text: uiData.winch_available ? "Connected" : "Disconnected"
-                        color: uiData.winch_available ? "green" : "red"
+                        text: winchController.available ? "Connected" : "Disconnected"
+                        color: winchController.available ? "green" : "red"
                     }
 
                     Label { text: "Enable Winch:"; font.bold: true }
@@ -80,24 +80,36 @@ Rectangle {
                     }
 
                     Label { text: "Cable Length:"; font.bold: true }
-                    Label { text: uiData.winch_length + " m" }
+                    Label { text: String((winchController.cable_length).toFixed(0)) + " mm" }
 
                     Label {text: "Cable Speed:"; font.bold: true}
-                    Label {text: String(uiData.winch_speed) + " m/s"}
+                    Label {text: String(winchController.cable_speed) + " m/s"}
 
                     Label { text: "Torque:"; font.bold: true }
-                    Label { text: String(uiData.winch_torque) + " Nm" }
+                    Label { text: String(winchController.winch_torque) + " Nm" }
 
                     Label { text: "Temperature:"; font.bold: true }
-                    Label { text: uiData.winch_temperature + " °C" }
+                    Label { text: winchController.motor_temperature + " °C" }
 
                     Label { text: "Voltage:"; font.bold: true }
-                    Label { text: uiData.winch_voltage + " V" }
+                    Label { text: winchController.motor_voltage + " V" }
 
                     Label { text: "Brake:"; font.bold: true }
                     Label { 
-                        text: uiData.winch_brake ? "Engaged" : "Released"
-                        color: uiData.winch_brake ? "red" : "green"
+                        text: winchController.motor_brake ? "Engaged" : "Released"
+                        color: winchController.motor_brake ? "red" : "green"
+                    }
+
+                    Label { text: "Load Detection:"; font.bold: true }
+                    Label { 
+                        text: winchController.load_detection_enabled ? "True" : "False"
+                        color: winchController.load_detection_enabled ? "green" : "red"
+                    }
+
+                    Label { text: "Unusual Load:"; font.bold: true }
+                    Label { 
+                        text: winchController.unusual_load_detected ? "True" : "False"
+                        color: winchController.unusual_load_detected ? "green" : "red"
                     }
 
                     MoveLengthButton {
