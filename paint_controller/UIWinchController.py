@@ -62,7 +62,7 @@ class WinchController(QObject):
         self._enable_pub = self._node.create_publisher(Bool, 'winch/enable/cmd', 1)
         self._move_increment_pub = self._node.create_publisher(MoveWinchLength, 'winch/move/increment/cmd', 1)
         self._load_detection_pub = self._node.create_publisher(Bool, 'winch/load_detection/cmd', 1)
-        self._move_absolute_pub = self._node.create_publisher(MoveWinchLength, 'winch/move/abosulte/cmd', 1)
+        self._move_absolute_pub = self._node.create_publisher(MoveWinchLength, 'winch/move/absolute/cmd', 1)
     
     def _setup_subscribers(self):
         """Setup ROS subscribers for winch status"""

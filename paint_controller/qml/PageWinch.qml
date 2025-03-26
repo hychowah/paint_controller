@@ -332,7 +332,7 @@ Item {
                                     text: "GO TO POSITION"
                                     enabled: winchController.enabled && absoluteLengthField.text.length > 0 && absoluteSpeedField.text.length > 0
                                     onClicked: {
-                                        winchController.move_abosulte(
+                                        winchController.moveAbosulte(
                                             parseInt(absoluteLengthField.text),
                                             parseInt(absoluteSpeedField.text)
                                         )

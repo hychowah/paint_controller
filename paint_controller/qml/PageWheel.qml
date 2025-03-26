@@ -342,7 +342,7 @@ Rectangle {
                     
                     MetricPanel {
                         title: "LEFT WHEEL TRAVEL"
-                        value: wheelController.left_wheel_travel || 0
+                        value: wheelController.left_wheel_position || 0
                         unit: "m"
                         maxValue: 100
                         barColor: "#4CAF50"
@@ -350,7 +350,7 @@ Rectangle {
                     
                     MetricPanel {
                         title: "RIGHT WHEEL TRAVEL"
-                        value: wheelController.right_wheel_travel || 0
+                        value: wheelController.right_wheel_position || 0
                         unit: "m"
                         maxValue: 100
                         barColor: "#4CAF50"
