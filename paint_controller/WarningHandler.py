@@ -6,7 +6,7 @@ class WarningHandler(QObject):
 
     def __init__(self):
         super().__init__()
-        self._warnings = []
+        self._warnings = ["test", "test2", "test3", "test4", "test5", "test6", "test7", "test8", "test9", "test10"]
 
     def add_warning(self, message):
         if message not in self._warnings:
