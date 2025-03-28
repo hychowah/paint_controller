@@ -182,10 +182,10 @@ Rectangle {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 56
-                        color: uiData.wheel_enabled ? "#E3F2FD" : "#F5F5F5"
+                        color: wheelController.enabled ? "#E3F2FD" : "#F5F5F5"
                         radius: 12
                         border.width: 1
-                        border.color: uiData.wheel_enabled ? "#90CAF9" : "#E0E0E0"
+                        border.color: wheelController.enabled ? "#90CAF9" : "#E0E0E0"
                         
                         // Subtle transition animations
                         Behavior on color {
@@ -199,7 +199,7 @@ Rectangle {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                backend.setWheelEnabled(!uiData.wheel_enabled)
+                                wheelController.setEnabled(!wheelController.enabled)
                             }
                         }
                         
@@ -213,7 +213,7 @@ Rectangle {
                                 width: 32
                                 height: 32
                                 radius: 16
-                                color: uiData.wheel_enabled ? "#2196F3" : "#9E9E9E"
+                                color: wheelController.enabled ? "#2196F3" : "#9E9E9E"
                                 
                                 // Simple wheel icon using rectangles
                                 Rectangle {
@@ -253,9 +253,9 @@ Rectangle {
                                 }
                                 
                                 Label {
-                                    text: uiData.wheel_enabled ? "Enabled - Motors active" : "Disabled - Motors inactive"
+                                    text: wheelController.enabled ? "Enabled - Motors active" : "Disabled - Motors inactive"
                                     font.pixelSize: 13
-                                    color: uiData.wheel_enabled ? "#2196F3" : "#757575"
+                                    color: wheelController.enabled ? "#2196F3" : "#757575"
                                     
                                     // Color transition
                                     Behavior on color {
@@ -269,7 +269,7 @@ Rectangle {
                                 width: 48
                                 height: 24
                                 radius: 12
-                                color: uiData.wheel_enabled ? "#2196F3" : "#9E9E9E"
+                                color: wheelController.enabled ? "#2196F3" : "#9E9E9E"
                                 
                                 Rectangle {
                                     id: toggleHandle
@@ -278,7 +278,7 @@ Rectangle {
                                     radius: 10
                                     color: "white"
                                     anchors.verticalCenter: parent.verticalCenter
-                                    x: uiData.wheel_enabled ? parent.width - width - 2 : 2
+                                    x: wheelController.enabled ? parent.width - width - 2 : 2
                                     
                                     // Add subtle drop shadow
                                     layer.enabled: true

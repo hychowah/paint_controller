@@ -140,6 +140,7 @@ class WheelController(QObject):
             self.set_right_wheel_current(msg.right_wheel_current)
             self.set_left_wheel_position(msg.left_wheel_pos)
             self.set_right_wheel_position(msg.right_wheel_pos)
+            self.set_enabled(msg.enabled)
 
     # Property getters and setters
     def get_left_wheel_speed(self) -> float:
@@ -201,6 +202,11 @@ class WheelController(QObject):
     def get_enabled(self) -> bool:
         return self._enabled
     
+    def set_enabled(self, value: bool):
+        if self._enabled != value:
+            self._enabled = value
+            self.enabled_changed.emit()
+    
     # Define Qt properties
     left_wheel_speed = Property(float, get_left_wheel_speed, set_left_wheel_speed, notify=left_wheel_speed_changed)
     right_wheel_speed = Property(float, get_right_wheel_speed, set_right_wheel_speed, notify=right_wheel_speed_changed)
@@ -209,21 +215,16 @@ class WheelController(QObject):
     left_wheel_position = Property(float, get_left_wheel_position, set_left_wheel_position, notify=left_wheel_position_changed)
     right_wheel_position = Property(float, get_right_wheel_position, set_right_wheel_position, notify=right_wheel_position_changed)
     available = Property(bool, get_available, notify=available_changed)
-    enabled = Property(bool, get_enabled, notify=enabled_changed)
+    enabled = Property(bool, get_enabled, set_enabled, notify=enabled_changed)
     
     @Slot(bool)
-    def set_enabled(self, enabled: bool):
+    def setEnabled(self, enabled: bool):
         """
         Enable or disable wheel control
         
         Args:
             enabled (bool): True to enable, False to disable
         """
-        if not self._available and enabled:
-            print("Cannot enable wheel controller: Controller not available")
-            return
-            
-        self._enabled = enabled
         msg = Bool()
         msg.data = not enabled
         self._disable_pub.publish(msg)

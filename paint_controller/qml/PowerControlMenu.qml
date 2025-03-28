@@ -9,50 +9,63 @@ Item {
     property string activeMenu: ""
     property bool showPowerMenu: showOverlay && activeMenu === "power"
 
+    // Ensure the menu is visible
+    visible: true
+
     Rectangle {
         id: powerOverlayBackground
         anchors.fill: parent
         color: "#000000"
-        opacity: showPowerMenu ? 0.7 : 0
-        visible: opacity > 0  // Only visible when opacity > 0
+        opacity: showPowerMenu ? 0.5 : 0
+        visible: opacity > 0
         
         Behavior on opacity {
             NumberAnimation { 
-                duration: 300
+                duration: 250
                 easing.type: Easing.InOutQuad 
+            }
+        }
+        
+        // Close overlay when background is clicked
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                powerControlMenu.activeMenu = ""
             }
         }
     }
 
     Rectangle {
         id: powerMenuContainer
-        width: 400
-        height: 400
-        radius: 20
-        color: "#2c2c2c"
+        width: 700  // Wider to accommodate two columns
+        height: 460
+        radius: 12
+        color: "#1A1A1A"  // Darker background for modern look
         opacity: showPowerMenu ? 1 : 0
-        visible: opacity > 0  // Only visible when opacity > 0
-        border.color: "#28445E"
-        border.width: 4
+        visible: opacity > 0
         
-        // Position and animation setup
+        // Modern subtle border
+        border.color: "#333333"
+        border.width: 1
+        
+        // Centered positioning with animation
         anchors {
             horizontalCenter: parent.horizontalCenter
-            top: parent.top
-            topMargin: showPowerMenu ? (parent.height - height) / 2 : -height
+            verticalCenter: parent.verticalCenter
+            verticalCenterOffset: showPowerMenu ? 0 : -parent.height
         }
 
-        Behavior on anchors.topMargin {
+        Behavior on anchors.verticalCenterOffset {
             NumberAnimation {
                 duration: 300
                 easing.type: Easing.OutBack
-                easing.overshoot: 0.5
+                easing.overshoot: 0.7
             }
         }
 
         Behavior on opacity {
             NumberAnimation {
-                duration: 300
+                duration: 250
                 easing.type: Easing.InOutQuad
             }
         }
@@ -62,227 +75,351 @@ Item {
                 fill: parent
                 margins: 20
             }
+            spacing: 10
 
-            Text {
-                text: "Power Control"
-                color: "#E2E2E2"
-                font.family: "Helvetica"
-                font.pixelSize: 30
-                font.bold: true
-                Layout.alignment: Qt.AlignHCenter
+            // Header with close button
+            RowLayout {
+                Layout.fillWidth: true
+                
+                Text {
+                    text: "Power Control"
+                    color: "#FFFFFF"
+                    font.family: "Helvetica"
+                    font.pixelSize: 26
+                    font.bold: true
+                    Layout.fillWidth: true
+                }
+                
+                // Close button
+                Rectangle {
+                    width: 32
+                    height: 32
+                    radius: 16
+                    color: closeMouseArea.containsMouse ? "#333333" : "transparent"
+                    
+                    Text {
+                        anchors.centerIn: parent
+                        text: "×"
+                        color: "#CCCCCC"
+                        font.pixelSize: 24
+                        font.bold: true
+                    }
+                    
+                    MouseArea {
+                        id: closeMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: powerControlMenu.activeMenu = ""
+                    }
+                }
             }
-
+            
+            // Divider
             Rectangle {
-                height: 6
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: parent.width * 0.8
-                color: "#28445E"
+                Layout.fillWidth: true
+                height: 1
+                color: "#333333"
+                Layout.topMargin: 4
+                Layout.bottomMargin: 10
             }
 
-            Item { Layout.fillHeight: true }
-
-            Switch {
-                id: menuWinchEnableSwitch
-                text: "Winch Enable" 
-                checked: winchController.enabled
+            // Two-column layout
+            RowLayout {
                 Layout.fillWidth: true
+                Layout.fillHeight: true
+                spacing: 20
                 
-                onCheckedChanged: winchController.setEnabled(checked)
-                
-                indicator: Rectangle {
-                    implicitWidth: parent.width * 0.2
-                    implicitHeight: implicitWidth * 0.5
-                    x: mainPowerSwitch.leftPadding
-                    y: parent.height / 2 - height / 2
-                    radius: implicitHeight / 2
-                    color: winchController.enabled ? "#4CAF50" : "#666666"
-
-                    Rectangle {
-                        x: menuWinchEnableSwitch.checked ? parent.width - width - 2 : 2
-                        y: height * 0.1
-                        width: parent.height * 0.8
-                        height: parent.height * 0.8
-                        radius: parent.height * 0.4
-                        color: "white"
-
-                        Behavior on x {
-                            NumberAnimation { duration: 200 }
+                // Left column - Base Controls
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    spacing: 10
+                    
+                    // Base Controls Category
+                    Item {
+                        Layout.fillWidth: true
+                        height: 32
+                        
+                        Text {
+                            text: "Base Controls"
+                            color: "#FFFFFF"
+                            font.family: "Helvetica"
+                            font.pixelSize: 18
+                            font.bold: true
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        
+                        Rectangle {
+                            height: 1
+                            width: parent.width - 120
+                            color: "#333333"
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
                         }
                     }
-                }
 
-                contentItem: Text {
-                    text: menuWinchEnableSwitch.text
-                    font.family: "Helvetica"
-                    font.pixelSize: 20
-                    color: "#cccccc"
-                    verticalAlignment: Text.AlignVCenter
-                    leftPadding: menuWinchEnableSwitch.indicator.width + 12
-                }
-            }
-
-            Switch {
-                id: menuWinchLoadDetectionSwitch
-                text: "Load Detection" 
-                checked: winchController.load_detection_enabled
-                Layout.fillWidth: true
-                
-                onCheckedChanged: winchController.setLoadDetectionEnabled(checked)
-                
-                indicator: Rectangle {
-                    implicitWidth: parent.width * 0.2
-                    implicitHeight: implicitWidth * 0.5
-                    x: mainPowerSwitch.leftPadding
-                    y: parent.height / 2 - height / 2
-                    radius: implicitHeight / 2
-                    color: winchController.load_detection_enabled ? "#4CAF50" : "#666666"
-
-                    Rectangle {
-                        x: menuWinchLoadDetectionSwitch.checked ? parent.width - width - 2 : 2
-                        y: height * 0.1
-                        width: parent.height * 0.8
-                        height: parent.height * 0.8
-                        radius: parent.height * 0.4
-                        color: "white"
-
-                        Behavior on x {
-                            NumberAnimation { duration: 200 }
+                    // Winch Enable Control
+                    ControlPanel {
+                        Layout.fillWidth: true
+                        controlName: "Winch Enable"
+                        controlStatus: winchController.enabled ? "Enabled" : "Disabled"
+                        enabledState: winchController.enabled
+                        iconText: "W"
+                        
+                        onClicked: winchController.setEnabled(!winchController.enabled)
+                    }
+                    
+                    // Winch Load Detection Control
+                    ControlPanel {
+                        Layout.fillWidth: true
+                        controlName: "Load Detection"
+                        controlStatus: winchController.load_detection_enabled ? "Active" : "Inactive"
+                        enabledState: winchController.load_detection_enabled
+                        iconText: "LD"
+                        
+                        onClicked: winchController.setLoadDetectionEnabled(!winchController.load_detection_enabled)
+                    }
+                    
+                    // Wheel Enable Control (new)
+                    ControlPanel {
+                        Layout.fillWidth: true
+                        controlName: "Wheel Enable"
+                        // Assuming wheelController.enabled property exists
+                        controlStatus: wheelController ? (wheelController.enabled ? "Motors active" : "Motors inactive") : "Unavailable"
+                        enabledState: wheelController ? wheelController.enabled : false
+                        iconText: "🛞"
+                        
+                        onClicked: {
+                            if (wheelController) {
+                                wheelController.setEnabled(!wheelController.enabled)
+                            } else {
+                                console.log("Wheel controller not available")
+                            }
                         }
                     }
-                }
-
-                contentItem: Text {
-                    text: menuWinchEnableSwitch.text
-                    font.family: "Helvetica"
-                    font.pixelSize: 20
-                    color: "#cccccc"
-                    verticalAlignment: Text.AlignVCenter
-                    leftPadding: menuWinchEnableSwitch.indicator.width + 12
-                }
-            }
-
-            Switch {
-                id: menuTeensyRelaySwitch
-                text: "Teensy Relay"
-                checked: uiData.teensy_relay_enabled
-                Layout.fillWidth: true
-                
-                onToggled: backend.setTeensyRelayEnabled(checked)
-
-                indicator: Rectangle {
-                    implicitWidth: parent.width * 0.2
-                    implicitHeight: implicitWidth * 0.5
-                    x: mainPowerSwitch.leftPadding
-                    y: parent.height / 2 - height / 2
-                    radius: implicitHeight / 2
-                    color: uiData.teensy_relay_enabled ? "#4CAF50" : "#666666"
-
-                    Rectangle {
-                        x: menuTeensyRelaySwitch.checked ? parent.width - width - 2 : 2
-                        y: height * 0.1
-                        width: parent.height * 0.8
-                        height: parent.height * 0.8
-                        radius: parent.height * 0.4
-                        color: "white"
-
-                        Behavior on x {
-                            NumberAnimation { duration: 200 }
-                        }
+                    
+                    // Spacer
+                    Item { 
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
                     }
                 }
-
-                contentItem: Text {
-                    text: menuTeensyRelaySwitch.text
-                    font.pixelSize: 20
-                    font.family: "Helvetica"
-                    color: "#cccccc"
-                    verticalAlignment: Text.AlignVCenter
-                    leftPadding: menuTeensyRelaySwitch.indicator.width + 12
-                }
-            }
-
-            Switch {
-                id: menuTeensyEnableSwitch
-                text: "Teensy Enable"
-                checked: uiData.teensy_enabled
-                Layout.fillWidth: true
                 
-                onToggled: backend.setTeensyEnabled(checked)
-
-                indicator: Rectangle {
-                    implicitWidth: parent.width * 0.2
-                    implicitHeight: implicitWidth * 0.5
-                    x: mainPowerSwitch.leftPadding
-                    y: parent.height / 2 - height / 2
-                    radius: implicitHeight / 2
-                    color: uiData.teensy_enabled ? "#4CAF50" : "#666666"
-
-                    Rectangle {
-                        x: menuTeensyEnableSwitch.checked ? parent.width - width - 2 : 2
-                        y: height * 0.1
-                        width: parent.height * 0.8
-                        height: parent.height * 0.8
-                        radius: parent.height * 0.4
-                        color: "white"
-
-                        Behavior on x {
-                            NumberAnimation { duration: 200 }
+                // Vertical Separator
+                Rectangle {
+                    width: 1
+                    Layout.fillHeight: true
+                    color: "#333333"
+                }
+                
+                // Right column - End Effector Controls
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    spacing: 10
+                    
+                    // End Effector Category
+                    Item {
+                        Layout.fillWidth: true
+                        height: 32
+                        
+                        Text {
+                            text: "End Effector Controls"
+                            color: "#FFFFFF"
+                            font.family: "Helvetica"
+                            font.pixelSize: 18
+                            font.bold: true
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        
+                        Rectangle {
+                            height: 1
+                            width: parent.width - 180
+                            color: "#333333"
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
                         }
                     }
-                }
 
-                contentItem: Text {
-                    text: menuTeensyEnableSwitch.text
-                    font.pixelSize: 20
-                    font.family: "Helvetica"
-                    color: "#cccccc"
-                    verticalAlignment: Text.AlignVCenter
-                    leftPadding: menuTeensyEnableSwitch.indicator.width + 12
-                }
-            }
-
-            Switch {
-                id: menuYawEnableSwitch
-                text: "Yaw Control Enable"
-                checked: uiData.teensy_yaw_enabled
-                Layout.fillWidth: true
-                
-                onToggled: backend.setYawControl(checked, uiData.teensy_yaw_command, uiData.teensy_yaw_pid_p, uiData.teensy_yaw_pid_i, uiData.teensy_yaw_pid_d, uiData.teensy_yaw_pwm)
-
-                indicator: Rectangle {
-                    implicitWidth: parent.width * 0.2
-                    implicitHeight: implicitWidth * 0.5
-                    x: mainPowerSwitch.leftPadding
-                    y: parent.height / 2 - height / 2
-                    radius: implicitHeight / 2
-                    color: uiData.teensy_yaw_enabled ? "#4CAF50" : "#666666"
-
-                    Rectangle {
-                        x: menuYawEnableSwitch.checked ? parent.width - width - 2 : 2
-                        y: height * 0.1
-                        width: parent.height * 0.8
-                        height: parent.height * 0.8
-                        radius: parent.height * 0.4
-                        color: "white"
-
-                        Behavior on x {
-                            NumberAnimation { duration: 200 }
-                        }
+                    // Teensy Relay Control
+                    ControlPanel {
+                        Layout.fillWidth: true
+                        controlName: "Teensy Relay"
+                        controlStatus: uiData.teensy_relay_enabled ? "Connected" : "Disconnected"
+                        enabledState: uiData.teensy_relay_enabled
+                        iconText: "TR"
+                        
+                        onClicked: backend.setTeensyRelayEnabled(!uiData.teensy_relay_enabled)
+                    }
+                    
+                    // Teensy Enable Control
+                    ControlPanel {
+                        Layout.fillWidth: true
+                        controlName: "Teensy Enable"
+                        controlStatus: uiData.teensy_enabled ? "Powered" : "Unpowered"
+                        enabledState: uiData.teensy_enabled
+                        iconText: "T"
+                        
+                        onClicked: backend.setTeensyEnabled(!uiData.teensy_enabled)
+                    }
+                    
+                    // Yaw Control
+                    ControlPanel {
+                        Layout.fillWidth: true
+                        controlName: "Yaw Control"
+                        controlStatus: uiData.teensy_yaw_enabled ? "Active" : "Inactive"
+                        enabledState: uiData.teensy_yaw_enabled
+                        iconText: "Y"
+                        
+                        onClicked: backend.setYawControl(!uiData.teensy_yaw_enabled, 
+                                                      uiData.teensy_yaw_command, 
+                                                      uiData.teensy_yaw_pid_p, 
+                                                      uiData.teensy_yaw_pid_i, 
+                                                      uiData.teensy_yaw_pid_d, 
+                                                      uiData.teensy_yaw_pwm)
+                    }
+                    
+                    // Spacer
+                    Item { 
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
                     }
                 }
-
-                contentItem: Text {
-                    text: menuYawEnableSwitch.text
-                    font.pixelSize: 20
-                    font.family: "Helvetica"
-                    color: "#cccccc"
-                    verticalAlignment: Text.AlignVCenter
-                    leftPadding: menuYawEnableSwitch.indicator.width + 12
-                }
             }
-
-            Item { Layout.fillHeight: true }
         }
     }
-}
 
+    // Backend-driven control panel component
+    component ControlPanel: Rectangle {
+        id: controlPanel
+        property string controlName: "Control"
+        property string controlStatus: "Unknown"
+        property bool enabledState: false
+        property string iconText: "X"
+        
+        signal clicked()
+        
+        height: 60
+        radius: 10
+        color: enabledState ? "#252A36" : "#222222"
+        border.color: enabledState ? "#3A5A8C" : "#333333"
+        border.width: 1
+        
+        // Subtle transition animations
+        Behavior on color {
+            ColorAnimation { duration: 200 }
+        }
+        
+        Behavior on border.color {
+            ColorAnimation { duration: 200 }
+        }
+        
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: controlPanel.clicked()
+            
+            // Hover effect
+            onEntered: {
+                parent.color = enabledState ? "#2A3040" : "#2A2A2A"
+            }
+            
+            onExited: {
+                parent.color = enabledState ? "#252A36" : "#222222"
+            }
+        }
+        
+        RowLayout {
+            anchors {
+                fill: parent
+                margins: 10
+            }
+            spacing: 10
+            
+            // Icon
+            Rectangle {
+                width: 36
+                height: 36
+                radius: 18
+                color: enabledState ? "#3A5A8C" : "#444444"
+                
+                Text {
+                    anchors.centerIn: parent
+                    text: controlPanel.iconText
+                    font.pixelSize: 16
+                    color: "white"
+                    font.bold: true
+                }
+                
+                // Color transition
+                Behavior on color {
+                    ColorAnimation { duration: 200 }
+                }
+            }
+            
+            // Text with status
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+                
+                Text {
+                    text: controlPanel.controlName
+                    font.pixelSize: 16
+                    font.bold: true
+                    color: "#FFFFFF"
+                }
+                
+                Text {
+                    text: controlPanel.controlStatus
+                    font.pixelSize: 13
+                    color: enabledState ? "#90CAF9" : "#999999"
+                    
+                    // Color transition
+                    Behavior on color {
+                        ColorAnimation { duration: 200 }
+                    }
+                }
+            }
+            
+            // Toggle indicator
+            Rectangle {
+                width: 48
+                height: 24
+                radius: 12
+                color: enabledState ? "#3A5A8C" : "#444444"
+                
+                Rectangle {
+                    width: 18
+                    height: 18
+                    radius: 9
+                    color: "#FFFFFF"
+                    x: enabledState ? parent.width - width - 3 : 3
+                    anchors.verticalCenter: parent.verticalCenter
+                    
+                    Behavior on x {
+                        NumberAnimation { 
+                            duration: 200
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+                }
+                
+                // Color transition
+                Behavior on color {
+                    ColorAnimation { duration: 200 }
+                }
+            }
+        }
+    }
+    
+    // For compatibility with older Qt versions
+    component DropShadow: Item {
+        property bool transparentBorder: true
+        property real horizontalOffset: 0
+        property real verticalOffset: 0
+        property real radius: 0
+        property int samples: 0
+        property color color: "black"
+    }
+}
