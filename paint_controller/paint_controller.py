@@ -291,16 +291,18 @@ class RobotController(Node, QObject):
         self.controlProcessor = ControlProcessor(self)
         self.target_yaw = 0
 
-        self.steam_deck = SteamDeckHandler(config.joystick_deadzone)
+        self.steam_deck = SteamDeckHandler(deadzone=config.joystick_deadzone)
+        self.steam_deck.attach_to_node(self)
 
         self.ui_data_model = UIDataModel()
         self.status_updated.connect(self._timer_callback)
+
         
         # Setup ROS subscribers and publishers
         self._setup_subscribers()
         self._setup_publishers()
 
-        self.trajectoryHandler = TrajectoryHandler(self.winch_move_increment_pub)
+        self.trajectoryHandler = TrajectoryHandler()
 
         # base video stream handler
         self.base_video_stream_handler = BaseVideoStreamHandler()
@@ -334,30 +336,6 @@ class RobotController(Node, QObject):
 
         # Update Steam Deck Controls
         input_state = self.steam_deck.get_current_state()
-        self.ui_data_model.left_joystick_x = input_state.get('left_stick', {}).get('x', 0)
-        self.ui_data_model.left_joystick_y = input_state.get('left_stick', {}).get('y', 0)
-        self.ui_data_model.right_joystick_x = input_state.get('right_stick', {}).get('x', 0)
-        self.ui_data_model.right_joystick_y = input_state.get('right_stick', {}).get('y', 0)
-        self.ui_data_model.left_trigger = input_state.get('triggers', {}).get('left', 0)
-        self.ui_data_model.right_trigger = input_state.get('triggers', {}).get('right', 0)
-
-        self.ui_data_model.dpad_up = input_state.get('buttons', {}).get('up', False)
-        self.ui_data_model.dpad_down = input_state.get('buttons', {}).get('down', False)
-        self.ui_data_model.dpad_left = input_state.get('buttons', {}).get('left', False)
-        self.ui_data_model.dpad_right = input_state.get('buttons', {}).get('right', False)
-        self.ui_data_model.button_a = input_state.get('buttons', {}).get('a', False)
-        self.ui_data_model.button_b = input_state.get('buttons', {}).get('b', False)
-        self.ui_data_model.button_x = input_state.get('buttons', {}).get('x', False)
-        self.ui_data_model.button_y = input_state.get('buttons', {}).get('y', False)
-        self.ui_data_model.button_l1 = input_state.get('buttons', {}).get('l1', False)
-        self.ui_data_model.button_r1 = input_state.get('buttons', {}).get('r1', False)
-
-        self.ui_data_model.button_menu = input_state.get('buttons', {}).get('menu', False)
-        self.ui_data_model.button_quick_access = input_state.get('buttons', {}).get('quick_access', False)
-        
-        self.ui_data_model.imu_pitch = input_state.get('imu', {}).get('pitch', 0)
-        self.ui_data_model.imu_roll = input_state.get('imu', {}).get('roll', 0)
-        self.ui_data_model.imu_yaw = input_state.get('imu', {}).get('yaw', 0)
 
         # Update teensy status
         teensy_status = self.teensyMonitor.get_status()
@@ -433,13 +411,6 @@ class RobotController(Node, QObject):
         
     def _setup_subscribers(self):
         self.create_subscription(
-            SteamDeckInput,
-            'steam_deck/input',
-            self.steam_deck.process_input,
-            1
-        )
-        
-        self.create_subscription(
             LaserScan,
             'scan',
             self._on_lidar_scan,
@@ -496,9 +467,6 @@ class RobotController(Node, QObject):
         )
 
     def _setup_publishers(self):
-        self.winch_enable_pub = self.create_publisher(Bool, 'winch/enable/cmd', 1)
-        self.winch_move_speed_pub = self.create_publisher(Float64, 'winch/move/speed/rpm/cmd', 1)
-        self.winch_move_increment_pub = self.create_publisher(MoveWinchLength, 'winch/move/increment/cmd', 1)
         self.ef_move_top_rail_speed_pub = self.create_publisher(Float32, 'teensy/top_rail/speed/cmd', 1)
         self.ef_move_arm_rail_speed_pub = self.create_publisher(Float32, 'teensy/arm_rail/speed/cmd', 1)
         self.prop_left_pwm_pub = self.create_publisher(Int32, 'teensy/prop/left/pwm/cmd', 1)
@@ -510,11 +478,6 @@ class RobotController(Node, QObject):
         self.ef_spray_trigger_pub = self.create_publisher(Int32, 'teensy/spray_gun/trigger/cmd', 1)
         self.ef_spray_gimbal_speed_pub = self.create_publisher(Int32, 'teensy/spray_gun/gimbal/speed/cmd', 1)
         self.ef_yaw_control_pub = self.create_publisher(TeensyYaw, 'teensy/yaw/control/cmd', 1)
-
-    def _on_steam_deck_input(self, msg: SteamDeckInput):
-        changes = self.steam_deck.process_input(msg)
-        print(f"Steam Deck Input: {changes}")
-        self.status_updated.emit()
 
     def _on_lidar_scan(self, msg: LaserScan):
         self.new_scan_data.emit(
@@ -537,15 +500,6 @@ class RobotController(Node, QObject):
         msg.data = enabled
         self.teensy_enable_pub.publish(msg)
         self.get_logger().info(f'Teensy {"enabled" if enabled else "disabled"}')
-
-    @Slot(bool)
-    def setWinchEnabled(self, enabled: bool):
-        """Enable/disable winch control"""
-        self.ui_data_model.winch_enabled = enabled
-        msg = Bool()
-        msg.data = enabled
-        self.winch_enable_pub.publish(msg)
-        self.get_logger().info(f'Winch {"enabled" if enabled else "disabled"}')
 
     @Slot(bool)
     def setTeensyRelayEnabled(self, enabled: bool):
@@ -663,6 +617,7 @@ def main():
     engine.rootContext().setContextProperty("baseStreamHandler", controller.base_video_stream_handler)
     engine.rootContext().setContextProperty("wheelController", controller.wheel_controller)
     engine.rootContext().setContextProperty("winchController", controller.winch_controller)
+    engine.rootContext().setContextProperty("steamDeckHandler", controller.steam_deck)
     
     # Start status update timer
     status_timer = QTimer()

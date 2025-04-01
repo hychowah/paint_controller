@@ -399,54 +399,54 @@ Rectangle {
 
                     // Analog Sticks
                     Label { text: "Left Stick:"; font.bold: true }
-                    Label { text: "X: " + uiData.left_joystick_x + ", Y: " + uiData.left_joystick_y }
+                    Label { text: "X: " + steamDeckHandler.left_stick.x.toFixed(0) + ", Y: " + steamDeckHandler.left_stick.y.toFixed(0) }
 
                     Label { text: "Right Stick:"; font.bold: true }
-                    Label { text: "X: " + uiData.right_joystick_x + ", Y: " + uiData.right_joystick_y }
+                    Label { text: "X: " + steamDeckHandler.right_stick.x.toFixed(0) + ", Y: " + steamDeckHandler.right_stick.y.toFixed(0) }
 
                     // Triggers
                     Label { text: "Left Trigger:"; font.bold: true }
-                    Label { text: uiData.left_trigger }
+                    Label { text: steamDeckHandler.triggers.left }
 
                     Label { text: "Right Trigger:"; font.bold: true }
-                    Label { text: uiData.right_trigger }
+                    Label { text: steamDeckHandler.triggers.right }
 
                     // Face Buttons
                     Label { text: "A Button:"; font.bold: true }
                     Label { 
-                        text: uiData.button_a ? "Pressed" : "Released"
-                        color: uiData.button_a ? "green" : "gray"
+                        text: steamDeckHandler.buttons.a ? "Pressed" : "Released"
+                        color: steamDeckHandler.buttons.a ? "green" : "gray"
                     }
 
                     Label { text: "B Button:"; font.bold: true }
                     Label { 
-                        text: uiData.button_b ? "Pressed" : "Released"
-                        color: uiData.button_b ? "green" : "gray"
+                        text: steamDeckHandler.buttons.b ? "Pressed" : "Released"
+                        color: steamDeckHandler.buttons.b ? "green" : "gray"
                     }
 
                     Label { text: "X Button:"; font.bold: true }
                     Label { 
-                        text: uiData.button_x ? "Pressed" : "Released"
-                        color: uiData.button_x ? "green" : "gray"
+                        text: steamDeckHandler.buttons.x ? "Pressed" : "Released"
+                        color: steamDeckHandler.buttons.x ? "green" : "gray"
                     }
 
                     Label { text: "Y Button:"; font.bold: true }
                     Label { 
-                        text: uiData.button_y ? "Pressed" : "Released"
-                        color: uiData.button_y ? "green" : "gray"
+                        text: steamDeckHandler.buttons.y ? "Pressed" : "Released"
+                        color: steamDeckHandler.buttons.y ? "green" : "gray"
                     }
 
                     // Shoulder Buttons
                     Label { text: "L1 Button:"; font.bold: true }
                     Label { 
-                        text: uiData.button_l1 ? "Pressed" : "Released"
-                        color: uiData.button_l1 ? "green" : "gray"
+                        text: steamDeckHandler.buttons.l1 ? "Pressed" : "Released"
+                        color: steamDeckHandler.buttons.l1 ? "green" : "gray"
                     }
 
                     Label { text: "R1 Button:"; font.bold: true }
                     Label { 
-                        text: uiData.button_r1 ? "Pressed" : "Released"
-                        color: uiData.button_r1 ? "green" : "gray"
+                        text: steamDeckHandler.buttons.r1 ? "Pressed" : "Released"
+                        color: steamDeckHandler.buttons.r1 ? "green" : "gray"
                     }
 
                     // D-Pad
@@ -455,22 +455,22 @@ Rectangle {
                         spacing: 5
                         Label { 
                             text: "↑"
-                            color: uiData.dpad_up ? "red" : "gray"
+                            color: steamDeckHandler.buttons.up ? "red" : "gray"
                             font.bold: true
                         }
                         Label { 
                             text: "↓"
-                            color: uiData.dpad_down ? "red" : "gray"
+                            color: steamDeckHandler.buttons.down ? "red" : "gray"
                             font.bold: true
                         }
                         Label { 
                             text: "←"
-                            color: uiData.dpad_left ? "red" : "gray"
+                            color: steamDeckHandler.buttons.left ? "red" : "gray"
                             font.bold: true
                         }
                         Label { 
                             text: "→"
-                            color: uiData.dpad_right ? "red" : "gray"
+                            color: steamDeckHandler.buttons.right ? "red" : "gray"
                             font.bold: true
                         }
                     }
@@ -478,8 +478,8 @@ Rectangle {
                     // Menu Button
                     Label { text: "Menu:"; font.bold: true }
                     Label { 
-                        text: uiData.menu_pressed ? "Pressed" : "Released"
-                        color: uiData.menu_pressed ? "green" : "gray"
+                        text: steamDeckHandler.buttons.menu ? "Pressed" : "Released"
+                        color: steamDeckHandler.buttons.menu ? "green" : "gray"
                     }
 
                 }

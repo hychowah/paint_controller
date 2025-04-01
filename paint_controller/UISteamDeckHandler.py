@@ -4,40 +4,125 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Dict, Optional, List, Any, Callable
 import math
+import time
 
+from rclpy.node import Node
 from towngas_interfaces.msg import SteamDeckInput
+from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 
-
-class SteamDeckHandler:
-    def __init__(self, deadzone: float, smoothing_factor: float = 0.1):
+class SteamDeckHandler(QObject):
+    # Define Qt signals
+    input_state_changed = Signal(dict)
+    left_stick_changed = Signal()
+    right_stick_changed = Signal()
+    triggers_changed = Signal()
+    buttons_changed = Signal()
+    imu_changed = Signal()
+    
+    def __init__(self, deadzone: float = 0.1, smoothing_factor: float = 0.1, update_rate: float = 60.0):
+        super().__init__()
+        self._node = None  # Will be set when attached to a node
         self._deadzone = deadzone
         self._smoothing_factor = max(0.0, min(1.0, smoothing_factor))  # Clamp between 0 and 1
-        self._input_state = {}
-        self._prev_input_state = {}  # Added to track previous state
-        self._callbacks = {}
+        
+        # UI update throttling
+        self._update_rate = update_rate  # Hz
+        self._min_update_interval = 1.0 / update_rate  # seconds
+        self._last_update_time = 0
+        self._pending_updates = False
+        
+        # Initialize state variables
+        self._input_state = {
+            'left_stick': {'x': 0.0, 'y': 0.0},
+            'right_stick': {'x': 0.0, 'y': 0.0},
+            'triggers': {'left': 0.0, 'right': 0.0},
+            'buttons': {
+                'up': False, 'down': False, 'left': False, 'right': False,
+                'a': False, 'b': False, 'x': False, 'y': False,
+                'l1': False, 'r1': False, 'l4': False, 'r4': False,
+                'menu': False, 'quick_access': False
+            },
+            'imu': {'pitch': 0.0, 'roll': 0.0, 'yaw': 0.0}
+        }
+        self._prev_input_state = self._input_state.copy()
+        
+        # Initialize button_pressed state for edge detection
+        self._button_pressed = {
+            'up': False, 'down': False, 'left': False, 'right': False,
+            'a': False, 'b': False, 'x': False, 'y': False,
+            'l1': False, 'r1': False, 'l4': False, 'r4': False,
+            'menu': False, 'quick_access': False
+        }
+        
         self._prev_stick_values = {
             'left_stick': {'x': 0.0, 'y': 0.0},
             'right_stick': {'x': 0.0, 'y': 0.0}
         }
-        # Initialize button_pressed state
-        self._button_pressed = {
-            'up': False,
-            'down': False,
-            'left': False,
-            'right': False,
-            'a': False,
-            'b': False,
-            'x': False,
-            'y': False,
-            'l1': False,
-            'r1': False,
-            'l4': False,
-            'r4': False,
-            'menu': False,
-            'quick_access': False
-        }
+        
+        # Connection status tracking
+        self._available = False
+        self._last_input_time = 0
+        self._connection_timeout = 1.0  # Time in seconds before considering disconnected
+        
+        # Create availability check timer
+        self._availability_timer = QTimer(self)
+        self._availability_timer.timeout.connect(self._check_availability)
+        self._availability_timer.start(200)  # Check every 200ms
+    
+    def attach_to_node(self, node: Node):
+        """Attach this handler to a ROS node and set up the subscription"""
+        self._node = node
+        
+        # Set up the subscription
+        self._input_sub = self._node.create_subscription(
+            SteamDeckInput,
+            'steam_deck/input',
+            self._input_callback,
+            10
+        )
+        
+        
+        print("SteamDeckHandler: Subscribed to 'steam_deck/input' topic")
+    
+    def _check_availability(self):
+        """Check if the Steam Deck controller is still connected"""
+        current_time = time.time()
+        
+        # Calculate time since last input
+        time_since_last_input = current_time - self._last_input_time
+        
+        # If it's been too long since the last update, consider disconnected
+        if time_since_last_input > self._connection_timeout:
+            if self._available:
+                self._available = False
+                print(f"Steam Deck considered disconnected: {time_since_last_input:.1f}s since last message")
+        
+    def _input_callback(self, msg: SteamDeckInput):
+        """Process incoming SteamDeckInput messages from ROS"""
+        try:
+            # Store previous state for change detection
+            
+            # Update connection status
+            self._last_input_time = time.time()
+            current_time = time.time()
+            time_since_last_update = current_time - self._last_update_time
+            if time_since_last_update < self._min_update_interval:
+                return
 
+            self._prev_input_state = self._input_state.copy()
+            
+            # Process the input
+            self.process_input(msg)
+            self._pending_updates = True
+            self._process_pending_updates()
+            self._last_update_time = current_time
+            
+        except Exception as e:
+            print(f"Error in Steam Deck input callback: {e}")
+    
     def process_input(self, msg: SteamDeckInput):
+        """Process the input message and update internal state"""
+        # Store the new state
         new_state = {
             'left_stick': self._process_stick(msg.left_stick_x, msg.left_stick_y, 'left_stick'),
             'right_stick': self._process_stick(msg.right_stick_x, msg.right_stick_y, 'right_stick'),
@@ -67,15 +152,47 @@ class SteamDeckHandler:
                 'yaw': msg.imu_yaw
             }
         }
+        
+        # Update internal state
         self._input_state = new_state
         
+        # Update button_pressed state for edge detection
+        self._update_button_pressed_state()
+    
+    def _process_pending_updates(self):
+        """
+        Process any pending updates at the controlled update rate
+        This is called by the timer at the specified update rate
+        """
         
+        self._emit_change_signals()
+        self._pending_updates = False
+            # print(f"SteamDeckHandler: UI update processed at {time_since_last_update}Hz")
+    
+    def _emit_change_signals(self):
+        """Emit signals for all properties without comparison"""
+        
+        # Simply emit all signals - no comparison needed
+        self.left_stick_changed.emit()
+        self.right_stick_changed.emit()
+        self.triggers_changed.emit()
+        self.buttons_changed.emit()
+        self.imu_changed.emit()
+        
+        # Create a dict with the current state for the main signal
+        changes = {
+            'left_stick': self._input_state.get('left_stick', {}).copy(),
+            'right_stick': self._input_state.get('right_stick', {}).copy(),
+            'triggers': self._input_state.get('triggers', {}).copy(),
+            'buttons': self._input_state.get('buttons', {}).copy(),
+            'imu': self._input_state.get('imu', {}).copy()
+        }
+        
+        # Emit the overall state change signal
+        self.input_state_changed.emit(changes)
 
     def _update_button_pressed_state(self):
         """Update the button_pressed state based on rising edge detection"""
-        if not self._prev_input_state:
-            return
-
         for button in self._button_pressed.keys():
             prev_state = self._prev_input_state.get('buttons', {}).get(button, False)
             current_state = self._input_state.get('buttons', {}).get(button, False)
@@ -152,22 +269,45 @@ class SteamDeckHandler:
         smoothing_factor of 1.0 means no smoothing, 0.0 means maximum smoothing.
         """
         return current * self._smoothing_factor + previous * (1.0 - self._smoothing_factor)
-
-    def _detect_changes(self, new_state: Dict) -> Dict[str, Any]:
-        changes = {}
-        for key in new_state:
-            if key not in self._input_state or new_state[key] != self._input_state[key]:
-                changes[key] = new_state[key]
-        return changes
     
     def get_current_state(self) -> Dict:
         """Get current input state"""
-        # Update button_pressed state
-        self._update_button_pressed_state()
-        # Store previous state before updating
-        self._prev_input_state = self._input_state.copy() if self._input_state else {}
-        return self._input_state
+        return self._input_state.copy()
 
     def has_new_input(self) -> bool:
-        """Check if there are new inputs to process"""
-        return bool(self._detect_changes(self._input_state))
+        """Check if there are new inputs since last get_current_state call"""
+        return self._input_state != self._prev_input_state
+    
+    # Property getters
+    def get_left_stick(self) -> Dict[str, float]:
+        return self._input_state['left_stick'].copy()
+    
+    def get_right_stick(self) -> Dict[str, float]:
+        return self._input_state['right_stick'].copy()
+    
+    def get_triggers(self) -> Dict[str, float]:
+        return self._input_state['triggers'].copy()
+    
+    def get_buttons(self) -> Dict[str, bool]:
+        return self._input_state['buttons'].copy()
+    
+    def get_imu(self) -> Dict[str, float]:
+        return self._input_state['imu'].copy()
+    
+    def get_available(self) -> bool:
+        return self._available
+    
+    # Define Qt properties
+    left_stick = Property(dict, get_left_stick, notify=left_stick_changed)
+    right_stick = Property(dict, get_right_stick, notify=right_stick_changed)
+    triggers = Property(dict, get_triggers, notify=triggers_changed)
+    buttons = Property(dict, get_buttons, notify=buttons_changed)
+    imu = Property(dict, get_imu, notify=imu_changed)
+    available = Property(bool, get_available)
+    
+    
+    def cleanup(self):
+        """Clean up resources when shutting down"""
+        if hasattr(self, '_availability_timer') and self._availability_timer.isActive():
+            self._availability_timer.stop()
+        

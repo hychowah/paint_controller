@@ -10,7 +10,7 @@ class TrajectoryHandler(QObject):
     trajectoryChanged = Signal()
     #actionChanged = Signal()
 
-    def __init__(self, winch_cmd_pub):
+    def __init__(self, winch_cmd_pub=None):
         super().__init__()
         self._trajectory = []
         self._currentTrajDescription = []
