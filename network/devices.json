@@ -12,7 +12,7 @@
     "end_effector_system": {
         "primary": {
             "name": "end_effector",
-            "mac": "00:e0:4c:02:dd:c9"
+            "mac": "00:e0:4c:02:dd:ca"
         },
         "fallback": {
             "name": "end_effector_bridge",

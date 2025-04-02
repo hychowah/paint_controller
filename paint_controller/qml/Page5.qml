@@ -18,8 +18,8 @@ Rectangle {
         WindVisualizer {
             Layout.preferredWidth: parent.width / 4
             Layout.fillHeight: true
-            windSpeed: uiData.wind_speed || 0
-            windDirection: uiData.wind_direction || 0
+            windSpeed: windMonitor.windSpeed || 0
+            windDirection: windMonitor.windDirection || 0
         }
 
         // Lidar visualization

@@ -19,11 +19,12 @@ class SteamDeckHandler(QObject):
     buttons_changed = Signal()
     imu_changed = Signal()
     
-    def __init__(self, deadzone: float = 0.1, smoothing_factor: float = 0.1, update_rate: float = 60.0):
+    def __init__(self, deadzone: float = 0.1, smoothing_factor: float = 0.1, update_rate: float = 60.0, default_debounce_time: float = 0.15):
         super().__init__()
         self._node = None  # Will be set when attached to a node
         self._deadzone = deadzone
         self._smoothing_factor = max(0.0, min(1.0, smoothing_factor))  # Clamp between 0 and 1
+        self._default_debounce_time = default_debounce_time  # Default time in seconds to debounce button presses
         
         # UI update throttling
         self._update_rate = update_rate  # Hz
@@ -54,6 +55,32 @@ class SteamDeckHandler(QObject):
             'menu': False, 'quick_access': False
         }
         
+        # Track the last time each button was pressed for debouncing
+        self._last_press_time = {
+            'up': 0, 'down': 0, 'left': 0, 'right': 0,
+            'a': 0, 'b': 0, 'x': 0, 'y': 0,
+            'l1': 0, 'r1': 0, 'l4': 0, 'r4': 0,
+            'menu': 0, 'quick_access': 0
+        }
+        
+        # Set per-button debounce times (defaults to the default debounce time)
+        self._debounce_times = {
+            'up': self._default_debounce_time, 
+            'down': self._default_debounce_time, 
+            'left': self._default_debounce_time, 
+            'right': self._default_debounce_time,
+            'a': self._default_debounce_time, 
+            'b': self._default_debounce_time, 
+            'x': self._default_debounce_time, 
+            'y': self._default_debounce_time,
+            'l1': self._default_debounce_time, 
+            'r1': self._default_debounce_time, 
+            'l4': self._default_debounce_time, 
+            'r4': self._default_debounce_time,
+            'menu': self._default_debounce_time, 
+            'quick_access': self._default_debounce_time
+        }
+        
         self._prev_stick_values = {
             'left_stick': {'x': 0.0, 'y': 0.0},
             'right_stick': {'x': 0.0, 'y': 0.0}
@@ -68,7 +95,7 @@ class SteamDeckHandler(QObject):
         self._availability_timer = QTimer(self)
         self._availability_timer.timeout.connect(self._check_availability)
         self._availability_timer.start(200)  # Check every 200ms
-    
+
     def attach_to_node(self, node: Node):
         """Attach this handler to a ROS node and set up the subscription"""
         self._node = node
@@ -192,26 +219,92 @@ class SteamDeckHandler(QObject):
         self.input_state_changed.emit(changes)
 
     def _update_button_pressed_state(self):
-        """Update the button_pressed state based on rising edge detection"""
+        """
+        Update the button_pressed state based on rising edge detection with per-button debouncing
+        """
+        current_time = time.time()
+        
         for button in self._button_pressed.keys():
             prev_state = self._prev_input_state.get('buttons', {}).get(button, False)
             current_state = self._input_state.get('buttons', {}).get(button, False)
+            
             # Rising edge detection: True only when previous was False and current is True
-            self._button_pressed[button] = not prev_state and current_state
+            is_rising_edge = not prev_state and current_state
+            
+            if is_rising_edge:
+                # Check if enough time has passed since the last press (debouncing)
+                time_since_last_press = current_time - self._last_press_time[button]
+                button_debounce_time = self._debounce_times[button]
+                
+                if time_since_last_press >= button_debounce_time:
+                    # Update the last press time and set button as pressed
+                    self._last_press_time[button] = current_time
+                    self._button_pressed[button] = True
+                else:
+                    # Not enough time passed, ignore this press (debounce)
+                    self._button_pressed[button] = False
+            else:
+                # Not a rising edge, so not a new press
+                self._button_pressed[button] = False
 
     def get_button_pressed(self, button: str) -> bool:
         """
-        Get the pressed state of a specific button (rising edge detection)
-        Returns True if the button was just pressed (rising edge detected)
+        Get the pressed state of a specific button (rising edge detection with debouncing)
+        Returns True if the button was just pressed (rising edge detected) and passed debounce check
         """
         return self._button_pressed.get(button, False)
 
     def get_all_pressed_buttons(self) -> Dict[str, bool]:
         """
-        Get all buttons that were just pressed in this frame
+        Get all buttons that were just pressed in this frame that passed debounce check
         Returns a dictionary of button names and their pressed states
         """
         return self._button_pressed.copy()
+    
+    def set_debounce_time(self, button: str, debounce_time: float):
+        """
+        Set the debounce time for a specific button in seconds
+        """
+        if button in self._debounce_times:
+            self._debounce_times[button] = max(0.0, debounce_time)  # Ensure non-negative
+        else:
+            print(f"Warning: Button '{button}' not found when setting debounce time")
+    
+    def set_default_debounce_time(self, debounce_time: float):
+        """
+        Set the default debounce time in seconds for all buttons
+        """
+        self._default_debounce_time = max(0.0, debounce_time)  # Ensure non-negative
+        
+    def set_all_debounce_times(self, debounce_time: float):
+        """
+        Set the debounce time for all buttons at once
+        """
+        debounce_time = max(0.0, debounce_time)  # Ensure non-negative
+        for button in self._debounce_times:
+            self._debounce_times[button] = debounce_time
+            
+    def get_debounce_time(self, button: str) -> float:
+        """
+        Get the current debounce time for a specific button in seconds
+        """
+        if button in self._debounce_times:
+            return self._debounce_times[button]
+        else:
+            print(f"Warning: Button '{button}' not found when getting debounce time")
+            return self._default_debounce_time
+            
+    def get_default_debounce_time(self) -> float:
+        """
+        Get the default debounce time in seconds
+        """
+        return self._default_debounce_time
+        
+    def get_all_debounce_times(self) -> Dict[str, float]:
+        """
+        Get all button debounce times
+        """
+        return self._debounce_times.copy()
 
     def _process_stick(self, x: float, y: float, stick_id: str) -> Dict[str, float]:
         # Normalize inputs to -1.0 to 1.0 range

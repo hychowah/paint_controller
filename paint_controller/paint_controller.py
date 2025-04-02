@@ -31,6 +31,8 @@ from WarningHandler import WarningHandler
 from BaseVideoStreamHandler import BaseVideoStreamHandler
 from UIWheelController import WheelController
 from UIWinchController import WinchController
+from UIWindMonitor import WindMonitor
+from UITeensyController import TeensyController
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -100,85 +102,70 @@ class VideoStream:
 ### Teensy Monitor
 #############################################
 
-class WindMonitor:
-    def __init__(self, node: Node):
-        self._node = node
-        self._speed = 0
-        self._direction = 0
 
-    def _speed_callback(self, msg: Float32):
-        self._speed = msg.data
 
-    def _direction_callback(self, msg: Float32):
-        self._direction = msg.data
+# class TeensyMonitor:
+#     def __init__(self, node: Node):
+#         self._node = node
+#         self._status = {}
+#         self._last_status_update_time = 0
+#         self._connection_timeout = 1.0
 
-    def get_speed(self) -> float:
-        return self._speed
-    
-    def get_direction(self) -> float:
-        return self._direction
-
-class TeensyMonitor:
-    def __init__(self, node: Node):
-        self._node = node
-        self._status = {}
-        self._last_status_update_time = 0
-        self._connection_timeout = 1.0
-
-    def _status_callback(self, msg: TeensyStatus):
-        try:
-            # Convert milliseconds to hours, minutes, seconds
-            total_seconds = int(msg.runtime / 1000)  # Convert ms to seconds
-            hours = total_seconds // 3600
-            minutes = (total_seconds % 3600) // 60
-            seconds = total_seconds % 60
+#     def _status_callback(self, msg: TeensyStatus):
+#         try:
+#             # Convert milliseconds to hours, minutes, seconds
+#             total_seconds = int(msg.runtime / 1000)  # Convert ms to seconds
+#             hours = total_seconds // 3600
+#             minutes = (total_seconds % 3600) // 60
+#             seconds = total_seconds % 60
             
-            formatted_runtime = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+#             formatted_runtime = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
-            self._status = {
-                'available': True,
-                'top_rail_position': f"{msg.top_rail_position:.2f}",
-                'top_rail_speed': f"{msg.top_rail_speed:.2f}",
-                'top_rail_current': f"{msg.top_rail_current:.2f}",
-                'arm_rail_position': f"{msg.arm_rail_position:.2f}",
-                'arm_rail_speed': f"{msg.arm_rail_speed:.2f}",
-                'arm_rail_current': f"{msg.arm_rail_current:.2f}",
-                'voltage': f"{msg.voltage:.2f}",
-                'temperature': f"{msg.temperature:.1f}",
-                'current': f"{msg.current:.2f}",
-                'run_time': formatted_runtime,
-                'loop_time': f"{msg.looptime:.2f}",
-                'loop_time_counter': f"{msg.looptime_counter:.2f}",
-                'left_prop_position': f"{msg.left_prop_position:.2f}",
-                'left_prop_pwm': f"{msg.left_prop_pwm:.2f}",
-                'right_prop_position': f"{msg.right_prop_position:.2f}",
-                'right_prop_pwm': f"{msg.right_prop_pwm:.2f}",
-                'imu_acc_x': f"{msg.linear_acceleration.x:.2f}",
-                'imu_acc_y': f"{msg.linear_acceleration.y:.2f}",
-                'imu_acc_z': f"{msg.linear_acceleration.z:.2f}",
-                'imu_angular_acc_x': f"{msg.angular_velocity.x:.2f}",
-                'imu_angular_acc_y': f"{msg.angular_velocity.y:.2f}",
-                'imu_angular_acc_z': f"{msg.angular_velocity.z:.2f}",
-                'imu_pitch': msg.orientation.x,
-                'imu_roll': msg.orientation.y,
-                'imu_yaw': msg.orientation.z,
-                'yaw_enabled': msg.yaw_enabled,
-                'yaw_command': f"{msg.yaw_command:.2f}",
-                'yaw_pid_p': f"{msg.yaw_pid_p:.2f}",
-                'yaw_pid_i': f"{msg.yaw_pid_i:.2f}",
-                'yaw_pid_d': f"{msg.yaw_pid_d:.2f}",
-                'yaw_pwm': f"{msg.yaw_pwm:.2f}"
-            }
+#             self._status = {
+#                 'available': True,
+#                 'top_rail_position': f"{msg.top_rail_position:.2f}",
+#                 'top_rail_speed': f"{msg.top_rail_speed:.2f}",
+#                 'top_rail_current': f"{msg.top_rail_current:.2f}",
+#                 'arm_rail_position': f"{msg.arm_rail_position:.2f}",
+#                 'arm_rail_speed': f"{msg.arm_rail_speed:.2f}",
+#                 'arm_rail_current': f"{msg.arm_rail_current:.2f}",
+#                 'voltage': f"{msg.voltage:.2f}",
+#                 'temperature': f"{msg.temperature:.1f}",
+#                 'current': f"{msg.current:.2f}",
+#                 'run_time': formatted_runtime,
+#                 'loop_time': f"{msg.looptime:.2f}",
+#                 'loop_time_counter': f"{msg.looptime_counter:.2f}",
+#                 'left_prop_position': f"{msg.left_prop_position:.2f}",
+#                 'left_prop_pwm': f"{msg.left_prop_pwm:.2f}",
+#                 'right_prop_position': f"{msg.right_prop_position:.2f}",
+#                 'right_prop_pwm': f"{msg.right_prop_pwm:.2f}",
+#                 'imu_acc_x': f"{msg.linear_acceleration.x:.2f}",
+#                 'imu_acc_y': f"{msg.linear_acceleration.y:.2f}",
+#                 'imu_acc_z': f"{msg.linear_acceleration.z:.2f}",
+#                 'imu_angular_acc_x': f"{msg.angular_velocity.x:.2f}",
+#                 'imu_angular_acc_y': f"{msg.angular_velocity.y:.2f}",
+#                 'imu_angular_acc_z': f"{msg.angular_velocity.z:.2f}",
+#                 'imu_pitch': msg.orientation.x,
+#                 'imu_roll': msg.orientation.y,
+#                 'imu_yaw': msg.orientation.z,
+#                 'yaw_enabled': msg.yaw_enabled,
+#                 'yaw_command': f"{msg.yaw_command:.2f}",
+#                 'yaw_pid_p': f"{msg.yaw_pid_p:.2f}",
+#                 'yaw_pid_i': f"{msg.yaw_pid_i:.2f}",
+#                 'yaw_pid_d': f"{msg.yaw_pid_d:.2f}",
+#                 'yaw_pwm': f"{msg.yaw_pwm:.2f}"
+#             }
 
-            self._last_status_update_time = time.time()
-        except Exception as e:
-            print(f"Error processing Teensy status: {e}")
+#             self._last_status_update_time = time.time()
+#         except Exception as e:
+#             print(f"Error processing Teensy status: {e}")
 
-    def get_status(self) -> Dict:
-        if time.time() - self._last_status_update_time > self._connection_timeout:
-            self._status['available'] = False
-        return self._status
+#     def get_status(self) -> Dict:
+#         if time.time() - self._last_status_update_time > self._connection_timeout:
+#             self._status['available'] = False
+#         return self._status
     
+
 class NetworkMonitor:
     def __init__(self):
         self.ef_ip = ""
@@ -209,9 +196,6 @@ class NetworkMonitor:
     
     def get_base_signal_strength(self) -> int:
         return self.base_signal_strength
-
-
-    
 
 
 #############################################
@@ -286,13 +270,13 @@ class RobotController(Node, QObject):
         self.wheel_controller = WheelController(self)
         self.netowrk_monitor = NetworkMonitor()   
         self.overlayController = OverlayController()
-        self.teensyMonitor = TeensyMonitor(self)
-        self.windMonitor = WindMonitor(self)    
+        self.teensy_controller = TeensyController(self)
+        self.wind_monitor = WindMonitor(self)    
         self.controlProcessor = ControlProcessor(self)
         self.target_yaw = 0
 
-        self.steam_deck = SteamDeckHandler(deadzone=config.joystick_deadzone)
-        self.steam_deck.attach_to_node(self)
+        self.steam_deck_handler = SteamDeckHandler(deadzone=config.joystick_deadzone, update_rate=60)
+        self.steam_deck_handler.attach_to_node(self)
 
         self.ui_data_model = UIDataModel()
         self.status_updated.connect(self._timer_callback)
@@ -335,46 +319,7 @@ class RobotController(Node, QObject):
         """Update UI elements with latest data"""
 
         # Update Steam Deck Controls
-        input_state = self.steam_deck.get_current_state()
-
-        # Update teensy status
-        teensy_status = self.teensyMonitor.get_status()
-        self.ui_data_model.top_rail_position = teensy_status.get('top_rail_position', '0.00')
-        self.ui_data_model.top_rail_speed = teensy_status.get('top_rail_speed', '0.00')
-        self.ui_data_model.top_rail_current = teensy_status.get('top_rail_current', '0.00')
-        self.ui_data_model.arm_rail_position = teensy_status.get('arm_rail_position', '0.00')
-        self.ui_data_model.arm_rail_speed = teensy_status.get('arm_rail_speed', '0.00')
-        self.ui_data_model.arm_rail_current = teensy_status.get('arm_rail_current', '0.00')
-        self.ui_data_model.teensy_available = teensy_status.get('available', False)
-        self.ui_data_model.teensy_voltage = teensy_status.get('voltage', '0.00')
-        self.ui_data_model.teensy_temperature = teensy_status.get('temperature', '0.00')
-        self.ui_data_model.teensy_current = teensy_status.get('current', '0.00')
-        self.ui_data_model.teensy_run_time = teensy_status.get('run_time', '0.00')
-        self.ui_data_model.teensy_loop_time = teensy_status.get('loop_time', '0.00')
-        self.ui_data_model.teensy_loop_time_counter = teensy_status.get('loop_time_counter', '0.00')
-        self.ui_data_model.left_prop_position = teensy_status.get('left_prop_position', '0.00')
-        self.ui_data_model.left_prop_pwm = teensy_status.get('left_prop_pwm', '0.00')
-        self.ui_data_model.right_prop_position = teensy_status.get('right_prop_position', '0.00')
-        self.ui_data_model.right_prop_pwm = teensy_status.get('right_prop_pwm', '0.00')
-        self.ui_data_model.teensy_imu_acc_x = teensy_status.get('imu_acc_x', '0.00')
-        self.ui_data_model.teensy_imu_acc_y = teensy_status.get('imu_acc_y', '0.00')
-        self.ui_data_model.teensy_imu_acc_z = teensy_status.get('imu_acc_z', '0.00')
-        self.ui_data_model.teensy_imu_angular_acc_x = teensy_status.get('imu_angular_acc_x', '0.00')
-        self.ui_data_model.teensy_imu_angular_acc_y = teensy_status.get('imu_angular_acc_y', '0.00')
-        self.ui_data_model.teensy_imu_angular_acc_z = teensy_status.get('imu_angular_acc_z', '0.00')
-        self.ui_data_model.teensy_imu_pitch = round(float(teensy_status.get('imu_pitch', '0.00')), 2)
-        self.ui_data_model.teensy_imu_roll = round(float(teensy_status.get('imu_roll', '0.00')), 2)
-        self.ui_data_model.teensy_imu_yaw = round(float(teensy_status.get('imu_yaw', '0.00')), 2)
-        self.ui_data_model.teensy_yaw_enabled = teensy_status.get('yaw_enabled', False)
-        self.ui_data_model.teensy_yaw_command = teensy_status.get('yaw_command', '0.00')
-        self.ui_data_model.teensy_yaw_pid_p = teensy_status.get('yaw_pid_p', '0.00')
-        self.ui_data_model.teensy_yaw_pid_i = teensy_status.get('yaw_pid_i', '0.00')
-        self.ui_data_model.teensy_yaw_pid_d = teensy_status.get('yaw_pid_d', '0.00')
-        self.ui_data_model.teensy_yaw_pwm = teensy_status.get('yaw_pwm', '0.00')
-        
-        # Update Wind Monitor
-        self.ui_data_model.wind_speed = round(float(self.windMonitor.get_speed()), 2)
-        self.ui_data_model.wind_direction = round(float(self.windMonitor.get_direction()), 2)
+        input_state = self.steam_deck_handler.get_current_state()
 
         # Update Network Monitor
         self.ui_data_model.ef_ip = self.netowrk_monitor.get_ef_ip()
@@ -384,22 +329,22 @@ class RobotController(Node, QObject):
 
         self.ui_data_model.display_message = self.ui_data_model.display_message
 
-        if self.steam_deck.get_button_pressed('up') and self.overlayController.is_showing_menu():
+        if self.steam_deck_handler.get_button_pressed('up') and self.overlayController.is_showing_menu():
             self.overlayController.move_up()
-        elif self.steam_deck.get_button_pressed('down') and self.overlayController.is_showing_menu():
+        elif self.steam_deck_handler.get_button_pressed('down') and self.overlayController.is_showing_menu():
             self.overlayController.move_down()
-        elif self.steam_deck.get_button_pressed('left') and self.overlayController.is_showing_menu():
+        elif self.steam_deck_handler.get_button_pressed('left') and self.overlayController.is_showing_menu():
             self.overlayController.move_to_first()
-        elif self.steam_deck.get_button_pressed('right') and self.overlayController.is_showing_menu():
+        elif self.steam_deck_handler.get_button_pressed('right') and self.overlayController.is_showing_menu():
             self.overlayController.move_to_last()
 
-        if self.steam_deck.get_button_pressed('r4'):
+        if self.steam_deck_handler.get_button_pressed('r4'):
             self.overlayController.set_active_menu("right")
             self.overlayController.toggle_right_menu()
-        elif self.steam_deck.get_button_pressed('l4'):
+        elif self.steam_deck_handler.get_button_pressed('l4'):
             self.overlayController.set_active_menu("left")
             self.overlayController.toggle_left_menu()
-        elif self.steam_deck.get_button_pressed('menu'):
+        elif self.steam_deck_handler.get_button_pressed('menu'):
             self.overlayController.set_active_menu("power")
             self.overlayController.toggle_power_menu()
 
@@ -410,33 +355,7 @@ class RobotController(Node, QObject):
         self.ui_data_model.display_message = message
         
     def _setup_subscribers(self):
-        self.create_subscription(
-            LaserScan,
-            'scan',
-            self._on_lidar_scan,
-            1
-        )
-
-        self.create_subscription(
-            TeensyStatus,
-            'teensy/status',
-            self.teensyMonitor._status_callback,
-            10
-        )
         
-        self.create_subscription(
-            Float32,
-            'wind/speed',
-            self.windMonitor._speed_callback,
-            1
-        )
-
-        self.create_subscription(
-            Float32,
-            'wind/direction',
-            self.windMonitor._direction_callback,
-            1
-        )
 
         self.create_subscription(
             String,
@@ -478,15 +397,6 @@ class RobotController(Node, QObject):
         self.ef_spray_trigger_pub = self.create_publisher(Int32, 'teensy/spray_gun/trigger/cmd', 1)
         self.ef_spray_gimbal_speed_pub = self.create_publisher(Int32, 'teensy/spray_gun/gimbal/speed/cmd', 1)
         self.ef_yaw_control_pub = self.create_publisher(TeensyYaw, 'teensy/yaw/control/cmd', 1)
-
-    def _on_lidar_scan(self, msg: LaserScan):
-        self.new_scan_data.emit(
-            list(msg.ranges),
-            msg.angle_min,
-            msg.angle_increment,
-            msg.range_min,
-            msg.range_max
-        )
 
     #############################################
     ### UI Control Methods
@@ -617,7 +527,9 @@ def main():
     engine.rootContext().setContextProperty("baseStreamHandler", controller.base_video_stream_handler)
     engine.rootContext().setContextProperty("wheelController", controller.wheel_controller)
     engine.rootContext().setContextProperty("winchController", controller.winch_controller)
-    engine.rootContext().setContextProperty("steamDeckHandler", controller.steam_deck)
+    engine.rootContext().setContextProperty("steamDeckHandler", controller.steam_deck_handler)
+    engine.rootContext().setContextProperty("windMonitor", controller.wind_monitor)
+    engine.rootContext().setContextProperty("teensyController", controller.teensy_controller)
     
     # Start status update timer
     status_timer = QTimer()

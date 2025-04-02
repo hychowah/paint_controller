@@ -1127,7 +1127,7 @@ Item {
                                                 model: 10
                                                 
                                                 Rectangle {
-                                                    width: 1S
+                                                    width: 1
                                                     height: parent.height
                                                     x: (index + 1) * (parent.width / 10)
                                                     color: "#9E9E9E"

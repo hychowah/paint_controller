@@ -112,16 +112,6 @@ Rectangle {
                         color: winchController.unusual_load_detected ? "green" : "red"
                     }
 
-                    MoveLengthButton {
-                        id: moveWinchButton
-                        Layout.fillWidth: true
-                        Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
-                        applicationRoot: page3Rect
-                        onArrowAboveClicked: console.log("Arrow above clicked")
-                        onArrowBelowClicked: console.log("Arrow below clicked")
-                        onInputValueChanged: console.log("Input value changed to:", inputValue)
-                        onSliderValueChanged: backend.set_winch_spd_limit(sliderValue)
-                    }
                 }
             }
         }
@@ -136,7 +126,7 @@ Rectangle {
             ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: 15
-                spacing: 15
+                spacing: 10 // Reduced spacing for more content
 
                 RowLayout {
                     spacing: 10
@@ -145,7 +135,7 @@ Rectangle {
                         font.pixelSize: 24
                         font.bold: true
                     }
-                    // rectange for spacing
+                    // rectangle for spacing
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -171,131 +161,363 @@ Rectangle {
                     }
                 }
 
-                ScrollView {
+                // TabBar to organize content in categories
+                TabBar {
+                    id: teensynStatusTabs
+                    Layout.fillWidth: true
+                    
+                    TabButton {
+                        text: "Main"
+                        width: implicitWidth
+                    }
+                    TabButton {
+                        text: "Rails"
+                        width: implicitWidth
+                    }
+                    TabButton {
+                        text: "Propellers"
+                        width: implicitWidth
+                    }
+                    TabButton {
+                        text: "IMU"
+                        width: implicitWidth
+                    }
+                }
+
+                // StackLayout to show different pages based on selected tab
+                StackLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    clip: true
+                    currentIndex: teensynStatusTabs.currentIndex
 
-                    ColumnLayout {
-                        spacing: 20
+                    // Main Tab - Board Status and Warnings
+                    ScrollView {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        clip: true
 
-                        // Board Status Section
-                        GroupBox {
-                            title: "Board Status"
-                            Layout.fillWidth: true
-
-                            GridLayout {
-                                columns: 4
-                                rowSpacing: 10
-                                columnSpacing: 20
-                                anchors.fill: parent  
-
-                                Label { text: "Voltage:"; font.bold: true }
-                                Label { text: uiData.teensy_voltage + " V" }
-                                Label { text: "Current:"; font.bold: true }
-                                Label { text: uiData.teensy_current + " A" }
-
-                                Label { text: "Temperature:"; font.bold: true }
-                                Label { text: uiData.teensy_temperature + " °C" }
-                                Label { text: "Runtime:"; font.bold: true }
-                                Label { text: uiData.teensy_run_time  }
-
-                                Label { text: "Loop Time:"; font.bold: true }
-                                Label { text: uiData.teensy_loop_time + " µs" }
-                                Label { text: "Loop Counter:"; font.bold: true }
-                                Label { text: uiData.teensy_loop_time_counter }
-                            }
-                        }
-
-                        // Rail Status Section
-                        GroupBox {
-                            title: "Rail Status"
-                            Layout.fillWidth: true
-
-                            GridLayout {
-                                columns: 6
-                                rowSpacing: 10
-                                columnSpacing: 20
+                        ColumnLayout {
+                            width: parent.width
+                            spacing: 10
+                            
+                            // Board Status Section
+                            GroupBox {
+                                title: "Board Status"
                                 Layout.fillWidth: true
 
-                                Label { text: "Top Rail"; font.bold: true; Layout.columnSpan: 6 }
-                                Label { text: "Position:" }
-                                Label { text: uiData.top_rail_position+ " m" }
-                                Label { text: "Speed:" }
-                                Label { text: uiData.top_rail_speed + " m/s" }
-                                Label { text: "Current:" }
-                                Label { text: uiData.top_rail_current + " A" }
+                                GridLayout {
+                                    columns: 4
+                                    rowSpacing: 8
+                                    columnSpacing: 15
+                                    anchors.fill: parent  
 
-                                Label { text: "Arm Rail"; font.bold: true; Layout.columnSpan: 6 }
-                                Label { text: "Position:" }
-                                Label { text: uiData.arm_rail_position + " m" }
-                                Label { text: "Speed:" }
-                                Label { text: uiData.arm_rail_speed + " m/s" }
-                                Label { text: "Current:" }
-                                Label { text: uiData.arm_rail_current + " A" }
+                                    Label { text: "Voltage:"; font.bold: true }
+                                    Label { text: teensyController.all_status.voltage.toFixed(1) + " V" }
+                                    Label { text: "Current:"; font.bold: true }
+                                    Label { text: teensyController.all_status.current.toFixed(1) + " A" }
+
+                                    Label { text: "Temperature:"; font.bold: true }
+                                    Label { text: teensyController.all_status.temperature.toFixed(1) + " °C" }
+                                    Label { text: "Runtime:"; font.bold: true }
+                                    Label { text: teensyController.all_status.voltage.toFixed(1)  }
+
+                                    Label { text: "Loop Time:"; font.bold: true }
+                                    Label { text: teensyController.all_status.loop_time.toFixed(0) + " µs" }
+                                    Label { text: "Loop Counter:"; font.bold: true }
+                                    Label { text: teensyController.all_status.loop_time_counter.toFixed(0) }
+                                    
+                                    // New fields can be added here
+                                    Label { text: "Battery:"; font.bold: true }
+                                    Label { text: "87%" }
+                                    Label { text: "Status:"; font.bold: true }
+                                    Label { text: "Operating" }
+                                }
+                            }
+                            
+                            // System Alerts/Warnings section (new)
+                            GroupBox {
+                                title: "System Alerts"
+                                Layout.fillWidth: true
+                                
+                                ListView {
+                                    implicitHeight: 80
+                                    Layout.fillWidth: true
+                                    model: ListModel {
+                                        ListElement { message: "Temperature Warning"; severity: "warning" }
+                                        ListElement { message: "Voltage Level Low"; severity: "warning" }
+                                    }
+                                    delegate: Rectangle {
+                                        width: parent.width
+                                        height: 24
+                                        color: index % 2 ? "#F0F0F0" : "transparent"
+                                        
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 5
+                                            spacing: 10
+                                            
+                                            Rectangle {
+                                                width: 12
+                                                height: 12
+                                                radius: 6
+                                                color: model.severity === "error" ? "red" : 
+                                                    model.severity === "warning" ? "orange" : "green"
+                                            }
+                                            
+                                            Label { text: model.message }
+                                        }
+                                    }
+                                }
                             }
                         }
+                    }
+                    
+                    // Rails Tab
+                    ScrollView {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        clip: true
 
-                        // Propeller Status Section
-                        GroupBox {
-                            title: "Propeller Status"
-                            Layout.fillWidth: true
-
-                            GridLayout {
-                                columns: 4
-                                rowSpacing: 10
-                                columnSpacing: 20
+                        ColumnLayout {
+                            width: parent.width
+                            spacing: 10
+                            
+                            // Top Rail Status - More detailed
+                            GroupBox {
+                                title: "Top Rail"
                                 Layout.fillWidth: true
 
-                                Label { text: "Left Propeller"; font.bold: true; Layout.columnSpan: 2 }
-                                Label { text: "Right Propeller"; font.bold: true; Layout.columnSpan: 2 }
+                                GridLayout {
+                                    columns: 4
+                                    rowSpacing: 8
+                                    columnSpacing: 15
+                                    Layout.fillWidth: true
 
-                                Label { text: "Position:" }
-                                Label { text: uiData.left_prop_position + "°" }
-                                Label { text: "Position:" }
-                                Label { text: uiData.right_prop_position + "°" }
+                                    Label { text: "Position:" }
+                                    Label { text: teensyController.all_status.top_rail_position.toFixed(0) + " cnt" }
+                                    Label { text: "Speed:" }
+                                    Label { text: teensyController.all_status.top_rail_speed.toFixed(0) + " m/s" }
 
-                                Label { text: "PWM:" }
-                                Label { text: uiData.left_prop_pwm }
-                                Label { text: "PWM:" }
-                                Label { text: uiData.right_prop_pwm }
+                                    Label { text: "Current:" }
+                                    Label { text: teensyController.all_status.top_rail_current.toFixed(0) + " A" }
+                                    Label { text: "Target:" }
+                                    Label { text: "18000 cnt" }
+                                    
+                                    Label { text: "Limit Switch:" }
+                                    Label { text: "Not Triggered" }
+                                    Label { text: "Home:" }
+                                    Label { text: "Yes" }
+                                    
+                                    Label { text: "Error:" }
+                                    Label { text: "± 5 cnt" }
+                                    Label { text: "Status:" }
+                                    Label { text: "Moving" }
+                                }
+                            }
+
+                            // Arm Rail Status - More detailed
+                            GroupBox {
+                                title: "Arm Rail"
+                                Layout.fillWidth: true
+
+                                GridLayout {
+                                    columns: 4
+                                    rowSpacing: 8
+                                    columnSpacing: 15
+                                    Layout.fillWidth: true
+
+                                    Label { text: "Position:" }
+                                    Label { text: teensyController.all_status.arm_rail_position.toFixed(0) + " m" }
+                                    Label { text: "Speed:" }
+                                    Label { text: teensyController.all_status.arm_rail_speed.toFixed(0) + " m/s" }
+
+                                    Label { text: "Current:" }
+                                    Label { text: teensyController.all_status.arm_rail_current.toFixed(0) + " A" }
+                                    Label { text: "Target:" }
+                                    Label { text: "8000 m" }
+                                    
+                                    Label { text: "Limit Switch:" }
+                                    Label { text: "Not Triggered" }
+                                    Label { text: "Home:" }
+                                    Label { text: "No" }
+                                    
+                                    Label { text: "Error:" }
+                                    Label { text: "± 0.5 m" }
+                                    Label { text: "Status:" }
+                                    Label { text: "Idle" }
+                                }
                             }
                         }
+                    }
+                    
+                    // Propellers Tab
+                    ScrollView {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        clip: true
 
-                        // IMU Status Section
-                        GroupBox {
-                            title: "IMU Status"
-                            Layout.fillWidth: true
-
-                            GridLayout {
-                                columns: 6
-                                rowSpacing: 10
-                                columnSpacing: 20
+                        ColumnLayout {
+                            width: parent.width
+                            spacing: 10
+                            
+                            // Enhanced Propeller Status
+                            GroupBox {
+                                title: "Propeller Status"
                                 Layout.fillWidth: true
 
-                                Label { text: "Linear Acceleration"; font.bold: true; Layout.columnSpan: 6 }
-                                Label { text: "X:" }
-                                Label { text: uiData.teensy_imu_acc_x+ " m/s²" }
-                                Label { text: "Y:" }
-                                Label { text: uiData.teensy_imu_acc_y + " m/s²" }
-                                Label { text: "Z:" }
-                                Label { text: uiData.teensy_imu_acc_z + " m/s²" }
+                                GridLayout {
+                                    columns: 4
+                                    rowSpacing: 8
+                                    columnSpacing: 15
+                                    Layout.fillWidth: true
 
-                                Label { text: "Angular Velocity"; font.bold: true; Layout.columnSpan: 6 }
-                                Label { text: "X:" }
-                                Label { text: uiData.teensy_imu_angular_acc_x + " rad/s" }
-                                Label { text: "Y:" }
-                                Label { text: uiData.teensy_imu_angular_acc_y + " rad/s" }
-                                Label { text: "Z:" }
-                                Label { text: uiData.teensy_imu_angular_acc_z + " rad/s" }
+                                    Label { text: "Left Propeller"; font.bold: true; Layout.columnSpan: 2 }
+                                    Label { text: "Right Propeller"; font.bold: true; Layout.columnSpan: 2 }
 
-                                Label { text: "Orientation"; font.bold: true; Layout.columnSpan: 6 }
-                                Label { text: "Pitch:" }
-                                Label { text: uiData.teensy_imu_pitch }
-                                Label { text: "Roll:" }
-                                Label { text: uiData.teensy_imu_roll }
-                                Label { text: "Yaw:" }
-                                Label { text: uiData.teensy_imu_yaw }
+                                    Label { text: "Position:" }
+                                    Label { text: teensyController.all_status.left_prop_position.toFixed(0) + "°" }
+                                    Label { text: "Position:" }
+                                    Label { text: teensyController.all_status.right_prop_position.toFixed(0) + "°" }
+
+                                    Label { text: "PWM:" }
+                                    Label { text: teensyController.all_status.left_prop_pwm.toFixed(0) }
+                                    Label { text: "PWM:" }
+                                    Label { text: teensyController.all_status.right_prop_pwm.toFixed(0) }
+                                    
+                                    Label { text: "Current:" }
+                                    Label { text: "2.4 A" }
+                                    Label { text: "Current:" }
+                                    Label { text: "2.6 A" }
+                                    
+                                    Label { text: "Target:" }
+                                    Label { text: "-300°" }
+                                    Label { text: "Target:" }
+                                    Label { text: "-450°" }
+                                    
+                                    Label { text: "Status:" }
+                                    Label { text: "Running" }
+                                    Label { text: "Status:" }
+                                    Label { text: "Running" }
+                                    
+                                    Label { text: "Temp:" }
+                                    Label { text: "34°C" }
+                                    Label { text: "Temp:" }
+                                    Label { text: "36°C" }
+                                }
+                            }
+                            
+                            // Propeller Performance
+                            GroupBox {
+                                title: "Propeller Performance"
+                                Layout.fillWidth: true
+                                
+                                GridLayout {
+                                    columns: 4
+                                    rowSpacing: 8
+                                    columnSpacing: 15
+                                    Layout.fillWidth: true
+                                    
+                                    Label { text: "Left Efficiency:" }
+                                    Label { text: "86%" }
+                                    Label { text: "Right Efficiency:" }
+                                    Label { text: "83%" }
+                                    
+                                    Label { text: "Left RPM:" }
+                                    Label { text: "1200" }
+                                    Label { text: "Right RPM:" }
+                                    Label { text: "1180" }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // IMU Tab
+                    ScrollView {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        clip: true
+
+                        ColumnLayout {
+                            width: parent.width
+                            spacing: 10
+                            
+                            // Enhanced IMU Status
+                            GroupBox {
+                                title: "Linear Acceleration"
+                                Layout.fillWidth: true
+
+                                GridLayout {
+                                    columns: 6
+                                    rowSpacing: 8
+                                    columnSpacing: 15
+                                    Layout.fillWidth: true
+
+                                    Label { text: "X:" }
+                                    Label { text: teensyController.all_status.imu_acc_x + " m/s²" }
+                                    Label { text: "Y:" }
+                                    Label { text: teensyController.all_status.imu_acc_y + " m/s²" }
+                                    Label { text: "Z:" }
+                                    Label { text: teensyController.all_status.imu_acc_z + " m/s²" }
+                                    
+                                    Label { text: "Max X:" }
+                                    Label { text: "±12 m/s²" }
+                                    Label { text: "Max Y:" }
+                                    Label { text: "±12 m/s²" }
+                                    Label { text: "Max Z:" }
+                                    Label { text: "±12 m/s²" }
+                                }
+                            }
+
+                            GroupBox {
+                                title: "Angular Velocity"
+                                Layout.fillWidth: true
+
+                                GridLayout {
+                                    columns: 6
+                                    rowSpacing: 8
+                                    columnSpacing: 15
+                                    Layout.fillWidth: true
+
+                                    Label { text: "X:" }
+                                    Label { text: teensyController.all_status.imu_angular_acc_x + " rad/s" }
+                                    Label { text: "Y:" }
+                                    Label { text: teensyController.all_status.imu_angular_acc_y + " rad/s" }
+                                    Label { text: "Z:" }
+                                    Label { text: teensyController.all_status.imu_angular_acc_z + " rad/s" }
+                                    
+                                    Label { text: "Rate X:" }
+                                    Label { text: "Low" }
+                                    Label { text: "Rate Y:" }
+                                    Label { text: "Low" }
+                                    Label { text: "Rate Z:" }
+                                    Label { text: "Medium" }
+                                }
+                            }
+
+                            GroupBox {
+                                title: "Orientation"
+                                Layout.fillWidth: true
+
+                                GridLayout {
+                                    columns: 6
+                                    rowSpacing: 8
+                                    columnSpacing: 15
+                                    Layout.fillWidth: true
+
+                                    Label { text: "Pitch:" }
+                                    Label { text: teensyController.all_status.imu_pitch }
+                                    Label { text: "Roll:" }
+                                    Label { text: teensyController.all_status.imu_roll }
+                                    Label { text: "Yaw:" }
+                                    Label { text: teensyController.all_status.imu_yaw }
+                                    
+                                    Label { text: "Stability:" }
+                                    Label { text: "Good" }
+                                    Label { text: "Calibration:" }
+                                    Label { text: "Active" }
+                                    Label { text: "Sensor:" }
+                                    Label { text: "BNO055" }
+                                }
                             }
                         }
                     }
