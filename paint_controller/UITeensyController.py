@@ -103,12 +103,16 @@ class TeensyController(QObject):
                 'arm_rail_position': msg.arm_rail_position,
                 'arm_rail_speed': msg.arm_rail_speed,
                 'arm_rail_current': msg.arm_rail_current,
+                'arm_extension_dist': msg.arm_extension_dist,
+                'arm_sensor_dist': msg.arm_sensor_dist,
                 'voltage': msg.voltage,
                 'temperature': msg.temperature,
                 'current': msg.current,
                 'run_time': msg.runtime,  # Keep formatted runtime as string
                 'loop_time': msg.looptime,
                 'loop_time_counter': msg.looptime_counter,
+                'relay_on': bool(msg.relay_on),
+                'enabled': msg.enabled,
                 'left_prop_position': msg.left_prop_position,
                 'left_prop_pwm': msg.left_prop_pwm,
                 'right_prop_position': msg.right_prop_position,
@@ -122,6 +126,11 @@ class TeensyController(QObject):
                 'imu_pitch': msg.orientation.x,
                 'imu_roll': msg.orientation.y,
                 'imu_yaw': msg.orientation.z,
+                'spray_gun_pitch': msg.spray_gun_pitch,
+                'spray_gun_motor_angle': msg.spray_gun_motor_angle,
+                'spray_gun_motor_current': msg.spray_gun_motor_current,
+                'spray_gun_motor_temp': msg.spray_gun_motor_temp,
+                'spray_gun_trigger': msg.spray_gun_trigger,
                 'yaw_enabled': msg.yaw_enabled,
                 'yaw_command': msg.yaw_command,
                 'yaw_pid_p': msg.yaw_pid_p,
@@ -129,8 +138,6 @@ class TeensyController(QObject):
                 'yaw_pid_d': msg.yaw_pid_d,
                 'yaw_pwm': msg.yaw_pwm,
                 # Add member state variables for QML access
-                'enabled': self._enabled,
-                'relay_enabled': self._relay_enabled,
                 'target_yaw': self._target_yaw
             }
 
@@ -142,6 +149,7 @@ class TeensyController(QObject):
             if time_since_last_update > self._last_ui_update_interval:
                 self._last_ui_update_time = current_time
                 self.status_changed.emit(self._status)
+                print(f"Teensy status updated: {self._status['relay_on']}")
             
         except Exception as e:
             print(f"Error in Teensy status callback: {e}")
@@ -177,7 +185,7 @@ class TeensyController(QObject):
     #############################################
     
     @Slot(bool)
-    def setTeensyEnabled(self, enabled: bool):
+    def setEnabled(self, enabled: bool):
         """Enable/disable Teensy control"""
         self._enabled = enabled
         self._status['enabled'] = enabled
@@ -191,7 +199,7 @@ class TeensyController(QObject):
         self.status_changed.emit(self._status)
     
     @Slot(bool)
-    def setTeensyRelayEnabled(self, enabled: bool):
+    def setRelayEnabled(self, enabled: bool):
         """Enable/disable Teensy relay"""
         self._relay_enabled = enabled
         self._status['relay_enabled'] = enabled

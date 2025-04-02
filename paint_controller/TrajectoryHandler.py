@@ -50,10 +50,7 @@ class TrajectoryHandler(QObject):
     @Property(list, notify=trajectoryChanged)
     def trajectory(self):
         return self._trajectory
-    
-    #@Property(int, notify=actionChanged)
-    #def currentActionInx(self):
-    #    return self._currentActionInx
+
     
     @Slot(int)
     def deleteTrajectory(self, index):

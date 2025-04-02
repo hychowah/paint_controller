@@ -284,7 +284,7 @@ class RobotController(Node, QObject):
         
         # Setup ROS subscribers and publishers
         self._setup_subscribers()
-        self._setup_publishers()
+        # self._setup_publishers()
 
         self.trajectoryHandler = TrajectoryHandler()
 
@@ -386,17 +386,18 @@ class RobotController(Node, QObject):
         )
 
     def _setup_publishers(self):
-        self.ef_move_top_rail_speed_pub = self.create_publisher(Float32, 'teensy/top_rail/speed/cmd', 1)
-        self.ef_move_arm_rail_speed_pub = self.create_publisher(Float32, 'teensy/arm_rail/speed/cmd', 1)
-        self.prop_left_pwm_pub = self.create_publisher(Int32, 'teensy/prop/left/pwm/cmd', 1)
-        self.prop_right_pwm_pub = self.create_publisher(Int32, 'teensy/prop/right/pwm/cmd', 1)
-        self.prop_left_joint_pub = self.create_publisher(Float32, 'teensy/prop/left/joint/cmd', 1)
-        self.prop_right_joint_pub = self.create_publisher(Float32, 'teensy/prop/right/joint/cmd', 1)
-        self.teensy_relay_pub = self.create_publisher(Bool, 'teensy/relay/cmd', 1)
-        self.teensy_enable_pub = self.create_publisher(Bool, 'teensy/enable/cmd', 1)
-        self.ef_spray_trigger_pub = self.create_publisher(Int32, 'teensy/spray_gun/trigger/cmd', 1)
-        self.ef_spray_gimbal_speed_pub = self.create_publisher(Int32, 'teensy/spray_gun/gimbal/speed/cmd', 1)
-        self.ef_yaw_control_pub = self.create_publisher(TeensyYaw, 'teensy/yaw/control/cmd', 1)
+        return
+        # self.ef_move_top_rail_speed_pub = self.create_publisher(Float32, 'teensy/top_rail/speed/cmd', 1)
+        # self.ef_move_arm_rail_speed_pub = self.create_publisher(Float32, 'teensy/arm_rail/speed/cmd', 1)
+        # self.prop_left_pwm_pub = self.create_publisher(Int32, 'teensy/prop/left/pwm/cmd', 1)
+        # self.prop_right_pwm_pub = self.create_publisher(Int32, 'teensy/prop/right/pwm/cmd', 1)
+        # self.prop_left_joint_pub = self.create_publisher(Float32, 'teensy/prop/left/joint/cmd', 1)
+        # self.prop_right_joint_pub = self.create_publisher(Float32, 'teensy/prop/right/joint/cmd', 1)
+        # self.teensy_relay_pub = self.create_publisher(Bool, 'teensy/relay/cmd', 1)
+        # self.teensy_enable_pub = self.create_publisher(Bool, 'teensy/enable/cmd', 1)
+        # self.ef_spray_trigger_pub = self.create_publisher(Int32, 'teensy/spray_gun/trigger/cmd', 1)
+        # self.ef_spray_gimbal_speed_pub = self.create_publisher(Int32, 'teensy/spray_gun/gimbal/speed/cmd', 1)
+        # self.ef_yaw_control_pub = self.create_publisher(TeensyYaw, 'teensy/yaw/control/cmd', 1)
 
     #############################################
     ### UI Control Methods

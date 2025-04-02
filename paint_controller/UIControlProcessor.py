@@ -118,8 +118,8 @@ class ControlProcessor:
         command_angle = input_state[f'{stick}_stick']['x'] * config.scale
         msg = Float32(data=command_angle)
         neg_msg = Float32(data=-command_angle)
-        self.robot.prop_left_joint_pub.publish(msg)
-        self.robot.prop_right_joint_pub.publish(neg_msg)
+        self.robot.teensy_controller.prop_left_pwm_pub.publish(msg)
+        self.robot.teensy_controller.prop_left_pwm_pub.publish(neg_msg)
         
         # Update current values
         if stick == 'left':
@@ -186,11 +186,11 @@ class ControlProcessor:
         if value >= config.min_value:
             # Map modes to their publishers
             publishers = {
-                "EF arm": self.robot.ef_move_arm_rail_speed_pub,
-                "EF spray trigger": self.robot.ef_spray_trigger_pub,
-                "EF top rail": self.robot.ef_move_top_rail_speed_pub,
-                "EF prop pwm": [self.robot.prop_left_pwm_pub, self.robot.prop_right_pwm_pub],
-                "EF spray gimbal": self.robot.ef_spray_gimbal_speed_pub,
+                "EF arm": self.robot.teensy_controller.ef_move_arm_rail_speed_pub,
+                "EF spray trigger": self.robot.teensy_controller.ef_spray_trigger_pub,
+                "EF top rail": self.robot.teensy_controller.ef_move_top_rail_speed_pub,
+                "EF prop pwm": [self.robot.teensy_controller.prop_left_pwm_pub, self.robot.teensy_controller.prop_right_pwm_pub],
+                "EF spray gimbal": self.robot.teensy_controller.ef_spray_gimbal_speed_pub,
                 "Left Wheel Speed": self.robot.wheel_controller._left_wheel_speed_pub,
                 "Right Wheel Speed": self.robot.wheel_controller._right_wheel_speed_pub
             }

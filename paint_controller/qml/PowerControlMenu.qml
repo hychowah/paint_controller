@@ -245,22 +245,22 @@ Item {
                     ControlPanel {
                         Layout.fillWidth: true
                         controlName: "Teensy Relay"
-                        controlStatus: uiData.teensy_relay_enabled ? "Connected" : "Disconnected"
-                        enabledState: uiData.teensy_relay_enabled
+                        controlStatus: teensyController.all_status.relay_on ? "Connected" : "Disconnected"
+                        enabledState: teensyController.all_status.relay_on
                         iconText: "TR"
                         
-                        onClicked: backend.setTeensyRelayEnabled(!uiData.teensy_relay_enabled)
+                        onClicked: teensyController.setRelayEnabled(!teensyController.all_status.relay_on)
                     }
                     
                     // Teensy Enable Control
                     ControlPanel {
                         Layout.fillWidth: true
                         controlName: "Teensy Enable"
-                        controlStatus: uiData.teensy_enabled ? "Powered" : "Unpowered"
-                        enabledState: uiData.teensy_enabled
+                        controlStatus: teensyController.all_status.enabled ? "Powered" : "Unpowered"
+                        enabledState: teensyController.all_status.enabled
                         iconText: "T"
                         
-                        onClicked: backend.setTeensyEnabled(!uiData.teensy_enabled)
+                        onClicked: teensyController.setEnabled(!teensyController.all_status.enabled)
                     }
                     
                     // Yaw Control

@@ -469,7 +469,7 @@ Rectangle {
                         width: 15
                         height: 15
                         radius: 7.5
-                        color: uiData.teensy_available ? "#00e600" : "yellow"
+                        color: teensyController.available ? "#00e600" : "yellow"
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }
