@@ -3,190 +3,317 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
 Popup {
-    id: keyboardPopup
-    width: 900
-    height: 600
+    id: keyboard
+    width: 650
+    height: 450
+    padding: 0
+    margins: 0
     modal: true
     focus: true
-    anchors.centerIn: parent
-
-    // Property to bind with external text
-    property string currentText: ""
-
-    // Signal to notify text changes
-    signal textUpdated(string newText)
-
-    property bool shiftPressed: false
-
-    background: Rectangle {
-        color: "#f0f0f0"
-        radius: 5
-        border.color: "#cccccc"
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    
+    // Position at bottom of screen
+    y: parent.height - height
+    x: 0
+    
+    // Dimming overlay for rest of the screen
+    Overlay.modal: Rectangle {
+        color: "#80000000"  // Semi-transparent black
     }
-
+    
+    // Properties
+    property string currentText: ""
+    property bool shiftActive: false
+    signal textUpdated(string text)
+    
+    // Animation for keyboard appearance
+    enter: Transition {
+        NumberAnimation { 
+            property: "y"
+            from: parent.height
+            to: parent.height - height
+            duration: 200
+            easing.type: Easing.OutQuad
+        }
+    }
+    
+    exit: Transition {
+        NumberAnimation { 
+            property: "y"
+            from: parent.height - height
+            to: parent.height
+            duration: 200
+            easing.type: Easing.InQuad
+        }
+    }
+    
+    // Background
+    background: Rectangle {
+        color: "#1a1a1a"
+    }
+    
+    // Content
     ColumnLayout {
         anchors.fill: parent
-        spacing: 10
-        anchors.margins: 15
-
-        // Text display
-        TextField {
-            id: textField
+        spacing: 8
+        
+        // Text input display
+        Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 50
-            font.pixelSize: 20
-            text: currentText
-            //readOnly: true
-            onTextChanged: textUpdated(text)
-        }
-
-        // Letter rows
-        GridLayout {
-            Layout.fillWidth: true
-            rows: 5
-            columns: 8
-            rowSpacing: 5
-            columnSpacing: 5
-
-            component CustomButton: Button {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 50
-                background: Rectangle {
-                    color: "#ffffff"
-                    radius: 3
+            Layout.margins: 10
+            Layout.preferredHeight: 60
+            color: "#2d2d2d"
+            radius: 8
+            
+            TextInput {
+                id: textDisplay
+                anchors.fill: parent
+                anchors.margins: 15
+                color: "#ffffff"
+                font.pixelSize: 18
+                font.family: "Sans"
+                text: currentText
+                clip: true
+                onTextChanged: {
+                    currentText = text
+                    textUpdated(text)
                 }
-            }
-
-            CustomButton {
-                text: "1"
-                onClicked: currentText += text
-            }
-            CustomButton {
-                text: "2"
-                onClicked: currentText += text
-            }
-            CustomButton {
-                text: "3"
-                onClicked: currentText += text
-            }
-            CustomButton {
-                text: "4"
-                onClicked: currentText += text
-            }
-            CustomButton {
-                text: "5"
-                onClicked: currentText += text
-            }
-            CustomButton {
-                text: "6"
-                onClicked: currentText += text
-            }
-            CustomButton {
-                text: "7"
-                onClicked: currentText += text
-            }
-            CustomButton {
-                text: "8"
-                onClicked: currentText += text
-            }
-            CustomButton {
-                text: "9"
-                onClicked: currentText += text
-            }
-            CustomButton {
-                text: "0"
-                onClicked: currentText += text
-            }
-
-            Repeater {
-                model: "ABCDEFGHI"
-
-                CustomButton {
-                    text: modelData
-                    onClicked: currentText += shiftPressed ? text : text.toLowerCase()
-                }
-            }
-
-            Repeater {
-                model: "JKLMNOPQR"
-
-                CustomButton {
-                    text: modelData
-                    onClicked: currentText += shiftPressed ? text : text.toLowerCase()
-                }
-            }
-
-            Repeater {
-                model: "STUVWXYZ"
-
-                CustomButton {
-                    text: modelData
-                    onClicked: currentText += shiftPressed ? text : text.toLowerCase()
+                
+                // Cursor
+                cursorVisible: true
+                cursorDelegate: Rectangle {
+                    visible: textDisplay.cursorVisible
+                    color: "#0078d7"
+                    width: 2
+                    height: parent.height * 0.7
+                    anchors.verticalCenter: parent.verticalCenter
                 }
             }
         }
-
-        // Number row and controls
-        RowLayout {
+        
+        // Main keyboard grid
+        Item {
             Layout.fillWidth: true
-            spacing: 5
-
-            // Control buttons
-            Button {
-                text: "⌫"
-                Layout.fillWidth: true
-                Layout.preferredHeight: 50
-                onClicked: currentText = currentText.slice(0, -1)
-                background: Rectangle {
-                    color: "#ff9999"
-                    radius: 3
+            Layout.fillHeight: true
+            Layout.bottomMargin: 10
+            
+            // QWERTY layout
+            Column {
+                anchors.fill: parent
+                spacing: 10
+                
+                // Row 1 - Numbers
+                Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 8
+                    height: (parent.height - parent.spacing * 4) / 5
+                    
+                    Repeater {
+                        model: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
+                        
+                        KeyButton {
+                            width: (keyboard.width - 40) / 10
+                            height: parent.height
+                            buttonText: modelData
+                            onClicked: textDisplay.text += buttonText
+                        }
+                    }
                 }
-            }
-
-            Button {
-                id: shiftButton
-                text: "⇧"
-                Layout.fillWidth: true
-                Layout.preferredHeight: 50
-                onClicked: shiftPressed = !shiftPressed
-                background: Rectangle {
-                    color: shiftPressed ? "#99ccff" : "#cccccc"
-                    radius: 3
+                
+                // Row 2 - QWERTYUIOP
+                Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 5
+                    height: (parent.height - parent.spacing * 4) / 5
+                    
+                    Repeater {
+                        model: ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"]
+                        
+                        KeyButton {
+                            width: (keyboard.width - 40) / 10
+                            height: parent.height
+                            buttonText: modelData
+                            onClicked: textDisplay.text += shiftActive ? buttonText : buttonText.toLowerCase()
+                        }
+                    }
                 }
-            }
-
-            Button {
-                text: "Clear"
-                Layout.fillWidth: true
-                Layout.preferredHeight: 50
-                onClicked: currentText = ""
-                background: Rectangle {
-                    color: "#99ff99"
-                    radius: 3
+                
+                // Row 3 - ASDFGHJKL
+                Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 5
+                    height: (parent.height - parent.spacing * 4) / 5
+                    
+                    Item { width: (keyboard.width - 40) / 20; height: 1 } // Offset
+                    
+                    Repeater {
+                        model: ["A", "S", "D", "F", "G", "H", "J", "K", "L"]
+                        
+                        KeyButton {
+                            width: (keyboard.width - 40) / 10
+                            height: parent.height
+                            buttonText: modelData
+                            onClicked: textDisplay.text += shiftActive ? buttonText : buttonText.toLowerCase()
+                        }
+                    }
+                    
+                    // Backspace
+                    KeyButton {
+                        width: (keyboard.width - 40) / 10 + (keyboard.width - 40) / 20
+                        height: parent.height
+                        buttonText: "⌫"
+                        specialKey: true
+                        onClicked: textDisplay.text = textDisplay.text.substring(0, textDisplay.text.length - 1)
+                    }
                 }
-            }
-
-            Button {
-                text: "Close"
-                Layout.fillWidth: true
-                Layout.preferredHeight: 50
-                onClicked: keyboardPopup.close()
-                background: Rectangle {
-                    color: "#cccccc"
-                    radius: 3
+                
+                // Row 4 - ZXCVBNM
+                Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 5
+                    height: (parent.height - parent.spacing * 4) / 5
+                    
+                    // Shift key
+                    KeyButton {
+                        width: (keyboard.width - 40) / 10 + (keyboard.width - 40) / 20
+                        height: parent.height
+                        buttonText: "⇧"
+                        specialKey: true
+                        toggled: shiftActive
+                        onClicked: shiftActive = !shiftActive
+                    }
+                    
+                    Repeater {
+                        model: ["Z", "X", "C", "V", "B", "N", "M"]
+                        
+                        KeyButton {
+                            width: (keyboard.width - 40) / 10
+                            height: parent.height
+                            buttonText: modelData
+                            onClicked: textDisplay.text += shiftActive ? buttonText : buttonText.toLowerCase()
+                        }
+                    }
+                    
+                    // Special characters
+                    KeyButton {
+                        width: (keyboard.width - 40) / 10
+                        height: parent.height
+                        buttonText: "."
+                        onClicked: textDisplay.text += "."
+                    }
+                    
+                    KeyButton {
+                        width: (keyboard.width - 40) / 10
+                        height: parent.height
+                        buttonText: ","
+                        onClicked: textDisplay.text += ","
+                    }
+                }
+                
+                // Row 5 - Space and controls
+                Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 5
+                    height: (parent.height - parent.spacing * 4) / 5
+                    
+                    // Clear button
+                    KeyButton {
+                        width: (keyboard.width - 40) / 6
+                        height: parent.height
+                        buttonText: "Clear"
+                        specialKey: true
+                        onClicked: textDisplay.text = ""
+                    }
+                    
+                    // Space button
+                    KeyButton {
+                        width: (keyboard.width - 40) / 2
+                        height: parent.height
+                        buttonText: "Space"
+                        onClicked: textDisplay.text += " "
+                    }
+                    
+                    // Done button
+                    KeyButton {
+                        width: (keyboard.width - 40) / 6
+                        height: parent.height
+                        buttonText: "Done"
+                        accentKey: true
+                        onClicked: keyboard.close()
+                    }
                 }
             }
         }
     }
-
-    // Helper function to update text
-    function handleKeyPress(key) {
-        root.currentText += key
-        textField.text = root.currentText
+    
+    // Custom key button component
+    component KeyButton: Rectangle {
+        id: keyBase
+        
+        // Properties
+        property string buttonText: ""
+        property bool specialKey: false
+        property bool accentKey: false
+        property bool toggled: false
+        
+        // Signals
+        signal clicked()
+        
+        // Styling
+        radius: 6
+        color: {
+            if (mouseArea.pressed)
+                return accentKey ? "#0051a8" : specialKey ? "#333333" : "#222222";
+            else if (toggled)
+                return "#0078d7";
+            else
+                return accentKey ? "#0078d7" : specialKey ? "#444444" : "#3a3a3a";
+        }
+        
+        border.color: Qt.lighter(color, 1.2)
+        border.width: 1
+        
+        // Anti-aliasing for better appearance
+        antialiasing: true
+        
+        // Smooth color transitions
+        Behavior on color {
+            ColorAnimation { duration: 50 }
+        }
+        
+        // Key text
+        Text {
+            anchors.centerIn: parent
+            text: buttonText
+            color: "#ffffff"
+            font.pixelSize: parent.width < 70 ? 30 : 36
+            font.bold: true
+            font.family: "Arial"
+            style: Text.Outline
+            styleColor: "#000000"
+            renderType: Text.QtRendering
+        }
+        
+        // Mouse handling
+        MouseArea {
+            id: mouseArea
+            anchors.fill: parent
+            onClicked: parent.clicked()
+        }
     }
-
-    function handleBackspace() {
-        root.currentText = root.currentText.slice(0, -1)
-        textField.text = root.currentText
+    
+    // Shadow effect component
+    component DropShadow: Item {
+        property real radius: 0
+        property int samples: 0
+        property color color: "black"
+        property int horizontalOffset: 0
+        property int verticalOffset: 0
+    }
+    
+    // Function to update current text programmatically
+    function updateText(newText) {
+        currentText = newText;
+        textDisplay.text = newText;
     }
 }

@@ -127,106 +127,233 @@ Item {
                         }
                     }
                     
+                    // Winch Power control with relative sizing and aligned switches
+                    // Winch Power control with fixed layout to avoid recursive rearrangement
                     Rectangle {
+                        id: winchPowerControl
                         Layout.fillWidth: true
-                        height: 56
+                        height: 50  // Base height - can be adjusted as needed
                         color: winchController.enabled ? "#E3F2FD" : "#F5F5F5"
                         radius: 12
                         border.width: 1
                         border.color: winchController.enabled ? "#90CAF9" : "#E0E0E0"
                         
-                        RowLayout {
+                        // Use Row instead of RowLayout to avoid recursive layout issues
+                        Row {
                             anchors.fill: parent
                             anchors.margins: 12
                             spacing: 12
                             
+                            // Status indicator with fixed size
                             Rectangle {
-                                width: 32
-                                height: 32
-                                radius: 16
+                                id: powerIndicator
+                                width: parent.height * 1
+                                height: parent.height * 1
+                                anchors.verticalCenter: parent.verticalCenter
+                                radius: width / 2
                                 color: winchController.enabled ? primaryColor : disabledColor
+                                
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "⚡"  // Power symbol
+                                    color: "white"
+                                    font.pixelSize: 24
+                                    font.bold: true
+                                }
                             }
                             
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 2
+                            // Text content with fixed width calculated from parent
+                            Column {
+                                id: powerTextColumn
+                                width: parent.width - powerIndicator.width - powerToggleContainer.width - parent.spacing * 2
+                                height: parent.height
+                                spacing: 4
+                                anchors.verticalCenter: parent.verticalCenter
                                 
-                                Label {
+                                Text {
+                                    width: parent.width
                                     text: "Winch Power"
-                                    font.pixelSize: 16
+                                    font.pixelSize: parent.height * 0.6
                                     font.bold: true
                                     color: "#212121"
+                                    elide: Text.ElideRight
                                 }
                                 
-                                Label {
+                                Text {
+                                    width: parent.width
                                     text: winchController.enabled ? "Enabled - Motor active" : "Disabled - Motor inactive"
-                                    font.pixelSize: 13
+                                    font.pixelSize: parent.height * 0.4
                                     color: winchController.enabled ? primaryColor : "#757575"
+                                    elide: Text.ElideRight
+                                    wrapMode: Text.Wrap
+                                    maximumLineCount: 2
                                 }
                             }
                             
-                            Switch {
-                                checked: winchController.enabled
-                                onToggled: {
-                                    winchController.setEnabled(checked);
-                                    // Added: Feedback notification
-                                    notificationPopup.show(checked ? "Winch power enabled" : "Winch power disabled", 2000);
+                            // Fixed size container for switch to ensure alignment
+                            Item {
+                                id: powerToggleContainer
+                                width: 88  // Fixed width
+                                height: parent.height
+                                
+                                Rectangle {
+                                    id: switchTrack
+                                    width: parent.height * 2
+                                    height: parent.height * 1
+                                    radius: height / 2
+                                    anchors.centerIn: parent
+                                    color: winchController.enabled ? primaryColor : "#E0E0E0"
+                                    
+                                    Behavior on color {
+                                        ColorAnimation { duration: 200 }
+                                    }
                                 }
-                                enabled: winchController.available
+                                
+                                Rectangle {
+                                    id: switchHandle
+                                    width: parent.height * 1
+                                    height: parent.height * 1
+                                    radius: width / 2
+                                    color: "white"
+                                    border.width: 2
+                                    border.color: winchController.enabled ? primaryColor : "#BDBDBD"
+                                    anchors.verticalCenter: switchTrack.verticalCenter
+                                    x: powerToggleContainer.width/2 - width/2 + (winchController.enabled ? 15 : -15)
+                                    
+                                    Behavior on x {
+                                        NumberAnimation { duration: 200; easing.type: Easing.InOutQuad }
+                                    }
+                                }
+                                
+                                MouseArea {
+                                    anchors.fill: parent
+                                    onClicked: {
+                                        winchController.setEnabled(!winchController.enabled);
+                                        notificationPopup.show(winchController.enabled ? 
+                                            "Winch power enabled" : "Winch power disabled", 2000);
+                                    }
+                                    enabled: winchController.available
+                                    
+                                    onPressed: switchHandle.opacity = 0.8
+                                    onReleased: switchHandle.opacity = 1.0
+                                }
                             }
                         }
                     }
-                    
+
+                    // Load Detection Switch with fixed layout
                     Rectangle {
+                        id: loadDetectionControl
                         Layout.fillWidth: true
-                        height: 56
+                        height: 50  // Same height as winch power control for consistency
                         color: winchController.load_detection_enabled ? "#E3F2FD" : "#F5F5F5"
                         radius: 12
                         border.width: 1
                         border.color: winchController.load_detection_enabled ? "#90CAF9" : "#E0E0E0"
                         
-                        RowLayout {
+                        // Use Row instead of RowLayout to avoid recursive layout issues
+                        Row {
                             anchors.fill: parent
                             anchors.margins: 12
                             spacing: 12
                             
                             Rectangle {
-                                width: 32
-                                height: 32
-                                radius: 16
+                                id: loadIndicator
+                                width: parent.height * 1
+                                height: parent.height * 1
+                                anchors.verticalCenter: parent.verticalCenter
+                                radius: width / 2
                                 color: winchController.load_detection_enabled ? primaryColor : disabledColor
+                                
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "⚖"  // Scale/balance symbol
+                                    color: "white"
+                                    font.pixelSize: 24
+                                    font.bold: true
+                                }
                             }
                             
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 2
+                            Column {
+                                id: loadTextColumn
+                                width: parent.width - loadIndicator.width - loadToggleContainer.width - parent.spacing * 2
+                                height: parent.height
+                                spacing: 4
+                                anchors.verticalCenter: parent.verticalCenter
                                 
-                                Label {
+                                Text {
+                                    width: parent.width
                                     text: "Load Detection"
-                                    font.pixelSize: 16
+                                    font.pixelSize: parent.height * 0.6
                                     font.bold: true
                                     color: "#212121"
+                                    elide: Text.ElideRight
                                 }
                                 
-                                Label {
-                                    text: winchController.load_detection_enabled ? "Enabled - Safety active" : "Disabled - No load protection"
-                                    font.pixelSize: 13
+                                Text {
+                                    width: parent.width
+                                    text: winchController.load_detection_enabled ? 
+                                        "Enabled - Safety active" : 
+                                        "Disabled - No load protection"
+                                    font.pixelSize: parent.height * 0.4
                                     color: winchController.load_detection_enabled ? primaryColor : "#757575"
+                                    elide: Text.ElideRight
+                                    wrapMode: Text.Wrap
+                                    maximumLineCount: 2
                                 }
                             }
                             
-                            Switch {
-                                checked: winchController.load_detection_enabled
-                                onToggled: {
-                                    winchController.setLoadDetectionEnabled(checked);
-                                    // Added: Feedback notification
-                                    notificationPopup.show(checked ? "Load detection enabled" : "Load detection disabled", 2000);
+                            Item {
+                                id: loadToggleContainer
+                                width: 88  // Same fixed width as power toggle
+                                height: parent.height
+                                
+                                Rectangle {
+                                    id: loadSwitchTrack
+                                    width: parent.height * 2
+                                    height: parent.height * 1
+                                    radius: height / 2
+                                    anchors.centerIn: parent
+                                    color: winchController.load_detection_enabled ? primaryColor : "#E0E0E0"
+                                    
+                                    Behavior on color {
+                                        ColorAnimation { duration: 200 }
+                                    }
                                 }
-                                enabled: winchController.enabled
+                                
+                                Rectangle {
+                                    id: loadSwitchHandle
+                                    width: parent.height * 1
+                                    height: parent.height * 1
+                                    radius: width / 2
+                                    color: "white"
+                                    border.width: 2
+                                    border.color: winchController.load_detection_enabled ? primaryColor : "#BDBDBD"
+                                    anchors.verticalCenter: loadSwitchTrack.verticalCenter
+                                    x: loadToggleContainer.width/2 - width/2 + (winchController.load_detection_enabled ? 15 : -15)
+                                    
+                                    Behavior on x {
+                                        NumberAnimation { duration: 200; easing.type: Easing.InOutQuad }
+                                    }
+                                }
+                                
+                                MouseArea {
+                                    anchors.fill: parent
+                                    onClicked: {
+                                        winchController.setLoadDetectionEnabled(!winchController.load_detection_enabled);
+                                        notificationPopup.show(winchController.load_detection_enabled ? 
+                                            "Load detection enabled" : 
+                                            "Load detection disabled", 2000);
+                                    }
+                                    enabled: winchController.enabled
+                                    
+                                    onPressed: loadSwitchHandle.opacity = 0.8
+                                    onReleased: loadSwitchHandle.opacity = 1.0
+                                }
                             }
                         }
                     }
-                    
+                                        
                     // Added: History log component
                     Rectangle {
                         id: historyLog
@@ -1050,7 +1177,7 @@ Item {
                                             visible: Math.abs(winchController.cable_speed) > 0
                                             
                                             Rectangle {
-                                                property real maxSpeed: 2.0 // Maximum expected speed in m/s
+                                                property real maxSpeed: 500 // Maximum expected speed in m/s
                                                 width: Math.min(parent.width * (Math.abs(winchController.cable_speed) / maxSpeed), parent.width)
                                                 height: parent.height
                                                 radius: 2

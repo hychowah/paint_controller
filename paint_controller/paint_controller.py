@@ -98,74 +98,6 @@ class VideoStream:
     def connect_new_sample_callback(self, callback: Callable):
         self.sink.connect('new-sample', callback)
 
-#############################################
-### Teensy Monitor
-#############################################
-
-
-
-# class TeensyMonitor:
-#     def __init__(self, node: Node):
-#         self._node = node
-#         self._status = {}
-#         self._last_status_update_time = 0
-#         self._connection_timeout = 1.0
-
-#     def _status_callback(self, msg: TeensyStatus):
-#         try:
-#             # Convert milliseconds to hours, minutes, seconds
-#             total_seconds = int(msg.runtime / 1000)  # Convert ms to seconds
-#             hours = total_seconds // 3600
-#             minutes = (total_seconds % 3600) // 60
-#             seconds = total_seconds % 60
-            
-#             formatted_runtime = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-
-#             self._status = {
-#                 'available': True,
-#                 'top_rail_position': f"{msg.top_rail_position:.2f}",
-#                 'top_rail_speed': f"{msg.top_rail_speed:.2f}",
-#                 'top_rail_current': f"{msg.top_rail_current:.2f}",
-#                 'arm_rail_position': f"{msg.arm_rail_position:.2f}",
-#                 'arm_rail_speed': f"{msg.arm_rail_speed:.2f}",
-#                 'arm_rail_current': f"{msg.arm_rail_current:.2f}",
-#                 'voltage': f"{msg.voltage:.2f}",
-#                 'temperature': f"{msg.temperature:.1f}",
-#                 'current': f"{msg.current:.2f}",
-#                 'run_time': formatted_runtime,
-#                 'loop_time': f"{msg.looptime:.2f}",
-#                 'loop_time_counter': f"{msg.looptime_counter:.2f}",
-#                 'left_prop_position': f"{msg.left_prop_position:.2f}",
-#                 'left_prop_pwm': f"{msg.left_prop_pwm:.2f}",
-#                 'right_prop_position': f"{msg.right_prop_position:.2f}",
-#                 'right_prop_pwm': f"{msg.right_prop_pwm:.2f}",
-#                 'imu_acc_x': f"{msg.linear_acceleration.x:.2f}",
-#                 'imu_acc_y': f"{msg.linear_acceleration.y:.2f}",
-#                 'imu_acc_z': f"{msg.linear_acceleration.z:.2f}",
-#                 'imu_angular_acc_x': f"{msg.angular_velocity.x:.2f}",
-#                 'imu_angular_acc_y': f"{msg.angular_velocity.y:.2f}",
-#                 'imu_angular_acc_z': f"{msg.angular_velocity.z:.2f}",
-#                 'imu_pitch': msg.orientation.x,
-#                 'imu_roll': msg.orientation.y,
-#                 'imu_yaw': msg.orientation.z,
-#                 'yaw_enabled': msg.yaw_enabled,
-#                 'yaw_command': f"{msg.yaw_command:.2f}",
-#                 'yaw_pid_p': f"{msg.yaw_pid_p:.2f}",
-#                 'yaw_pid_i': f"{msg.yaw_pid_i:.2f}",
-#                 'yaw_pid_d': f"{msg.yaw_pid_d:.2f}",
-#                 'yaw_pwm': f"{msg.yaw_pwm:.2f}"
-#             }
-
-#             self._last_status_update_time = time.time()
-#         except Exception as e:
-#             print(f"Error processing Teensy status: {e}")
-
-#     def get_status(self) -> Dict:
-#         if time.time() - self._last_status_update_time > self._connection_timeout:
-#             self._status['available'] = False
-#         return self._status
-    
-
 class NetworkMonitor:
     def __init__(self):
         self.ef_ip = ""
@@ -384,20 +316,6 @@ class RobotController(Node, QObject):
             self.netowrk_monitor._base_signal_strength_callback,
             1
         )
-
-    def _setup_publishers(self):
-        return
-        # self.ef_move_top_rail_speed_pub = self.create_publisher(Float32, 'teensy/top_rail/speed/cmd', 1)
-        # self.ef_move_arm_rail_speed_pub = self.create_publisher(Float32, 'teensy/arm_rail/speed/cmd', 1)
-        # self.prop_left_pwm_pub = self.create_publisher(Int32, 'teensy/prop/left/pwm/cmd', 1)
-        # self.prop_right_pwm_pub = self.create_publisher(Int32, 'teensy/prop/right/pwm/cmd', 1)
-        # self.prop_left_joint_pub = self.create_publisher(Float32, 'teensy/prop/left/joint/cmd', 1)
-        # self.prop_right_joint_pub = self.create_publisher(Float32, 'teensy/prop/right/joint/cmd', 1)
-        # self.teensy_relay_pub = self.create_publisher(Bool, 'teensy/relay/cmd', 1)
-        # self.teensy_enable_pub = self.create_publisher(Bool, 'teensy/enable/cmd', 1)
-        # self.ef_spray_trigger_pub = self.create_publisher(Int32, 'teensy/spray_gun/trigger/cmd', 1)
-        # self.ef_spray_gimbal_speed_pub = self.create_publisher(Int32, 'teensy/spray_gun/gimbal/speed/cmd', 1)
-        # self.ef_yaw_control_pub = self.create_publisher(TeensyYaw, 'teensy/yaw/control/cmd', 1)
 
     #############################################
     ### UI Control Methods

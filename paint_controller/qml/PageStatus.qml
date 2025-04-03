@@ -83,16 +83,16 @@ Rectangle {
                     Label { text: String((winchController.cable_length).toFixed(0)) + " mm" }
 
                     Label {text: "Cable Speed:"; font.bold: true}
-                    Label {text: String(winchController.cable_speed) + " m/s"}
+                    Label {text: String(winchController.cable_speed.toFixed(0)) + " m/s"}
 
                     Label { text: "Torque:"; font.bold: true }
-                    Label { text: String(winchController.winch_torque) + " Nm" }
+                    Label { text: String(winchController.winch_torque.toFixed(1)) + " Nm" }
 
                     Label { text: "Temperature:"; font.bold: true }
-                    Label { text: winchController.motor_temperature + " °C" }
+                    Label { text: winchController.motor_temperature.toFixed(1) + " °C" }
 
                     Label { text: "Voltage:"; font.bold: true }
-                    Label { text: winchController.motor_voltage + " V" }
+                    Label { text: winchController.motor_voltage.toFixed(1) + " V" }
 
                     Label { text: "Brake:"; font.bold: true }
                     Label { 
