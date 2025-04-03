@@ -108,6 +108,9 @@ class TrajectoryHandler(QObject):
                 elif temp[0] == "resetYaw":
                     self._currentTrajDescription.append("Reset yaw")
                     self._currentTrajCmd.append(["resetYaw"])
+                elif temp[0] == "moveWinchTo":
+                    self._currentTrajDescription.append("Move winch to " + temp[1] + "mm")
+                    self._currentTrajCmd.append(["moveWinchTo", temp[1], temp[2]])
                 
 
     @Slot(result=list)
@@ -128,6 +131,8 @@ class TrajectoryHandler(QObject):
                 pass # TODO
             elif self._currentTrajCmd[index][0] == "resetYaw":
                 pass # TODO
+            elif self._currentTrajCmd[index][0] == "moveWinchTo":
+                print("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFf")
 
     @Slot()
     def stopAll(self):

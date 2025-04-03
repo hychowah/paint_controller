@@ -108,7 +108,7 @@ Rectangle {
                                 var seqString = ""
                                 for(var i = 0; i < sequenceModel.count; i++) {
                                     if (sequenceModel.get(i).id === "0") {
-                                        seqString += "ascent_" + sequenceModel.get(i).input1 + "_" + sequenceModel.get(i).input2 + ","
+                                        seqString += "moveWinchTo_" + sequenceModel.get(i).input1 + "_" + sequenceModel.get(i).input2 + ","
                                     }
                                     else if (sequenceModel.get(i).id === "1") {
                                         seqString += "descent_" + sequenceModel.get(i).input1 + "_" + sequenceModel.get(i).input2 + ","

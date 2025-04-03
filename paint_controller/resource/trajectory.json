@@ -10,5 +10,9 @@
   {
     "name": "rgii",
     "sequence": "ascent_100_1000"
+  },
+  {
+    "name": "66",
+    "sequence": "moveWinchTo_22_1000"
   }
 ]
