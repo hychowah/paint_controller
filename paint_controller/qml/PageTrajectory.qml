@@ -70,11 +70,8 @@ Rectangle {
 
                             onAddAction: function(item) {
                                 var action = item.split("_")
-                                if(action[0] == "ascent") {
-                                    sequenceModel.append({id: "0", title: "Ascend", input1: action[1], input2: action[2], input3: "-1", input4: "-1"})
-                                }
-                                else if(action[0] == "descent") {
-                                    sequenceModel.append({id: "1", title: "Descend", input1: action[1], input2: action[2], input3: "-1", input4: "-1"})
+                                if(action[0] == "moveWinchTo") {
+                                    sequenceModel.append({id: "0", title: "Move Winch To", input1: action[1], input2: action[2], input3: "-1", input4: "-1"})
                                 }
                                 else if(action[0] == "spray") {
                                     sequenceModel.append({id: "2", title: "Spray", input1: action[1], input2: action[2], input3: "-1", input4: "-1"})
@@ -152,10 +149,11 @@ Rectangle {
                         Layout.preferredWidth: parent.width / 4
                         Layout.fillHeight: true
 
-                        onAddAscend: function() {
+
+                        onAddMoveWinchTo: function() {
                             // input1: length, input2: speed
                             sequenceModel.append({
-                                id: "0", title: "Ascend",
+                                id: "0", title: "Move Winch To",
                                 input1: "0", input2: "1000",
                                 input3: "", input4: ""
                             });

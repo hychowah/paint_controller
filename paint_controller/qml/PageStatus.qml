@@ -74,10 +74,6 @@ Rectangle {
                         color: winchController.available ? "green" : "red"
                     }
 
-                    Label { text: "Enable Winch:"; font.bold: true }
-                    RowLayout {
-                        
-                    }
 
                     Label { text: "Cable Length:"; font.bold: true }
                     Label { text: String((winchController.cable_length).toFixed(0)) + " mm" }
@@ -258,6 +254,27 @@ Rectangle {
                                 onClicked: tabButtons.currentIndex = 3
                             }
                         }
+
+                        // Spray Gun Tab Button
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            color: tabButtons.currentIndex === 4 ? "#E0E0E0" : "transparent"
+                            border.color: "#CCCCCC"
+                            border.width: 1
+                            
+                            Text {
+                                anchors.centerIn: parent
+                                text: "Spray Gun"
+                                font.pixelSize: 16
+                                font.bold: tabButtons.currentIndex === 4
+                            }
+                            
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: tabButtons.currentIndex = 4
+                            }
+                        }
                     }
                 }
                 
@@ -406,8 +423,7 @@ Rectangle {
                                             
                                             Text { text: "Current:"; font.bold: true }
                                             Text { text: teensyController.all_status.top_rail_current.toFixed(0) + " A" }
-                                            Text { text: "Status:"; font.bold: true }
-                                            Text { text: "Moving" }
+
                                         }
                                     }
                                 }
@@ -446,8 +462,11 @@ Rectangle {
                                             
                                             Text { text: "Current:"; font.bold: true }
                                             Text { text: teensyController.all_status.arm_rail_current.toFixed(0) + " A" }
-                                            Text { text: "Status:"; font.bold: true }
-                                            Text { text: "Stopped" }
+                                            Text { text: "Extension:"; font.bold: true }
+                                            Text { text: teensyController.all_status.arm_extension_dist.toFixed(0) + " mm" }
+
+                                            Text { text: "Sensor:"; font.bold: true }
+                                            Text { text: teensyController.all_status.arm_sensor_dist.toFixed(0) + " mm" }
                                         }
                                     }
                                 }
@@ -815,7 +834,7 @@ Rectangle {
                                                     transform: Rotation {
                                                         origin.x: 35
                                                         origin.y: 3
-                                                        angle: teensyController.all_status.left_prop_position
+                                                        angle: teensyController.all_status.left_prop_position + 90
                                                     }
                                                 }
                                                 
@@ -853,7 +872,7 @@ Rectangle {
                                                     transform: Rotation {
                                                         origin.x: 35
                                                         origin.y: 3
-                                                        angle: teensyController.all_status.right_prop_position
+                                                        angle: teensyController.all_status.right_prop_position + 90
                                                     }
                                                 }
                                                 
@@ -878,7 +897,6 @@ Rectangle {
                             }
                         }
                         
-                        // IMU TAB
                         // IMU TAB
                         Item {
                             // Use Column for better vertical control
@@ -1198,12 +1216,69 @@ Rectangle {
                                 }
                             }
                         }
+
+                        // Spray Gun TAB
+                        Item {
+                            // Use Column instead of ColumnLayout to have better control over positioning
+                            Column {
+                                anchors.fill: parent
+                                anchors.topMargin: 10
+                                spacing: 20
+                                
+                                GridLayout {
+                                    columns: 2
+                                    rowSpacing: 10
+                                    columnSpacing: 20
+                                    Layout.fillHeight: true
+                                    Layout.fillWidth: true
+                                    Layout.alignment: Qt.AlignTop
+
+                                    Label { text: "Pitch:"; font.bold: true }
+                                    Label { 
+                                        text: teensyController.all_status.spray_gun_pitch.toFixed(1) + "°"
+                                    }
+
+                                    Label { text: "Motor Angle:"; font.bold: true }
+                                    Label { 
+                                        text: teensyController.all_status.spray_gun_motor_angle.toFixed(1) + "°"
+                                    }
+
+                                    Label { text: "Motor Current:"; font.bold: true }
+                                    Label { 
+                                        text: teensyController.all_status.spray_gun_motor_current.toFixed(1) + "°"
+                                    }
+
+                                    Label { text: "Motor Temperature:"; font.bold: true }
+                                    Label { 
+                                        text: teensyController.all_status.spray_gun_motor_temp.toFixed(1) + "°"
+                                    }
+
+                                    Label { text: "Pitch:"; font.bold: true }
+                                    Label { 
+                                        text: teensyController.all_status.spray_gun_spray_gun_trigger? "Pressed" : "Released"
+                                        color: teensyController.all_status.spray_gun_spray_gun_trigger ? "green" : "gray"
+                                    }
+                                }
+                                
+                                // You can add more rail-related information sections here
+                                // Each would follow the same pattern as above
+                                
+                                // This Rectangle acts as a spacer that pushes content to the top
+                                // It takes up any remaining space at the bottom
+                                Rectangle {
+                                    width: parent.width
+                                    height: 1 // Minimal height
+                                    color: "transparent" // Invisible
+                                    Layout.fillHeight: true // Takes up remaining space
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // Right Side: Steam Deck Input Status
+        // Right Side: Wheel Status
         Rectangle {
             Layout.preferredWidth: parent.width / 4
             Layout.fillHeight: true
@@ -1216,76 +1291,9 @@ Rectangle {
                 spacing: 15
 
                 Label {
-                    text: "Steam Deck Input"
+                    text: "Wheel Status"
                     font.pixelSize: 24
                     font.bold: true
-                }
-
-                // Control Mapping Section
-                 GroupBox {
-                    title: "Control Mapping"
-
-                    ColumnLayout {
-                        height: 80
-                        anchors.fill: parent
-                        spacing: 10
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 10
-
-                            Label {
-                                text: "Left:"
-                                font.bold: true
-                            }
-
-                            ComboBox {
-                                id: leftJoystickMapping
-                                model: getAvailableOptions(true)
-                                currentIndex: model.indexOf(leftCurrentControl)
-                                Layout.preferredHeight: 40
-                                
-                                onActivated: {
-                                    let newValue = model[currentIndex]
-                                    if (newValue !== leftCurrentControl) {
-                                        leftCurrentControl = newValue
-                                        backend.setLeftJoystickControl(newValue)
-                                        // Update right combo box model
-                                        rightJoystickMapping.model = getAvailableOptions(false)
-                                        rightJoystickMapping.currentIndex = rightJoystickMapping.model.indexOf(rightCurrentControl)
-                                    }
-                                }
-                            }
-                        }
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 10
-
-                            Label {
-                                text: "Right:"
-                                font.bold: true
-                            }
-
-                            ComboBox {
-                                id: rightJoystickMapping
-                                model: getAvailableOptions(false)
-                                currentIndex: model.indexOf(rightCurrentControl)
-                                Layout.preferredHeight: 40
-                                
-                                onActivated: {
-                                    let newValue = model[currentIndex]
-                                    if (newValue !== rightCurrentControl) {
-                                        rightCurrentControl = newValue
-                                        backend.setRightJoystickControl(newValue)
-                                        // Update left combo box model
-                                        leftJoystickMapping.model = getAvailableOptions(true)
-                                        leftJoystickMapping.currentIndex = leftJoystickMapping.model.indexOf(leftCurrentControl)
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
 
                 // Input Status Display
@@ -1297,90 +1305,53 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignTop
 
-                    // Analog Sticks
-                    Label { text: "Left Stick:"; font.bold: true }
-                    Label { text: "X: " + steamDeckHandler.left_stick.x.toFixed(0) + ", Y: " + steamDeckHandler.left_stick.y.toFixed(0) }
-
-                    Label { text: "Right Stick:"; font.bold: true }
-                    Label { text: "X: " + steamDeckHandler.right_stick.x.toFixed(0) + ", Y: " + steamDeckHandler.right_stick.y.toFixed(0) }
-
-                    // Triggers
-                    Label { text: "Left Trigger:"; font.bold: true }
-                    Label { text: steamDeckHandler.triggers.left }
-
-                    Label { text: "Right Trigger:"; font.bold: true }
-                    Label { text: steamDeckHandler.triggers.right }
-
-                    // Face Buttons
-                    Label { text: "A Button:"; font.bold: true }
+                    Label { text: "Wheel Connected:"; font.bold: true }
                     Label { 
-                        text: steamDeckHandler.buttons.a ? "Pressed" : "Released"
-                        color: steamDeckHandler.buttons.a ? "green" : "gray"
+                        text: wheelController.available ? "Connected" : "Disconnected"
+                        color: wheelController.available ? "green" : "red"
                     }
 
-                    Label { text: "B Button:"; font.bold: true }
+                    Label { text: "Wheel Enabled:"; font.bold: true }
                     Label { 
-                        text: steamDeckHandler.buttons.b ? "Pressed" : "Released"
-                        color: steamDeckHandler.buttons.b ? "green" : "gray"
+                        text: wheelController.enabled ? "Enabled" : "Disabled"
+                        color: wheelController.enabled ? "green" : "red"
                     }
 
-                    Label { text: "X Button:"; font.bold: true }
+                    Label { text: "Left Wheel Speed:"; font.bold: true }
                     Label { 
-                        text: steamDeckHandler.buttons.x ? "Pressed" : "Released"
-                        color: steamDeckHandler.buttons.x ? "green" : "gray"
+                        text: wheelController.left_wheel_speed.toFixed(1) + " rpm"
+                        color: wheelController.left_wheel_speed > 0 ? "green" : "grey"
                     }
 
-                    Label { text: "Y Button:"; font.bold: true }
+                    Label { text: "Right Wheel Speed:"; font.bold: true }
                     Label { 
-                        text: steamDeckHandler.buttons.y ? "Pressed" : "Released"
-                        color: steamDeckHandler.buttons.y ? "green" : "gray"
+                        text: wheelController.right_wheel_speed.toFixed(1) + " rpm"
+                        color: wheelController.right_wheel_speed > 0 ? "green" : "grey"
                     }
-
-                    // Shoulder Buttons
-                    Label { text: "L1 Button:"; font.bold: true }
+                    Label { text: "Left Wheel Current:"; font.bold: true }
                     Label { 
-                        text: steamDeckHandler.buttons.l1 ? "Pressed" : "Released"
-                        color: steamDeckHandler.buttons.l1 ? "green" : "gray"
+                        text: wheelController.left_wheel_current.toFixed(1) + " A"
+                        color: wheelController.left_wheel_current > 0 ? "green" : "grey"
                     }
 
-                    Label { text: "R1 Button:"; font.bold: true }
+                    Label { text: "Right Wheel Current:"; font.bold: true }
                     Label { 
-                        text: steamDeckHandler.buttons.r1 ? "Pressed" : "Released"
-                        color: steamDeckHandler.buttons.r1 ? "green" : "gray"
+                        text: wheelController.right_wheel_current.toFixed(1) + " A"
+                        color: wheelController.right_wheel_current > 0 ? "green" : "grey"
                     }
 
-                    // D-Pad
-                    Label { text: "D-Pad:"; font.bold: true }
-                    RowLayout {
-                        spacing: 5
-                        Label { 
-                            text: "↑"
-                            color: steamDeckHandler.buttons.up ? "red" : "gray"
-                            font.bold: true
-                        }
-                        Label { 
-                            text: "↓"
-                            color: steamDeckHandler.buttons.down ? "red" : "gray"
-                            font.bold: true
-                        }
-                        Label { 
-                            text: "←"
-                            color: steamDeckHandler.buttons.left ? "red" : "gray"
-                            font.bold: true
-                        }
-                        Label { 
-                            text: "→"
-                            color: steamDeckHandler.buttons.right ? "red" : "gray"
-                            font.bold: true
-                        }
-                    }
-
-                    // Menu Button
-                    Label { text: "Menu:"; font.bold: true }
+                    Label { text: "Left Wheel Travel:"; font.bold: true }
                     Label { 
-                        text: steamDeckHandler.buttons.menu ? "Pressed" : "Released"
-                        color: steamDeckHandler.buttons.menu ? "green" : "gray"
+                        text: wheelController.left_wheel_position.toFixed(0) + " mm"
+                        color: wheelController.left_wheel_position > 0 ? "green" : "grey"
                     }
+
+                    Label { text: "Right Wheel Travel:"; font.bold: true }
+                    Label { 
+                        text: wheelController.right_wheel_position.toFixed(0) + " mm"
+                        color: wheelController.right_wheel_position > 0 ? "green" : "grey"
+                    }
+
 
                 }
             }

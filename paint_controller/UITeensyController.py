@@ -6,7 +6,7 @@ import time
 
 from rclpy.node import Node
 from std_msgs.msg import Bool, Float32, Int32
-from towngas_interfaces.msg import TeensyStatus, TeensyYaw
+from paint_interfaces.msg import TeensyStatus, TeensyYaw
 
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 
@@ -113,9 +113,9 @@ class TeensyController(QObject):
                 'loop_time_counter': msg.looptime_counter,
                 'relay_on': bool(msg.relay_on),
                 'enabled': msg.enabled,
-                'left_prop_position': msg.left_prop_position,
+                'left_prop_position': msg.left_prop_position / 100,
                 'left_prop_pwm': msg.left_prop_pwm,
-                'right_prop_position': msg.right_prop_position,
+                'right_prop_position': msg.right_prop_position / 100,
                 'right_prop_pwm': msg.right_prop_pwm,
                 'imu_acc_x': msg.linear_acceleration.x,
                 'imu_acc_y': msg.linear_acceleration.y,
@@ -149,7 +149,6 @@ class TeensyController(QObject):
             if time_since_last_update > self._last_ui_update_interval:
                 self._last_ui_update_time = current_time
                 self.status_changed.emit(self._status)
-                print(f"Teensy status updated: {self._status['relay_on']}")
             
         except Exception as e:
             print(f"Error in Teensy status callback: {e}")

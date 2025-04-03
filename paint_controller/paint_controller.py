@@ -14,7 +14,6 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float64, Bool, Float32, Int32, String
 from sensor_msgs.msg import LaserScan
-from towngas_interfaces.msg import WinchStatus, WheelStatus, SteamDeckInput, TeensyStatus, TeensyYaw, MoveWinchLength, MoveWheelSpeeds
 
 from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QThread
 from PySide6.QtGui import QImage, QPixmap
@@ -216,9 +215,8 @@ class RobotController(Node, QObject):
         
         # Setup ROS subscribers and publishers
         self._setup_subscribers()
-        # self._setup_publishers()
 
-        self.trajectoryHandler = TrajectoryHandler()
+        self.trajectoryHandler = TrajectoryHandler(self)
 
         # base video stream handler
         self.base_video_stream_handler = BaseVideoStreamHandler()
@@ -320,24 +318,6 @@ class RobotController(Node, QObject):
     #############################################
     ### UI Control Methods
     #############################################
-
-    @Slot(bool)
-    def setTeensyEnabled(self, enabled: bool):
-        """Enable/disable Teensy control"""
-        self.ui_data_model.teensy_enabled = enabled
-        msg = Bool()
-        msg.data = enabled
-        self.teensy_enable_pub.publish(msg)
-        self.get_logger().info(f'Teensy {"enabled" if enabled else "disabled"}')
-
-    @Slot(bool)
-    def setTeensyRelayEnabled(self, enabled: bool):
-        """Enable/disable Teensy relay"""
-        self.ui_data_model.teensy_relay_enabled = enabled
-        msg = Bool()
-        msg.data = enabled
-        self.teensy_relay_pub.publish(msg)
-        self.get_logger().info(f'Teensy relay {"enabled" if enabled else "disabled"}')
 
     @Slot(str)
     def setLeftJoystickControl(self, control: str):

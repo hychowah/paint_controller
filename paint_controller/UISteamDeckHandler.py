@@ -7,7 +7,7 @@ import math
 import time
 
 from rclpy.node import Node
-from towngas_interfaces.msg import SteamDeckInput
+from paint_interfaces.msg import SteamDeckInput
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 
 class SteamDeckHandler(QObject):

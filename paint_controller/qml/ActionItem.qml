@@ -12,6 +12,7 @@ Rectangle {
 
     signal addAscend // signal to add ascend action
     signal addDescend // signal to add descend action
+    signal addMoveWinchTo
     signal addAscendNSpray // signal to add ascend & spray action
     signal addDescendNSpray // signal to add descend & spray action
     signal addSpray // signal to add spray action
@@ -32,218 +33,189 @@ Rectangle {
 
         // action item content
         Rectangle {
+            id: actionContainer
             Layout.fillWidth: true
             Layout.fillHeight: true
             color: "#E0E0E0"
 
+            // Use a ColumnLayout for reliable vertical stacking
+            ColumnLayout {
+                id: actionsLayout
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 10
 
-            // action: ascend
-            Rectangle {
-                width: parent.width - 20
-                height: 70
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.top: parent.top
-                anchors.topMargin: 10
-                color: Qt.rgba(255, 255, 255, 0.5)
-                border.color: "#E0E0E0"
-                border.width: 1
-                radius: 15
+                // action: Move Winch To
+                Rectangle {
+                    id: moveWinchAction
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 70
+                    color: Qt.rgba(255, 255, 255, 0.5)
+                    border.color: "#E0E0E0"
+                    border.width: 1
+                    radius: 15
 
-                Text {
-                    anchors.left: parent.left
-                    anchors.margins: 10
-                    anchors.leftMargin: 20
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "Ascend"
-                    font.pixelSize: 20
-                    font.bold: true
-                }
+                    Text {
+                        anchors.left: parent.left
+                        anchors.margins: 10
+                        anchors.leftMargin: 20
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "Move Winch To"
+                        font.pixelSize: 20
+                        font.bold: true
+                    }
 
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        actionItem.addAscend()
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            actionItem.addMoveWinchTo()
+                        }
                     }
                 }
-            }
 
-            // action: descend
-            Rectangle {
-                width: parent.width - 20
-                height: 70
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.top: parent.children[0].bottom
-                anchors.topMargin: 10
-                color: Qt.rgba(255, 255, 255, 0.5)
-                border.color: "#E0E0E0"
-                border.width: 1
-                radius: 15
+                // action: ascend & spray
+                Rectangle {
+                    id: ascendSprayAction
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 70
+                    color: Qt.rgba(255, 255, 255, 0.5)
+                    border.color: "#E0E0E0"
+                    border.width: 1
+                    radius: 15
 
-                Text {
-                    anchors.left: parent.left
-                    anchors.margins: 10
-                    anchors.leftMargin: 20
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "Descend"
-                    font.pixelSize: 20
-                    font.bold: true
-                }
+                    Text {
+                        anchors.left: parent.left
+                        anchors.margins: 10
+                        anchors.leftMargin: 20
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "Ascend & Spray"
+                        font.pixelSize: 20
+                        font.bold: true
+                    }
 
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        actionItem.addDescend()
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            actionItem.addAscendNSpray()
+                        }
                     }
                 }
-            }
 
-            // action: ascend & spray
-            Rectangle {
-                width: parent.width - 20
-                height: 70
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.top: parent.children[1].bottom
-                anchors.topMargin: 10
-                color: Qt.rgba(255, 255, 255, 0.5)
-                border.color: "#E0E0E0"
-                border.width: 1
-                radius: 15
+                // action: descend & spray
+                Rectangle {
+                    id: descendSprayAction
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 70
+                    color: Qt.rgba(255, 255, 255, 0.5)
+                    border.color: "#E0E0E0"
+                    border.width: 1
+                    radius: 15
 
-                Text {
-                    anchors.left: parent.left
-                    anchors.margins: 10
-                    anchors.leftMargin: 20
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "Ascend & Spray"
-                    font.pixelSize: 20
-                    font.bold: true
-                }
+                    Text {
+                        anchors.left: parent.left
+                        anchors.margins: 10
+                        anchors.leftMargin: 20
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "Descend & Spray"
+                        font.pixelSize: 20
+                        font.bold: true
+                    }
 
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        actionItem.addAscendNSpray()
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            actionItem.addDescendNSpray()
+                        }
                     }
                 }
-            }
 
-            // action: descend & spray
-            Rectangle {
-                width: parent.width - 20
-                height: 70
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.top: parent.children[2].bottom
-                anchors.topMargin: 10
-                color: Qt.rgba(255, 255, 255, 0.5)
-                border.color: "#E0E0E0"
-                border.width: 1
-                radius: 15
+                // action: spray
+                Rectangle {
+                    id: sprayAction
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 70
+                    color: Qt.rgba(255, 255, 255, 0.5)
+                    border.color: "#E0E0E0"
+                    border.width: 1
+                    radius: 15
 
-                Text {
-                    anchors.left: parent.left
-                    anchors.margins: 10
-                    anchors.leftMargin: 20
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "Descend & Spray"
-                    font.pixelSize: 20
-                    font.bold: true
-                }
+                    Text {
+                        anchors.left: parent.left
+                        anchors.margins: 10
+                        anchors.leftMargin: 20
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "Spray"
+                        font.pixelSize: 20
+                        font.bold: true
+                    }
 
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        actionItem.addDescendNSpray()
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            actionItem.addSpray()
+                        }
                     }
                 }
-            }
 
-            // action: spray
-            Rectangle {
-                width: parent.width - 20
-                height: 70
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.top: parent.children[3].bottom
-                anchors.topMargin: 10
-                color: Qt.rgba(255, 255, 255, 0.5)
-                border.color: "#E0E0E0"
-                border.width: 1
-                radius: 15
+                // action: stop spray
+                Rectangle {
+                    id: stopSprayAction
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 70
+                    color: Qt.rgba(255, 255, 255, 0.5)
+                    border.color: "#E0E0E0"
+                    border.width: 1
+                    radius: 15
 
-                Text {
-                    anchors.left: parent.left
-                    anchors.margins: 10
-                    anchors.leftMargin: 20
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "Spray"
-                    font.pixelSize: 20
-                    font.bold: true
-                }
+                    Text {
+                        anchors.left: parent.left
+                        anchors.margins: 10
+                        anchors.leftMargin: 20
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "Stop Spray"
+                        font.pixelSize: 20
+                        font.bold: true
+                    }
 
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        actionItem.addSpray()
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            actionItem.addStopSpray()
+                        }
                     }
                 }
-            }
 
-            // action: stop spray
-            Rectangle {
-                width: parent.width - 20
-                height: 70
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.top: parent.children[4].bottom
-                anchors.topMargin: 10
-                color: Qt.rgba(255, 255, 255, 0.5)
-                border.color: "#E0E0E0"
-                border.width: 1
-                radius: 15
+                // action: reset yaw
+                Rectangle {
+                    id: resetYawAction
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 70
+                    color: Qt.rgba(255, 255, 255, 0.5)
+                    border.color: "#E0E0E0"
+                    border.width: 1
+                    radius: 15
 
-                Text {
-                    anchors.left: parent.left
-                    anchors.margins: 10
-                    anchors.leftMargin: 20
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "Stop Spray"
-                    font.pixelSize: 20
-                    font.bold: true
-                }
+                    Text {
+                        anchors.left: parent.left
+                        anchors.margins: 10
+                        anchors.leftMargin: 20
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "Reset Yaw"
+                        font.pixelSize: 20
+                        font.bold: true
+                    }
 
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        actionItem.addStopSpray()
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            actionItem.addResetYaw()
+                        }
                     }
                 }
-            }
 
-            // action: reset yaw
-            Rectangle {
-                width: parent.width - 20
-                height: 70
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.top: parent.children[5].bottom
-                anchors.topMargin: 10
-                color: Qt.rgba(255, 255, 255, 0.5)
-                border.color: "#E0E0E0"
-                border.width: 1
-                radius: 15
-
-                Text {
-                    anchors.left: parent.left
-                    anchors.margins: 10
-                    anchors.leftMargin: 20
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "Reset Yaw"
-                    font.pixelSize: 20
-                    font.bold: true
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        actionItem.addResetYaw()
-                    }
+                // Add spacer item to push everything to the top
+                Item {
+                    Layout.fillHeight: true
                 }
             }
         }

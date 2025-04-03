@@ -2,25 +2,25 @@ import os.path
 import json
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
-
-from towngas_interfaces.msg import WinchStatus, WheelStatus, SteamDeckInput, TeensyStatus, TeensyYaw, MoveWinchLength, MoveWheelSpeeds
+import time
+from rclpy.node import Node
+from paint_interfaces.srv import PaintAction
 
 class TrajectoryHandler(QObject):
 
     trajectoryChanged = Signal()
     #actionChanged = Signal()
 
-    def __init__(self, winch_cmd_pub=None):
+    def __init__(self, node: Node):
         super().__init__()
         self._trajectory = []
         self._currentTrajDescription = []
         self._currentTrajCmd = []
         #self._currentActionInx = 0
 
-        self.winch_cmd_pub = winch_cmd_pub
-
+        self._node = node
         self.filePath = os.path.join(os.path.dirname(__file__), 'resource', 'trajectory.json')
-
+        base_client = self._node.create_client(PaintAction, '/winch/execute_action')
         self.readTrajectoryFromJSONFile()
 
     def readTrajectoryFromJSONFile(self):
@@ -41,11 +41,6 @@ class TrajectoryHandler(QObject):
         with open(self.filePath, 'w') as file:
             json.dump(self._trajectory, file, indent=2)
 
-    def pubWinchCmd(self, cmd):
-        msg = MoveWinchLength()
-        msg.length_mm = int(cmd[1])
-        msg.speed_mm_s = int(cmd[2])
-        self.winch_cmd_pub.publish(msg)
 
     @Property(list, notify=trajectoryChanged)
     def trajectory(self):
@@ -113,6 +108,7 @@ class TrajectoryHandler(QObject):
                 elif temp[0] == "resetYaw":
                     self._currentTrajDescription.append("Reset yaw")
                     self._currentTrajCmd.append(["resetYaw"])
+                
 
     @Slot(result=list)
     def getSelectedActions(self):
@@ -122,7 +118,8 @@ class TrajectoryHandler(QObject):
     def startExecution(self, index):
         if 0 <= index < len(self._currentTrajCmd):
             if self._currentTrajCmd[index][0] == "winch":
-                self.pubWinchCmd(self._currentTrajCmd[index])
+                print("Winch command")
+                time.sleep(10)
             elif self._currentTrajCmd[index][0] == "moveGun":
                 pass # TODO
             elif self._currentTrajCmd[index][0] == "spray":

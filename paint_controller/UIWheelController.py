@@ -3,7 +3,7 @@ import time
 from typing import Dict
 from rclpy.node import Node
 from std_msgs.msg import Bool, Float32
-from towngas_interfaces.msg import WheelStatus
+from paint_interfaces.msg import WheelStatus
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 
 class WheelController(QObject):

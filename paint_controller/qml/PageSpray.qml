@@ -21,7 +21,7 @@ Rectangle {
         Image {
             id: efFrame
             anchors.fill: parent
-            fillMode: Image.PreserveAspectCrop
+            fillMode: Image.PreserveAspectFit
             cache: false
             source: "image://ef_live/frame"
         }

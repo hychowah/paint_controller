@@ -3,7 +3,7 @@ import time
 from typing import Dict
 from rclpy.node import Node
 from std_msgs.msg import Float64, Bool, Float32
-from towngas_interfaces.msg import WinchStatus, MoveWinchLength
+from paint_interfaces.msg import WinchStatus, MoveWinchLength
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 
 

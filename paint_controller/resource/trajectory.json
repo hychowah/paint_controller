@@ -2,5 +2,13 @@
   {
     "name": "jkb",
     "sequence": "ascent_2000_200,descent_777_1000"
+  },
+  {
+    "name": "rg",
+    "sequence": "ascent_100_1000"
+  },
+  {
+    "name": "rgii",
+    "sequence": "ascent_100_1000"
   }
 ]
