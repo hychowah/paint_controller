@@ -10,28 +10,44 @@ Rectangle {
     border.color: "#E0E0E0"
     border.width: 1
 
-    signal addAscend // signal to add ascend action
-    signal addDescend // signal to add descend action
+    // Property to access the action config
+    property var actionConfig: null
+
+    // Define signals for all possible actions
+    signal addAction(string actionId)
+    
+    // Define backward compatibility signals
+    signal addAscend 
+    signal addDescend
     signal addMoveWinchTo
-    signal addAscendNSpray // signal to add ascend & spray action
-    signal addDescendNSpray // signal to add descend & spray action
-    signal addSpray // signal to add spray action
-    signal addStopSpray // signal to add stop spray action
-    signal addResetYaw // signal to add reset yaw action
+    signal addAscendNSpray
+    signal addDescendNSpray
+    signal addSpray
+    signal addStopSpray
+    signal addResetYaw
+
+    // Connect old signals to new unified signal
+    onAddMoveWinchTo: addAction("0")
+    onAddDescend: addAction("1")
+    onAddSpray: addAction("2")
+    onAddStopSpray: addAction("3")
+    onAddAscendNSpray: addAction("4")
+    onAddDescendNSpray: addAction("5")
+    onAddResetYaw: addAction("6")
 
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 10
         spacing: 10
 
-        // action item title
+        // Action item title
         Text {
             text: "Actions"
             font.pixelSize: 20
             font.bold: true
         }
 
-        // action item content
+        // Action item content
         Rectangle {
             id: actionContainer
             Layout.fillWidth: true
@@ -45,170 +61,35 @@ Rectangle {
                 anchors.margins: 10
                 spacing: 10
 
-                // action: Move Winch To
-                Rectangle {
-                    id: moveWinchAction
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 70
-                    color: Qt.rgba(255, 255, 255, 0.5)
-                    border.color: "#E0E0E0"
-                    border.width: 1
-                    radius: 15
+                // Dynamic action buttons created from actionConfig
+                Repeater {
+                    model: actionConfig ? Object.keys(actionConfig.actions).sort() : []
+                    
+                    delegate: Rectangle {
+                        property var action: actionConfig.actions[modelData]
+                        
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 70
+                        color: Qt.rgba(255, 255, 255, 0.5)
+                        border.color: "#E0E0E0"
+                        border.width: 1
+                        radius: 15
 
-                    Text {
-                        anchors.left: parent.left
-                        anchors.margins: 10
-                        anchors.leftMargin: 20
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "Move Winch To"
-                        font.pixelSize: 20
-                        font.bold: true
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            actionItem.addMoveWinchTo()
+                        Text {
+                            anchors.left: parent.left
+                            anchors.margins: 10
+                            anchors.leftMargin: 20
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: action.title
+                            font.pixelSize: 20
+                            font.bold: true
                         }
-                    }
-                }
 
-                // action: ascend & spray
-                Rectangle {
-                    id: ascendSprayAction
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 70
-                    color: Qt.rgba(255, 255, 255, 0.5)
-                    border.color: "#E0E0E0"
-                    border.width: 1
-                    radius: 15
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.margins: 10
-                        anchors.leftMargin: 20
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "Ascend & Spray"
-                        font.pixelSize: 20
-                        font.bold: true
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            actionItem.addAscendNSpray()
-                        }
-                    }
-                }
-
-                // action: descend & spray
-                Rectangle {
-                    id: descendSprayAction
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 70
-                    color: Qt.rgba(255, 255, 255, 0.5)
-                    border.color: "#E0E0E0"
-                    border.width: 1
-                    radius: 15
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.margins: 10
-                        anchors.leftMargin: 20
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "Descend & Spray"
-                        font.pixelSize: 20
-                        font.bold: true
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            actionItem.addDescendNSpray()
-                        }
-                    }
-                }
-
-                // action: spray
-                Rectangle {
-                    id: sprayAction
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 70
-                    color: Qt.rgba(255, 255, 255, 0.5)
-                    border.color: "#E0E0E0"
-                    border.width: 1
-                    radius: 15
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.margins: 10
-                        anchors.leftMargin: 20
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "Spray"
-                        font.pixelSize: 20
-                        font.bold: true
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            actionItem.addSpray()
-                        }
-                    }
-                }
-
-                // action: stop spray
-                Rectangle {
-                    id: stopSprayAction
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 70
-                    color: Qt.rgba(255, 255, 255, 0.5)
-                    border.color: "#E0E0E0"
-                    border.width: 1
-                    radius: 15
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.margins: 10
-                        anchors.leftMargin: 20
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "Stop Spray"
-                        font.pixelSize: 20
-                        font.bold: true
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            actionItem.addStopSpray()
-                        }
-                    }
-                }
-
-                // action: reset yaw
-                Rectangle {
-                    id: resetYawAction
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 70
-                    color: Qt.rgba(255, 255, 255, 0.5)
-                    border.color: "#E0E0E0"
-                    border.width: 1
-                    radius: 15
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.margins: 10
-                        anchors.leftMargin: 20
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "Reset Yaw"
-                        font.pixelSize: 20
-                        font.bold: true
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            actionItem.addResetYaw()
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                actionItem.addAction(modelData)
+                            }
                         }
                     }
                 }

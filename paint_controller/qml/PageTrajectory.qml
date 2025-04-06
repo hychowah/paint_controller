@@ -9,16 +9,8 @@ Rectangle {
     Layout.fillHeight: true
     color: "#9F9F9F"
 
-    // Action configuration that defines input fields for each action type
-    property var actionConfig: ({
-        "0": { prefix: "moveWinchTo", inputCount: 2 },
-        "1": { prefix: "descent", inputCount: 2 },
-        "2": { prefix: "spray", inputCount: 2 },
-        "3": { prefix: "stopSpray", inputCount: 0 },
-        "4": { prefix: "aNs", inputCount: 4 },
-        "5": { prefix: "dNs", inputCount: 4 },
-        "6": { prefix: "resetYaw", inputCount: 0 }
-    })
+    // Create an instance of the ActionConfig
+    property var config: ActionConfig {}
 
     StackLayout {
         id: stackLayout
@@ -81,23 +73,29 @@ Rectangle {
 
                             onAddAction: function(item) {
                                 var action = item.split("_")
-                                if(action[0] == "moveWinchTo") {
-                                    sequenceModel.append({id: "0", title: "Move Winch To", input1: action[1], input2: action[2], input3: "-1", input4: "-1"})
-                                }
-                                else if(action[0] == "spray") {
-                                    sequenceModel.append({id: "2", title: "Spray", input1: action[1], input2: action[2], input3: "-1", input4: "-1"})
-                                }
-                                else if(action[0] == "stopSpray") {
-                                    sequenceModel.append({id: "3", title: "Stop Spray", input1: "-1", input2: "-1", input3: "-1", input4: "-1"})
-                                }
-                                else if(action[0] == "aNs") {
-                                    sequenceModel.append({id: "4", title: "Ascend & Spray", input1: action[1], input2: action[2], input3: action[3], input4: action[4]})
-                                }
-                                else if(action[0] == "dNs") {
-                                    sequenceModel.append({id: "5", title: "Descend & Spray", input1: action[1], input2: action[2], input3: action[3], input4: action[4]})
-                                }
-                                else if(action[0] == "resetYaw") {
-                                    sequenceModel.append({id: "6", title: "Reset Yaw", input1: "-1", input2: "-1", input3: "-1", input4: "-1"})
+                                
+                                // Use the shared config to determine action properties
+                                for (var actionId in pageTrajRect.config.actions) {
+                                    var actionConfig = pageTrajRect.config.getAction(actionId);
+                                    if (actionConfig && actionConfig.prefix === action[0]) {
+                                        // Create a new object for the action
+                                        var newAction = {
+                                            id: actionId,
+                                            title: actionConfig.title
+                                        };
+                                        
+                                        // Fill in the input values from the action string
+                                        for (var i = 1; i <= 4; i++) {
+                                            if (i <= actionConfig.fields.length && action.length > i) {
+                                                newAction["input" + i] = action[i];
+                                            } else {
+                                                newAction["input" + i] = "-1";
+                                            }
+                                        }
+                                        
+                                        sequenceModel.append(newAction);
+                                        break;
+                                    }
                                 }
                             }
                         }
@@ -114,6 +112,7 @@ Rectangle {
                             sequence: sequenceModel // pass sequence to ActionSequence
                             selectedInputField: selectedInputField
                             currentSeq: currentSeq
+                            actionConfig: pageTrajRect.config
 
                             onSaveSequence: function() {
                                 var seqString = ""
@@ -121,7 +120,7 @@ Rectangle {
                                 for(var i = 0; i < sequenceModel.count; i++) {
                                     var item = sequenceModel.get(i);
                                     var actionId = item.id;
-                                    var actionConfig = pageTrajRect.actionConfig[actionId];
+                                    var actionConfig = pageTrajRect.config.getAction(actionId);
                                     
                                     if (!actionConfig) {
                                         console.error("Unknown action ID:", actionId);
@@ -131,15 +130,15 @@ Rectangle {
                                     // Start with the action prefix
                                     var actionString = actionConfig.prefix;
                                     
-                                    // Add input parameters based on inputCount
-                                    for (var j = 1; j <= actionConfig.inputCount; j++) {
-                                        var inputKey = "input" + j;
+                                    // Add input parameters based on fields length
+                                    for (var j = 0; j < actionConfig.fields.length; j++) {
+                                        var inputKey = actionConfig.fields[j].key;
                                         var inputValue = item[inputKey];
                                         
                                         // Skip if undefined or -1 for actions that don't use all inputs
                                         if (inputValue !== undefined && inputValue !== "-1") {
                                             actionString += "_" + inputValue;
-                                        } else if (j <= actionConfig.inputCount) {
+                                        } else {
                                             // Add placeholder for required inputs
                                             actionString += "_0";
                                         }
@@ -171,69 +170,41 @@ Rectangle {
                     ActionItem {
                         Layout.preferredWidth: parent.width / 4
                         Layout.fillHeight: true
+                        actionConfig: pageTrajRect.config // Pass the action config
 
+                        // Connect the new unified action signal
+                        onAddAction: function(actionId) {
+                            console.log("Adding action with ID:", actionId);
+                            sequenceModel.append(pageTrajRect.config.createActionItem(actionId));
+                        }
 
+                        // Keep the old signal handlers for backward compatibility
                         onAddMoveWinchTo: function() {
-                            // input1: length, input2: speed
-                            sequenceModel.append({
-                                id: "0", title: "Move Winch To",
-                                input1: "0", input2: "1000",
-                                input3: "-1", input4: "-1"
-                            });
+                            console.log("Legacy moveWinchTo signal received");
                         }
 
                         onAddDescend: function() {
-                            // input1: length, input2: speed
-                            sequenceModel.append({
-                                id: "1", title: "Descend",
-                                input1: "0", input2: "1000",
-                                input3: "-1", input4: "-1"
-                            });
+                            console.log("Legacy descend signal received");
                         }
 
                         onAddAscendNSpray: function() {
-                            // input1: winch length, input2: winch speed, input3: spray length, input4: spray speed
-                            sequenceModel.append({
-                                id: "4", title: "Ascend & Spray", 
-                                input1: "0", input2: "1000",
-                                input3: "0", input4: "1000"
-                            });
+                            console.log("Legacy ascendNSpray signal received");
                         }
 
                         onAddDescendNSpray: function() {
-                            // input1: winch length, input2: winch speed, input3: spray length, input4: spray speed
-                            sequenceModel.append({
-                                id: "5", title: "Descend & Spray",
-                                input1: "0", input2: "1000",
-                                input3: "0", input4: "1000"
-                            });
+                            console.log("Legacy descendNSpray signal received");
                         }
 
                         onAddSpray: function() {
-                            // input1: length, input2: speed
-                            sequenceModel.append({
-                                id: "2", title: "Spray",
-                                input1: "0", input2: "1000",
-                                input3: "-1", input4: "-1"
-                            });
+                            console.log("Legacy spray signal received");
                         }
 
                         onAddStopSpray: function() {
-                            // input1: N/A, input2: N/A
-                            sequenceModel.append({
-                                id: "3", title: "Stop Spray",
-                                input1: "-1", input2: "-1",
-                                input3: "-1", input4: "-1"
-                            });
+                            console.log("Legacy stopSpray signal received");
                         }
 
                         onAddResetYaw: function() {
-                            // input1: N/A, input2: N/A
-                            sequenceModel.append({
-                                id: "6", title: "Reset Yaw",
-                                input1: "-1", input2: "-1",
-                                input3: "-1", input4: "-1"
-                            });
+                            console.log("Legacy resetYaw signal received");
                         }
                     }
                 }

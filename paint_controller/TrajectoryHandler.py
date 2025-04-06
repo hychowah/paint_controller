@@ -111,6 +111,11 @@ class TrajectoryHandler(QObject):
                 elif temp[0] == "moveWinchTo":
                     self._currentTrajDescription.append("Move winch to " + temp[1] + "mm")
                     self._currentTrajCmd.append(["moveWinchTo", temp[1], temp[2]])
+                else:
+                    print("Unknown action: " + temp[0])
+                    self._currentTrajDescription.append("Unknown action: " + temp[0])
+                    self._currentTrajCmd.append(["unknown", temp[0]])
+
                 
 
     @Slot(result=list)
