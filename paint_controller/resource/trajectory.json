@@ -13,6 +13,14 @@
   },
   {
     "name": "66",
-    "sequence": "moveWinchTo_22_1000"
+    "sequence": "moveWinchTo_22_1000,aNs_0_1000_0_1000"
+  },
+  {
+    "name": "hj",
+    "sequence": "moveWinchTo_111_1000,dNs_229_1000_0_1000"
+  },
+  {
+    "name": "yt",
+    "sequence": "moveWinchTo_211_1000"
   }
 ]

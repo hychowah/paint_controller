@@ -9,6 +9,17 @@ Rectangle {
     Layout.fillHeight: true
     color: "#9F9F9F"
 
+    // Action configuration that defines input fields for each action type
+    property var actionConfig: ({
+        "0": { prefix: "moveWinchTo", inputCount: 2 },
+        "1": { prefix: "descent", inputCount: 2 },
+        "2": { prefix: "spray", inputCount: 2 },
+        "3": { prefix: "stopSpray", inputCount: 0 },
+        "4": { prefix: "aNs", inputCount: 4 },
+        "5": { prefix: "dNs", inputCount: 4 },
+        "6": { prefix: "resetYaw", inputCount: 0 }
+    })
+
     StackLayout {
         id: stackLayout
         anchors.fill: parent
@@ -106,32 +117,44 @@ Rectangle {
 
                             onSaveSequence: function() {
                                 var seqString = ""
+                                
                                 for(var i = 0; i < sequenceModel.count; i++) {
-                                    if (sequenceModel.get(i).id === "0") {
-                                        seqString += "moveWinchTo_" + sequenceModel.get(i).input1 + "_" + sequenceModel.get(i).input2 + ","
+                                    var item = sequenceModel.get(i);
+                                    var actionId = item.id;
+                                    var actionConfig = pageTrajRect.actionConfig[actionId];
+                                    
+                                    if (!actionConfig) {
+                                        console.error("Unknown action ID:", actionId);
+                                        continue;
                                     }
-                                    else if (sequenceModel.get(i).id === "1") {
-                                        seqString += "descent_" + sequenceModel.get(i).input1 + "_" + sequenceModel.get(i).input2 + ","
+                                    
+                                    // Start with the action prefix
+                                    var actionString = actionConfig.prefix;
+                                    
+                                    // Add input parameters based on inputCount
+                                    for (var j = 1; j <= actionConfig.inputCount; j++) {
+                                        var inputKey = "input" + j;
+                                        var inputValue = item[inputKey];
+                                        
+                                        // Skip if undefined or -1 for actions that don't use all inputs
+                                        if (inputValue !== undefined && inputValue !== "-1") {
+                                            actionString += "_" + inputValue;
+                                        } else if (j <= actionConfig.inputCount) {
+                                            // Add placeholder for required inputs
+                                            actionString += "_0";
+                                        }
                                     }
-                                    else if (sequenceModel.get(i).id === "2") {
-                                        seqString += "spray_" + sequenceModel.get(i).input1 + "_" + sequenceModel.get(i).input2 + ","
-                                    }
-                                    else if (sequenceModel.get(i).id === "3") {
-                                        seqString += "stopSpray,"
-                                    }
-                                    else if (sequenceModel.get(i).id === "4") {
-                                        seqString += "aNs_" + sequenceModel.get(i).input1 + "_" + sequenceModel.get(i).input2 + "_" + sequenceModel.get(i).input3 + "_" + sequenceModel.get(i).input4 + ","
-                                    }
-                                    else if (sequenceModel.get(i).id === "5") {
-                                        seqString += "dNs_" + sequenceModel.get(i).input1 + "_" + sequenceModel.get(i).input2 + "_" + sequenceModel.get(i).input3 + "_" + sequenceModel.get(i).input4 + ","
-                                    }
-                                    else if(sequenceModel.get(i).id === "6") {
-                                        seqString += "resetYaw,"
-                                    }
+                                    
+                                    seqString += actionString + ",";
                                 }
+                                
                                 // remove last comma
-                                seqString = seqString.slice(0, -1)
-                                trajectoryHandler.saveTrajectory(currentSeq.seqName, seqString)
+                                if (seqString.length > 0) {
+                                    seqString = seqString.slice(0, -1);
+                                }
+                                
+                                console.log("Saving trajectory:", seqString);
+                                trajectoryHandler.saveTrajectory(currentSeq.seqName, seqString);
                             }
                         }
 
@@ -155,7 +178,7 @@ Rectangle {
                             sequenceModel.append({
                                 id: "0", title: "Move Winch To",
                                 input1: "0", input2: "1000",
-                                input3: "", input4: ""
+                                input3: "-1", input4: "-1"
                             });
                         }
 
@@ -164,7 +187,7 @@ Rectangle {
                             sequenceModel.append({
                                 id: "1", title: "Descend",
                                 input1: "0", input2: "1000",
-                                input3: "", input4: ""
+                                input3: "-1", input4: "-1"
                             });
                         }
 
@@ -191,7 +214,7 @@ Rectangle {
                             sequenceModel.append({
                                 id: "2", title: "Spray",
                                 input1: "0", input2: "1000",
-                                input3: "", input4: ""
+                                input3: "-1", input4: "-1"
                             });
                         }
 
@@ -199,8 +222,8 @@ Rectangle {
                             // input1: N/A, input2: N/A
                             sequenceModel.append({
                                 id: "3", title: "Stop Spray",
-                                input1: "", input2: "",
-                                input3: "", input4: ""
+                                input1: "-1", input2: "-1",
+                                input3: "-1", input4: "-1"
                             });
                         }
 
@@ -208,8 +231,8 @@ Rectangle {
                             // input1: N/A, input2: N/A
                             sequenceModel.append({
                                 id: "6", title: "Reset Yaw",
-                                input1: "", input2: "",
-                                input3: "", input4: ""
+                                input1: "-1", input2: "-1",
+                                input3: "-1", input4: "-1"
                             });
                         }
                     }

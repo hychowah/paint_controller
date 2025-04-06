@@ -1,4 +1,3 @@
-// ActionSequence.qml
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
@@ -11,30 +10,44 @@ Rectangle {
     border.width: 1
 
     property var sequence
-    property var selectedInputField
-    property var currentSeq
+    property var selectedInputField: ({ itemInx: -1, inputInx: -1 })
+    property var currentSeq: ({ seqName: "Unnamed" })
 
-    property var itemInx
-    property var inputInx
-
-    property var showInputField1: ["0", "1", "2", "4", "5"]
-    property var showInputField2: ["4", "5"]
+    // Centralized configuration for action types
+    property var actionConfig: ({
+        "0": { fields: [
+            { label: "Distance", key: "input1" },
+            { label: "Velocity", key: "input2" }
+        ]},
+        "1": { fields: [
+            { label: "Angle", key: "input1" },
+            { label: "Rate", key: "input2" }
+        ]},
+        "2": { fields: [
+            { label: "Time", key: "input1" },
+            { label: "Power", key: "input2" }
+        ]},
+        "4": { fields: [
+            { label: "Wait Time", key: "input1" },
+            { label: "Wait Speed", key: "input2" },
+            { label: "Step Length", key: "input3" },
+            { label: "Step Speed", key: "input4" }
+        ]},
+        "5": { fields: [
+            { label: "Delay", key: "input1" },
+            { label: "Accel", key: "input2" },
+            { label: "Span", key: "input3" },
+            { label: "Force", key: "input4" }
+        ]}
+    })
 
     signal saveSequence
 
     KeyboardPopup {
         id: keyboardPopup
         anchors.centerIn: parent
-        
-        onTextUpdated: {
-            // Update main text when keyboard text changes
-            currentSeq.seqName = newText
-        }
-        
-        onClosed: {
-            // Optional: Sync final text when popup closes
-            currentSeq.seqName = keyboardPopup.currentText
-        }
+        onTextUpdated: { currentSeq.seqName = newText }
+        onClosed: { currentSeq.seqName = keyboardPopup.currentText }
     }
 
     ColumnLayout {
@@ -47,37 +60,12 @@ Rectangle {
             Layout.alignment: Qt.AlignHCenter
             height: 60
             spacing: 10
-            
-            // action item title
-            Text {
-                text: "Sequence"
-                font.pixelSize: 20
-                font.bold: true
-                Layout.rightMargin: 40
-            }
-
-            Text {
-                text: "Name:"
-            }
-
-            Button {
-                text: currentSeq.seqName
-                Layout.preferredWidth: 100
-                onClicked: {
-                    keyboardPopup.currentText = currentSeq.seqName
-                    keyboardPopup.open()
-                }
-            }
-
-            Button {
-                text: "Save"
-                Layout.preferredWidth: 60
-                onClicked: {
-                    saveSequence()
-                }
-            }
+            Text { text: "Sequence"; font.pixelSize: 20; font.bold: true; Layout.rightMargin: 40 }
+            Text { text: "Name:" }
+            Button { text: currentSeq.seqName; Layout.preferredWidth: 100; onClicked: { keyboardPopup.currentText = currentSeq.seqName; keyboardPopup.open() } }
+            Button { text: "Save"; Layout.preferredWidth: 60; onClicked: saveSequence() }
         }
-        
+
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -88,130 +76,94 @@ Rectangle {
                 id: actionListView
                 anchors.fill: parent
                 model: actionSequence.sequence
-                // Removed redundant width property that was causing the error
 
                 delegate: Item {
+                    id: delegateItem
                     width: actionListView.width
-                    height: (model.id === "4" || model.id === "5") ? 180 : 130
+                    height: model ? (70 + (actionConfig[model.id] ? actionConfig[model.id].fields.length * 60 : 0)) : 70
+                    
+                    // Store the model index
+                    property int itemIndex: index
 
                     Rectangle {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            height: (model.id === "4" || model.id === "5") ? 130 : 100
-                            color: Qt.rgba(255, 255, 255, 0.5)
-                            radius: 20
-                            border.color: "#000000"
-                    
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        color: Qt.rgba(255, 255, 255, 0.5)
+                        radius: 20
+                        border.color: "#000000"
+                        visible: model !== undefined && model !== null
+
+                        // Local property to store fields for this item
+                        property var itemFields: model && actionConfig[model.id] ? actionConfig[model.id].fields : []
+
                         Text {
-                            text: (index+1).toString() + ") " + model.title
+                            text: model ? (delegateItem.itemIndex+1).toString() + ") " + model.title : (delegateItem.itemIndex+1).toString() + ") Invalid Item"
                             font.pixelSize: 20
                             font.bold: true
                             anchors.margins: 10
                             anchors.top: parent.top
                             anchors.left: parent.left
-                            Layout.alignment: Qt.AlignVCenter
                         }
 
-                        RowLayout {
-                            id: inputRowLayout1
+                        ColumnLayout {
                             anchors.top: parent.top
                             anchors.left: parent.left
-                            spacing: 20
-                            anchors.leftMargin: 20
                             anchors.topMargin: 40
-                            Layout.fillWidth: true
-                            opacity: showInputField1.indexOf(model.id) !== -1
-                            enabled: showInputField1.indexOf(model.id) !== -1
-
-                            ColumnLayout {
-                                Text {
-                                    text: (model.id === "4" || model.id === "5") ? "W_Length" : "Length"
-                                    Layout.preferredWidth: 40
-                                }
-
-                                Button {
-                                    text: model.input1
-                                    Layout.preferredWidth: 60
-                                    background: Rectangle {
-                                        color: (selectedInputField.itemInx === index && selectedInputField.inputInx === 0) ? "#58ff86" : "white"
-                                    }
-                                    onClicked: {
-                                        selectedInputField.itemInx = index
-                                        selectedInputField.inputInx = 0
-                                    }
-                                }
-                            }
-
-                            ColumnLayout {
-                                Layout.fillHeight: true
-                                Layout.alignment: Qt.AlignVCenter
-
-                                Text {
-                                    text: (model.id === "4" || model.id === "5") ? "W_Speed" : "Speed"
-                                    Layout.preferredWidth: 40
-                                }
-
-                                Button {
-                                    text: model.input2
-                                    Layout.preferredWidth: 60
-                                    background: Rectangle {
-                                        color: (selectedInputField.itemInx === index && selectedInputField.inputInx === 1) ? "#58ff86" : "white"
-                                    }
-                                    onClicked: {
-                                        selectedInputField.itemInx = index
-                                        selectedInputField.inputInx = 1
-                                    }
-                                }
-                            }
-                        }
-
-                        RowLayout {
-                            anchors.top: inputRowLayout1.bottom
-                            anchors.left: parent.left
-                            spacing: 20
                             anchors.leftMargin: 20
-                            anchors.topMargin: 5
-                            Layout.fillWidth: true
-                            opacity: showInputField2.indexOf(model.id) !== -1
-                            enabled: showInputField2.indexOf(model.id) !== -1
+                            spacing: 10
+                            visible: parent.itemFields.length > 0
 
-                            ColumnLayout {
-                                Text {
-                                    text: "S_Length"
-                                    Layout.preferredWidth: 40
-                                }
+                            Repeater {
+                                model: parent.parent.itemFields // Use the local property
+                                
+                                delegate: RowLayout {
+                                    id: rowLayout
+                                    spacing: 20
+                                    property int fieldIndex: index // Store the field index here
 
-                                Button {
-                                    text: model.input3
-                                    Layout.preferredWidth: 60
-                                    background: Rectangle {
-                                        color: (selectedInputField.itemInx === index && selectedInputField.inputInx === 2) ? "#58ff86" : "white"
-                                    }
-                                    onClicked: {
-                                        selectedInputField.itemInx = index
-                                        selectedInputField.inputInx = 2
-                                    }
-                                }
-                            }
-
-                            ColumnLayout {
-                                Layout.fillHeight: true
-                                Layout.alignment: Qt.AlignVCenter
-
-                                Text {
-                                    text: "S_Speed"
-                                    Layout.preferredWidth: 40
-                                }
-
-                                Button {
-                                    text: model.input4
-                                    Layout.preferredWidth: 60
-                                    background: Rectangle {
-                                        color: (selectedInputField.itemInx === index && selectedInputField.inputInx === 3) ? "#58ff86" : "white"
-                                    }
-                                    onClicked: {
-                                        selectedInputField.itemInx = index
-                                        selectedInputField.inputInx = 3
+                                    ColumnLayout {
+                                        Text {
+                                            text: modelData.label
+                                            Layout.preferredWidth: 60
+                                        }
+                                        Button {
+                                            id: valueButton
+                                            property string currentKey: modelData.key
+                                            property int modelIndex: delegateItem.itemIndex
+                                            
+                                            // This is the most important part - use a timer to force refresh
+                                            Timer {
+                                                interval: 100
+                                                running: true
+                                                repeat: true
+                                                onTriggered: {
+                                                    if (actionSequence.sequence && 
+                                                        actionSequence.sequence.count > valueButton.modelIndex) {
+                                                        var currentModel = actionSequence.sequence.get(valueButton.modelIndex);
+                                                        if (currentModel) {
+                                                            var value = currentModel[valueButton.currentKey];
+                                                            if (value === undefined || value === null || value === "" || value === "-1") {
+                                                                valueButton.text = "0";
+                                                            } else {
+                                                                valueButton.text = value.toString();
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            
+                                            Layout.preferredWidth: 60
+                                            background: Rectangle {
+                                                color: (selectedInputField.itemInx === delegateItem.itemIndex && 
+                                                       selectedInputField.inputInx === rowLayout.fieldIndex) ? "#58ff86" : "white"
+                                            }
+                                            onClicked: {
+                                                selectedInputField.itemInx = delegateItem.itemIndex
+                                                selectedInputField.inputInx = rowLayout.fieldIndex
+                                                console.log("Selected field: item=" + delegateItem.itemIndex + 
+                                                           ", field=" + rowLayout.fieldIndex + ", key=" + currentKey)
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -225,14 +177,11 @@ Rectangle {
                             anchors.verticalCenter: parent.verticalCenter
                             anchors.right: parent.right
                             anchors.margins: 40
-                            background: Rectangle {
-                                color: "red"
-                                radius: 1
-                            }
+                            background: Rectangle { color: "red"; radius: 1 }
                             onClicked: {
                                 selectedInputField.itemInx = -1
                                 selectedInputField.inputInx = -1
-                                actionSequence.sequence.remove(index)
+                                actionSequence.sequence.remove(delegateItem.itemIndex)
                             }
                         }
 
@@ -240,29 +189,27 @@ Rectangle {
                             anchors.right: removeButton.left
                             anchors.verticalCenter: parent.verticalCenter
                             anchors.margins: 30
-
-                            Button {
+                            Button { 
                                 text: "▲"
                                 Layout.preferredWidth: 40
-                                onClicked: {
-                                    selectedInputField.itemInx = -1
-                                    selectedInputField.inputInx = -1
-                                    if (index > 0) {
-                                        actionSequence.sequence.move(index, index - 1, 1)
-                                    }
-                                }
+                                onClicked: { 
+                                    if (delegateItem.itemIndex > 0) {
+                                        actionSequence.sequence.move(delegateItem.itemIndex, delegateItem.itemIndex - 1, 1)
+                                        selectedInputField.itemInx = -1
+                                        selectedInputField.inputInx = -1
+                                    } 
+                                } 
                             }
-
-                            Button {
+                            Button { 
                                 text: "▼"
                                 Layout.preferredWidth: 40
-                                onClicked: {
-                                    selectedInputField.itemInx = -1
-                                    selectedInputField.inputInx = -1
-                                    if (index < actionSequence.sequence.count - 1) {
-                                        actionSequence.sequence.move(index, index + 1, 1)
-                                    }
-                                }
+                                onClicked: { 
+                                    if (delegateItem.itemIndex < actionSequence.sequence.count - 1) {
+                                        actionSequence.sequence.move(delegateItem.itemIndex, delegateItem.itemIndex + 1, 1)
+                                        selectedInputField.itemInx = -1
+                                        selectedInputField.inputInx = -1
+                                    } 
+                                } 
                             }
                         }
                     }

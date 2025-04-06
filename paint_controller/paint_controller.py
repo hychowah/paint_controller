@@ -12,7 +12,7 @@ import math
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float64, Bool, Float32, Int32, String
+from std_msgs.msg import Float64, Bool, Float32, Int32, String, Int32, UInt8
 from sensor_msgs.msg import LaserScan
 
 from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QThread
@@ -41,6 +41,12 @@ from gi.repository import Gst, GstApp
 #############################################
 ### Configuration
 #############################################
+
+class HeartbeatStatus(Enum):
+    IDLE = 0x00      # System is off or not initialized
+    ONTASK = 0x01       # Normal operation
+    WARNING = 0x02  # Minor issue detected
+    ERROR = 0x03    # Critical error
 
 @dataclass
 class RobotConfig:
@@ -195,6 +201,7 @@ class RobotController(Node, QObject):
         self.ef_sink.connect('new-sample', self.on_new_ef_sample)
         self.ef_pipeline.set_state(Gst.State.PLAYING)
         
+        self.current_status = HeartbeatStatus.IDLE
         self.config = config
         self.video_stream = VideoStream(config.video_port)
         self.winch_controller = WinchController(self)
@@ -215,6 +222,7 @@ class RobotController(Node, QObject):
         
         # Setup ROS subscribers and publishers
         self._setup_subscribers()
+        self.heartbeat_pub = self.create_publisher(UInt8, '/controller/heartbeat', 10)
 
         self.trajectoryHandler = TrajectoryHandler(self)
 
@@ -283,10 +291,14 @@ class RobotController(Node, QObject):
 
     def display_message(self, message: str):
         self.ui_data_model.display_message = message
+
+    def _publish_heartbeat(self):
+        """Publish a heartbeat message every 0.5 seconds"""
+        msg = UInt8()
+        msg.data = HeartbeatStatus.IDLE.value  # Indicate the node is alive
+        self.heartbeat_pub.publish(msg)
         
     def _setup_subscribers(self):
-        
-
         self.create_subscription(
             String,
             'connection/ef/ip',
@@ -331,39 +343,6 @@ class RobotController(Node, QObject):
         self.ui_data_model.right_joystick_control = control
         self.get_logger().info(f'Right joystick control set to: {control}')
         self.display_message(f'Right joystick control set to: {control}')
-
-    @overload
-    def setYawControl(self, target: float) -> None:
-        ...
-
-    @overload
-    def setYawControl(self, enabled: bool, target: float, p: float, i: float, d: float, pwm: int) -> None:
-        ...
-
-    @Slot(bool, float, float, float, float, int)
-    def setYawControl(self, *args):
-        """Set yaw control parameters and enable state"""
-        if len(args) == 1:
-            target = args[0]
-            teensy_status = self.teensyMonitor.get_status()
-            enabled = teensy_status.get('yaw_enabled', False)
-            p = float(teensy_status.get('yaw_pid_p', 0.0))
-            i = float(teensy_status.get('yaw_pid_i', 0.0))
-            d = float(teensy_status.get('yaw_pid_d', 0.0))
-            pwm = int(float(teensy_status.get('yaw_pwm', 0)))
-        elif len(args) == 6:
-            enabled, target, p, i, d, pwm = args
-
-        msg = TeensyYaw()
-        msg.yaw_enabled = enabled
-        msg.yaw_command = target  # Use current yaw as target
-        print(f"Setting yaw control: {enabled}, {target}, {p}, {i}, {d}, {pwm}")
-        msg.yaw_pid_p = p
-        msg.yaw_pid_i = i
-        msg.yaw_pid_d = d
-        msg.yaw_pwm = pwm
-        self.ef_yaw_control_pub.publish(msg)
-        self.display_message(f'Yaw control {"enabled" if enabled else "disabled"} with Target: {target} P:{p} I:{i} D:{d} PWM:{pwm}')
 
     @Slot()
     def terminateNodes(self):
@@ -434,6 +413,10 @@ def main():
     status_timer = QTimer()
     status_timer.timeout.connect(controller.status_updated.emit)
     status_timer.start(int(1000 / config.update_rate))
+
+    heartbeat_timer = QTimer()
+    heartbeat_timer.timeout.connect(controller._publish_heartbeat)
+    heartbeat_timer.start(0.5)
     
     # Run application
     try:

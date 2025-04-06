@@ -14,6 +14,35 @@ Rectangle {
     property var selectedInputField
     property var sequence
 
+    // Helper function to get current value or empty string if invalid
+    function getCurrentValue(itemIndex, inputField) {
+        if (itemIndex < 0 || !sequence || sequence.count <= itemIndex) {
+            return "";
+        }
+        
+        var item = sequence.get(itemIndex);
+        if (!item || item[inputField] === undefined) {
+            return "";
+        }
+        
+        var value = item[inputField];
+        if (value === null || value === "-1" || value === "") {
+            return "0";
+        }
+        
+        return value.toString();
+    }
+
+    // Helper function to update a value in the model
+    function updateValue(itemIndex, inputField, value) {
+        if (itemIndex < 0 || !sequence || sequence.count <= itemIndex) {
+            return;
+        }
+        
+        console.log("Setting " + inputField + " to: " + value);
+        sequence.setProperty(itemIndex, inputField, value);
+    }
+
     component NumpadRect: Rectangle {
         property string inputChar: ""
         width: 40
@@ -35,24 +64,30 @@ Rectangle {
             anchors.fill: parent
             onClicked: {
                 if(selectedInputField.itemInx != -1 && selectedInputField.inputInx != -1) {
+                    var inputField;
+                    
                     if(selectedInputField.inputInx === 0) {
-                        var newInput = sequence.get(selectedInputField.itemInx).input1.toString() + inputChar;
-                        sequence.setProperty(selectedInputField.itemInx, "input1", parseInt(newInput));
+                        inputField = "input1";
+                    } else if(selectedInputField.inputInx === 1) {
+                        inputField = "input2";
+                    } else if(selectedInputField.inputInx === 2) {
+                        inputField = "input3";
+                    } else if(selectedInputField.inputInx === 3) {
+                        inputField = "input4";
+                    } else {
+                        return;
                     }
-                    else if(selectedInputField.inputInx === 1) {
-                        var newInput = sequence.get(selectedInputField.itemInx).input2.toString() + inputChar;
-                        sequence.setProperty(selectedInputField.itemInx, "input2", parseInt(newInput));
+                    
+                    var currentValue = getCurrentValue(selectedInputField.itemInx, inputField);
+                    // If current value is 0, replace it
+                    if (currentValue === "0") {
+                        currentValue = "";
                     }
-                    else if(selectedInputField.inputInx === 2) {
-                        var newInput = sequence.get(selectedInputField.itemInx).input3.toString() + inputChar;
-                        sequence.setProperty(selectedInputField.itemInx, "input3", parseInt(newInput));
-                    }
-                    else if(selectedInputField.inputInx === 3) {
-                        var newInput = sequence.get(selectedInputField.itemInx).input4.toString() + inputChar;
-                        sequence.setProperty(selectedInputField.itemInx, "input4", parseInt(newInput));
-                    }
+                    
+                    var newValue = currentValue + inputChar;
+                    updateValue(selectedInputField.itemInx, inputField, newValue);
                 }
-                trajectoryNumpads.lastClickedButton = inputChar
+                trajectoryNumpads.lastClickedButton = inputChar;
             }
         }
     }
@@ -109,35 +144,34 @@ Rectangle {
 
             MouseArea {
                 anchors.fill: parent
-
-
-                function deleteChar(inputField) {
-                    var newInput = sequence.get(selectedInputField.itemInx)[inputField].toString();
-                    if(newInput.length > 1) {
-                        newInput = newInput.substring(0, newInput.length - 1);
-                    }
-                    else if(newInput.length == 1) {
-                        newInput = "0";
-                    }
-                    sequence.setProperty(selectedInputField.itemInx, inputField, parseInt(newInput));
-                }
-
                 onClicked: {
                     if(selectedInputField.itemInx != -1 && selectedInputField.inputInx != -1) {
+                        var inputField;
+                        
                         if(selectedInputField.inputInx === 0) {
-                            deleteChar("input1");
+                            inputField = "input1";
+                        } else if(selectedInputField.inputInx === 1) {
+                            inputField = "input2";
+                        } else if(selectedInputField.inputInx === 2) {
+                            inputField = "input3";
+                        } else if(selectedInputField.inputInx === 3) {
+                            inputField = "input4";
+                        } else {
+                            return;
                         }
-                        else if(selectedInputField.inputInx === 1) {
-                            deleteChar("input2");
+                        
+                        var currentValue = getCurrentValue(selectedInputField.itemInx, inputField);
+                        var newValue;
+                        
+                        if (currentValue.length > 1) {
+                            newValue = currentValue.substring(0, currentValue.length - 1);
+                        } else {
+                            newValue = "0";
                         }
-                        else if(selectedInputField.inputInx === 2) {
-                            deleteChar("input3");
-                        }
-                        else if(selectedInputField.inputInx === 3) {
-                            deleteChar("input4");
-                        }
+                        
+                        updateValue(selectedInputField.itemInx, inputField, newValue);
                     }
-                    trajectoryNumpads.lastClickedButton = "del"
+                    trajectoryNumpads.lastClickedButton = "del";
                 }
             }
         }
