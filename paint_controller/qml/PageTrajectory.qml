@@ -9,8 +9,8 @@ Rectangle {
     Layout.fillHeight: true
     color: "#9F9F9F"
 
-    // Create an instance of the ActionConfig
-    property var config: ActionConfig {}
+    // Use the context property directly - no need for a proxy
+    // actionConfig is now a global context property
 
     StackLayout {
         id: stackLayout
@@ -73,29 +73,35 @@ Rectangle {
 
                             onAddAction: function(item) {
                                 var action = item.split("_")
+                                var actionPrefix = action[0]
+                                var actionId = actionConfig.getActionIdByPrefix(actionPrefix)
                                 
-                                // Use the shared config to determine action properties
-                                for (var actionId in pageTrajRect.config.actions) {
-                                    var actionConfig = pageTrajRect.config.getAction(actionId);
-                                    if (actionConfig && actionConfig.prefix === action[0]) {
-                                        // Create a new object for the action
-                                        var newAction = {
-                                            id: actionId,
-                                            title: actionConfig.title
-                                        };
+                                if (actionId !== "") {
+                                    // Create a new object for the action
+                                    var newAction = {
+                                        id: actionId,
+                                        title: actionConfig.getAction(actionId).title
+                                    };
+                                    
+                                    // Fill in the input values from the action string
+                                    var fields = actionConfig.getAction(actionId).fields;
+                                    for (var i = 0; i < fields.length; i++) {
+                                        var fieldIndex = i + 1;
+                                        var actionValueIndex = i + 1;
                                         
-                                        // Fill in the input values from the action string
-                                        for (var i = 1; i <= 4; i++) {
-                                            if (i <= actionConfig.fields.length && action.length > i) {
-                                                newAction["input" + i] = action[i];
-                                            } else {
-                                                newAction["input" + i] = "-1";
-                                            }
+                                        if (actionValueIndex < action.length) {
+                                            newAction["input" + fieldIndex] = action[actionValueIndex];
+                                        } else {
+                                            newAction["input" + fieldIndex] = "0";
                                         }
-                                        
-                                        sequenceModel.append(newAction);
-                                        break;
                                     }
+                                    
+                                    // Set unused inputs to -1
+                                    for (var j = fields.length + 1; j <= 4; j++) {
+                                        newAction["input" + j] = "-1";
+                                    }
+                                    
+                                    sequenceModel.append(newAction);
                                 }
                             }
                         }
@@ -112,7 +118,6 @@ Rectangle {
                             sequence: sequenceModel // pass sequence to ActionSequence
                             selectedInputField: selectedInputField
                             currentSeq: currentSeq
-                            actionConfig: pageTrajRect.config
 
                             onSaveSequence: function() {
                                 var seqString = ""
@@ -120,19 +125,19 @@ Rectangle {
                                 for(var i = 0; i < sequenceModel.count; i++) {
                                     var item = sequenceModel.get(i);
                                     var actionId = item.id;
-                                    var actionConfig = pageTrajRect.config.getAction(actionId);
+                                    var config = actionConfig.getAction(actionId);
                                     
-                                    if (!actionConfig) {
+                                    if (!config) {
                                         console.error("Unknown action ID:", actionId);
                                         continue;
                                     }
                                     
                                     // Start with the action prefix
-                                    var actionString = actionConfig.prefix;
+                                    var actionString = config.prefix;
                                     
                                     // Add input parameters based on fields length
-                                    for (var j = 0; j < actionConfig.fields.length; j++) {
-                                        var inputKey = actionConfig.fields[j].key;
+                                    for (var j = 0; j < config.fields.length; j++) {
+                                        var inputKey = config.fields[j].key;
                                         var inputValue = item[inputKey];
                                         
                                         // Skip if undefined or -1 for actions that don't use all inputs
@@ -170,41 +175,15 @@ Rectangle {
                     ActionItem {
                         Layout.preferredWidth: parent.width / 4
                         Layout.fillHeight: true
-                        actionConfig: pageTrajRect.config // Pass the action config
 
-                        // Connect the new unified action signal
-                        onAddAction: function(actionId) {
-                            console.log("Adding action with ID:", actionId);
-                            sequenceModel.append(pageTrajRect.config.createActionItem(actionId));
-                        }
-
-                        // Keep the old signal handlers for backward compatibility
-                        onAddMoveWinchTo: function() {
-                            console.log("Legacy moveWinchTo signal received");
-                        }
-
-                        onAddDescend: function() {
-                            console.log("Legacy descend signal received");
-                        }
-
-                        onAddAscendNSpray: function() {
-                            console.log("Legacy ascendNSpray signal received");
-                        }
-
-                        onAddDescendNSpray: function() {
-                            console.log("Legacy descendNSpray signal received");
-                        }
-
-                        onAddSpray: function() {
-                            console.log("Legacy spray signal received");
-                        }
-
-                        onAddStopSpray: function() {
-                            console.log("Legacy stopSpray signal received");
-                        }
-
-                        onAddResetYaw: function() {
-                            console.log("Legacy resetYaw signal received");
+                        // onAddAction: function(actionId) {
+                        //     console.log("Adding action with ID:", actionId);
+                        //     sequenceModel.append(actionConfig.createActionItem(actionId));
+                        // }
+                        onAddAction: {
+                            var actionItem = actionConfig.createActionItem(actionId);
+                            console.log("Action item to append: " + JSON.stringify(actionItem));
+                            sequenceModel.append(actionItem);
                         }
                     }
                 }

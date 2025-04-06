@@ -32,6 +32,7 @@ from UIWheelController import WheelController
 from UIWinchController import WinchController
 from UIWindMonitor import WindMonitor
 from UITeensyController import TeensyController
+from ActionConfigPython import ActionConfigPython
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -211,6 +212,7 @@ class RobotController(Node, QObject):
         self.teensy_controller = TeensyController(self)
         self.wind_monitor = WindMonitor(self)    
         self.controlProcessor = ControlProcessor(self)
+        self.action_config = ActionConfigPython()
         self.target_yaw = 0
 
         self.steam_deck_handler = SteamDeckHandler(deadzone=config.joystick_deadzone, update_rate=60)
@@ -381,6 +383,7 @@ def main():
     # Create robot controller
     controller = RobotController(config)
     
+    
     # Start ROS thread
     ros_thread = RosThread(controller)
     ros_thread.start()
@@ -408,6 +411,7 @@ def main():
     engine.rootContext().setContextProperty("steamDeckHandler", controller.steam_deck_handler)
     engine.rootContext().setContextProperty("windMonitor", controller.wind_monitor)
     engine.rootContext().setContextProperty("teensyController", controller.teensy_controller)
+    engine.rootContext().setContextProperty("actionConfig", controller.action_config)
     
     # Start status update timer
     status_timer = QTimer()

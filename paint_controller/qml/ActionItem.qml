@@ -10,9 +10,6 @@ Rectangle {
     border.color: "#E0E0E0"
     border.width: 1
 
-    // Property to access the action config
-    property var actionConfig: null
-
     // Define signals for all possible actions
     signal addAction(string actionId)
     
@@ -63,10 +60,16 @@ Rectangle {
 
                 // Dynamic action buttons created from actionConfig
                 Repeater {
-                    model: actionConfig ? Object.keys(actionConfig.actions).sort() : []
+                    model: {
+                        if (!actionConfig || !actionConfig.actions) {
+                            console.log("ActionConfig not properly initialized");
+                            return [];
+                        }
+                        return Object.keys(actionConfig.actions).sort();
+                    }
                     
                     delegate: Rectangle {
-                        property var action: actionConfig.actions[modelData]
+                        property var action: actionConfig.getAction(modelData)
                         
                         Layout.fillWidth: true
                         Layout.preferredHeight: 70
@@ -80,7 +83,7 @@ Rectangle {
                             anchors.margins: 10
                             anchors.leftMargin: 20
                             anchors.verticalCenter: parent.verticalCenter
-                            text: action.title
+                            text: action ? action.title : "Unknown Action"
                             font.pixelSize: 20
                             font.bold: true
                         }
@@ -100,5 +103,11 @@ Rectangle {
                 }
             }
         }
+    }
+
+    Component.onCompleted: {
+        console.log("actionConfig:", JSON.stringify(actionConfig));
+        console.log("actionConfig.actions:", JSON.stringify(actionConfig.actions));
+        console.log("Model data:", JSON.stringify(Object.keys(actionConfig.actions)));
     }
 }

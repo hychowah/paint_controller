@@ -12,32 +12,13 @@ Rectangle {
     property var sequence
     property var selectedInputField: ({ itemInx: -1, inputInx: -1 })
     property var currentSeq: ({ seqName: "Unnamed" })
-    property var actionConfig: null
 
     signal saveSequence
-
-    KeyboardPopup {
-        id: keyboardPopup
-        anchors.centerIn: parent
-        onTextUpdated: { currentSeq.seqName = newText }
-        onClosed: { currentSeq.seqName = keyboardPopup.currentText }
-    }
 
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 10
         spacing: 10
-
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.alignment: Qt.AlignHCenter
-            height: 60
-            spacing: 10
-            Text { text: "Sequence"; font.pixelSize: 20; font.bold: true; Layout.rightMargin: 40 }
-            Text { text: "Name:" }
-            Button { text: currentSeq.seqName; Layout.preferredWidth: 100; onClicked: { keyboardPopup.currentText = currentSeq.seqName; keyboardPopup.open() } }
-            Button { text: "Save"; Layout.preferredWidth: 60; onClicked: saveSequence() }
-        }
 
         Rectangle {
             Layout.fillWidth: true
@@ -53,197 +34,101 @@ Rectangle {
                 delegate: Item {
                     id: delegateItem
                     width: actionListView.width
-                    height: model ? (70 + (model.id === "4" || model.id === "5" ? 240 : 120)) : 70
-                    
-                    // Store the model index
+                    height: {
+                        if (!model || !model.id) return 70;
+                        var action = actionConfig.getAction(model.id);
+                        return action ? 70 + (action.fields.length * 60) : 70;
+                    }
                     property int itemIndex: index
 
+                    Component.onCompleted: {
+                        console.log("Raw model for item " + itemIndex + ": " + JSON.stringify(model));
+                    }
+
                     Rectangle {
-                        anchors.fill: parent
-                        anchors.margins: 10
+                        width: parent.width - 20
+                        height: parent.height - 20
+                        x: 10
+                        y: 10
                         color: Qt.rgba(255, 255, 255, 0.5)
                         radius: 20
                         border.color: "#000000"
                         visible: model !== undefined && model !== null
 
                         Text {
-                            text: model ? (delegateItem.itemIndex+1).toString() + ") " + model.title : (delegateItem.itemIndex+1).toString() + ") Invalid Item"
+                            text: model && model.title ? (delegateItem.itemIndex+1) + ") " + model.title : (delegateItem.itemIndex+1) + ") Invalid Item"
                             font.pixelSize: 20
                             font.bold: true
-                            anchors.margins: 10
-                            anchors.top: parent.top
-                            anchors.left: parent.left
+                            x: 10
+                            y: 10
                         }
 
-                        // First row of input fields (always show input1 and input2)
                         ColumnLayout {
-                            anchors.top: parent.top
-                            anchors.left: parent.left
-                            anchors.topMargin: 40
-                            anchors.leftMargin: 20
+                            x: 20
+                            y: 40
                             spacing: 10
-                            
-                            // Input 1
-                            RowLayout {
-                                spacing: 20
-                                visible: model.id !== "3" && model.id !== "6" // Hide for actions with no fields
-                                
-                                ColumnLayout {
-                                    Text {
-                                        text: {
-                                            if (model.id === "0") return "Distance";
-                                            if (model.id === "1") return "Angle";
-                                            if (model.id === "2") return "Time";
-                                            if (model.id === "4") return "Wait Time";
-                                            if (model.id === "5") return "Delay";
-                                            return "Input 1";
-                                        }
-                                        Layout.preferredWidth: 60
-                                    }
-                                    Button {
-                                        text: model.input1 || "0"
-                                        Layout.preferredWidth: 60
-                                        background: Rectangle {
-                                            color: (selectedInputField.itemInx === delegateItem.itemIndex && 
-                                                  selectedInputField.inputInx === 0) ? "#58ff86" : "white"
-                                        }
-                                        onClicked: {
-                                            selectedInputField.itemInx = delegateItem.itemIndex
-                                            selectedInputField.inputInx = 0
-                                        }
-                                    }
-                                }
+                            width: 200
+                            height: model && actionConfig.getAction(model.id) ? actionConfig.getAction(model.id).fields.length * 60 : 0
+                            Rectangle {
+                                anchors.fill: parent
+                                color: "yellow"
                             }
-                            
-                            // Input 2
-                            RowLayout {
-                                spacing: 20
-                                visible: model.id !== "3" && model.id !== "6" // Hide for actions with no fields
-                                
-                                ColumnLayout {
-                                    Text {
-                                        text: {
-                                            if (model.id === "0") return "Velocity";
-                                            if (model.id === "1") return "Rate";
-                                            if (model.id === "2") return "Power";
-                                            if (model.id === "4") return "Wait Speed";
-                                            if (model.id === "5") return "Accel";
-                                            return "Input 2";
-                                        }
-                                        Layout.preferredWidth: 60
-                                    }
-                                    Button {
-                                        text: model.input2 || "0"
-                                        Layout.preferredWidth: 60
-                                        background: Rectangle {
-                                            color: (selectedInputField.itemInx === delegateItem.itemIndex && 
-                                                  selectedInputField.inputInx === 1) ? "#58ff86" : "white"
-                                        }
-                                        onClicked: {
-                                            selectedInputField.itemInx = delegateItem.itemIndex
-                                            selectedInputField.inputInx = 1
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // Input 3 (only for actions 4 and 5)
-                            RowLayout {
-                                spacing: 20
-                                visible: model.id === "4" || model.id === "5"
-                                
-                                ColumnLayout {
-                                    Text {
-                                        text: model.id === "4" ? "Step Length" : "Span"
-                                        Layout.preferredWidth: 60
-                                    }
-                                    Button {
-                                        text: model.input3 || "0"
-                                        Layout.preferredWidth: 60
-                                        background: Rectangle {
-                                            color: (selectedInputField.itemInx === delegateItem.itemIndex && 
-                                                  selectedInputField.inputInx === 2) ? "#58ff86" : "white"
-                                        }
-                                        onClicked: {
-                                            selectedInputField.itemInx = delegateItem.itemIndex
-                                            selectedInputField.inputInx = 2
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // Input 4 (only for actions 4 and 5)
-                            RowLayout {
-                                spacing: 20
-                                visible: model.id === "4" || model.id === "5"
-                                
-                                ColumnLayout {
-                                    Text {
-                                        text: model.id === "4" ? "Step Speed" : "Force"
-                                        Layout.preferredWidth: 60
-                                    }
-                                    Button {
-                                        text: model.input4 || "0"
-                                        Layout.preferredWidth: 60
-                                        background: Rectangle {
-                                            color: (selectedInputField.itemInx === delegateItem.itemIndex && 
-                                                  selectedInputField.inputInx === 3) ? "#58ff86" : "white"
-                                        }
-                                        onClicked: {
-                                            selectedInputField.itemInx = delegateItem.itemIndex
-                                            selectedInputField.inputInx = 3
-                                        }
-                                    }
-                                }
-                            }
-                        }
 
-                        Button {
-                            id: removeButton
-                            text: "<font color='#ffffff'>X</font>"
-                            width: 40
-                            height: 40
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.right: parent.right
-                            anchors.margins: 40
-                            background: Rectangle { color: "red"; radius: 1 }
-                            onClicked: {
-                                selectedInputField.itemInx = -1
-                                selectedInputField.inputInx = -1
-                                actionSequence.sequence.remove(delegateItem.itemIndex)
-                            }
-                        }
+                            Repeater {
+                                model: {
+                                    if (!delegateItem.model || !delegateItem.model.id) {
+                                        console.log("Invalid model for item " + delegateItem.itemIndex);
+                                        return [];
+                                    }
+                                    var action = actionConfig.getAction(delegateItem.model.id);
+                                    if (!action) {
+                                        console.log("No action found for ID " + delegateItem.model.id);
+                                        return [];
+                                    }
+                                    console.log("Fields for " + delegateItem.model.id + ": " + JSON.stringify(action.fields));
+                                    return action.fields;
+                                }
 
-                        ColumnLayout {
-                            anchors.right: removeButton.left
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.margins: 30
-                            Button { 
-                                text: "▲"
-                                Layout.preferredWidth: 40
-                                onClicked: { 
-                                    if (delegateItem.itemIndex > 0) {
-                                        actionSequence.sequence.move(delegateItem.itemIndex, delegateItem.itemIndex - 1, 1)
-                                        selectedInputField.itemInx = -1
-                                        selectedInputField.inputInx = -1
-                                    } 
-                                } 
-                            }
-                            Button { 
-                                text: "▼"
-                                Layout.preferredWidth: 40
-                                onClicked: { 
-                                    if (delegateItem.itemIndex < actionSequence.sequence.count - 1) {
-                                        actionSequence.sequence.move(delegateItem.itemIndex, delegateItem.itemIndex + 1, 1)
-                                        selectedInputField.itemInx = -1
-                                        selectedInputField.inputInx = -1
-                                    } 
-                                } 
+                                delegate: RowLayout {
+                                    id: rowLayout
+                                    spacing: 20
+                                    property int fieldIndex: index
+
+                                    Text {
+                                        text: modelData.label
+                                        Layout.preferredWidth: 60
+                                    }
+                                    Button {
+                                        id: valueButton
+                                        property string currentKey: modelData.key
+                                        property int modelIndex: delegateItem.itemIndex
+
+                                        text: delegateItem.model[currentKey] || "0"
+                                        Layout.preferredWidth: 60
+                                        background: Rectangle {
+                                            color: (selectedInputField.itemInx === delegateItem.itemIndex && 
+                                                    selectedInputField.inputInx === rowLayout.fieldIndex) ? "#58ff86" : "white"
+                                        }
+                                        onClicked: {
+                                            selectedInputField.itemInx = delegateItem.itemIndex
+                                            selectedInputField.inputInx = rowLayout.fieldIndex
+                                            console.log("Selected field: item=" + delegateItem.itemIndex + 
+                                                        ", field=" + rowLayout.fieldIndex + ", key=" + currentKey)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
         }
+    }
+
+    Component.onCompleted: {
+        console.log("Initial sequence: " + (sequence ? sequence.count : "undefined") + " items");
+    }
+    onSequenceChanged: {
+        console.log("Sequence updated: " + (sequence ? sequence.count : "undefined") + " items");
     }
 }
