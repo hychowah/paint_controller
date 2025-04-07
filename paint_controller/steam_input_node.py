@@ -1,367 +1,228 @@
-#!/usr/bin/env python3
-
-from dataclasses import dataclass
-from enum import Enum, auto
-from typing import Dict, Optional, List, Any, Callable
-import math
-import time
-
+import rclpy
 from rclpy.node import Node
 from paint_interfaces.msg import SteamDeckInput
-from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
+from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
+import hid
+import struct
+from dataclasses import dataclass
+import time
+import threading
 
-class SteamDeckHandler(QObject):
-    # Define Qt signals
-    input_state_changed = Signal(dict)
-    left_stick_changed = Signal()
-    right_stick_changed = Signal()
-    triggers_changed = Signal()
-    buttons_changed = Signal()
-    imu_changed = Signal()
+@dataclass
+class SteamInputState:
+    # Binary buttons with edge detection
+    a: bool = False
+    a_pressed: bool = False
+    b: bool = False
+    b_pressed: bool = False
+    x: bool = False 
+    x_pressed: bool = False
+    y: bool = False
+    y_pressed: bool = False
+    l1: bool = False
+    l1_pressed: bool = False
+    r1: bool = False
+    r1_pressed: bool = False
+    l2_click: bool = False
+    l2_click_pressed: bool = False
+    r2_click: bool = False
+    r2_click_pressed: bool = False
+    l3: bool = False
+    l3_pressed: bool = False
+    l4: bool = False
+    r4: bool = False
+    r5: bool = False
+    r5_pressed: bool = False
+    l5: bool = False
+    l5_pressed: bool = False
+    menu: bool = False
+    menu_pressed: bool = False
+    steam: bool = False
+    steam_pressed: bool = False
+    quick_access: bool = False
+    quick_access_pressed: bool = False
+    dpad_up: bool = False
+    dpad_up_pressed: bool = False
+    dpad_down: bool = False
+    dpad_down_pressed: bool = False
+    dpad_left: bool = False
+    dpad_left_pressed: bool = False
+    dpad_right: bool = False
+    dpad_right_pressed: bool = False
+    right_touchpad_touch: bool = False
+    right_touchpad_touch_pressed: bool = False
+    left_touchpad_touch: bool = False
+    left_touchpad_touch_pressed: bool = False
     
-    def __init__(self, deadzone: float = 0.1, smoothing_factor: float = 0.1, update_rate: float = 60.0):
-        super().__init__()
-        self._node = None  # Will be set when attached to a node
-        self._deadzone = deadzone
-        self._smoothing_factor = max(0.0, min(1.0, smoothing_factor))  # Clamp between 0 and 1
-        
-        # UI update throttling
-        self._update_rate = update_rate  # Hz
-        self._min_update_interval = 1.0 / update_rate  # seconds
-        self._last_update_time = 0
-        self._pending_updates = False
-        
-        # Initialize state variables
-        self._input_state = {
-            'left_stick': {'x': 0.0, 'y': 0.0},
-            'right_stick': {'x': 0.0, 'y': 0.0},
-            'triggers': {'left': 0.0, 'right': 0.0},
-            'buttons': {
-                'up': False, 'down': False, 'left': False, 'right': False,
-                'a': False, 'b': False, 'x': False, 'y': False,
-                'l1': False, 'r1': False, 'l4': False, 'r4': False,
-                'menu': False, 'quick_access': False
-            },
-            'imu': {'pitch': 0.0, 'roll': 0.0, 'yaw': 0.0}
-        }
-        self._prev_input_state = self._input_state.copy()
-        
-        # Initialize button_pressed state for edge detection
-        self._button_pressed = {
-            'up': False, 'down': False, 'left': False, 'right': False,
-            'a': False, 'b': False, 'x': False, 'y': False,
-            'l1': False, 'r1': False, 'l4': False, 'r4': False,
-            'menu': False, 'quick_access': False
-        }
-        
-        self._prev_stick_values = {
-            'left_stick': {'x': 0.0, 'y': 0.0},
-            'right_stick': {'x': 0.0, 'y': 0.0}
-        }
-        
-        # Connection status tracking
-        self._available = False
-        self._last_input_time = 0
-        self._connection_timeout = 1.0  # Time in seconds before considering disconnected
-        
-        # Create availability check timer
-        self._availability_timer = QTimer(self)
-        self._availability_timer.timeout.connect(self._check_availability)
-        self._availability_timer.start(200)  # Check every 200ms
-    
-    def attach_to_node(self, node: Node):
-        """Attach this handler to a ROS node and set up the subscription"""
-        self._node = node
-        
-        # Set up the subscription
-        self._input_sub = self._node.create_subscription(
-            SteamDeckInput,
-            'steam_deck/input',
-            self._input_callback,
-            10
+    # Analog inputs
+    imu_pitch: float = 0.0
+    imu_roll: float = 0.0
+    imu_yaw: float = 0.0
+    left_trigger: float = 0.0
+    right_trigger: float = 0.0
+    left_stick_x: float = 0.0
+    left_stick_y: float = 0.0
+    right_stick_x: float = 0.0
+    right_stick_y: float = 0.0
+
+class SteamDeckNode(Node):
+    def __init__(self):
+        super().__init__('steam_deck_node')
+
+        # Configure QoS profile for better performance
+        steam_input_qos = QoSProfile(
+            depth=1,
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+            history=HistoryPolicy.KEEP_LAST
         )
         
-        # Create UI update timer
-        self._ui_update_timer = QTimer(self)
-        self._ui_update_timer.timeout.connect(self._process_pending_updates)
-        self._ui_update_timer.start(int(1000 / self._update_rate))  # Convert Hz to ms
+        # Create publisher with QoS profile
+        self.publisher = self.create_publisher(
+            SteamDeckInput, 
+            'steam_deck/input', 
+            1
+        )
         
-        print("SteamDeckHandler: Subscribed to 'steam_deck/input' topic")
-    
-    def _check_availability(self):
-        """Check if the Steam Deck controller is still connected"""
-        current_time = time.time()
+        # Initialize Steam Deck connection
+        VALVE_VID = 0x28DE
+        STEAM_DECK_PID = 0x1205
         
-        # Calculate time since last input
-        time_since_last_input = current_time - self._last_input_time
+        # Find Steam Deck device
+        device_info = None
+        for dev in hid.enumerate(VALVE_VID, STEAM_DECK_PID):
+            if dev.get('interface_number') == 2:
+                device_info = dev
+                break
         
-        # If it's been too long since the last update, consider disconnected
-        if time_since_last_input > self._connection_timeout:
-            if self._available:
-                self._available = False
-                print(f"Steam Deck considered disconnected: {time_since_last_input:.1f}s since last message")
+        if not device_info:
+            self.get_logger().error('Steam Deck interface 2 not found!')
+            raise RuntimeError('Steam Deck not found')
         
-    def _input_callback(self, msg: SteamDeckInput):
-        """Process incoming SteamDeckInput messages from ROS"""
-        try:
-            # Store previous state for change detection
-            current_time = time.time()
-            time_since_last_update = current_time - self._last_update_time
-            if time_since_last_update < self._min_update_interval:
-                print(f"SteamDeckHandler: Ignoring input message, too soon since last update: {time_since_last_update:.1f}s")
-                return
-            print(f"SteamDeckHandler: Received input message at {time_since_last_update:.1f}s since last update")
-            self._prev_input_state = self._input_state.copy()
-            
-            # Update connection status
-            self._last_input_time = time.time()
-            self._last_update_time = current_time
-            self._available = True
-            
-            # Process the input
-            self.process_input(msg)
-            
-            # Mark that we have pending updates, but don't emit signals yet
-            self._pending_updates = True
-            
-        except Exception as e:
-            print(f"Error in Steam Deck input callback: {e}")
-    
-    def process_input(self, msg: SteamDeckInput):
-        """Process the input message and update internal state"""
-        # Store the new state
-        new_state = {
-            'left_stick': self._process_stick(msg.left_stick_x, msg.left_stick_y, 'left_stick'),
-            'right_stick': self._process_stick(msg.right_stick_x, msg.right_stick_y, 'right_stick'),
-            'triggers': {
-                'left': msg.left_trigger,
-                'right': msg.right_trigger
-            },
-            'buttons': {
-                'up': msg.dpad_up,
-                'down': msg.dpad_down,
-                'left': msg.dpad_left,
-                'right': msg.dpad_right,
-                'a': msg.a,
-                'b': msg.b,
-                'x': msg.x,
-                'y': msg.y,
-                'l1': msg.l1,
-                'r1': msg.r1,
-                'l4': msg.l4,
-                'r4': msg.r4,
-                'menu': msg.menu,
-                'quick_access': msg.quick_access
-            },
-            'imu': {
-                'pitch': msg.imu_pitch,
-                'roll': msg.imu_roll,
-                'yaw': msg.imu_yaw
-            }
-        }
+        # Initialize device and states
+        self.device = hid.device()
+        self.device.open_path(device_info['path'])
+        self.device.set_nonblocking(1)
+        self._lock = threading.Lock()
+        self._prev_state = SteamInputState()
+        self._current_state = SteamInputState()
         
-        # Update internal state
-        self._input_state = new_state
+        # Configure and start read thread
+        self._stop_thread = False
+        self._read_thread = threading.Thread(target=self._read_loop)
+        self._read_thread.daemon = True
+        self._read_thread.start()
+
+    def _process_button_edges(self):
+        """Process button edge detection"""
+        buttons = [
+            'a', 'b', 'x', 'y', 'l1', 'r1', 'l2_click', 'r2_click', 
+            'l5', 'menu', 'steam', 'quick_access', 'dpad_up', 'dpad_down',
+            'dpad_left', 'dpad_right', 'l3', 'r5', 'right_touchpad_touch',
+            'left_touchpad_touch', 'l4', 'r4'
+        ]
         
-        # Update button_pressed state for edge detection
-        self._update_button_pressed_state()
-    
-    def _process_pending_updates(self):
-        """
-        Process any pending updates at the controlled update rate
-        This is called by the timer at the specified update rate
-        """
-        if not self._pending_updates:
+        for btn in buttons:
+            current_val = getattr(self._current_state, btn)
+            prev_val = getattr(self._prev_state, btn)
+            setattr(self._current_state, f'{btn}_pressed', current_val and not prev_val)
+
+    def _process_input(self, data):
+        """Process input data and publish message"""
+        if len(data) < 64:
             return
+            
+        # Process byte 8 (first button byte)
+        button_byte1 = data[8]
+        self._current_state.r2_click = bool(button_byte1 & (1 << 0))
+        self._current_state.l2_click = bool(button_byte1 & (1 << 1))
+        self._current_state.r1 = bool(button_byte1 & (1 << 2))
+        self._current_state.l1 = bool(button_byte1 & (1 << 3))
+        self._current_state.y = bool(button_byte1 & (1 << 4))
+        self._current_state.b = bool(button_byte1 & (1 << 5))
+        self._current_state.x = bool(button_byte1 & (1 << 6))
+        self._current_state.a = bool(button_byte1 & (1 << 7))
         
-        current_time = time.time()
-        time_since_last_update = current_time - self._last_ui_update_time
+        # Process byte 9 (second button byte)
+        button_byte2 = data[9]
+        self._current_state.dpad_up = bool(button_byte2 & (1 << 0))
+        self._current_state.dpad_right = bool(button_byte2 & (1 << 1))
+        self._current_state.dpad_left = bool(button_byte2 & (1 << 2))
+        self._current_state.dpad_down = bool(button_byte2 & (1 << 3))
+        self._current_state.quick_access = bool(button_byte2 & (1 << 4))
+        self._current_state.steam = bool(button_byte2 & (1 << 5))
+        self._current_state.menu = bool(button_byte2 & (1 << 6))
+        self._current_state.l5 = bool(button_byte2 & (1 << 7))
         
-        # Check if it's time for an update based on the rate limit
-        if time_since_last_update >= self._min_update_interval:
-            self._last_ui_update_time = current_time
-            # self._emit_change_signals()
-            self._pending_updates = False
-            print(f"SteamDeckHandler: UI update processed at {time_since_last_update}Hz")
-    
-    def _emit_change_signals(self):
-        """Emit signals for any changed properties"""
-        changes = {}
-        
-        # Check if left stick changed
-        if self._input_state['left_stick'] != self._prev_input_state['left_stick']:
-            self.left_stick_changed.emit()
-            changes['left_stick'] = self._input_state['left_stick']
-        
-        # Check if right stick changed
-        if self._input_state['right_stick'] != self._prev_input_state['right_stick']:
-            self.right_stick_changed.emit()
-            changes['right_stick'] = self._input_state['right_stick']
-        
-        # Check if triggers changed
-        if self._input_state['triggers'] != self._prev_input_state['triggers']:
-            self.triggers_changed.emit()
-            changes['triggers'] = self._input_state['triggers']
-        
-        # Check if buttons changed
-        if self._input_state['buttons'] != self._prev_input_state['buttons']:
-            self.buttons_changed.emit()
-            changes['buttons'] = self._input_state['buttons']
-        
-        # Check if IMU changed
-        if self._input_state['imu'] != self._prev_input_state['imu']:
-            self.imu_changed.emit()
-            changes['imu'] = self._input_state['imu']
-        
-        # If any changes were detected, emit the overall state change signal
-        if changes:
-            self.input_state_changed.emit(changes)
-    
-    def _update_button_pressed_state(self):
-        """Update the button_pressed state based on rising edge detection"""
-        for button in self._button_pressed.keys():
-            prev_state = self._prev_input_state.get('buttons', {}).get(button, False)
-            current_state = self._input_state.get('buttons', {}).get(button, False)
-            # Rising edge detection: True only when previous was False and current is True
-            self._button_pressed[button] = not prev_state and current_state
+        # Process byte 10 (third button byte)
+        button_byte3 = data[10]
+        self._current_state.r5 = bool(button_byte3 & (1 << 0))
+        self._current_state.left_touchpad_touch = bool(button_byte3 & (1 << 3))
+        self._current_state.right_touchpad_touch = bool(button_byte3 & (1 << 4))
+        self._current_state.l3 = bool(button_byte3 & (1 << 6))
 
-    def get_button_pressed(self, button: str) -> bool:
-        """
-        Get the pressed state of a specific button (rising edge detection)
-        Returns True if the button was just pressed (rising edge detected)
-        """
-        return self._button_pressed.get(button, False)
+        button_byte4 = data[13]
+        self._current_state.l4 = bool(button_byte4 & (1 << 1))
+        self._current_state.r4 = bool(button_byte4 & (1 << 2))
+        
+        # Process analog inputs
+        self._current_state.imu_pitch = struct.unpack('<h', bytes([data[38], data[39]]))[0]
+        self._current_state.imu_roll = struct.unpack('<h', bytes([data[40], data[41]]))[0]
+        self._current_state.imu_yaw = struct.unpack('<h', bytes([data[42], data[43]]))[0]
+        self._current_state.left_trigger = struct.unpack('<h', bytes([data[44], data[45]]))[0]
+        self._current_state.right_trigger = struct.unpack('<h', bytes([data[46], data[47]]))[0]
+        self._current_state.left_stick_x = struct.unpack('<h', bytes([data[48], data[49]]))[0]
+        self._current_state.left_stick_y = struct.unpack('<h', bytes([data[50], data[51]]))[0]
+        self._current_state.right_stick_x = struct.unpack('<h', bytes([data[52], data[53]]))[0]
+        self._current_state.right_stick_y = struct.unpack('<h', bytes([data[54], data[55]]))[0]
+        
+        # Process edge detection
+        self._process_button_edges()
+        
+        # Create and publish message
+        msg = SteamDeckInput()
+        for field in self._current_state.__dataclass_fields__:
+            setattr(msg, field, getattr(self._current_state, field))
+        
+        self.publisher.publish(msg)
+        
+        # Update previous state
+        self._prev_state = SteamInputState()
+        for field in self._current_state.__dataclass_fields__:
+            setattr(self._prev_state, field, getattr(self._current_state, field))
 
-    def get_all_pressed_buttons(self) -> Dict[str, bool]:
-        """
-        Get all buttons that were just pressed in this frame
-        Returns a dictionary of button names and their pressed states
-        """
-        return self._button_pressed.copy()
+    def _read_loop(self):
+        """Main read loop with optimized CPU usage"""
+        while not self._stop_thread:
+            try:
+                data = self.device.read(64)
+                if data:
+                    with self._lock:
+                        self._process_input(data)
+                else:
+                    # Sleep when no data is available
+                    time.sleep(0.001)
+            except Exception as e:
+                self.get_logger().error(f'Error reading Steam Deck: {e}')
+                # Longer sleep on errors
+                time.sleep(0.01)
 
-    def _process_stick(self, x: float, y: float, stick_id: str) -> Dict[str, float]:
-        # Normalize inputs to -1.0 to 1.0 range
-        x = x / 32768.0
-        y = y / 32768.0
-        
-        # Calculate magnitude and direction
-        magnitude = math.sqrt(x*x + y*y)
-        if magnitude < self._deadzone:
-            self._prev_stick_values[stick_id] = {'x': 0.0, 'y': 0.0}
-            return {'x': 0.0, 'y': 0.0}
-        
-        # Calculate normalized direction
-        if magnitude > 0:
-            normalized_x = x / magnitude
-            normalized_y = y / magnitude
-        else:
-            normalized_x = 0
-            normalized_y = 0
-        
-        # Apply deadzone scaling
-        scaled_magnitude = self._scale_deadzone(magnitude)
-        
-        # Apply the scaled magnitude back to the normalized direction
-        processed_x = normalized_x * scaled_magnitude
-        processed_y = normalized_y * scaled_magnitude
-        
-        # Apply smoothing
-        smoothed_x = self._apply_smoothing(processed_x, self._prev_stick_values[stick_id]['x'])
-        smoothed_y = self._apply_smoothing(processed_y, self._prev_stick_values[stick_id]['y'])
-        
-        # Store current values for next frame
-        self._prev_stick_values[stick_id] = {'x': smoothed_x, 'y': smoothed_y}
-        
-        return {
-            'x': smoothed_x * 32768,
-            'y': smoothed_y * 32768
-        }
+    def __del__(self):
+        """Cleanup when object is deleted"""
+        self._stop_thread = True
+        if hasattr(self, '_read_thread'):
+            self._read_thread.join()
 
-    def _scale_deadzone(self, magnitude: float) -> float:
-        """
-        Scales the input magnitude accounting for deadzone.
-        Returns a value between 0 and 1.
-        """
-        if magnitude < self._deadzone:
-            return 0.0
-        
-        # Rescale the input from [deadzone, 1.0] to [0.0, 1.0]
-        scaled = (magnitude - self._deadzone) / (1.0 - self._deadzone)
-        return min(scaled, 1.0)  # Clamp to maximum of 1.0
+def main():
+    rclpy.init()
+    node = SteamDeckNode()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
 
-    def _apply_smoothing(self, current: float, previous: float) -> float:
-        """
-        Applies exponential smoothing to the input values.
-        smoothing_factor of 1.0 means no smoothing, 0.0 means maximum smoothing.
-        """
-        return current * self._smoothing_factor + previous * (1.0 - self._smoothing_factor)
-    
-    def get_current_state(self) -> Dict:
-        """Get current input state"""
-        return self._input_state.copy()
-
-    def has_new_input(self) -> bool:
-        """Check if there are new inputs since last get_current_state call"""
-        return self._input_state != self._prev_input_state
-    
-    # Property getters
-    def get_left_stick(self) -> Dict[str, float]:
-        return self._input_state['left_stick'].copy()
-    
-    def get_right_stick(self) -> Dict[str, float]:
-        return self._input_state['right_stick'].copy()
-    
-    def get_triggers(self) -> Dict[str, float]:
-        return self._input_state['triggers'].copy()
-    
-    def get_buttons(self) -> Dict[str, bool]:
-        return self._input_state['buttons'].copy()
-    
-    def get_imu(self) -> Dict[str, float]:
-        return self._input_state['imu'].copy()
-    
-    def get_available(self) -> bool:
-        return self._available
-    
-    # Define Qt properties
-    left_stick = Property(dict, get_left_stick, notify=left_stick_changed)
-    right_stick = Property(dict, get_right_stick, notify=right_stick_changed)
-    triggers = Property(dict, get_triggers, notify=triggers_changed)
-    buttons = Property(dict, get_buttons, notify=buttons_changed)
-    imu = Property(dict, get_imu, notify=imu_changed)
-    available = Property(bool, get_available)
-    
-    # Qt slots for accessing specific values from QML
-    @Slot(result=float)
-    def getLeftStickX(self):
-        return self._input_state['left_stick']['x']
-    
-    @Slot(result=float)
-    def getLeftStickY(self):
-        return self._input_state['left_stick']['y']
-    
-    @Slot(result=float)
-    def getRightStickX(self):
-        return self._input_state['right_stick']['x']
-    
-    @Slot(result=float)
-    def getRightStickY(self):
-        return self._input_state['right_stick']['y']
-    
-    @Slot(str, result=bool)
-    def isButtonPressed(self, button_name):
-        """Check if a specific button is currently pressed"""
-        return self._input_state['buttons'].get(button_name, False)
-    
-    @Slot(str, result=bool)
-    def wasButtonJustPressed(self, button_name):
-        """Check if a specific button was just pressed (rising edge)"""
-        return self.get_button_pressed(button_name)
-    
-    def cleanup(self):
-        """Clean up resources when shutting down"""
-        if hasattr(self, '_availability_timer') and self._availability_timer.isActive():
-            self._availability_timer.stop()
-        
-        if hasattr(self, '_ui_update_timer') and self._ui_update_timer.isActive():
-            self._ui_update_timer.stop()
+if __name__ == '__main__':
+    main()

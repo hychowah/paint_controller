@@ -38,7 +38,7 @@ Rectangle {
             return;
         }
         
-        console.log("Setting " + inputField + " to: " + value);
+        // console.log("Setting " + inputField + " to: " + value);
         sequence.setProperty(itemIndex, inputField, value);
     }
 

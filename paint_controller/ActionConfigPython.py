@@ -21,58 +21,30 @@ class ActionConfigPython(QObject):
             },
             "1": {
                 "id": "1",
-                "title": "Descend",
-                "prefix": "descent",
+                "title": "Descend & Spray",
+                "prefix": "dNs",
                 "fields": [
-                    {"label": "Angle", "key": "input1"},
-                    {"label": "Rate", "key": "input2"}
+                    {"label": "Target Length", "key": "input1"},
+                    {"label": "Speed", "key": "input2"},
+                    {"label": "Start Angle", "key": "input3"},
+                    {"label": "End Angle", "key": "input4"}
                 ]
             },
             "2": {
                 "id": "2",
-                "title": "Spray",
-                "prefix": "spray",
-                "fields": [
-                    {"label": "Time", "key": "input1"},
-                    {"label": "Power", "key": "input2"}
-                ]
-            },
-            "3": {
-                "id": "3",
-                "title": "Stop Spray",
-                "prefix": "stopSpray",
-                "fields": []
-            },
-            "4": {
-                "id": "4",
-                "title": "Ascend & Spray",
-                "prefix": "aNs",
-                "fields": [
-                    {"label": "Wait Time", "key": "input1"},
-                    {"label": "Wait Speed", "key": "input2"},
-                    {"label": "Step Length", "key": "input3"},
-                    {"label": "Step Speed", "key": "input4"},
-                    {"label": "Spray Time", "key": "input5"},
-                    {"label": "Spray Power", "key": "input6"}
-                ]
-            },
-            "5": {
-                "id": "5",
-                "title": "Descend & Spray",
-                "prefix": "dNs",
-                "fields": [
-                    {"label": "Delay", "key": "input1"},
-                    {"label": "Accel", "key": "input2"},
-                    {"label": "Span", "key": "input3"},
-                    {"label": "Force", "key": "input4"}
-                ]
-            },
-            "6": {
-                "id": "6",
                 "title": "Reset Yaw",
                 "prefix": "resetYaw",
                 "fields": []
+            },
+            "3": {
+                "id": "3",
+                "title": "Extend Arm To",
+                "prefix": "extendArmTo",
+                "fields": [
+                    {"label": "Distance", "key": "input1"}
+                ]
             }
+
         }
     
     @Property(dict, notify=configChanged)

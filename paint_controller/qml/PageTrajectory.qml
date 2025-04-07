@@ -204,11 +204,11 @@ Rectangle {
                                 }
                             }
                             
-                            console.log("Created action item:", JSON.stringify(newItem));
+                            // console.log("Created action item:", JSON.stringify(newItem));
                             
                             // Add the item to the sequence model
                             sequenceModel.append(newItem);
-                            console.log("Sequence model now has", sequenceModel.count, "items");
+                            // console.log("Sequence model now has", sequenceModel.count, "items");
                         }
                     }
                 }
