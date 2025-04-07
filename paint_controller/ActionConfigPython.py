@@ -51,7 +51,9 @@ class ActionConfigPython(QObject):
                     {"label": "Wait Time", "key": "input1"},
                     {"label": "Wait Speed", "key": "input2"},
                     {"label": "Step Length", "key": "input3"},
-                    {"label": "Step Speed", "key": "input4"}
+                    {"label": "Step Speed", "key": "input4"},
+                    {"label": "Spray Time", "key": "input5"},
+                    {"label": "Spray Power", "key": "input6"}
                 ]
             },
             "5": {

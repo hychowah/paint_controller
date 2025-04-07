@@ -176,14 +176,39 @@ Rectangle {
                         Layout.preferredWidth: parent.width / 4
                         Layout.fillHeight: true
 
-                        // onAddAction: function(actionId) {
-                        //     console.log("Adding action with ID:", actionId);
-                        //     sequenceModel.append(actionConfig.createActionItem(actionId));
-                        // }
-                        onAddAction: {
-                            var actionItem = actionConfig.createActionItem(actionId);
-                            console.log("Action item to append: " + JSON.stringify(actionItem));
-                            sequenceModel.append(actionItem);
+                        onAddAction: function(actionId) {
+                            console.log("Adding action with ID:", actionId);
+                            
+                            // Get the action from actionConfig
+                            var action = actionConfig.getAction(actionId);
+                            if (!action) {
+                                console.error("Failed to get action for ID:", actionId);
+                                return;
+                            }
+                            
+                            // Create a new item for the sequence
+                            var newItem = {
+                                id: actionId,
+                                title: action.title
+                            };
+                            
+                            // Add the input fields based on the action's field definitions
+                            for (var i = 1; i <= 4; i++) {
+                                var fieldIdx = i - 1;
+                                if (fieldIdx < action.fields.length) {
+                                    // This is a valid field for this action
+                                    newItem["input" + i] = "0";
+                                } else {
+                                    // This field is not used for this action
+                                    newItem["input" + i] = "-1";
+                                }
+                            }
+                            
+                            console.log("Created action item:", JSON.stringify(newItem));
+                            
+                            // Add the item to the sequence model
+                            sequenceModel.append(newItem);
+                            console.log("Sequence model now has", sequenceModel.count, "items");
                         }
                     }
                 }

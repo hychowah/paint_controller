@@ -24,13 +24,34 @@ Rectangle {
     signal addResetYaw
 
     // Connect old signals to new unified signal
-    onAddMoveWinchTo: addAction("0")
-    onAddDescend: addAction("1")
-    onAddSpray: addAction("2")
-    onAddStopSpray: addAction("3")
-    onAddAscendNSpray: addAction("4")
-    onAddDescendNSpray: addAction("5")
-    onAddResetYaw: addAction("6")
+    onAddMoveWinchTo: {
+        console.log("Legacy signal: addMoveWinchTo -> addAction(0)");
+        addAction("0");
+    }
+    onAddDescend: {
+        console.log("Legacy signal: addDescend -> addAction(1)");
+        addAction("1");
+    }
+    onAddSpray: {
+        console.log("Legacy signal: addSpray -> addAction(2)");
+        addAction("2");
+    }
+    onAddStopSpray: {
+        console.log("Legacy signal: addStopSpray -> addAction(3)");
+        addAction("3");
+    }
+    onAddAscendNSpray: {
+        console.log("Legacy signal: addAscendNSpray -> addAction(4)");
+        addAction("4");
+    }
+    onAddDescendNSpray: {
+        console.log("Legacy signal: addDescendNSpray -> addAction(5)");
+        addAction("5");
+    }
+    onAddResetYaw: {
+        console.log("Legacy signal: addResetYaw -> addAction(6)");
+        addAction("6");
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -62,14 +83,21 @@ Rectangle {
                 Repeater {
                     model: {
                         if (!actionConfig || !actionConfig.actions) {
-                            console.log("ActionConfig not properly initialized");
+                            console.error("ActionConfig not properly initialized");
                             return [];
                         }
-                        return Object.keys(actionConfig.actions).sort();
+                        
+                        var keys = Object.keys(actionConfig.actions).sort();
+                        console.log("Action keys:", JSON.stringify(keys));
+                        return keys;
                     }
                     
                     delegate: Rectangle {
-                        property var action: actionConfig.getAction(modelData)
+                        property var action: {
+                            var act = actionConfig.getAction(modelData);
+                            console.log("Action for ID " + modelData + ":", JSON.stringify(act));
+                            return act;
+                        }
                         
                         Layout.fillWidth: true
                         Layout.preferredHeight: 70
@@ -91,7 +119,8 @@ Rectangle {
                         MouseArea {
                             anchors.fill: parent
                             onClicked: {
-                                actionItem.addAction(modelData)
+                                console.log("Action clicked: " + modelData + " - " + (action ? action.title : "Unknown"));
+                                actionItem.addAction(modelData);
                             }
                         }
                     }
@@ -106,8 +135,21 @@ Rectangle {
     }
 
     Component.onCompleted: {
-        console.log("actionConfig:", JSON.stringify(actionConfig));
-        console.log("actionConfig.actions:", JSON.stringify(actionConfig.actions));
-        console.log("Model data:", JSON.stringify(Object.keys(actionConfig.actions)));
+        console.log("ActionItem initialized");
+        if (actionConfig) {
+            console.log("actionConfig available:", typeof actionConfig);
+            if (actionConfig.actions) {
+                console.log("actionConfig.actions available");
+                try {
+                    console.log("actionConfig.actions:", JSON.stringify(actionConfig.actions));
+                } catch (e) {
+                    console.error("Error stringifying actionConfig.actions:", e);
+                }
+            } else {
+                console.error("actionConfig.actions is not available");
+            }
+        } else {
+            console.error("actionConfig is not available");
+        }
     }
 }
