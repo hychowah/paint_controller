@@ -5,16 +5,16 @@ import QtQuick.Layouts 1.15
 
 Rectangle {
     id: trajectoryNumpads
-    color: "#FFFFFF"
-    radius: 15
-    border.color: "#E0E0E0"
+    color: "#F5F7FA"
+    radius: 10
+    border.color: "#E0E0E0" 
     border.width: 1
 
     property string lastClickedButton: "del"
     property var selectedInputField
     property var sequence
 
-    // Helper function to get current value or empty string if invalid
+    // Helper functions
     function getCurrentValue(itemIndex, inputField) {
         if (itemIndex < 0 || !sequence || sequence.count <= itemIndex) {
             return "";
@@ -33,7 +33,6 @@ Rectangle {
         return value.toString();
     }
 
-    // Helper function to update a value in the model
     function updateValue(itemIndex, inputField, value) {
         if (itemIndex < 0 || !sequence || sequence.count <= itemIndex) {
             return;
@@ -43,137 +42,131 @@ Rectangle {
         sequence.setProperty(itemIndex, inputField, value);
     }
 
-    component NumpadRect: Rectangle {
-        property string inputChar: ""
-        width: 40
-        height: 40
-        color: "#d8d8d8"
-        radius: 20
-        border.color: trajectoryNumpads.lastClickedButton === inputChar ? "#ff0000" : "#000000"
-
-        Text {
-            text: inputChar
-            anchors.centerIn: parent
-            anchors.horizontalCenter: parent.horizontalCenter
-            color: selectedInputField.itemInx != -1 && selectedInputField.inputInx != -1 ? "#000000" : "#b3b3b3"
-            font.pixelSize: 15
-            font.bold: true
+    function handleNumpadClick(buttonValue) {
+        if (selectedInputField.itemInx === -1 || selectedInputField.inputInx === -1) {
+            return;
         }
-
-        MouseArea {
-            anchors.fill: parent
-            onClicked: {
-                if(selectedInputField.itemInx != -1 && selectedInputField.inputInx != -1) {
-                    var inputField;
-                    
-                    if(selectedInputField.inputInx === 0) {
-                        inputField = "input1";
-                    } else if(selectedInputField.inputInx === 1) {
-                        inputField = "input2";
-                    } else if(selectedInputField.inputInx === 2) {
-                        inputField = "input3";
-                    } else if(selectedInputField.inputInx === 3) {
-                        inputField = "input4";
-                    } else {
-                        return;
-                    }
-                    
-                    var currentValue = getCurrentValue(selectedInputField.itemInx, inputField);
-                    // If current value is 0, replace it
-                    if (currentValue === "0") {
-                        currentValue = "";
-                    }
-                    
-                    var newValue = currentValue + inputChar;
-                    updateValue(selectedInputField.itemInx, inputField, newValue);
-                }
-                trajectoryNumpads.lastClickedButton = inputChar;
+        
+        var inputField;
+        // Support for up to 6 input fields
+        if (selectedInputField.inputInx === 0) {
+            inputField = "input1";
+        } else if (selectedInputField.inputInx === 1) {
+            inputField = "input2";
+        } else if (selectedInputField.inputInx === 2) {
+            inputField = "input3";
+        } else if (selectedInputField.inputInx === 3) {
+            inputField = "input4";
+        } else if (selectedInputField.inputInx === 4) {
+            inputField = "input5";
+        } else if (selectedInputField.inputInx === 5) {
+            inputField = "input6";
+        } else {
+            return;
+        }
+        
+        var currentValue = getCurrentValue(selectedInputField.itemInx, inputField);
+        
+        if (buttonValue === "del") {
+            var newValue;
+            if (currentValue.length > 1) {
+                newValue = currentValue.substring(0, currentValue.length - 1);
+            } else {
+                newValue = "0";
             }
+            updateValue(selectedInputField.itemInx, inputField, newValue);
+        } else {
+            // If current value is 0, replace it
+            if (currentValue === "0") {
+                currentValue = "";
+            }
+            
+            updateValue(selectedInputField.itemInx, inputField, currentValue + buttonValue);
         }
+        
+        trajectoryNumpads.lastClickedButton = buttonValue;
+    }
+
+    // Create a button with consistent styling
+    component NumpadButton: Button {
+        property string numValue: ""
+        
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        text: numValue
+        enabled: selectedInputField.itemInx !== -1 && selectedInputField.inputInx !== -1
+        
+        background: Rectangle {
+            color: parent.down ? "#E4F0FE" : "#FFFFFF"
+            radius: 5
+            border.width: trajectoryNumpads.lastClickedButton === numValue ? 2 : 1
+            border.color: trajectoryNumpads.lastClickedButton === numValue ? "#007BFF" : "#E0E0E0"
+        }
+        
+        contentItem: Text {
+            text: parent.text
+            font.pixelSize: 18
+            font.bold: true
+            color: parent.enabled ? "#333333" : "#B3B3B3" 
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+        
+        onClicked: handleNumpadClick(numValue)
     }
 
     RowLayout {
         anchors.fill: parent
-        spacing: 10
-        anchors.margins: 10
+        anchors.margins: 5
+        spacing: 5
 
-        ColumnLayout {
+        // Numbers grid
+        GridLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            columns: 5
+            rowSpacing: 5
+            columnSpacing: 5
 
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.preferredHeight: parent.height / 2
-                spacing: 40
-
-                NumpadRect { inputChar: "0" }
-                NumpadRect { inputChar: "1" }
-                NumpadRect { inputChar: "2" }
-                NumpadRect { inputChar: "3" }
-                NumpadRect { inputChar: "4" }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.preferredHeight: parent.height / 2
-                spacing: 40
-
-                NumpadRect { inputChar: "5" }
-                NumpadRect { inputChar: "6" }
-                NumpadRect { inputChar: "7" }
-                NumpadRect { inputChar: "8" }
-                NumpadRect { inputChar: "9" }
-            }
+            // Row 1: 1-5
+            NumpadButton { numValue: "1" }
+            NumpadButton { numValue: "2" }
+            NumpadButton { numValue: "3" }
+            NumpadButton { numValue: "4" }
+            NumpadButton { numValue: "5" }
+            
+            // Row 2: 6-9 and 0 under 5
+            NumpadButton { numValue: "6" }
+            NumpadButton { numValue: "7" }
+            NumpadButton { numValue: "8" }
+            NumpadButton { numValue: "9" }
+            NumpadButton { numValue: "0" }
         }
-
-        Rectangle {
+        
+        // Delete button on right side
+        Button {
             Layout.fillHeight: true
-            Layout.preferredWidth: 70
-            color: "#d8d8d8"
-            border.color: trajectoryNumpads.lastClickedButton === "del" ? "#ff0000" : "#000000"
-            radius: 5
-
-            Text {
-                text: "⌫"
-                anchors.centerIn: parent
-                anchors.horizontalCenter: parent.horizontalCenter
-                color: selectedInputField.itemInx != -1 && selectedInputField.inputInx != -1 ? "#000000" : "#b3b3b3"
-                font.pixelSize: 30
+            Layout.preferredWidth: height * 0.8
+            text: "⌫"
+            enabled: selectedInputField.itemInx !== -1 && selectedInputField.inputInx !== -1
+            
+            background: Rectangle {
+                color: parent.down ? "#E4F0FE" : "#FFFFFF"
+                radius: 5
+                border.width: trajectoryNumpads.lastClickedButton === "del" ? 2 : 1
+                border.color: trajectoryNumpads.lastClickedButton === "del" ? "#007BFF" : "#E0E0E0"
+            }
+            
+            contentItem: Text {
+                text: parent.text
+                font.pixelSize: 24
                 font.bold: true
+                color: parent.enabled ? "#333333" : "#B3B3B3"
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
             }
-
-            MouseArea {
-                anchors.fill: parent
-                onClicked: {
-                    if(selectedInputField.itemInx != -1 && selectedInputField.inputInx != -1) {
-                        var inputField;
-                        
-                        if(selectedInputField.inputInx === 0) {
-                            inputField = "input1";
-                        } else if(selectedInputField.inputInx === 1) {
-                            inputField = "input2";
-                        } else if(selectedInputField.inputInx === 2) {
-                            inputField = "input3";
-                        } else if(selectedInputField.inputInx === 3) {
-                            inputField = "input4";
-                        } else {
-                            return;
-                        }
-                        
-                        var currentValue = getCurrentValue(selectedInputField.itemInx, inputField);
-                        var newValue;
-                        
-                        if (currentValue.length > 1) {
-                            newValue = currentValue.substring(0, currentValue.length - 1);
-                        } else {
-                            newValue = "0";
-                        }
-                        
-                        updateValue(selectedInputField.itemInx, inputField, newValue);
-                    }
-                    trajectoryNumpads.lastClickedButton = "del";
-                }
-            }
+            
+            onClicked: handleNumpadClick("del")
         }
     }
 }

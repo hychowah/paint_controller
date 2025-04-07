@@ -1,18 +1,1 @@
-[
-  {
-    "name": "hj",
-    "sequence": "moveWinchTo_111_1000,dNs_229_1000_0_1000"
-  },
-  {
-    "name": "test",
-    "sequence": "moveWinchTo_2000_120,spray_11_0"
-  },
-  {
-    "name": "test2",
-    "sequence": "moveWinchTo_33_0,descent_0_0,aNs_2222_0_0_0"
-  },
-  {
-    "name": "test3",
-    "sequence": "aNs_0_0_0_0,moveWinchTo_0_0,extend_0"
-  }
-]
+[]
