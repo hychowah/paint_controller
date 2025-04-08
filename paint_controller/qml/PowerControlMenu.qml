@@ -267,16 +267,11 @@ Item {
                     ControlPanel {
                         Layout.fillWidth: true
                         controlName: "Yaw Control"
-                        controlStatus: uiData.teensy_yaw_enabled ? "Active" : "Inactive"
-                        enabledState: uiData.teensy_yaw_enabled
+                        controlStatus: teensyController.all_status.yaw_enabled ? "Active" : "Inactive"
+                        enabledState: teensyController.all_status.yaw_enabled
                         iconText: "Y"
                         
-                        onClicked: backend.setYawControl(!uiData.teensy_yaw_enabled, 
-                                                      uiData.teensy_yaw_command, 
-                                                      uiData.teensy_yaw_pid_p, 
-                                                      uiData.teensy_yaw_pid_i, 
-                                                      uiData.teensy_yaw_pid_d, 
-                                                      uiData.teensy_yaw_pwm)
+                        onClicked: teensyController.setYawEnabled(!teensyController.all_status.yaw_enabled)
                     }
                     
                     // Spacer

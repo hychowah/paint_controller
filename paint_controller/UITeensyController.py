@@ -54,7 +54,8 @@ class TeensyController(QObject):
         self.prop_right_joint_pub = self._node.create_publisher(Float32, 'teensy/prop/right/joint/cmd', 1)
         self.ef_spray_trigger_pub = self._node.create_publisher(Int32, 'teensy/spray_gun/trigger/cmd', 1)
         self.ef_spray_gimbal_speed_pub = self._node.create_publisher(Int32, 'teensy/spray_gun/gimbal/speed/cmd', 1)
-        self.ef_yaw_control_pub = self._node.create_publisher(TeensyYaw, 'teensy/yaw/control/cmd', 1)
+        self.ef_yaw_enable_pub = self._node.create_publisher(Bool, 'teensy/yaw_control/enable/cmd', 1)
+        self.ef_yaw_angle_pub = self._node.create_publisher(Float32, 'teensy/yaw_control/angle/cmd', 1)
 
     def _setup_subscribers(self):
         """Set up ROS subscribers"""
@@ -266,35 +267,21 @@ class TeensyController(QObject):
         msg = Int32()
         msg.data = int(speed)
         self.ef_spray_gimbal_speed_pub.publish(msg)
-    
+
+    @Slot(bool)
+    def setYawEnabled(self, enabled: bool):
+        """Enable/disable yaw control"""
+        self._status['yaw_enabled'] = enabled
+        msg = Bool()
+        msg.data = enabled
+        self.ef_yaw_enable_pub.publish(msg)
+
     @Slot(float)
-    def setYawTarget(self, target: float):
-        """Set only the yaw target value, maintaining other parameters"""
-        self._target_yaw = target
-        self._status['target_yaw'] = target
-        
-        # Get current parameters from status
-        enabled = self._status.get('yaw_enabled', False)
-        p = float(self._status.get('yaw_pid_p', 0.0))
-        i = float(self._status.get('yaw_pid_i', 0.0))
-        d = float(self._status.get('yaw_pid_d', 0.0))
-        pwm = int(float(self._status.get('yaw_pwm', 0)))
-        
-        # Send the complete yaw control message
-        self._set_yaw_control(enabled, target, p, i, d, pwm)
-        
-        # Emit status changed signal for UI updates
-        self.status_changed.emit(self._status)
-    
-    @Slot(bool, float, float, float, float, int)
-    def setYawControl(self, enabled: bool, target: float, p: float, i: float, d: float, pwm: int):
-        """Set full yaw control parameters and enable state"""
-        self._target_yaw = target
-        self._status['target_yaw'] = target
-        self._set_yaw_control(enabled, target, p, i, d, pwm)
-        
-        # Emit status changed signal for UI updates
-        self.status_changed.emit(self._status)
+    def setYawAngle(self, angle: float):
+        """Set the yaw angle"""
+        msg = Float32()
+        msg.data = float(angle)
+        self.ef_yaw_angle_pub.publish(msg)
     
     def _set_yaw_control(self, enabled: bool, target: float, p: float, i: float, d: float, pwm: int):
         """Internal method to send yaw control message"""

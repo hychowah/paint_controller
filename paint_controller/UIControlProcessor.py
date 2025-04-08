@@ -72,7 +72,7 @@ class ControlProcessor:
                 msg_type=Int32
             ),
             "EF Yaw Angle": ControlConfig(
-                scale=1500/32768,
+                scale=150/32768,
                 min_interval=0.1  # 10Hz
             )
         }
@@ -134,7 +134,7 @@ class ControlProcessor:
         config = self.controls[mode]
         command_angle = - float(input_state[f'{stick}_stick']['x']) * config.scale + config.offset
         config.offset = command_angle
-        self.robot.setYawControl(command_angle)
+        self.robot.teensy_controller.setYawAngle(command_angle)
 
         # Update current values
         if stick == 'left':
