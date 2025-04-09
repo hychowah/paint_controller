@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-
 from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QThread
 
 class OverlayController(QObject):
@@ -39,7 +38,7 @@ class OverlayController(QObject):
         
         self._max_index = len(self._control_options) - 1
         self._show_overlay = False
-        self._active_menu = "left"
+        self._active_menu = ""  # Start with no active menu
         
         # Initialize timer
         self._input_timer = QTimer(self)
@@ -80,20 +79,25 @@ class OverlayController(QObject):
             self._active_menu = menu
             self.activeMenuChanged.emit(menu)
 
+    @Slot()
     def toggle_power_menu(self):
-        if self._active_menu != "power":
-            return
+        """Toggle the power menu"""
+        # Always set the active menu first
+        self._active_menu = "power"
+        self.activeMenuChanged.emit("power")
+        
+        # Then toggle visibility
         if self._show_overlay:
             self.hide_menu()
         else:
-            # # Initialize temporary selection with current selection
-            # self._temp_left_index = self._left_selected_index
-            # self._temp_right_index = self._right_selected_index
             self.show_menu()
     
+    @Slot()
     def toggle_left_menu(self):
-        if self._active_menu != "left":
-            return
+        """Toggle the left joystick menu"""
+        self._active_menu = "left"
+        self.activeMenuChanged.emit("left")
+        
         if self._show_overlay:
             self.hide_menu()
         else:
@@ -102,9 +106,12 @@ class OverlayController(QObject):
             self._temp_right_index = self._right_selected_index
             self.show_menu()
 
+    @Slot()
     def toggle_right_menu(self):
-        if self._active_menu != "right":
-            return
+        """Toggle the right joystick menu"""
+        self._active_menu = "right"
+        self.activeMenuChanged.emit("right")
+        
         if self._show_overlay:
             self.hide_menu()
         else:
@@ -113,7 +120,9 @@ class OverlayController(QObject):
             self._temp_right_index = self._right_selected_index
             self.show_menu()
 
+    @Slot(result=bool)
     def is_showing_menu(self):
+        """Check if any menu is showing"""
         return self._show_overlay
     
     @Slot()
@@ -126,14 +135,16 @@ class OverlayController(QObject):
     def hide_menu(self):
         """Hide the menu overlay and apply selections"""
         if self._show_overlay:
-            # Apply temporary selections to actual selections
-            self._left_selected_index = self._temp_left_index
-            self._right_selected_index = self._temp_right_index
+            # Apply temporary selections to actual selections if applicable
+            if self._active_menu in ["left", "right"]:
+                self._left_selected_index = self._temp_left_index
+                self._right_selected_index = self._temp_right_index
+                
+                # Emit signals for the final selections
+                self.leftSelectedIndexChanged.emit(self._left_selected_index)
+                self.rightSelectedIndexChanged.emit(self._right_selected_index)
             
-            # Emit signals for the final selections
-            self.leftSelectedIndexChanged.emit(self._left_selected_index)
-            self.rightSelectedIndexChanged.emit(self._right_selected_index)
-            
+        # Hide the overlay but keep the active_menu unchanged
         self._show_overlay = False
         self.overlayChanged.emit(False)
     
@@ -186,11 +197,11 @@ class OverlayController(QObject):
         self._input_locked = True
         self._input_timer.start()
 
-    @Slot()
+    @Slot(result=str)
     def get_left_selected_option(self):
         return self._control_options[self._left_selected_index]
     
-    @Slot()
+    @Slot(result=str)
     def get_right_selected_option(self):
         return self._control_options[self._right_selected_index]
     

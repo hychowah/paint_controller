@@ -5,8 +5,9 @@ import QtQuick.Layouts 1.15
 Item {
     id: powerControlMenu
 
-    property bool showOverlay: false
-    property string activeMenu: ""
+    // These properties can now be directly bound to the overlayController
+    property bool showOverlay: overlayController.show_overlay
+    property string activeMenu: overlayController.active_menu
     property bool showPowerMenu: showOverlay && activeMenu === "power"
 
     // Ensure the menu is visible
@@ -26,11 +27,11 @@ Item {
             }
         }
         
-        // Close overlay when background is clicked
+        // Direct access to overlayController methods
         MouseArea {
             anchors.fill: parent
             onClicked: {
-                powerControlMenu.activeMenu = ""
+                overlayController.hide_menu()
             }
         }
     }
@@ -109,7 +110,7 @@ Item {
                         id: closeMouseArea
                         anchors.fill: parent
                         hoverEnabled: true
-                        onClicked: powerControlMenu.activeMenu = ""
+                        onClicked: overlayController.hide_menu()
                     }
                 }
             }

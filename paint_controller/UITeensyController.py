@@ -20,8 +20,53 @@ class TeensyController(QObject):
         super().__init__()
         self._node = node  # Store reference to the ROS node
         
-        # Initialize status variables
-        self._status = {}
+        # Initialize status variables with default values instead of empty dictionary
+        self._status = {
+            'available': False,
+            'top_rail_position': 0.0,
+            'top_rail_speed': 0.0,
+            'top_rail_current': 0.0,
+            'arm_rail_position': 0.0,
+            'arm_rail_speed': 0.0,
+            'arm_rail_current': 0.0,
+            'arm_extension_dist': 0.0,
+            'arm_sensor_dist': 0.0,
+            'voltage': 0.0,
+            'temperature': 0.0,
+            'current': 0.0,
+            'run_time': 0,
+            'loop_time': 0,
+            'loop_time_counter': 0,
+            'relay_on': False,
+            'relay_enabled': False,
+            'enabled': False,
+            'left_prop_position': 0.0,
+            'left_prop_pwm': 0,
+            'right_prop_position': 0.0,
+            'right_prop_pwm': 0,
+            'imu_acc_x': 0.0,
+            'imu_acc_y': 0.0,
+            'imu_acc_z': 0.0,
+            'imu_angular_acc_x': 0.0,
+            'imu_angular_acc_y': 0.0,
+            'imu_angular_acc_z': 0.0,
+            'imu_pitch': 0.0,
+            'imu_roll': 0.0,
+            'imu_yaw': 0.0,
+            'spray_gun_pitch': 0.0,
+            'spray_gun_motor_angle': 0.0,
+            'spray_gun_motor_current': 0.0,
+            'spray_gun_motor_temp': 0.0,
+            'spray_gun_trigger': 0,
+            'yaw_enabled': False,
+            'yaw_command': 0.0,
+            'yaw_pid_p': 0.0,
+            'yaw_pid_i': 0.0,
+            'yaw_pid_d': 0.0,
+            'yaw_pwm': 0,
+            'target_yaw': 0.0
+        }
+        
         self._last_status_update_time = 0
         self._last_ui_update_time = 0
         self._last_ui_update_interval = 0.1  # seconds
@@ -41,7 +86,7 @@ class TeensyController(QObject):
         self._availability_timer = QTimer(self)
         self._availability_timer.timeout.connect(self._check_availability)
         self._availability_timer.start(200)  # Check every 200ms
-    
+        
     def _setup_publishers(self):
         """Set up ROS publishers for Teensy control"""
         self.teensy_relay_pub = self._node.create_publisher(Bool, 'teensy/relay/cmd', 1)
@@ -187,9 +232,6 @@ class TeensyController(QObject):
     @Slot(bool)
     def setEnabled(self, enabled: bool):
         """Enable/disable Teensy control"""
-        self._enabled = enabled
-        self._status['enabled'] = enabled
-        
         msg = Bool()
         msg.data = enabled
         self.teensy_enable_pub.publish(msg)
@@ -271,7 +313,6 @@ class TeensyController(QObject):
     @Slot(bool)
     def setYawEnabled(self, enabled: bool):
         """Enable/disable yaw control"""
-        self._status['yaw_enabled'] = enabled
         msg = Bool()
         msg.data = enabled
         self.ef_yaw_enable_pub.publish(msg)
