@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
 from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QThread
+from UITeensyController import TeensyController
+from UIControlProcessor import ControlProcessor
+
 
 class OverlayController(QObject):
     """Controller class for managing dual joystick menu state"""
@@ -11,8 +14,9 @@ class OverlayController(QObject):
     controlOptionsChanged = Signal(list)
     activeMenuChanged = Signal(str)
     
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, robotController):
+        super().__init__()
+        self.robot = robotController
 
         self._control_options = [
             "None",
@@ -41,7 +45,7 @@ class OverlayController(QObject):
         self._active_menu = ""  # Start with no active menu
         
         # Initialize timer
-        self._input_timer = QTimer(self)
+        self._input_timer = QTimer()
         self._input_timer.setInterval(100)
         self._input_timer.timeout.connect(self._reset_input_lock)
         self._input_locked = False
@@ -143,7 +147,13 @@ class OverlayController(QObject):
                 # Emit signals for the final selections
                 self.leftSelectedIndexChanged.emit(self._left_selected_index)
                 self.rightSelectedIndexChanged.emit(self._right_selected_index)
-            
+        # set target yaw angle to current imu yaw angle if yaw control is not selected
+        if self.get_left_selected_option() == "EF Yaw Angle" or self.get_right_selected_option() == "EF Yaw Angle":
+            self.robot.controlProcessor.controls["EF Yaw Angle"].offset = self.robot.teensy_controller.get_status().get('imu_yaw')
+            print(f"Set target yaw angle to {self.robot.teensy_controller.get_status().get('imu_yaw')}")
+            # Reset the temporary indices
+            self._temp_left_index = 0
+            self._temp_right_index = 0
         # Hide the overlay but keep the active_menu unchanged
         self._show_overlay = False
         self.overlayChanged.emit(False)

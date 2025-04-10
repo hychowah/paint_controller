@@ -208,7 +208,7 @@ class RobotController(Node, QObject):
         self.winch_controller = WinchController(self)
         self.wheel_controller = WheelController(self)
         self.netowrk_monitor = NetworkMonitor()   
-        self.overlayController = OverlayController()
+        self.overlayController = OverlayController(self)
         self.teensy_controller = TeensyController(self)
         self.wind_monitor = WindMonitor(self)    
         self.controlProcessor = ControlProcessor(self)
