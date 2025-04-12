@@ -2,5 +2,9 @@
   {
     "name": "ygcjk",
     "sequence": "moveWinchTo_0_0,extendArmTo_0,dNs_0_0_0_0,dNs_0_0_0_0,resetYaw,extendArmTo_0,dNs_437_0_0_0"
+  },
+  {
+    "name": "ttt",
+    "sequence": "dNs_0_0_0_0,resetYaw,moveWinchTo_0_0"
   }
 ]

@@ -1,23 +1,119 @@
 import os.path
 import json
 
-from PySide6.QtCore import QObject, Signal, Property, Slot
+from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer, QThread
 import time
 from rclpy.node import Node
 from paint_interfaces.srv import PaintAction
 from ActionConfigPython import ActionConfigPython
+
+class ActionWorker(QObject):
+    """Worker object that performs actions in a separate thread"""
+    
+    finished = Signal()  # Signal emitted when the work is done
+    success = Signal(str)  # Signal emitted with success message
+    error = Signal(str)  # Signal emitted with error message
+    
+    def __init__(self, node, cmd_type, params):
+        super().__init__()
+        self._node = node
+        self._cmd_type = cmd_type
+        self._params = params
+        self._abort = False
+        
+    def abort(self):
+        """Set abort flag to stop operations"""
+        self._abort = True
+    
+    def run(self):
+        """Main worker method that will be executed in the thread"""
+        try:
+            # In a real implementation, you would call actual hardware functions here
+            # This is just a simulation with time.sleep
+            self._node.get_logger().info(f"Worker executing {self._cmd_type}")
+            
+            if self._cmd_type == "winch":
+                # Simulate winch movement (takes longer)
+                self._node.get_logger().info("Starting winch movement simulation")
+                time.sleep(3)  # This sleep won't block the UI anymore
+                if self._abort:
+                    self._node.get_logger().info("Winch movement aborted")
+                    return
+                self._node.get_logger().info("Completed winch movement simulation")
+                self.success.emit("Winch movement completed successfully!")
+            elif self._cmd_type == "moveGun":
+                # Simulate gun movement
+                self._node.get_logger().info("Starting gun movement simulation")
+                time.sleep(1.5)
+                if self._abort:
+                    return
+                self._node.get_logger().info("Completed gun movement simulation")
+                self.success.emit("Gun moved to target position")
+            elif self._cmd_type == "spray":
+                # Simulate spray action
+                self._node.get_logger().info("Starting spray simulation")
+                time.sleep(1)
+                if self._abort:
+                    return
+                self._node.get_logger().info("Completed spray simulation")
+                self.success.emit("Spray operation completed")
+            elif self._cmd_type == "winchNspray":
+                # Simulate combined operation
+                self._node.get_logger().info("Starting winch and spray simulation")
+                time.sleep(2.5)
+                if self._abort:
+                    return
+                self._node.get_logger().info("Completed winch and spray simulation")
+                self.success.emit("Winch and spray operation completed")
+            elif self._cmd_type == "resetYaw":
+                # Simulate yaw reset
+                self._node.get_logger().info("Starting yaw reset simulation")
+                time.sleep(0.8)
+                if self._abort:
+                    return
+                self._node.get_logger().info("Completed yaw reset simulation")
+                self.success.emit("Yaw reset successful")
+            elif self._cmd_type == "moveWinchTo":
+                # Simulate positioning - would be a hardware call in real implementation
+                self._node.get_logger().info("Starting moveWinchTo simulation")
+                time.sleep(2)
+                if self._abort:
+                    return
+                self._node.get_logger().info("Completed moveWinchTo simulation")
+                self.success.emit("Winch positioned successfully")
+            else:
+                # Unknown command type (shouldn't reach here)
+                self._node.get_logger().error(f"Unknown command type: {self._cmd_type}")
+                self.error.emit(f"Unknown command type: {self._cmd_type}")
+                
+        except Exception as e:
+            # Handle any exceptions in the thread
+            error_msg = f"Error executing command: {str(e)}"
+            self._node.get_logger().error(error_msg)
+            self.error.emit(error_msg)
+        finally:
+            # Always emit finished signal
+            self.finished.emit()
+
 
 class TrajectoryHandler(QObject):
     """Handles trajectory management and execution"""
 
     trajectoryChanged = Signal()
     actionConfigChanged = Signal()
+    showMessage = Signal(str, bool)  # message text, isSuccess
+    executingChanged = Signal(bool)  # isExecuting
 
     def __init__(self, node: Node):
         super().__init__()
         self._trajectory = []
         self._currentTrajDescription = []
         self._currentTrajCmd = []
+        self._isExecuting = False  # Track execution state
+        
+        # Thread and worker for actions
+        self._thread = None
+        self._worker = None
 
         self._node = node
         self.filePath = os.path.join(os.path.dirname(__file__), 'resource', 'trajectory.json')
@@ -38,6 +134,18 @@ class TrajectoryHandler(QObject):
         }
         
         self.readTrajectoryFromJSONFile()
+
+    @Property(bool, notify=executingChanged)
+    def isExecuting(self):
+        """Get execution state"""
+        return self._isExecuting
+        
+    def _setExecuting(self, executing):
+        """Set execution state and emit signal"""
+        self._node.get_logger().info(f"Setting executing state to: {executing}")
+        if self._isExecuting != executing:
+            self._isExecuting = executing
+            self.executingChanged.emit(executing)
 
     def readTrajectoryFromJSONFile(self):
         # check if file exists
@@ -189,29 +297,143 @@ class TrajectoryHandler(QObject):
     def getSelectedActions(self):
         return self._currentTrajDescription
     
-    @Slot(int)
+    def _handle_worker_success(self, message):
+        """Handle success signal from worker"""
+        self._node.get_logger().info(f"Worker success: {message}")
+        self.showMessage.emit(message, True)
+    
+    def _handle_worker_error(self, message):
+        """Handle error signal from worker"""
+        self._node.get_logger().error(f"Worker error: {message}")
+        self.showMessage.emit(message, False)
+    
+    def _handle_worker_finished(self):
+        """Handle finished signal from worker"""
+        self._node.get_logger().info("Worker finished")
+        
+        # Clean up thread and worker
+        if self._thread:
+            if self._worker:
+                self._worker = None
+                
+            self._thread.quit()
+            self._thread.wait()  # Wait for thread to finish
+            self._thread = None
+        
+        # Reset executing state
+        self._setExecuting(False)
+    
+    @Slot(int, result=bool)
     def startExecution(self, index):
+        # Check if already executing something
+        if self._isExecuting:
+            self.showMessage.emit("Another action is already in progress", False)
+            return False
+            
+        # Check if thread is still running
+        if self._thread and self._thread.isRunning():
+            self._node.get_logger().warning("Thread is still running, cannot start new execution")
+            self.showMessage.emit("Another action thread is still running", False)
+            return False
+            
+        # Check if valid index
         if 0 <= index < len(self._currentTrajCmd):
             cmd_type = self._currentTrajCmd[index][0]
-            self._node.get_logger().info(f"Executing {cmd_type} command")
+            cmd_params = self._currentTrajCmd[index][1:]
+            self._node.get_logger().info(f"Starting execution of {cmd_type} command")
             
-            if cmd_type == "winch":
-                print("Winch command")
-                time.sleep(10)
-            elif cmd_type == "moveGun":
-                pass # TODO
-            elif cmd_type == "spray":
-                pass # TODO
-            elif cmd_type == "winchNspray":
-                pass # TODO
-            elif cmd_type == "resetYaw":
-                pass # TODO
-            elif cmd_type == "moveWinchTo":
-                print("Move winch to command")
+            # Set executing state to true
+            self._setExecuting(True)
+            
+            try:
+                # Create a new thread
+                self._thread = QThread()
+                
+                # Create the worker and move it to the thread
+                self._worker = ActionWorker(self._node, cmd_type, cmd_params)
+                self._worker.moveToThread(self._thread)
+                
+                # Connect signals and slots
+                self._thread.started.connect(self._worker.run)
+                self._worker.finished.connect(self._handle_worker_finished)
+                self._worker.success.connect(self._handle_worker_success)
+                self._worker.error.connect(self._handle_worker_error)
+                
+                # Start the thread
+                self._thread.start()
+                
+                self._node.get_logger().info(f"Started thread for {cmd_type} command")
+                return True
+            except Exception as e:
+                error_msg = f"Error starting execution thread: {str(e)}"
+                self._node.get_logger().error(error_msg)
+                self.showMessage.emit(error_msg, False)
+                self._setExecuting(False)
+                
+                # Clean up in case of error
+                if self._thread and self._thread.isRunning():
+                    self._thread.quit()
+                    self._thread.wait()
+                self._thread = None
+                self._worker = None
+                
+                return False
+        else:
+            self.showMessage.emit("Invalid action index", False)
+            return False
 
     @Slot()
     def stopAll(self):
-        pass # TODO
+        # Set abort flag if worker exists
+        if self._worker:
+            self._worker.abort()
+        
+        # Reset executing state
+        self._setExecuting(False)
+        self.showMessage.emit("Emergency stop activated. All operations halted.", False)
+
+    # Debug method to check thread status
+    @Slot(result=bool)
+    def isThreadRunning(self):
+        """Check if the action thread is still running"""
+        if self._thread:
+            is_running = self._thread.isRunning()
+            self._node.get_logger().info(f"Thread is running: {is_running}")
+            return is_running
+        return False
+        
+    # Directly reset execution state for debugging
+    @Slot()
+    def forceResetExecution(self):
+        """Force reset the execution state (for debugging)"""
+        self._node.get_logger().info("Forcing execution state reset")
+        
+        # Clean up thread if it exists
+        if self._thread and self._thread.isRunning():
+            if self._worker:
+                self._worker.abort()
+                
+            self._thread.quit()
+            self._thread.wait(1000)  # Wait up to 1 second
+            
+            # If thread is still running, terminate it (harsh)
+            if self._thread.isRunning():
+                self._node.get_logger().warning("Thread did not quit, terminating")
+                self._thread.terminate()
+                self._thread.wait()
+                
+        self._thread = None
+        self._worker = None
+        
+        self._setExecuting(False)
+        self.showMessage.emit("Execution state manually reset", True)
+        return True
+
+    # New method to trigger messages from Python
+    @Slot(str, bool)
+    def triggerMessage(self, message, isSuccess):
+        """Method to trigger a message popup from Python code"""
+        self.showMessage.emit(message, isSuccess)
         
     # Expose action config to QML
     @Property('QVariant', notify=actionConfigChanged)
