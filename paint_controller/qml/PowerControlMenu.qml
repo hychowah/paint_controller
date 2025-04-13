@@ -274,6 +274,17 @@ Item {
                         
                         onClicked: teensyController.setYawEnabled(!teensyController.all_status.yaw_enabled)
                     }
+
+                    // SprayGun Levelling
+                    ControlPanel {
+                        Layout.fillWidth: true
+                        controlName: "SprayGun Levelling"
+                        controlStatus: teensyController.spray_gun_leveling_enabled ? "Active" : "Inactive"
+                        enabledState: teensyController.spray_gun_leveling_enabled
+                        iconText: "SL"
+
+                        onClicked: teensyController.setSprayGunLevelingEnabled(!teensyController.spray_gun_leveling_enabled)
+                    }
                     
                     // Spacer
                     Item { 

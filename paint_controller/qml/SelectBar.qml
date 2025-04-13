@@ -386,7 +386,7 @@ Rectangle {
         id: connectionStatusRow
         width: parent.width
         height: 100
-        color: "#5A87B5"  // Darker blue that fits with the sidebar theme
+        color: "#A4A589"  
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: buttonExit.top 
         anchors.bottomMargin: 50

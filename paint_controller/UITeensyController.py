@@ -15,6 +15,7 @@ class TeensyController(QObject):
     # Define Qt signals
     status_changed = Signal(dict)
     connection_changed = Signal(bool)
+    spray_gun_leveling_changed = Signal(bool)
     
     def __init__(self, node: Node):
         super().__init__()
@@ -58,6 +59,7 @@ class TeensyController(QObject):
             'spray_gun_motor_current': 0.0,
             'spray_gun_motor_temp': 0.0,
             'spray_gun_trigger': 0,
+            'spray_gun_leveling_enabled': False,
             'yaw_enabled': False,
             'yaw_command': 0.0,
             'yaw_pid_p': 0.0,
@@ -76,6 +78,7 @@ class TeensyController(QObject):
         # Member state variables
         self._enabled = False
         self._relay_enabled = False
+        self._spray_gun_leveling_enabled = False
         self._target_yaw = 0.0
         
         # Configure publishers and subscribers
@@ -101,6 +104,7 @@ class TeensyController(QObject):
         self.ef_spray_gimbal_speed_pub = self._node.create_publisher(Int32, 'teensy/spray_gun/gimbal/speed/cmd', 1)
         self.ef_yaw_enable_pub = self._node.create_publisher(Bool, 'teensy/yaw_control/enable/cmd', 1)
         self.ef_yaw_angle_pub = self._node.create_publisher(Float32, 'teensy/yaw_control/angle/cmd', 1)
+        self.ef_spray_level_enable_pub = self._node.create_publisher(Bool, 'teensy/spray_gun/leveling_enable/cmd', 1)
 
     def _setup_subscribers(self):
         """Set up ROS subscribers"""
@@ -311,6 +315,16 @@ class TeensyController(QObject):
         self.ef_spray_gimbal_speed_pub.publish(msg)
 
     @Slot(bool)
+    def setSprayGunLevelingEnabled(self, enabled: bool):
+        """Enable/disable spray gun leveling"""
+        self._node.get_logger().info(f'Spray gun leveling {"enabled" if enabled else "disabled"}')
+        msg = Bool()
+        msg.data = enabled
+        self.ef_spray_level_enable_pub.publish(msg)
+        self._spray_gun_leveling_enabled = enabled
+        self.spray_gun_leveling_changed.emit(enabled)
+
+    @Slot(bool)
     def setYawEnabled(self, enabled: bool):
         """Enable/disable yaw control"""
         msg = Bool()
@@ -347,6 +361,7 @@ class TeensyController(QObject):
     # Define Qt properties
     available = Property(bool, get_available, notify=connection_changed)
     all_status = Property(dict, get_all_status, notify=status_changed)
+    spray_gun_leveling_enabled = Property(bool, lambda self: self._spray_gun_leveling_enabled, notify=spray_gun_leveling_changed)
     
     def cleanup(self):
         """Clean up resources when shutting down"""

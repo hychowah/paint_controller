@@ -1,7 +1,7 @@
 [
   {
     "name": "ygcjk",
-    "sequence": "moveWinchTo_0_0,extendArmTo_0,dNs_0_0_0_0,dNs_0_0_0_0,resetYaw,extendArmTo_0,dNs_437_0_0_0"
+    "sequence": "dNs_19000_400_40_10,dNs_15000_400_40_10,extendArmTo_500,moveWinchTo_10000_500"
   },
   {
     "name": "ttt",
