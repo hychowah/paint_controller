@@ -1,24 +1,32 @@
 #!/usr/bin/env python3
+
 import time
 from enum import Enum
-from typing import Dict
+from typing import Dict, Optional
 from rclpy.node import Node
-from std_msgs.msg import UInt8
+from std_msgs.msg import UInt8, Empty
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 
 
 class HeartbeatStatus(Enum):
+    """Enum for heartbeat status codes used in the system"""
     IDLE = 0x00      # System is off or not initialized
     ONTASK = 0x01    # Normal operation
     WARNING = 0x02   # Minor issue detected
     ERROR = 0x03     # Critical error
-    CLEAR_ERROR = 0x04  # Command to clear error state
+    CLEAR_ERROR = 0x04  # Command to clear error state (legacy)
 
 
 class UIHeartbeatHandler(QObject):
     """
     Qt-based handler for monitoring and managing robot heartbeats.
     Provides signals and slots for UI integration and status management.
+    
+    This class handles:
+    - Monitoring heartbeats from controller, base, and ef nodes
+    - Tracking online/offline status of components
+    - Publishing clear error commands
+    - Providing Qt properties and signals for UI integration
     """
     
     # Signals for property changed notifications
@@ -47,7 +55,7 @@ class UIHeartbeatHandler(QObject):
         self._controller_online = False
         self._base_online = False
         self._ef_online = False
-        self._status_message = ""
+        self._status_message = "System initializing..."
         
         # Tracking variables
         self._controller_last_seen = 0.0
@@ -67,11 +75,26 @@ class UIHeartbeatHandler(QObject):
         self._node.get_logger().info('UIHeartbeatHandler initialized')
     
     def _setup_publishers(self):
-        """Setup ROS publishers for heartbeat commands"""
-        self._controller_heartbeat_pub = self._node.create_publisher(UInt8, '/controller/heartbeat', 10)
+        """Setup ROS publishers for heartbeat and clear error commands"""
+        # Publisher for controller heartbeat (to send commands)
+        self._controller_heartbeat_pub = self._node.create_publisher(
+            UInt8, 
+            '/controller/heartbeat', 
+            10
+        )
+        
+        # Publisher for dedicated clear error topic
+        self._clear_error_pub = self._node.create_publisher(
+            Empty, 
+            '/clear/error', 
+            10
+        )
+        
+        self._node.get_logger().info('Publishers initialized: /controller/heartbeat, /clear/error')
     
     def _setup_subscribers(self):
-        """Setup ROS subscribers for heartbeat messages"""
+        """Setup ROS subscribers for monitoring heartbeats"""
+        # Controller heartbeat subscriber
         self._controller_heartbeat_sub = self._node.create_subscription(
             UInt8, 
             '/controller/heartbeat', 
@@ -79,6 +102,7 @@ class UIHeartbeatHandler(QObject):
             10
         )
         
+        # Base robot heartbeat subscriber
         self._base_heartbeat_sub = self._node.create_subscription(
             UInt8, 
             '/base/heartbeat', 
@@ -86,6 +110,7 @@ class UIHeartbeatHandler(QObject):
             10
         )
         
+        # EF (end effector) robot heartbeat subscriber
         self._ef_heartbeat_sub = self._node.create_subscription(
             UInt8, 
             '/ef/heartbeat', 
@@ -97,8 +122,8 @@ class UIHeartbeatHandler(QObject):
     
     def _check_availability(self):
         """
-        Periodically check if components are still connected based on time since last heartbeat
-        This runs on a timer to ensure we detect disconnections even when no new messages arrive
+        Periodically check if components are still connected based on time since last heartbeat.
+        This runs on a timer to ensure we detect disconnections even when no new messages arrive.
         """
         current_time = time.time()
         
@@ -113,14 +138,14 @@ class UIHeartbeatHandler(QObject):
         if current_time - self._base_last_seen > self._heartbeat_timeout:
             if self._base_online:
                 self.set_base_online(False)
-                self.set_status_message("Base heartbeat lost")
+                self.set_status_message("Base robot heartbeat lost")
                 self._node.get_logger().warning('Base heartbeat lost')
         
         # Check ef heartbeat
         if current_time - self._ef_last_seen > self._heartbeat_timeout:
             if self._ef_online:
                 self.set_ef_online(False)
-                self.set_status_message("EF heartbeat lost")
+                self.set_status_message("End effector heartbeat lost")
                 self._node.get_logger().warning('EF heartbeat lost')
     
     def _controller_heartbeat_callback(self, msg: UInt8):
@@ -157,7 +182,7 @@ class UIHeartbeatHandler(QObject):
     
     def _base_heartbeat_callback(self, msg: UInt8):
         """
-        Process base heartbeat messages
+        Process base robot heartbeat messages
         
         Args:
             msg: UInt8 heartbeat message
@@ -169,7 +194,7 @@ class UIHeartbeatHandler(QObject):
             # Update online status if needed
             if not self._base_online:
                 self.set_base_online(True)
-                self.set_status_message("Base heartbeat restored")
+                self.set_status_message("Base robot heartbeat restored")
                 self._node.get_logger().info('Base heartbeat restored')
             
             # Update status if changed
@@ -180,16 +205,16 @@ class UIHeartbeatHandler(QObject):
                 
                 # Update status message for UI
                 if msg.data == HeartbeatStatus.WARNING.value:
-                    self.set_status_message("Base warning")
+                    self.set_status_message("Base robot warning")
                 elif msg.data == HeartbeatStatus.ERROR.value:
-                    self.set_status_message("Base error")
+                    self.set_status_message("Base robot error")
                 
         except Exception as e:
             self._node.get_logger().error(f'Error in base heartbeat callback: {str(e)}')
     
     def _ef_heartbeat_callback(self, msg: UInt8):
         """
-        Process ef heartbeat messages
+        Process end effector heartbeat messages
         
         Args:
             msg: UInt8 heartbeat message
@@ -201,7 +226,7 @@ class UIHeartbeatHandler(QObject):
             # Update online status if needed
             if not self._ef_online:
                 self.set_ef_online(True)
-                self.set_status_message("EF heartbeat restored")
+                self.set_status_message("End effector heartbeat restored")
                 self._node.get_logger().info('EF heartbeat restored')
             
             # Update status if changed
@@ -212,18 +237,21 @@ class UIHeartbeatHandler(QObject):
                 
                 # Update status message for UI
                 if msg.data == HeartbeatStatus.WARNING.value:
-                    self.set_status_message("EF warning")
+                    self.set_status_message("End effector warning")
                 elif msg.data == HeartbeatStatus.ERROR.value:
-                    self.set_status_message("EF error")
+                    self.set_status_message("End effector error")
                 
         except Exception as e:
             self._node.get_logger().error(f'Error in EF heartbeat callback: {str(e)}')
     
+    #
     # Property getters and setters
+    #
+    
     def get_controller_status(self) -> int:
         return self._controller_status
     
-    def set_controller_status(self, value: int):
+    def set_controller_status(self, value: int) -> None:
         if self._controller_status != value:
             self._controller_status = value
             self.controller_status_changed.emit()
@@ -231,7 +259,7 @@ class UIHeartbeatHandler(QObject):
     def get_base_status(self) -> int:
         return self._base_status
     
-    def set_base_status(self, value: int):
+    def set_base_status(self, value: int) -> None:
         if self._base_status != value:
             self._base_status = value
             self.base_status_changed.emit()
@@ -239,7 +267,7 @@ class UIHeartbeatHandler(QObject):
     def get_ef_status(self) -> int:
         return self._ef_status
     
-    def set_ef_status(self, value: int):
+    def set_ef_status(self, value: int) -> None:
         if self._ef_status != value:
             self._ef_status = value
             self.ef_status_changed.emit()
@@ -247,7 +275,7 @@ class UIHeartbeatHandler(QObject):
     def get_controller_online(self) -> bool:
         return self._controller_online
     
-    def set_controller_online(self, value: bool):
+    def set_controller_online(self, value: bool) -> None:
         if self._controller_online != value:
             self._controller_online = value
             self.controller_online_changed.emit()
@@ -255,7 +283,7 @@ class UIHeartbeatHandler(QObject):
     def get_base_online(self) -> bool:
         return self._base_online
     
-    def set_base_online(self, value: bool):
+    def set_base_online(self, value: bool) -> None:
         if self._base_online != value:
             self._base_online = value
             self.base_online_changed.emit()
@@ -263,7 +291,7 @@ class UIHeartbeatHandler(QObject):
     def get_ef_online(self) -> bool:
         return self._ef_online
     
-    def set_ef_online(self, value: bool):
+    def set_ef_online(self, value: bool) -> None:
         if self._ef_online != value:
             self._ef_online = value
             self.ef_online_changed.emit()
@@ -271,7 +299,7 @@ class UIHeartbeatHandler(QObject):
     def get_status_message(self) -> str:
         return self._status_message
     
-    def set_status_message(self, value: str):
+    def set_status_message(self, value: str) -> None:
         if self._status_message != value:
             self._status_message = value
             self.status_message_changed.emit()
@@ -285,7 +313,10 @@ class UIHeartbeatHandler(QObject):
     ef_online = Property(bool, get_ef_online, notify=ef_online_changed)
     status_message = Property(str, get_status_message, notify=status_message_changed)
     
+    #
     # Helper methods for QML
+    #
+    
     @Slot(str, result=bool)
     def is_component_online(self, component_name: str) -> bool:
         """
@@ -369,6 +400,40 @@ class UIHeartbeatHandler(QObject):
         
         return "gray"
     
+    @Slot()
+    def are_all_components_online(self) -> bool:
+        """
+        Check if all components are online
+        
+        Returns:
+            bool: True if all components are online, False otherwise
+        """
+        return self._controller_online and self._base_online and self._ef_online
+    
+    @Slot()
+    def are_any_components_in_error(self) -> bool:
+        """
+        Check if any components are in ERROR state
+        
+        Returns:
+            bool: True if any component is in ERROR state, False otherwise
+        """
+        return (self._controller_status == HeartbeatStatus.ERROR.value or
+                self._base_status == HeartbeatStatus.ERROR.value or
+                self._ef_status == HeartbeatStatus.ERROR.value)
+    
+    @Slot()
+    def are_any_components_in_warning(self) -> bool:
+        """
+        Check if any components are in WARNING state
+        
+        Returns:
+            bool: True if any component is in WARNING state, False otherwise
+        """
+        return (self._controller_status == HeartbeatStatus.WARNING.value or
+                self._base_status == HeartbeatStatus.WARNING.value or
+                self._ef_status == HeartbeatStatus.WARNING.value)
+    
     def _status_to_string(self, status_code: int) -> str:
         """
         Convert status code to string representation
@@ -389,21 +454,38 @@ class UIHeartbeatHandler(QObject):
         return status_map.get(status_code, f"UNKNOWN({status_code})")
     
     @Slot()
-    def clear_error_state(self):
+    def clear_error_state(self) -> None:
         """
-        Send command to clear error/warning states
+        Send command to clear error/warning states for all components
         """
-        self._node.get_logger().info('Attempting to clear error/warning state')
+        self._node.get_logger().info('Sending clear error command')
         
-        # Publish CLEAR_ERROR command
-        msg = UInt8()
-        msg.data = HeartbeatStatus.CLEAR_ERROR.value
-        self._controller_heartbeat_pub.publish(msg)
+        # Primary method: Publish to dedicated clear error topic
+        try:
+            empty_msg = Empty()
+            self._clear_error_pub.publish(empty_msg)
+            self._node.get_logger().info('Published clear command to /clear/error topic')
+        except Exception as e:
+            self._node.get_logger().error(f'Error publishing to /clear/error: {str(e)}')
         
-        # Update status message
+        # Fallback/legacy method: Publish CLEAR_ERROR to controller heartbeat
+        try:
+            msg = UInt8()
+            msg.data = HeartbeatStatus.CLEAR_ERROR.value
+            self._controller_heartbeat_pub.publish(msg)
+            self._node.get_logger().info('Published CLEAR_ERROR via heartbeat (legacy method)')
+        except Exception as e:
+            self._node.get_logger().error(f'Error publishing to controller heartbeat: {str(e)}')
+        
+        # Update status message for UI feedback
         self.set_status_message("Clearing errors...")
     
-    def cleanup(self):
-        """Clean up resources when shutting down"""
+    def cleanup(self) -> None:
+        """
+        Clean up resources when shutting down
+        """
+        # Stop timers
         if hasattr(self, '_availability_timer') and self._availability_timer.isActive():
             self._availability_timer.stop()
+            
+        self._node.get_logger().info('UIHeartbeatHandler cleaned up')

@@ -33,6 +33,7 @@ from UIWinchController import WinchController
 from UIWindMonitor import WindMonitor
 from UITeensyController import TeensyController
 from ActionConfigPython import ActionConfigPython
+from UIHeartbeatHandler import UIHeartbeatHandler
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -213,6 +214,7 @@ class RobotController(Node, QObject):
         self.wind_monitor = WindMonitor(self)    
         self.controlProcessor = ControlProcessor(self)
         self.action_config = ActionConfigPython()
+        self.heartbeat_handler = UIHeartbeatHandler(self)
         self.target_yaw = 0
 
         self.steam_deck_handler = SteamDeckHandler(deadzone=config.joystick_deadzone, update_rate=60)
@@ -412,6 +414,7 @@ def main():
     engine.rootContext().setContextProperty("windMonitor", controller.wind_monitor)
     engine.rootContext().setContextProperty("teensyController", controller.teensy_controller)
     engine.rootContext().setContextProperty("actionConfig", controller.action_config)
+    engine.rootContext().setContextProperty("heartbeatHandler", controller.heartbeat_handler)
     
     # Start status update timer
     status_timer = QTimer()
@@ -427,6 +430,7 @@ def main():
         sys.exit(app.exec())
     finally:
         controller.cleanup()
+        controller.heartbeat_handler.cleanup()
         ros_thread.request_shutdown()
         ros_thread.wait()
         rclpy.shutdown()

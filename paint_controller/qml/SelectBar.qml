@@ -386,13 +386,21 @@ Rectangle {
         id: connectionStatusRow
         width: parent.width
         height: 100
-        color: "#A4A589"
+        color: "#5A87B5"  // Darker blue that fits with the sidebar theme
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: buttonExit.top 
         anchors.bottomMargin: 50
 
         // Add state property to track which view is shown
         property bool showDeviceStatus: true
+
+        // Define natural-looking colors as properties
+        property color availableColor: "#7ED957"  // Softer green
+        property color idleColor: "#4CD964"       // Natural green
+        property color onTaskColor: "#4A90E2"     // Soft blue
+        property color warningColor: "#FFCC00"    // Amber yellow
+        property color errorColor: "#FF5E3A"      // Soft red
+        property color offlineColor: "#8E8E93"    // Medium gray
 
         // Make the rectangle clickable
         MouseArea {
@@ -402,8 +410,8 @@ Rectangle {
 
         Column {
             anchors.fill: parent
-            spacing: 5
-            anchors.margins: 10
+            spacing: 8  // Increased spacing for better readability
+            anchors.margins: 12  // Increased margins
 
             // Device Status View
             Column {
@@ -412,7 +420,7 @@ Rectangle {
                 spacing: parent.spacing
 
                 Row {
-                    spacing: 5
+                    spacing: 8  // Increased spacing
                     width: parent.width
 
                     Text {
@@ -421,19 +429,86 @@ Rectangle {
                         font.pixelSize: 12
                         font.bold: true
                         anchors.verticalCenter: parent.verticalCenter
-                        width: selectBar.width * 0.7
+                        width: selectBar.width * 0.45  // Adjusted for alignment
                     }
-                    Rectangle {
-                        width: 15
-                        height: 15
-                        radius: 7.5
-                        color: winchController.available ? "#00e600" : "yellow"
+                    
+                    // Status lights container for better alignment
+                    Row {
+                        spacing: 8
                         anchors.verticalCenter: parent.verticalCenter
+                        
+                        // Controller availability indicator
+                        Rectangle {
+                            width: 14
+                            height: 14
+                            radius: 7
+                            color: winchController.available ? connectionStatusRow.availableColor : connectionStatusRow.warningColor
+                            anchors.verticalCenter: parent.verticalCenter
+                            
+                            // Add a subtle glow effect
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: parent.radius
+                                color: "transparent"
+                                border.width: 1
+                                border.color: Qt.rgba(parent.color.r, parent.color.g, parent.color.b, 0.5)
+                            }
+                        }
+                        
+                        // Base heartbeat status indicator with SWAPPED colors (idle = green, onTask = blue)
+                        Rectangle {
+                            width: 14
+                            height: 14
+                            radius: 7
+                            color: {
+                                if (!heartbeatHandler.base_online) return connectionStatusRow.offlineColor;
+                                switch(heartbeatHandler.base_status) {
+                                    case 0x00: return connectionStatusRow.idleColor;     // IDLE - NOW GREEN
+                                    case 0x01: return connectionStatusRow.onTaskColor;   // ONTASK - NOW BLUE
+                                    case 0x02: return connectionStatusRow.warningColor;  // WARNING
+                                    case 0x03: return connectionStatusRow.errorColor;    // ERROR
+                                    default: return connectionStatusRow.offlineColor;
+                                }
+                            }
+                            anchors.verticalCenter: parent.verticalCenter
+                            
+                            // Add a subtle glow effect
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: parent.radius
+                                color: "transparent"
+                                border.width: 1
+                                border.color: Qt.rgba(parent.color.r, parent.color.g, parent.color.b, 0.5)
+                            }
+                            
+                            ToolTip.visible: baseHeartbeatMouseArea.containsMouse
+                            ToolTip.text: {
+                                let statusText = "Unknown";
+                                if (!heartbeatHandler.base_online) {
+                                    statusText = "OFFLINE";
+                                } else {
+                                    switch(heartbeatHandler.base_status) {
+                                        case 0x00: statusText = "IDLE"; break;
+                                        case 0x01: statusText = "ONTASK"; break;
+                                        case 0x02: statusText = "WARNING"; break;
+                                        case 0x03: statusText = "ERROR"; break;
+                                        case 0x04: statusText = "CLEAR_ERROR"; break;
+                                    }
+                                }
+                                return "Base heartbeat: " + statusText;
+                            }
+                            
+                            MouseArea {
+                                id: baseHeartbeatMouseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                            }
+                        }
                     }
                 }
 
                 Row {
-                    spacing: 5
+                    spacing: 8
                     width: parent.width
 
                     Text {
@@ -442,35 +517,169 @@ Rectangle {
                         font.pixelSize: 12
                         font.bold: true
                         anchors.verticalCenter: parent.verticalCenter
-                        width: selectBar.width * 0.7
+                        width: selectBar.width * 0.45
                     }
-                    Rectangle {
-                        width: 15
-                        height: 15
-                        radius: 7.5
-                        color: wheelController.available ? "#00e600" : "yellow"
+                    
+                    // Status lights container for better alignment
+                    Row {
+                        spacing: 8
                         anchors.verticalCenter: parent.verticalCenter
+                        
+                        // Controller availability indicator
+                        Rectangle {
+                            width: 14
+                            height: 14
+                            radius: 7
+                            color: wheelController.available ? connectionStatusRow.availableColor : connectionStatusRow.warningColor
+                            anchors.verticalCenter: parent.verticalCenter
+                            
+                            // Add a subtle glow effect
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: parent.radius
+                                color: "transparent"
+                                border.width: 1
+                                border.color: Qt.rgba(parent.color.r, parent.color.g, parent.color.b, 0.5)
+                            }
+                        }
+                        
+                        // Base heartbeat status indicator with SWAPPED colors (idle = green, onTask = blue)
+                        Rectangle {
+                            width: 14
+                            height: 14
+                            radius: 7
+                            color: {
+                                if (!heartbeatHandler.base_online) return connectionStatusRow.offlineColor;
+                                switch(heartbeatHandler.base_status) {
+                                    case 0x00: return connectionStatusRow.idleColor;     // IDLE - NOW GREEN
+                                    case 0x01: return connectionStatusRow.onTaskColor;   // ONTASK - NOW BLUE
+                                    case 0x02: return connectionStatusRow.warningColor;  // WARNING
+                                    case 0x03: return connectionStatusRow.errorColor;    // ERROR
+                                    default: return connectionStatusRow.offlineColor;
+                                }
+                            }
+                            anchors.verticalCenter: parent.verticalCenter
+                            
+                            // Add a subtle glow effect
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: parent.radius
+                                color: "transparent"
+                                border.width: 1
+                                border.color: Qt.rgba(parent.color.r, parent.color.g, parent.color.b, 0.5)
+                            }
+                            
+                            ToolTip.visible: baseHeartbeatMouseArea2.containsMouse
+                            ToolTip.text: {
+                                let statusText = "Unknown";
+                                if (!heartbeatHandler.base_online) {
+                                    statusText = "OFFLINE";
+                                } else {
+                                    switch(heartbeatHandler.base_status) {
+                                        case 0x00: statusText = "IDLE"; break;
+                                        case 0x01: statusText = "ONTASK"; break;
+                                        case 0x02: statusText = "WARNING"; break;
+                                        case 0x03: statusText = "ERROR"; break;
+                                        case 0x04: statusText = "CLEAR_ERROR"; break;
+                                    }
+                                }
+                                return "Base heartbeat: " + statusText;
+                            }
+                            
+                            MouseArea {
+                                id: baseHeartbeatMouseArea2
+                                anchors.fill: parent
+                                hoverEnabled: true
+                            }
+                        }
                     }
                 }
 
                 Row {
-                    spacing: 5
+                    spacing: 8
                     width: parent.width
 
                     Text {
-                        text: "END-EFFECTOR"
+                        text: "EF"
                         color: "white"
                         font.pixelSize: 12
                         font.bold: true
                         anchors.verticalCenter: parent.verticalCenter
-                        width: selectBar.width * 0.7
+                        width: selectBar.width * 0.45
                     }
-                    Rectangle {
-                        width: 15
-                        height: 15
-                        radius: 7.5
-                        color: teensyController.available ? "#00e600" : "yellow"
+                    
+                    // Status lights container for better alignment
+                    Row {
+                        spacing: 8
                         anchors.verticalCenter: parent.verticalCenter
+                        
+                        // Controller availability indicator
+                        Rectangle {
+                            width: 14
+                            height: 14
+                            radius: 7
+                            color: teensyController.available ? connectionStatusRow.availableColor : connectionStatusRow.warningColor
+                            anchors.verticalCenter: parent.verticalCenter
+                            
+                            // Add a subtle glow effect
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: parent.radius
+                                color: "transparent"
+                                border.width: 1
+                                border.color: Qt.rgba(parent.color.r, parent.color.g, parent.color.b, 0.5)
+                            }
+                        }
+                        
+                        // EF heartbeat status indicator with SWAPPED colors (idle = green, onTask = blue)
+                        Rectangle {
+                            width: 14
+                            height: 14
+                            radius: 7
+                            color: {
+                                if (!heartbeatHandler.ef_online) return connectionStatusRow.offlineColor;
+                                switch(heartbeatHandler.ef_status) {
+                                    case 0x00: return connectionStatusRow.idleColor;     // IDLE - NOW GREEN
+                                    case 0x01: return connectionStatusRow.onTaskColor;   // ONTASK - NOW BLUE
+                                    case 0x02: return connectionStatusRow.warningColor;  // WARNING
+                                    case 0x03: return connectionStatusRow.errorColor;    // ERROR
+                                    default: return connectionStatusRow.offlineColor;
+                                }
+                            }
+                            anchors.verticalCenter: parent.verticalCenter
+                            
+                            // Add a subtle glow effect
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: parent.radius
+                                color: "transparent"
+                                border.width: 1
+                                border.color: Qt.rgba(parent.color.r, parent.color.g, parent.color.b, 0.5)
+                            }
+                            
+                            ToolTip.visible: efHeartbeatMouseArea.containsMouse
+                            ToolTip.text: {
+                                let statusText = "Unknown";
+                                if (!heartbeatHandler.ef_online) {
+                                    statusText = "OFFLINE";
+                                } else {
+                                    switch(heartbeatHandler.ef_status) {
+                                        case 0x00: statusText = "IDLE"; break;
+                                        case 0x01: statusText = "ONTASK"; break;
+                                        case 0x02: statusText = "WARNING"; break;
+                                        case 0x03: statusText = "ERROR"; break;
+                                        case 0x04: statusText = "CLEAR_ERROR"; break;
+                                    }
+                                }
+                                return "EF heartbeat: " + statusText;
+                            }
+                            
+                            MouseArea {
+                                id: efHeartbeatMouseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                            }
+                        }
                     }
                 }
             }
@@ -487,14 +696,14 @@ Rectangle {
 
                     Text {
                         text: "EF IP:"
-                        color: "WHITE"
+                        color: "white"
                         font.pixelSize: 12
                         font.bold: true
                         width: selectBar.width * 0.7
                     }
                     Text {
                         text: uiData.ef_ip
-                        color: "black"
+                        color: "white"  // Changed to white for better contrast
                         font.bold: true
                         font.pixelSize: 10
                         Layout.fillWidth: true
@@ -508,14 +717,14 @@ Rectangle {
 
                     Text {
                         text: "BASE IP:"
-                        color: "WHITE"
+                        color: "white"
                         font.pixelSize: 12
                         font.bold: true
                         width: selectBar.width * 0.7
                     }
                     Text {
                         text: uiData.base_ip
-                        color: "black"
+                        color: "white"  // Changed to white for better contrast
                         font.bold: true
                         font.pixelSize: 10
                         Layout.fillWidth: true

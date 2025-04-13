@@ -39,7 +39,7 @@ Item {
     Rectangle {
         id: powerMenuContainer
         width: 700  // Wider to accommodate two columns
-        height: 460
+        height: 540  // Increased height to accommodate the new button
         radius: 12
         color: "#1A1A1A"  // Darker background for modern look
         opacity: showPowerMenu ? 1 : 0
@@ -279,6 +279,115 @@ Item {
                     Item { 
                         Layout.fillHeight: true
                         Layout.fillWidth: true
+                    }
+                }
+            }
+            
+            // Error Cleaning Button Section - Added below the two columns
+            Item {
+                Layout.fillWidth: true
+                Layout.topMargin: 10
+                height: 32
+                
+                Text {
+                    text: "System Errors"
+                    color: "#FFFFFF"
+                    font.family: "Helvetica"
+                    font.pixelSize: 18
+                    font.bold: true
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                
+                Rectangle {
+                    height: 1
+                    width: parent.width - 120
+                    color: "#333333"
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+            
+            // Error Clear Button
+            Rectangle {
+                id: errorClearButton
+                Layout.fillWidth: true
+                height: 60
+                radius: 10
+                color: errorClearMouseArea.containsMouse ? "#4A2C2C" : "#3A2222"
+                border.color: "#8C3A3A"
+                border.width: 1
+                
+                Behavior on color {
+                    ColorAnimation { duration: 200 }
+                }
+                
+                MouseArea {
+                    id: errorClearMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        // Call the clear_error_state method from heartbeatHandler
+                        heartbeatHandler.clear_error_state()
+                    }
+                }
+                
+                RowLayout {
+                    anchors {
+                        fill: parent
+                        margins: 10
+                    }
+                    spacing: 15
+                    
+                    // Icon
+                    Rectangle {
+                        width: 36
+                        height: 36
+                        radius: 18
+                        color: "#8C3A3A"
+                        
+                        Text {
+                            anchors.centerIn: parent
+                            text: "⚠"
+                            font.pixelSize: 16
+                            color: "white"
+                            font.bold: true
+                        }
+                    }
+                    
+                    // Text
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+                        
+                        Text {
+                            text: "Clear Error States"
+                            font.pixelSize: 16
+                            font.bold: true
+                            color: "#FFFFFF"
+                        }
+                        
+                        Text {
+                            text: "Reset all error flags in system components"
+                            font.pixelSize: 13
+                            color: "#F99090"
+                        }
+                    }
+                    
+                    // Reset icon
+                    Rectangle {
+                        width: 36
+                        height: 36
+                        radius: 18
+                        color: "#8C3A3A"
+                        
+                        Text {
+                            anchors.centerIn: parent
+                            text: "↺"
+                            font.pixelSize: 20
+                            color: "white"
+                            font.bold: true
+                        }
                     }
                 }
             }
