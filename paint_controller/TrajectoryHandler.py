@@ -4,6 +4,7 @@ import json
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer, QThread
 import time
 from rclpy.node import Node
+from rclpy.clock import Clock
 from paint_interfaces.srv import PaintAction
 from ActionConfigPython import ActionConfigPython
 
@@ -24,6 +25,39 @@ class ActionWorker(QObject):
     def abort(self):
         """Set abort flag to stop operations"""
         self._abort = True
+
+    def add_time_offset(self, time_msg, seconds=0, nanoseconds=0):
+        """
+        Add a time offset to a ROS 2 time message.
+        
+        Args:
+            time_msg: A ROS 2 Time message (builtin_interfaces.msg.Time)
+            seconds: Number of seconds to add (int or float)
+            nanoseconds: Number of nanoseconds to add (int)
+            
+        Returns:
+            A new Time message with the offset added
+        """
+        # Convert any fractional seconds to nanoseconds
+        if isinstance(seconds, float):
+            extra_ns = int((seconds - int(seconds)) * 1_000_000_000)
+            seconds = int(seconds)
+            nanoseconds += extra_ns
+        
+        # Create a new time message to avoid modifying the original
+        from builtin_interfaces.msg import Time
+        result = Time()
+        
+        # Add the offset
+        result.sec = time_msg.sec + seconds
+        result.nanosec = time_msg.nanosec + nanoseconds
+        
+        # Handle nanosecond overflow
+        if result.nanosec >= 1_000_000_000:
+            result.sec += result.nanosec // 1_000_000_000
+            result.nanosec %= 1_000_000_000
+        
+        return result
     
     def run(self):
         """Main worker method that will be executed in the thread"""
@@ -75,12 +109,114 @@ class ActionWorker(QObject):
                 self.success.emit("Yaw reset successful")
             elif self._cmd_type == "moveWinchTo":
                 # Simulate positioning - would be a hardware call in real implementation
-                self._node.get_logger().info("Starting moveWinchTo simulation")
-                time.sleep(2)
-                if self._abort:
+                clock = Clock()
+                current_time = clock.now().to_msg()  # This creates a Time message
+                start_time = self.add_time_offset(current_time, seconds=2)
+                
+                # Create service client if it doesn't exist
+                if not hasattr(self, '_paint_base_action_client'):
+                    self._paint_base_action_client = self._node.create_client(PaintAction, '/base/execute_action/service')
+                if not hasattr(self, '_paint_ef_action_client'):
+                    self._paint_ef_action_client = self._node.create_client(PaintAction, '/ef/execute_action/service')
+                
+                # Wait for services with timeout
+                if not self._paint_base_action_client.wait_for_service(timeout_sec=2.0):
+                    error_msg = 'Base Service not available. Timeout waiting for service.'
+                    self._node.get_logger().error(error_msg)
+                    self.error.emit(error_msg)
                     return
-                self._node.get_logger().info("Completed moveWinchTo simulation")
-                self.success.emit("Winch positioned successfully")
+                
+                if not self._paint_ef_action_client.wait_for_service(timeout_sec=2.0):
+                    error_msg = 'EF Service not available. Timeout waiting for service.'
+                    self._node.get_logger().error(error_msg)
+                    self.error.emit(error_msg)
+                    return
+                
+                # Create and send the Base request
+                base_request = PaintAction.Request()
+                base_request.start_time = start_time
+                base_request.action = self._cmd_type
+                
+                # Create and send the EF request (with "none" action)
+                ef_request = PaintAction.Request()
+                ef_request.start_time = start_time
+                ef_request.action = "none"  # Special action to keep EF in ONTASK state
+                
+                self._node.get_logger().info("Starting moveWinchTo service calls")
+                
+                # Send the requests asynchronously
+                base_future = self._paint_base_action_client.call_async(base_request)
+                ef_future = self._paint_ef_action_client.call_async(ef_request)
+                
+                # Wait for responses with timeout (using a combination of sleep and check to allow abortion)
+                max_wait_time = 2.0  # 2 seconds max wait for service responses
+                wait_increment = 0.1  # Check every 0.1 seconds
+                elapsed = 0.0
+                
+                base_response = None
+                ef_response = None
+                
+                while elapsed < max_wait_time:
+                    # Check if base request is done
+                    if base_future.done() and base_response is None:
+                        try:
+                            base_response = base_future.result()
+                            self._node.get_logger().info(f"Base service response received: {base_response}")
+                        except Exception as e:
+                            error_msg = f"Base service call failed: {str(e)}"
+                            self._node.get_logger().error(error_msg)
+                            self.error.emit(error_msg)
+                            return
+                    
+                    # Check if ef request is done
+                    if ef_future.done() and ef_response is None:
+                        try:
+                            ef_response = ef_future.result()
+                            self._node.get_logger().info(f"EF service response received: {ef_response}")
+                        except Exception as e:
+                            error_msg = f"EF service call failed: {str(e)}"
+                            self._node.get_logger().error(error_msg)
+                            self.error.emit(error_msg)
+                            return
+                    
+                    # Both responses received
+                    if base_response is not None and ef_response is not None:
+                        break
+                    
+                    # Check if worker was asked to abort
+                    if self._abort:
+                        self._node.get_logger().info("Winch positioning aborted")
+                        return
+                    
+                    # Wait a bit before checking again
+                    time.sleep(wait_increment)
+                    elapsed += wait_increment
+                
+                # Check for timeouts
+                if base_response is None:
+                    self._node.get_logger().error("Base service call timed out")
+                    self.error.emit("Base service call timed out")
+                    return
+                
+                if ef_response is None:
+                    self._node.get_logger().error("EF service call timed out")
+                    self.error.emit("EF service call timed out")
+                    return
+                
+                # Check responses
+                if base_response.success and ef_response.success:
+                    self._node.get_logger().info("Both service calls succeeded")
+                    self.success.emit("Winch positioned successfully")
+                else:
+                    error_messages = []
+                    if not base_response.success:
+                        error_messages.append("Base service failed")
+                    if not ef_response.success:
+                        error_messages.append("EF service failed")
+                    
+                    error_msg = " and ".join(error_messages)
+                    self._node.get_logger().error(f"Service failures: {error_msg}")
+                    self.error.emit(f"Service failures: {error_msg}")
             else:
                 # Unknown command type (shouldn't reach here)
                 self._node.get_logger().error(f"Unknown command type: {self._cmd_type}")
@@ -94,7 +230,6 @@ class ActionWorker(QObject):
         finally:
             # Always emit finished signal
             self.finished.emit()
-
 
 class TrajectoryHandler(QObject):
     """Handles trajectory management and execution"""
@@ -116,9 +251,7 @@ class TrajectoryHandler(QObject):
         self._worker = None
 
         self._node = node
-        self.filePath = os.path.join(os.path.dirname(__file__), 'resource', 'trajectory.json')
-        base_client = self._node.create_client(PaintAction, '/winch/execute_action')
-        
+        self.filePath = os.path.join(os.path.dirname(__file__), 'resource', 'trajectory.json')      
         # Create action config instance
         self._action_config = ActionConfigPython()
         

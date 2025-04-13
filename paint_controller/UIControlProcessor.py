@@ -72,7 +72,7 @@ class ControlProcessor:
                 msg_type=Int32
             ),
             "EF Yaw Angle": ControlConfig(
-                scale=0.3/32768,
+                scale=0.6/32768,
                 min_interval=0.1  # 10Hz
             )
         }
