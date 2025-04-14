@@ -2,7 +2,7 @@
 set -e
 
 # ===== Configuration =====
-NETWORK_SUBNET="192.168.101.0/24"  # Change to your network subnet
+NETWORK_SUBNET="192.168.10.0/24"  # Change to your network subnet
 NTP_POOLS="pool.ntp.org"          # External time sources if local NTP servers are not available
 
 # Check if chrony is installed
