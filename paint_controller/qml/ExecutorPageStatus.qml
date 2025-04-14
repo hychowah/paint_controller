@@ -31,35 +31,35 @@ Rectangle {
         Layout.alignment: Qt.AlignTop
 
         Label {
-            text: "Status1"
+            text: "Winch Torque"
             font.bold: true
         }
         Label {
-            text: "Value1"
+            text: winchController.winch_torque.toFixed(1)
         }
 
         Label {
-            text: "Status2"
+            text: "Cable Length"
             font.bold: true
         }
         Label {
-            text: "Value2"
+            text: Math.round(winchController.cable_length)
         }
 
         Label {
-            text: "Status3"
+            text: "Cable Speed" 
             font.bold: true
         }
         Label {
-            text: "Value3"
+            text: Math.abs(winchController.cable_speed)
         }
 
         Label {
-            text: "Status4"
+            text: "Arm Extension"
             font.bold: true
         }
         Label {
-            text: "Value4"
+            text: teensyController.all_status.arm_extension_dist.toFixed(0)
         }
 
         Label {
