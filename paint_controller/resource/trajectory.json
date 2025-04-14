@@ -6,5 +6,9 @@
   {
     "name": "ttt",
     "sequence": "dNs_0_0_0_0,resetYaw,moveWinchTo_0_0"
+  },
+  {
+    "name": "test ",
+    "sequence": "moveWinchTo_400_200,moveWinchTo_5000_550"
   }
 ]

@@ -29,7 +29,7 @@ class ControlProcessor:
         # Control configurations
         self.controls = {
             "Winch Speed": ControlConfig(
-                scale=40/32768,
+                scale=55/32768,
                 min_interval=0.1,  # 10Hz
             ),
             "Left Wheel Speed": ControlConfig(
@@ -49,7 +49,7 @@ class ControlProcessor:
                 min_interval=0.1  # 20Hz
             ),
             "EF spray trigger": ControlConfig(
-                scale=1000/32768,
+                scale=400/32768,
                 min_interval=0.2,  # 5Hz
                 offset=1000,
                 min_value=1000,

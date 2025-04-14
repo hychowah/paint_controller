@@ -352,7 +352,8 @@ class ActionWorker(QObject):
                 # Create and send the Base request
                 base_request = PaintAction.Request()
                 base_request.start_time = start_time
-                base_request.action = self._cmd_type
+                base_request.action = f"moveWinchTo_{self._params[0]}_{self._params[1]}"
+                print(f"Base request: {base_request}")
                 
                 # Create and send the EF request (with "none" action)
                 ef_request = PaintAction.Request()
