@@ -521,7 +521,9 @@ Rectangle {
                         enabled: !control.isExecuting && control.currentActionIndex >= 0
                         anchors.fill: parent
                         onClicked: {
+                            overlayController.avoidAutoRunOverwrite()
                             trajectoryHandler.startExecution(control.currentActionIndex)
+
                         }
                         
                         // Hover effect

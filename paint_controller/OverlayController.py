@@ -160,12 +160,19 @@ class OverlayController(QObject):
 
     # set left and right selected index to None
     @Slot()
-    def reset_selected_indices(self):
-        """Reset the selected indices to None"""
-        self._left_selected_index = None
-        self._right_selected_index = None
-        self.leftSelectedIndexChanged.emit(None)
-        self.rightSelectedIndexChanged.emit(None)
+    def avoidAutoRunOverwrite(self):
+        """Reset the selected indices to None if the selected option related to winch and spray gun"""
+        if self._left_selected_index == 1 or self._left_selected_index == 8 or self._left_selected_index == 9:
+            self._left_selected_index = 0
+            self.leftSelectedIndexChanged.emit(0)
+
+        if self._right_selected_index == 1 or self._right_selected_index == 8 or self._right_selected_index == 9:
+            self._right_selected_index = 0
+            self.rightSelectedIndexChanged.emit(0)
+        # Reset the temporary indices
+        self._temp_left_index = 0
+        self._temp_right_index = 0
+        
     
     def _can_select_option(self, index):
         """Check if an option can be selected"""
