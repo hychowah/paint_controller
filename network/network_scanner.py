@@ -171,7 +171,7 @@ class NetworkScannerNode(Node):
 
     async def scan_system(self, system_config):
         if self.test_mode:
-            # In test mode, randomly decide if device is found (80% chance)
+            # In test mode, randomly decide if device is found (80% chance for primary)
             if random.random() < 0.8:
                 return {
                     'device': system_config['primary']['name'],
@@ -180,16 +180,21 @@ class NetworkScannerNode(Node):
                     'signal': random.randint(-70, -30),  # Random signal strength between -70 and -30 dBm
                     'type': 'primary'
                 }
-            # 20% chance to fall back to secondary device
-            elif random.random() < 0.5:
-                return {
-                    'device': system_config['fallback']['name'],
-                    'mac': system_config['fallback']['mac'],
-                    'ip': self.generate_random_ip(),
-                    'signal': random.randint(-80, -40),  # Slightly worse signal for fallback
-                    'type': 'fallback'
-                }
+            # Check fallbacks
+            fallbacks = system_config.get('fallbacks', [])
+            if fallbacks:
+                # Equal chance for each fallback
+                if random.random() < 0.5:
+                    selected_fallback = random.choice(fallbacks)
+                    return {
+                        'device': selected_fallback['name'],
+                        'mac': selected_fallback['mac'],
+                        'ip': self.generate_random_ip(),
+                        'signal': random.randint(-80, -40),  # Slightly worse signal for fallback
+                        'type': 'fallback'
+                    }
             return None
+
         # Try primary device first
         ip, signal = await self.scan_network(system_config['primary']['mac'])
         if ip:
@@ -201,16 +206,17 @@ class NetworkScannerNode(Node):
                 'type': 'primary'
             }
         
-        # If primary not found, try fallback
-        ip, signal = await self.scan_network(system_config['fallback']['mac'])
-        if ip:
-            return {
-                'device': system_config['fallback']['name'],
-                'mac': system_config['fallback']['mac'],
-                'ip': ip,
-                'signal': signal,
-                'type': 'fallback'
-            }
+        # If primary not found, try all fallbacks
+        for fallback in system_config.get('fallbacks', []):
+            ip, signal = await self.scan_network(fallback['mac'])
+            if ip:
+                return {
+                    'device': fallback['name'],
+                    'mac': fallback['mac'],
+                    'ip': ip,
+                    'signal': signal,
+                    'type': 'fallback'
+                }
         
         return None
 

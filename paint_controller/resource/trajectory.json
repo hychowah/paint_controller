@@ -10,5 +10,13 @@
   {
     "name": "test ",
     "sequence": "moveWinchTo_400_200,moveWinchTo_5000_550"
+  },
+  {
+    "name": "test5",
+    "sequence": "moveWinchTo_46800_350,dNs_46500_100_50_50,moveWinchTo_44850_350,extendArmTo_900,dNs_30600_500_0_0,extendArmTo_300"
+  },
+  {
+    "name": "spray",
+    "sequence": "moveWinchTo_45050_350,dNs_30600_550_45_30"
   }
 ]

@@ -157,6 +157,15 @@ class OverlayController(QObject):
         # Hide the overlay but keep the active_menu unchanged
         self._show_overlay = False
         self.overlayChanged.emit(False)
+
+    # set left and right selected index to None
+    @Slot()
+    def reset_selected_indices(self):
+        """Reset the selected indices to None"""
+        self._left_selected_index = None
+        self._right_selected_index = None
+        self.leftSelectedIndexChanged.emit(None)
+        self.rightSelectedIndexChanged.emit(None)
     
     def _can_select_option(self, index):
         """Check if an option can be selected"""

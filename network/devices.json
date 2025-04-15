@@ -4,19 +4,31 @@
             "name": "base_pi",
             "mac": "2C:CF:67:3B:24:03"
         },
-        "fallback": {
-            "name": "base_pi_router",
-            "mac": "2c:cf:67:3b:24:02"
-        }
+        "fallbacks": [
+            {
+                "name": "base_pi_router_1",
+                "mac": "2c:cf:67:3b:24:02"
+            },
+            {
+                "name": "base_pi_router_2",
+                "mac": "2c:cf:67:3b:24:04"
+            }
+        ]
     },
     "end_effector_system": {
         "primary": {
             "name": "end_effector",
             "mac": "00:e0:4c:02:dd:ca"
         },
-        "fallback": {
-            "name": "end_effector_bridge",
-            "mac": "00:17:13:A0:BC:95"
-        }
+        "fallbacks": [
+            {
+                "name": "end_effector_bridge_1",
+                "mac": "00:17:13:A0:BC:95"
+            },
+            {
+                "name": "end_effector_bridge_2",
+                "mac": "00:e0:4c:02:dd:c9"
+            }
+        ]
     }
 }
