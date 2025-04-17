@@ -179,29 +179,11 @@ Rectangle {
                         onAddAction: function(actionId) {
                             console.log("Adding action with ID:", actionId);
                             
-                            // Get the action from actionConfig
-                            var action = actionConfig.getAction(actionId);
-                            if (!action) {
-                                console.error("Failed to get action for ID:", actionId);
+                            // Use the createActionItem method to get a properly initialized item with defaults
+                            var newItem = actionConfig.createActionItem(actionId);
+                            if (!newItem || Object.keys(newItem).length === 0) {
+                                console.error("Failed to create action item for ID:", actionId);
                                 return;
-                            }
-                            
-                            // Create a new item for the sequence
-                            var newItem = {
-                                id: actionId,
-                                title: action.title
-                            };
-                            
-                            // Add the input fields based on the action's field definitions
-                            for (var i = 1; i <= 4; i++) {
-                                var fieldIdx = i - 1;
-                                if (fieldIdx < action.fields.length) {
-                                    // This is a valid field for this action
-                                    newItem["input" + i] = "0";
-                                } else {
-                                    // This field is not used for this action
-                                    newItem["input" + i] = "-1";
-                                }
                             }
                             
                             // console.log("Created action item:", JSON.stringify(newItem));

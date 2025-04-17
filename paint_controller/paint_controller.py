@@ -213,7 +213,7 @@ class RobotController(Node, QObject):
         self.teensy_controller = TeensyController(self)
         self.wind_monitor = WindMonitor(self)    
         self.controlProcessor = ControlProcessor(self)
-        self.action_config = ActionConfigPython()
+        self.action_config = ActionConfigPython(self)
         self.heartbeat_handler = UIHeartbeatHandler(self)
         self.target_yaw = 0
 

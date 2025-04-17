@@ -104,6 +104,7 @@ class TeensyController(QObject):
         self.ef_spray_gimbal_speed_pub = self._node.create_publisher(Int32, 'teensy/spray_gun/gimbal/speed/cmd', 1)
         self.ef_yaw_enable_pub = self._node.create_publisher(Bool, 'teensy/yaw_control/enable/cmd', 1)
         self.ef_yaw_angle_pub = self._node.create_publisher(Float32, 'teensy/yaw_control/angle/cmd', 1)
+        self.ef_yaw_param_pub = self._node.create_publisher(TeensyYaw, 'teensy/yaw_control/params/cmd', 1)
         self.ef_spray_level_enable_pub = self._node.create_publisher(Bool, 'teensy/spray_gun/leveling_enable/cmd', 1)
 
     def _setup_subscribers(self):
@@ -337,6 +338,15 @@ class TeensyController(QObject):
         msg = Float32()
         msg.data = float(angle)
         self.ef_yaw_angle_pub.publish(msg)
+
+    @Slot(float, float, float)
+    def setYawParams(self, p: float, i: float, d: float):
+        """Set the yaw PID parameters"""
+        msg = TeensyYaw()
+        msg.yaw_pid_p = p
+        msg.yaw_pid_i = i
+        msg.yaw_pid_d = d
+        self.ef_yaw_param_pub.publish(msg)
     
     def _set_yaw_control(self, enabled: bool, target: float, p: float, i: float, d: float, pwm: int):
         """Internal method to send yaw control message"""

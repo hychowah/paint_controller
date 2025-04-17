@@ -87,11 +87,38 @@ Rectangle {
                 }
                 
                 Button {
+                    id: saveButton
                     text: "Save"
                     Layout.preferredWidth: 80
                     Layout.preferredHeight: 36
                     
+                    // Add states for visual feedback
+                    states: [
+                        State {
+                            name: "pressed"
+                            when: saveButton.pressed
+                            PropertyChanges {
+                                target: buttonBackground
+                                color: "#388E3C" // Darker green when pressed
+                                scale: 0.97 // Slightly smaller when pressed
+                            }
+                            PropertyChanges {
+                                target: buttonText
+                                color: "#f0f0f0" // Slightly darker text when pressed
+                            }
+                        }
+                    ]
+                    
+                    // Add transitions for smooth animation
+                    transitions: Transition {
+                        PropertyAnimation { 
+                            properties: "color, scale"; 
+                            duration: 100 
+                        }
+                    }
+                    
                     background: Rectangle {
+                        id: buttonBackground
                         radius: 6
                         color: "#4CAF50"
                         border.color: "#388E3C"
@@ -99,6 +126,7 @@ Rectangle {
                     }
                     
                     contentItem: Text {
+                        id: buttonText
                         text: parent.text
                         color: "white"
                         font.pixelSize: 14
@@ -107,7 +135,46 @@ Rectangle {
                         verticalAlignment: Text.AlignVCenter
                     }
                     
-                    onClicked: saveSequence()
+                    onClicked: {
+                        saveSequence()
+                        notificationPopup.show("Sequence \"" + currentSeq.seqName + "\" saved successfully")
+                    }
+                }
+
+                // Added: Notification component
+                Popup {
+                    id: notificationPopup
+                    width: 300
+                    height: 60
+                    x: (parent.width - width) / 2
+                    y: parent.height - height - 20
+                    modal: false
+                    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+                    
+                    background: Rectangle {
+                        color: "#323232"
+                        radius: 8
+                    }
+                    
+                    contentItem: Text {
+                        id: notificationText
+                        color: "white"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        font.pixelSize: 14
+                    }
+                    
+                    function show(message, duration) {
+                        notificationText.text = message;
+                        open();
+                        closeTimer.interval = duration || 3000;
+                        closeTimer.restart();
+                    }
+                    
+                    Timer {
+                        id: closeTimer
+                        onTriggered: notificationPopup.close()
+                    }
                 }
             }
         }
@@ -689,5 +756,22 @@ Rectangle {
     onSequenceChanged: {
         console.log("Sequence model changed");
         logModelData();
+    }
+
+    function getDefaultValue(actionId, fieldKey) {
+        if (actionId === "0") { // Move Winch To
+            if (fieldKey === "input1") return "100"; // Distance
+            if (fieldKey === "input2") return "50";  // Velocity
+        }
+        else if (actionId === "1") { // Descend & Spray
+            if (fieldKey === "input1") return "200"; // Target Length
+            if (fieldKey === "input2") return "30";  // Speed
+            if (fieldKey === "input3") return "0";   // Start Angle
+            if (fieldKey === "input4") return "360"; // End Angle
+        }
+        else if (actionId === "3") { // Extend Arm To
+            if (fieldKey === "input1") return "50";  // Distance
+        }
+        return "0"; // Default fallback
     }
 }

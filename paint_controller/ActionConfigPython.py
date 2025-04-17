@@ -5,8 +5,9 @@ class ActionConfigPython(QObject):
     
     configChanged = Signal()  # Signal to notify when config changes
     
-    def __init__(self):
+    def __init__(self, robotController=None):
         super().__init__()  # Initialize QObject
+        self.robot = robotController  # Store the robot controller reference
         
         # Centralized configuration for all action types
         self._actions = {
@@ -81,7 +82,7 @@ class ActionConfigPython(QObject):
     
     @Slot(str, result=dict)
     def createActionItem(self, action_id):
-        """Create a default action item for QML"""
+        """Create a default action item for QML with appropriate default values"""
         action = self.getAction(action_id)
         if not action:
             return {}
@@ -91,14 +92,44 @@ class ActionConfigPython(QObject):
             "title": action["title"]
         }
         
-        # Initialize all input fields
-        for i in range(1, 5):  # input1 through input4
-            field_index = i - 1
-            if field_index < len(action["fields"]):
-                item[f"input{i}"] = "0"
-            else:
-                item[f"input{i}"] = "-1"
-                
+        # Set default values based on action type
+        if action_id == "0":  # Move Winch To
+            item["input1"] =  int(self.robot.winch_controller.get_cable_length())  # Default distance
+            item["input2"] =  "350" # Default velocity
+            item["input3"] = "-1"
+            item["input4"] = "-1"
+            item["input5"] = "-1"
+            item["input6"] = "-1"
+        elif action_id == "1":  # Descend & Spray
+            item["input1"] = int(self.robot.winch_controller.get_cable_length())  # Default target length
+            item["input2"] = "550"   # Default speed
+            item["input3"] = "45"    # Default start angle
+            item["input4"] = "45"  # Default end angle
+            item["input5"] = "-1"
+            item["input6"] = "-1"
+        elif action_id == "2":  # Reset Yaw
+            item["input1"] = "-1"
+            item["input2"] = "-1"
+            item["input3"] = "-1"
+            item["input4"] = "-1"
+            item["input5"] = "-1"
+            item["input6"] = "-1"
+        elif action_id == "3":  # Extend Arm To
+            item["input1"] = "350"   # Default distance
+            item["input2"] = "-1"
+            item["input3"] = "-1"
+            item["input4"] = "-1"
+            item["input5"] = "-1"
+            item["input6"] = "-1"
+        else:
+            # For any other action types, initialize inputs
+            for i in range(1, 7):  # input1 through input6
+                field_index = i - 1
+                if field_index < len(action["fields"]):
+                    item[f"input{i}"] = "0"
+                else:
+                    item[f"input{i}"] = "-1"
+                    
         return item
     
     # Keep the Python-style methods for use from Python code

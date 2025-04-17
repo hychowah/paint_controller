@@ -26,9 +26,9 @@ Item {
         onTriggered: {
             var currentTime = new Date().getTime()
             
-            pitchSeries.append(currentTime - startTime, uiData.teensy_imu_pitch)
-            rollSeries.append(currentTime - startTime, uiData.teensy_imu_roll)
-            yawSeries.append(currentTime - startTime, uiData.teensy_imu_yaw)
+            pitchSeries.append(currentTime - startTime, teensyController.all_status.imu_pitch)
+            rollSeries.append(currentTime - startTime, teensyController.all_status.imu_roll)
+            yawSeries.append(currentTime - startTime, teensyController.all_status.imu_yaw)
             
             while (pitchSeries.count > 0 && 
                    pitchSeries.at(0).x < currentTime - startTime - timeWindow) {
@@ -297,14 +297,14 @@ Item {
                 Button {
                     text: "-10%"
                     onClicked: {
-                        let currentP = uiData.teensy_yaw_pid_p
+                        let currentP = teensyController.all_status.yaw_pid_p
                         pInput.text = (currentP * 0.9).toFixed(6)
                     }
                 }
                 TextField {
                     id: pInput
                     Layout.preferredWidth: 100
-                    placeholderText: uiData.teensy_yaw_pid_p
+                    placeholderText: teensyController.all_status.yaw_pid_p
                     validator: DoubleValidator {}
                     background: Rectangle {
                         color: "#ffffff"
@@ -314,12 +314,12 @@ Item {
                 Button {
                     text: "+10%"
                     onClicked: {
-                        let currentP = uiData.teensy_yaw_pid_p
+                        let currentP = teensyController.all_status.yaw_pid_p
                         pInput.text = (currentP * 1.1).toFixed(6)
                     }
                 }
                 Label {
-                    text: "Current P: " + uiData.teensy_yaw_pid_p
+                    text: "Current P: " + teensyController.all_status.yaw_pid_p
                     color: "white"
                 }
 
@@ -332,14 +332,14 @@ Item {
                 Button {
                     text: "-10%"
                     onClicked: {
-                        let currentI = uiData.teensy_yaw_pid_i
+                        let currentI = teensyController.all_status.yaw_pid_i
                         iInput.text = (currentI * 0.9).toFixed(6)
                     }
                 }
                 TextField {
                     id: iInput
                     Layout.preferredWidth: 100
-                    placeholderText: uiData.teensy_yaw_pid_i
+                    placeholderText: teensyController.all_status.yaw_pid_i
                     validator: DoubleValidator {}
                     background: Rectangle {
                         color: "#ffffff"
@@ -349,12 +349,12 @@ Item {
                 Button {
                     text: "+10%"
                     onClicked: {
-                        let currentI = uiData.teensy_yaw_pid_i
+                        let currentI = teensyController.all_status.yaw_pid_i
                         iInput.text = (currentI * 1.1).toFixed(6)
                     }
                 }
                 Label {
-                    text: "Current I: " + uiData.teensy_yaw_pid_i
+                    text: "Current I: " + teensyController.all_status.yaw_pid_i
                     color: "white"
                 }
 
@@ -367,14 +367,14 @@ Item {
                 Button {
                     text: "-10%"
                     onClicked: {
-                        let currentD = uiData.teensy_yaw_pid_d
+                        let currentD = teensyController.all_status.yaw_pid_d
                         dInput.text = (currentD * 0.9).toFixed(6)
                     }
                 }
                 TextField {
                     id: dInput
                     Layout.preferredWidth: 100
-                    placeholderText: uiData.teensy_yaw_pid_d
+                    placeholderText: teensyController.all_status.yaw_pid_d
                     validator: DoubleValidator {}
                     background: Rectangle {
                         color: "#ffffff"
@@ -384,12 +384,12 @@ Item {
                 Button {
                     text: "+10%"
                     onClicked: {
-                        let currentD = uiData.teensy_yaw_pid_d
+                        let currentD = teensyController.all_status.yaw_pid_d
                         dInput.text = (currentD * 1.1).toFixed(6)
                     }
                 }
                 Label {
-                    text: "Current D: " + uiData.teensy_yaw_pid_d
+                    text: "Current D: " + teensyController.all_status.yaw_pid_d
                     color: "white"
                 }
 
@@ -402,14 +402,14 @@ Item {
                 Button {
                     text: "-10%"
                     onClicked: {
-                        let currentTarget = uiData.teensy_yaw_command
+                        let currentTarget = teensyController.all_status.yaw_command
                         targetInput.text = (currentTarget * 0.9).toFixed(6)
                     }
                 }
                 TextField {
                     id: targetInput
                     Layout.preferredWidth: 100
-                    placeholderText: uiData.teensy_yaw_command
+                    placeholderText: teensyController.all_status.yaw_command
                     validator: DoubleValidator {}
                     background: Rectangle {
                         color: "#ffffff"
@@ -419,12 +419,12 @@ Item {
                 Button {
                     text: "+10%"
                     onClicked: {
-                        let currentTarget = uiData.teensy_yaw_command
+                        let currentTarget = teensyController.all_status.yaw_command
                         targetInput.text = (currentTarget * 1.1).toFixed(6)
                     }
                 }
                 Label {
-                    text: "Target: " + uiData.teensy_yaw_command + "current: " + uiData.teensy_imu_yaw
+                    text: "Target: " + teensyController.all_status.yaw_command + "current: " + teensyController.all_status.imu_yaw
                     color: "white"
                 }
 
@@ -448,12 +448,12 @@ Item {
                         id: sendMouseArea
                         anchors.fill: parent
                         onClicked: {
-                            let p = pInput.text !== "" ? parseFloat(pInput.text) : uiData.teensy_yaw_pid_p
-                            let i = iInput.text !== "" ? parseFloat(iInput.text) : uiData.teensy_yaw_pid_i
-                            let d = dInput.text !== "" ? parseFloat(dInput.text) : uiData.teensy_yaw_pid_d
-                            let target = targetInput.text !== "" ? parseFloat(targetInput.text) : uiData.teensy_yaw_command
+                            let p = pInput.text !== "" ? parseFloat(pInput.text) : teensyController.all_status.yaw_pid_p
+                            let i = iInput.text !== "" ? parseFloat(iInput.text) : teensyController.all_status.yaw_pid_i
+                            let d = dInput.text !== "" ? parseFloat(dInput.text) : teensyController.all_status.yaw_pid_d
+                            let target = targetInput.text !== "" ? parseFloat(targetInput.text) : teensyController.all_status.yaw_command
                             
-                            backend.setYawControl(enableSwitch.checked, target, p, i, d, pwmValue)
+                            teensyController.setYawParams(p, i, d)
                         }
                     }
                 }

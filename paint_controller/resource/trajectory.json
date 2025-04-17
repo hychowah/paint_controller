@@ -2,5 +2,17 @@
   {
     "name": "spray",
     "sequence": "moveWinchTo_45050_350,dNs_30600_550_45_30"
+  },
+  {
+    "name": "test2",
+    "sequence": "extendArmTo_300,extendArmTo_1300,moveWinchTo_45000_350,dNs_32500_550_45_45,moveWinchTo_30900_500,extendArmTo_750"
+  },
+  {
+    "name": "fill",
+    "sequence": "dNs_33600_550_0_0,dNs_32500_550_0_0"
+  },
+  {
+    "name": "uu66",
+    "sequence": "moveWinchTo_0_0,moveWinchTo_2359_350,dNs_2359_550_45_45"
   }
 ]
