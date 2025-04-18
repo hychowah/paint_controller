@@ -94,14 +94,14 @@ class ActionConfigPython(QObject):
         
         # Set default values based on action type
         if action_id == "0":  # Move Winch To
-            item["input1"] =  int(self.robot.winch_controller.get_cable_length())  # Default distance
+            item["input1"] =  str(int(self.robot.winch_controller.get_cable_length()))  # Default distance
             item["input2"] =  "350" # Default velocity
             item["input3"] = "-1"
             item["input4"] = "-1"
             item["input5"] = "-1"
             item["input6"] = "-1"
         elif action_id == "1":  # Descend & Spray
-            item["input1"] = int(self.robot.winch_controller.get_cable_length())  # Default target length
+            item["input1"] = str(int(self.robot.winch_controller.get_cable_length()))  # Default target length
             item["input2"] = "550"   # Default speed
             item["input3"] = "45"    # Default start angle
             item["input4"] = "45"  # Default end angle

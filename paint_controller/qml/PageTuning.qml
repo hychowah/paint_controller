@@ -244,8 +244,8 @@ Item {
             ValueAxis {
                 id: axisY
                 titleText: "Degrees"
-                min: yAxisMin
-                max: yAxisMax
+                min: teensyController.all_status.yaw_command - 15
+                max: teensyController.all_status.yaw_command + 15
                 tickCount: 7
                 titleVisible: true
             }

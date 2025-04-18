@@ -117,7 +117,7 @@ ApplicationWindow {
 
     Component {
         id: page4Component
-        Page4 {}
+        PageTuning {}
     }
 
     Component {

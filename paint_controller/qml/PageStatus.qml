@@ -323,7 +323,7 @@ Rectangle {
                                 Label { text: teensyController.all_status.loop_time_counter.toFixed(0) }
                                 
                                 Label { text: "Battery:"; font.bold: true }
-                                Label { text: "87%" }
+                                Label { text: calculateBatteryPercentage(teensyController.all_status.voltage) + "%" }
                                 Label { text: "Status:"; font.bold: true }
                                 Label { text: "Operating" }
                                 
@@ -1356,5 +1356,20 @@ Rectangle {
                 }
             }
         }
+    }
+
+    function calculateBatteryPercentage(voltage) {
+    // Constants for 7S Li-ion battery
+    const maxVoltage = 29.4;  // Fully charged voltage
+    const minVoltage = 21.0;  // Discharge cutoff voltage
+    
+    // Clamp the voltage to the valid range
+    const clampedVoltage = Math.max(minVoltage, Math.min(maxVoltage, voltage));
+    
+    // Calculate the percentage
+    const percentage = ((clampedVoltage - minVoltage) / (maxVoltage - minVoltage)) * 100;
+    
+    // Round to nearest integer
+    return Math.round(percentage);
     }
 }
