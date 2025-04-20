@@ -183,7 +183,7 @@ class TeensyController(QObject):
                 'spray_gun_motor_temp': msg.spray_gun_motor_temp,
                 'spray_gun_trigger': msg.spray_gun_trigger,
                 'yaw_enabled': msg.yaw_enabled,
-                'yaw_command': msg.yaw_command,
+                'yaw_command': msg.yaw_command / 100.0,
                 'yaw_pid_p': msg.yaw_pid_p,
                 'yaw_pid_i': msg.yaw_pid_i,
                 'yaw_pid_d': msg.yaw_pid_d,

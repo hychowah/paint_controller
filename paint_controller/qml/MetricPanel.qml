@@ -16,6 +16,7 @@ Rectangle {
     property string unit: ""
     property double maxValue: 1
     property color barColor: "#2196F3"
+    property int decimalPlaces: 3  // New property for decimal places
     
     ColumnLayout {
         anchors.fill: parent
@@ -34,7 +35,7 @@ Rectangle {
             Layout.fillHeight: true
             
             Label {
-                text: Number(value).toFixed(3)
+                text: Number(value).toFixed(decimalPlaces)  // Using the property
                 font.pixelSize: 28
                 font.bold: true
                 Layout.alignment: Qt.AlignVCenter

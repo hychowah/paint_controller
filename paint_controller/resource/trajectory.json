@@ -12,7 +12,11 @@
     "sequence": "dNs_33600_550_0_0,dNs_32500_550_0_0"
   },
   {
-    "name": "uu66",
-    "sequence": "moveWinchTo_35120_350,moveWinchTo_32676_350"
+    "name": "teste",
+    "sequence": "moveWinchTo_36900_350,extendArmTo_700,dNs_33050_550_45_45,extendArmTo_350"
+  },
+  {
+    "name": "lab",
+    "sequence": "moveWinchTo_8110_600,dNs_5048_550_60_60"
   }
 ]

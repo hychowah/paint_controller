@@ -54,7 +54,7 @@ class WheelController(QObject):
         self._left_wheel_speed_pub = self._node.create_publisher(Float32, 'wheel/left/speed/cmd', 1)
         self._right_wheel_speed_pub = self._node.create_publisher(Float32, 'wheel/right/speed/cmd', 1)
         self._disable_pub = self._node.create_publisher(Bool, 'wheel/disable/cmd', 1)
-        self._set_zero = self._node.create_publisher(Bool, 'wheel/set_zero/cmd', 1)
+        self._set_zero_pub = self._node.create_publisher(Bool, 'wheel/set_zero/cmd', 1)
 
     def _setup_subscribers(self):
         """Setup ROS subscribers for wheel status"""
@@ -239,6 +239,16 @@ class WheelController(QObject):
     def setRightSpeed(self, speed: float):
         """Set right wheel speed from QML"""
         return self.command_right_wheel_speed(speed)
+    
+    @Slot()
+    def resetWheelPosition(self):
+        """
+        Reset both wheel positions to zero
+        """
+        msg = Bool()
+        msg.data = True
+        self._set_zero_pub.publish(msg)
+        print('Wheel positions reset to zero')
         
     def cleanup(self):
         """Clean up resources when shutting down"""
