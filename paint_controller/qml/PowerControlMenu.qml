@@ -38,8 +38,8 @@ Item {
 
     Rectangle {
         id: powerMenuContainer
-        width: 700  // Wider to accommodate two columns
-        height: 540  // Increased height to accommodate the new button
+        width: 750 // Wider to accommodate two columns
+        height: 650  // Increased height to accommodate the new button
         radius: 12
         color: "#1A1A1A"  // Darker background for modern look
         opacity: showPowerMenu ? 1 : 0
@@ -285,6 +285,17 @@ Item {
 
                         onClicked: teensyController.setSprayGunLevelingEnabled(!teensyController.spray_gun_leveling_enabled)
                     }
+
+                    // SprayGun Led Control
+                    ControlPanel {
+                        Layout.fillWidth: true
+                        controlName: "SprayGun LED"
+                        controlStatus: teensyController.spray_gun_led_on ? "On" : "Off"
+                        enabledState: teensyController.spray_gun_led_on
+                        iconText: "LED"
+                        
+                        onClicked: teensyController.setSprayGunLED(!teensyController.spray_gun_led_on)
+                    }
                     
                     // Spacer
                     Item { 
@@ -405,7 +416,7 @@ Item {
         }
     }
 
-    // Backend-driven control panel component
+    // Backend-driven control panel component with fixed alignment
     component ControlPanel: Rectangle {
         id: controlPanel
         property string controlName: "Control"
@@ -420,6 +431,9 @@ Item {
         color: enabledState ? "#252A36" : "#222222"
         border.color: enabledState ? "#3A5A8C" : "#333333"
         border.width: 1
+        
+        // This ensures consistent layout across all control panels
+        Layout.fillWidth: true
         
         // Subtle transition animations
         Behavior on color {
@@ -446,10 +460,13 @@ Item {
             }
         }
         
-        RowLayout {
+        // Use Row instead of RowLayout for more consistent sizing
+        Row {
             anchors {
                 fill: parent
                 margins: 10
+                // Add right margin to create space between toggle and right edge
+                rightMargin: 15
             }
             spacing: 10
             
@@ -459,6 +476,7 @@ Item {
                 height: 36
                 radius: 18
                 color: enabledState ? "#3A5A8C" : "#444444"
+                anchors.verticalCenter: parent.verticalCenter
                 
                 Text {
                     anchors.centerIn: parent
@@ -474,44 +492,52 @@ Item {
                 }
             }
             
-            // Text with status
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 2
+            // Text with status - using a Rectangle with Column inside to fill available space
+            Rectangle {
+                width: parent.width - 36 - 10 - 48 - 5 // parent width minus icon width, spacing, switch width, and extra margin
+                height: parent.height - 20
+                color: "transparent" // Make this visible for debugging: "#550000"
+                anchors.verticalCenter: parent.verticalCenter
                 
-                Text {
-                    text: controlPanel.controlName
-                    font.pixelSize: 16
-                    font.bold: true
-                    color: "#FFFFFF"
-                }
-                
-                Text {
-                    text: controlPanel.controlStatus
-                    font.pixelSize: 13
-                    color: enabledState ? "#90CAF9" : "#999999"
+                Column {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 2
                     
-                    // Color transition
-                    Behavior on color {
-                        ColorAnimation { duration: 200 }
+                    Text {
+                        text: controlPanel.controlName
+                        font.pixelSize: 16
+                        font.bold: true
+                        color: "#FFFFFF"
+                    }
+                    
+                    Text {
+                        text: controlPanel.controlStatus
+                        font.pixelSize: 13
+                        color: enabledState ? "#90CAF9" : "#999999"
+                        
+                        // Color transition
+                        Behavior on color {
+                            ColorAnimation { duration: 200 }
+                        }
                     }
                 }
             }
             
-            // Toggle indicator
+            // Toggle switch - simple Rectangle with fixed width
             Rectangle {
                 width: 48
                 height: 24
                 radius: 12
                 color: enabledState ? "#3A5A8C" : "#444444"
+                anchors.verticalCenter: parent.verticalCenter
                 
                 Rectangle {
                     width: 18
                     height: 18
                     radius: 9
                     color: "#FFFFFF"
-                    x: enabledState ? parent.width - width - 3 : 3
                     anchors.verticalCenter: parent.verticalCenter
+                    x: enabledState ? parent.width - width - 3 : 3
                     
                     Behavior on x {
                         NumberAnimation { 
@@ -527,15 +553,5 @@ Item {
                 }
             }
         }
-    }
-    
-    // For compatibility with older Qt versions
-    component DropShadow: Item {
-        property bool transparentBorder: true
-        property real horizontalOffset: 0
-        property real verticalOffset: 0
-        property real radius: 0
-        property int samples: 0
-        property color color: "black"
     }
 }

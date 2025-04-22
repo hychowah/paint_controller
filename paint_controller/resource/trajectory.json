@@ -1,22 +1,6 @@
 [
   {
-    "name": "spray",
-    "sequence": "moveWinchTo_45050_350,dNs_30600_550_45_30"
-  },
-  {
-    "name": "test2",
-    "sequence": "extendArmTo_300,extendArmTo_1300,moveWinchTo_45000_350,dNs_32500_550_45_45,moveWinchTo_30900_500,extendArmTo_750"
-  },
-  {
-    "name": "fill",
-    "sequence": "dNs_33600_550_0_0,dNs_32500_550_0_0"
-  },
-  {
-    "name": "teste",
-    "sequence": "moveWinchTo_36900_350,extendArmTo_700,dNs_33050_550_45_45,extendArmTo_350"
-  },
-  {
-    "name": "lab",
-    "sequence": "moveWinchTo_8110_600,dNs_5048_550_60_60"
+    "name": "1",
+    "sequence": "extendArmTo_550,extendArmTo_700,extendArmTo_1200,dNs_42645_550_45_45,dNs_34451_550_60_45,dNs_47900_550_60_60,gimbalSpray_60_60_8"
   }
 ]

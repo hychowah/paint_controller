@@ -44,7 +44,17 @@ class ActionConfigPython(QObject):
                 "fields": [
                     {"label": "Distance", "key": "input1"}
                 ]
-            }
+            },
+            "4": {
+                "id": "4",
+                "title": "Gimbal Spray",
+                "prefix": "gimbalSpray",
+                "fields": [
+                    {"label": "Start Angle", "key": "input1"},
+                    {"label": "End Angle", "key": "input2"},
+                    {"label": "Speed", "key": "input3"},
+                ]
+            },
 
         }
     
@@ -121,6 +131,10 @@ class ActionConfigPython(QObject):
             item["input4"] = "-1"
             item["input5"] = "-1"
             item["input6"] = "-1"
+        elif action_id == "4":  # Gimbal Spray
+            item["input1"] = "45"
+            item["input2"] = "45"
+            item["input3"] = "10"
         else:
             # For any other action types, initialize inputs
             for i in range(1, 7):  # input1 through input6

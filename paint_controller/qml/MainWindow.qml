@@ -6,7 +6,7 @@ ApplicationWindow {
     visible: true
     visibility: Window.FullScreen
     property var screens: Qt.application.screens
-    property var targetScreen: screens.length > 1 ? screens[1] : screens[0]
+    property var targetScreen: screens.length > 1 ? screens[0] : screens[0]
     
     x: targetScreen.virtualX
     y: targetScreen.virtualY

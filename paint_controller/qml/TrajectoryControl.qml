@@ -511,7 +511,7 @@ Rectangle {
 
                     Text {
                         anchors.centerIn: parent
-                        text: control.isExecuting ? "Executing..." : "Start Next Action"
+                        text: control.isExecuting ? "Executing..." : "Execute"
                         font.pixelSize: 16
                         font.bold: true
                         color: getButtonTextColor()
