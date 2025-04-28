@@ -33,6 +33,21 @@ Rectangle {
                 executionTimer.start()
             }
         }
+
+        function onSequenceSaved(sequenceName) {
+            // If this is the currently selected sequence, reload its actions
+            if (control.selected) {
+                // Find the index of the sequence
+                for (let i = 0; i < trajectoryHandler.trajectory.length; i++) {
+                    if (trajectoryHandler.trajectory[i].name === sequenceName) {
+                        // Reload the current sequence data
+                        trajectoryHandler.selectTrajectory(i)
+                        control.currentActions = trajectoryHandler.getSelectedActions()
+                        break
+                    }
+                }
+            }
+        }
     }
     
     // Helper functions for button appearance

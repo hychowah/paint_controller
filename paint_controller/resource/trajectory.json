@@ -13,6 +13,6 @@
   },
   {
     "name": "lab",
-    "sequence": "gimbalSpray_60_60_10,dNs_1500_650_60_60,moveWinchTo_5000_350,extendArmTo_350"
+    "sequence": "gimbalSpray_60_60_5,dNs_1504_650_60_60,moveWinchTo_5000_350,extendArmTo_350,moveWinchTo_15000_350,dNs_10378_550_45_45"
   }
 ]

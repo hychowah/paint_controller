@@ -13,7 +13,7 @@ class ActionWorker(QObject):
     
     finished = Signal()  # Signal emitted when the work is done
     success = Signal(str)  # Signal emitted with success message
-    error = Signal(str)  # Signal emitted with error message
+    error = Signal(str)  # Signal emitted with error message.
     
     def __init__(self, node, cmd_type, params):
         super().__init__()
@@ -21,23 +21,15 @@ class ActionWorker(QObject):
         self._cmd_type = cmd_type
         self._params = params
         self._abort = False
+        self._paint_base_action_client = None
+        self._paint_ef_action_client = None
         
     def abort(self):
         """Set abort flag to stop operations"""
         self._abort = True
 
     def add_time_offset(self, time_msg, seconds=0, nanoseconds=0):
-        """
-        Add a time offset to a ROS 2 time message.
-        
-        Args:
-            time_msg: A ROS 2 Time message (builtin_interfaces.msg.Time)
-            seconds: Number of seconds to add (int or float)
-            nanoseconds: Number of nanoseconds to add (int)
-            
-        Returns:
-            A new Time message with the offset added
-        """
+        """Add a time offset to a ROS 2 time message."""
         # Convert any fractional seconds to nanoseconds
         if isinstance(seconds, float):
             extra_ns = int((seconds - int(seconds)) * 1_000_000_000)
@@ -59,497 +51,198 @@ class ActionWorker(QObject):
         
         return result
     
+    def _ensure_service_clients(self):
+        """Ensure service clients are created"""
+        if not self._paint_base_action_client:
+            self._paint_base_action_client = self._node.create_client(PaintAction, '/base/execute_action/service')
+        if not self._paint_ef_action_client:
+            self._paint_ef_action_client = self._node.create_client(PaintAction, '/ef/execute_action/service')
+        
+        # Wait for services with timeout
+        services_ready = True
+        
+        if not self._paint_base_action_client.wait_for_service(timeout_sec=2.0):
+            error_msg = 'Base Service not available. Timeout waiting for service.'
+            self._node.get_logger().error(error_msg)
+            self.error.emit(error_msg)
+            services_ready = False
+        
+        if not self._paint_ef_action_client.wait_for_service(timeout_sec=2.0):
+            error_msg = 'EF Service not available. Timeout waiting for service.'
+            self._node.get_logger().error(error_msg)
+            self.error.emit(error_msg)
+            services_ready = False
+            
+        return services_ready
+    
+    def _execute_service_calls(self, base_action, ef_action, max_wait_time=2.0):
+        """Execute service calls to base and EF controllers"""
+        # Get current time and add offset
+        clock = Clock()
+        current_time = clock.now().to_msg()
+        start_time = self.add_time_offset(current_time, seconds=2.0)
+        
+        # Create requests
+        base_request = PaintAction.Request()
+        base_request.start_time = start_time
+        base_request.action = base_action
+        
+        ef_request = PaintAction.Request()
+        ef_request.start_time = start_time
+        ef_request.action = ef_action
+        
+        self._node.get_logger().info(f"Starting service calls: Base={base_action}, EF={ef_action}")
+        
+        # Send requests asynchronously
+        base_future = self._paint_base_action_client.call_async(base_request)
+        ef_future = self._paint_ef_action_client.call_async(ef_request)
+        
+        # Wait for responses with timeout
+        wait_increment = 0.1
+        elapsed = 0.0
+        base_response = None
+        ef_response = None
+        
+        while elapsed < max_wait_time:
+            # Check if base request is done
+            if base_future.done() and base_response is None:
+                try:
+                    base_response = base_future.result()
+                    self._node.get_logger().info(f"Base service response received: {base_response}")
+                except Exception as e:
+                    error_msg = f"Base service call failed: {str(e)}"
+                    self._node.get_logger().error(error_msg)
+                    self.error.emit(error_msg)
+                    return False, error_msg
+            
+            # Check if ef request is done
+            if ef_future.done() and ef_response is None:
+                try:
+                    ef_response = ef_future.result()
+                    self._node.get_logger().info(f"EF service response received: {ef_response}")
+                except Exception as e:
+                    error_msg = f"EF service call failed: {str(e)}"
+                    self._node.get_logger().error(error_msg)
+                    self.error.emit(error_msg)
+                    return False, error_msg
+            
+            # Both responses received
+            if base_response is not None and ef_response is not None:
+                break
+            
+            # Check if worker was asked to abort
+            if self._abort:
+                self._node.get_logger().info("Operation aborted")
+                return False, "Operation aborted"
+            
+            # Wait a bit before checking again
+            time.sleep(wait_increment)
+            elapsed += wait_increment
+        
+        # Check for timeouts
+        if base_response is None:
+            error_msg = "Base service call timed out"
+            self._node.get_logger().error(error_msg)
+            self.error.emit(error_msg)
+            return False, error_msg
+        
+        if ef_response is None:
+            error_msg = "EF service call timed out"
+            self._node.get_logger().error(error_msg)
+            self.error.emit(error_msg)
+            return False, error_msg
+        
+        # Check responses
+        if base_response.success and ef_response.success:
+            self._node.get_logger().info("Both service calls succeeded")
+            return True, "Operation completed successfully"
+        else:
+            error_messages = []
+            if not base_response.success:
+                error_messages.append("Base service failed")
+            if not ef_response.success:
+                error_messages.append("EF service failed")
+            
+            error_msg = " and ".join(error_messages)
+            self._node.get_logger().error(f"Service failures: {error_msg}")
+            return False, f"Service failures: {error_msg}"
+    
+    def _handle_simple_action(self, action_name, duration):
+        """Handle simple actions that just need a sleep to simulate operation"""
+        self._node.get_logger().info(f"Starting {action_name} simulation")
+        time.sleep(duration)
+        if self._abort:
+            self._node.get_logger().info(f"{action_name} aborted")
+            return False, f"{action_name} aborted"
+        self._node.get_logger().info(f"Completed {action_name} simulation")
+        return True, f"{action_name} completed successfully"
+    
     def run(self):
         """Main worker method that will be executed in the thread"""
         try:
-            # In a real implementation, you would call actual hardware functions here
-            # This is just a simulation with time.sleep
             self._node.get_logger().info(f"Worker executing {self._cmd_type}")
             
             if self._cmd_type == "winch":
-                # Simulate winch movement (takes longer)
-                self._node.get_logger().info("Starting winch movement simulation")
-                time.sleep(3)  # This sleep won't block the UI anymore
-                if self._abort:
-                    self._node.get_logger().info("Winch movement aborted")
-                    return
-                self._node.get_logger().info("Completed winch movement simulation")
-                self.success.emit("Winch movement completed successfully!")
-            elif self._cmd_type == "gimbalSpray":
-                # Simulate gimbal spray
-                # Simulate positioning - would be a hardware call in real implementation
-                clock = Clock()
-                current_time = clock.now().to_msg()  # This creates a Time message
-
-                start_time_offset = 2.0  # 2 seconds offset for the start time
-                start_time = self.add_time_offset(current_time, seconds=start_time_offset)
-                
-                # Create service client if it doesn't exist
-                if not hasattr(self, '_paint_base_action_client'):
-                    self._paint_base_action_client = self._node.create_client(PaintAction, '/base/execute_action/service')
-                if not hasattr(self, '_paint_ef_action_client'):
-                    self._paint_ef_action_client = self._node.create_client(PaintAction, '/ef/execute_action/service')
-                
-                # Wait for services with timeout
-                if not self._paint_base_action_client.wait_for_service(timeout_sec=2.0):
-                    error_msg = 'Base Service not available. Timeout waiting for service.'
-                    self._node.get_logger().error(error_msg)
-                    self.error.emit(error_msg)
-                    return
-                
-                if not self._paint_ef_action_client.wait_for_service(timeout_sec=2.0):
-                    error_msg = 'EF Service not available. Timeout waiting for service.'
-                    self._node.get_logger().error(error_msg)
-                    self.error.emit(error_msg)
-                    return
-                
-                # Create and send the Base request
-                base_request = PaintAction.Request()
-                base_request.start_time = start_time
-                # winch action in format {action}_{distance}_{speed}
-                
-                base_request.action = f"none"
-                
-                # Create and send the EF request (with "none" action)
-                ef_request = PaintAction.Request()
-                ef_request.start_time = start_time
-                ef_request.action = f"gimbalSpray_{self._params[0]}_{self._params[1]}_{self._params[2]}" 
-                
-                self._node.get_logger().info("Starting moveWinchTo service calls")
-                
-                # Send the requests asynchronously
-                base_future = self._paint_base_action_client.call_async(base_request)
-                ef_future = self._paint_ef_action_client.call_async(ef_request)
-                
-                # Wait for responses with timeout (using a combination of sleep and check to allow abortion)
-                max_wait_time = 2.0  # 2 seconds max wait for service responses
-                wait_increment = 0.1  # Check every 0.1 seconds
-                elapsed = 0.0
-                
-                base_response = None
-                ef_response = None
-                
-                while elapsed < max_wait_time:
-                    # Check if base request is done
-                    if base_future.done() and base_response is None:
-                        try:
-                            base_response = base_future.result()
-                            self._node.get_logger().info(f"Base service response received: {base_response}")
-                        except Exception as e:
-                            error_msg = f"Base service call failed: {str(e)}"
-                            self._node.get_logger().error(error_msg)
-                            self.error.emit(error_msg)
-                            return
-                    
-                    # Check if ef request is done
-                    if ef_future.done() and ef_response is None:
-                        try:
-                            ef_response = ef_future.result()
-                            self._node.get_logger().info(f"EF service response received: {ef_response}")
-                        except Exception as e:
-                            error_msg = f"EF service call failed: {str(e)}"
-                            self._node.get_logger().error(error_msg)
-                            self.error.emit(error_msg)
-                            return
-                    
-                    # Both responses received
-                    if base_response is not None and ef_response is not None:
-                        break
-                    
-                    # Check if worker was asked to abort
-                    if self._abort:
-                        self._node.get_logger().info("Winch positioning aborted")
-                        return
-                    
-                    # Wait a bit before checking again
-                    time.sleep(wait_increment)
-                    elapsed += wait_increment
-                
-                # Check for timeouts
-                if base_response is None:
-                    self._node.get_logger().error("Base service call timed out")
-                    self.error.emit("Base service call timed out")
-                    return
-                
-                if ef_response is None:
-                    self._node.get_logger().error("EF service call timed out")
-                    self.error.emit("EF service call timed out")
-                    return
-                
-                # Check responses
-                if base_response.success and ef_response.success:
-                    self._node.get_logger().info("Both service calls succeeded")
-                    self.success.emit("Winch positioned successfully")
+                # Simple winch simulation
+                success, message = self._handle_simple_action("winch movement", 3.0)
+                if success:
+                    self.success.emit(message)
                 else:
-                    error_messages = []
-                    if not base_response.success:
-                        error_messages.append("Base service failed")
-                    if not ef_response.success:
-                        error_messages.append("EF service failed")
+                    self.error.emit(message)
                     
-                    error_msg = " and ".join(error_messages)
-                    self._node.get_logger().error(f"Service failures: {error_msg}")
-                    self.error.emit(f"Service failures: {error_msg}")
-                if self._abort:
-                    return
-                self._node.get_logger().info("Completed winch and spray simulation")
-                self.success.emit("Winch and spray operation completed")
-            elif self._cmd_type == "extendArmTo":
-                self._node.get_logger().info("Starting arm extension")
-                clock = Clock()
-                current_time = clock.now().to_msg()  # This creates a Time message
-
-                start_time_offset = 2.0  # 2 seconds offset for the start time
-                start_time = self.add_time_offset(current_time, seconds=start_time_offset)
-
-                if not hasattr(self, '_paint_base_action_client'):
-                    self._paint_base_action_client = self._node.create_client(PaintAction, '/base/execute_action/service')
-                if not hasattr(self, '_paint_ef_action_client'):
-                    self._paint_ef_action_client = self._node.create_client(PaintAction, '/ef/execute_action/service')
-
-                if not self._paint_base_action_client.wait_for_service(timeout_sec=1.0):
-                    error_msg = 'Base Service not available. Timeout waiting for service.'
-                    self._node.get_logger().error(error_msg)
-                    self.error.emit(error_msg)
-                    return
-                
-                if not self._paint_ef_action_client.wait_for_service(timeout_sec=1.0):
-                    error_msg = 'EF Service not available. Timeout waiting for service.'
-                    self._node.get_logger().error(error_msg)
-                    self.error.emit(error_msg)
-                    return
-                
-                # Create and send the Base request
-                base_request = PaintAction.Request()
-                base_request.start_time = start_time
-                # winch action in format {action}_{distance}_{speed}
-                base_request.action = f"none"
-                
-                # Create and send the EF request (with "none" action)
-                ef_request = PaintAction.Request()
-                ef_request.start_time = start_time
-                ef_request.action = f"extendArmTo_{self._params[0]}" 
-                
-                self._node.get_logger().info("Starting moveWinchTo service calls")
-                
-                # Send the requests asynchronously
-                base_future = self._paint_base_action_client.call_async(base_request)
-                ef_future = self._paint_ef_action_client.call_async(ef_request)
-                
-                # Wait for responses with timeout (using a combination of sleep and check to allow abortion)
-                max_wait_time = 2.0  # 2 seconds max wait for service responses
-                wait_increment = 0.1  # Check every 0.1 seconds
-                elapsed = 0.0
-                
-                base_response = None
-                ef_response = None
-                
-                while elapsed < max_wait_time:
-                    # Check if base request is done
-                    if base_future.done() and base_response is None:
-                        try:
-                            base_response = base_future.result()
-                            self._node.get_logger().info(f"Base service response received: {base_response}")
-                        except Exception as e:
-                            error_msg = f"Base service call failed: {str(e)}"
-                            self._node.get_logger().error(error_msg)
-                            self.error.emit(error_msg)
-                            return
-                    
-                    # Check if ef request is done
-                    if ef_future.done() and ef_response is None:
-                        try:
-                            ef_response = ef_future.result()
-                            self._node.get_logger().info(f"EF service response received: {ef_response}")
-                        except Exception as e:
-                            error_msg = f"EF service call failed: {str(e)}"
-                            self._node.get_logger().error(error_msg)
-                            self.error.emit(error_msg)
-                            return
-                    
-                    # Both responses received
-                    if base_response is not None and ef_response is not None:
-                        break
-                    
-                    # Check if worker was asked to abort
-                    if self._abort:
-                        self._node.get_logger().info("Winch positioning aborted")
-                        return
-                    
-                    # Wait a bit before checking again
-                    time.sleep(wait_increment)
-                    elapsed += wait_increment
-                
-                # Check for timeouts
-                if base_response is None:
-                    self._node.get_logger().error("Base service call timed out")
-                    self.error.emit("Base service call timed out")
-                    return
-                
-                if ef_response is None:
-                    self._node.get_logger().error("EF service call timed out")
-                    self.error.emit("EF service call timed out")
-                    return
-                
-                # Check responses
-                if base_response.success and ef_response.success:
-                    self._node.get_logger().info("Both service calls succeeded")
-                    self.success.emit("Winch positioned successfully")
-                else:
-                    error_messages = []
-                    if not base_response.success:
-                        error_messages.append("Base service failed")
-                    if not ef_response.success:
-                        error_messages.append("EF service failed")
-                    
-                    error_msg = " and ".join(error_messages)
-                    self._node.get_logger().error(f"Service failures: {error_msg}")
-                    self.error.emit(f"Service failures: {error_msg}")
-                if self._abort:
-                    return
-                self._node.get_logger().info("Completed extending arm ")
-                self.success.emit("Extention arm completed")
-            elif self._cmd_type == "winchNspray":
-                # Simulate positioning - would be a hardware call in real implementation
-                clock = Clock()
-                current_time = clock.now().to_msg()  # This creates a Time message
-
-                start_time_offset = 2.0  # 2 seconds offset for the start time
-                start_time = self.add_time_offset(current_time, seconds=start_time_offset)
-                
-                # Create service client if it doesn't exist
-                if not hasattr(self, '_paint_base_action_client'):
-                    self._paint_base_action_client = self._node.create_client(PaintAction, '/base/execute_action/service')
-                if not hasattr(self, '_paint_ef_action_client'):
-                    self._paint_ef_action_client = self._node.create_client(PaintAction, '/ef/execute_action/service')
-                
-                # Wait for services with timeout
-                if not self._paint_base_action_client.wait_for_service(timeout_sec=2.0):
-                    error_msg = 'Base Service not available. Timeout waiting for service.'
-                    self._node.get_logger().error(error_msg)
-                    self.error.emit(error_msg)
-                    return
-                
-                if not self._paint_ef_action_client.wait_for_service(timeout_sec=2.0):
-                    error_msg = 'EF Service not available. Timeout waiting for service.'
-                    self._node.get_logger().error(error_msg)
-                    self.error.emit(error_msg)
-                    return
-                
-                # Create and send the Base request
-                base_request = PaintAction.Request()
-                base_request.start_time = start_time
-                # winch action in format {action}_{distance}_{speed}
-                base_request.action = f"moveWinchTo_{self._params[0]}_{self._params[1]}_{self._params[2]}_{self._params[3]}"
-                
-                # Create and send the EF request (with "none" action)
-                ef_request = PaintAction.Request()
-                ef_request.start_time = start_time
-                ef_request.action = f"spray_{self._params[0]}_{self._params[1]}_{self._params[2]}_{self._params[3]}" 
-                
-                self._node.get_logger().info("Starting moveWinchTo service calls")
-                
-                # Send the requests asynchronously
-                base_future = self._paint_base_action_client.call_async(base_request)
-                ef_future = self._paint_ef_action_client.call_async(ef_request)
-                
-                # Wait for responses with timeout (using a combination of sleep and check to allow abortion)
-                max_wait_time = 2.0  # 2 seconds max wait for service responses
-                wait_increment = 0.1  # Check every 0.1 seconds
-                elapsed = 0.0
-                
-                base_response = None
-                ef_response = None
-                
-                while elapsed < max_wait_time:
-                    # Check if base request is done
-                    if base_future.done() and base_response is None:
-                        try:
-                            base_response = base_future.result()
-                            self._node.get_logger().info(f"Base service response received: {base_response}")
-                        except Exception as e:
-                            error_msg = f"Base service call failed: {str(e)}"
-                            self._node.get_logger().error(error_msg)
-                            self.error.emit(error_msg)
-                            return
-                    
-                    # Check if ef request is done
-                    if ef_future.done() and ef_response is None:
-                        try:
-                            ef_response = ef_future.result()
-                            self._node.get_logger().info(f"EF service response received: {ef_response}")
-                        except Exception as e:
-                            error_msg = f"EF service call failed: {str(e)}"
-                            self._node.get_logger().error(error_msg)
-                            self.error.emit(error_msg)
-                            return
-                    
-                    # Both responses received
-                    if base_response is not None and ef_response is not None:
-                        break
-                    
-                    # Check if worker was asked to abort
-                    if self._abort:
-                        self._node.get_logger().info("Winch positioning aborted")
-                        return
-                    
-                    # Wait a bit before checking again
-                    time.sleep(wait_increment)
-                    elapsed += wait_increment
-                
-                # Check for timeouts
-                if base_response is None:
-                    self._node.get_logger().error("Base service call timed out")
-                    self.error.emit("Base service call timed out")
-                    return
-                
-                if ef_response is None:
-                    self._node.get_logger().error("EF service call timed out")
-                    self.error.emit("EF service call timed out")
-                    return
-                
-                # Check responses
-                if base_response.success and ef_response.success:
-                    self._node.get_logger().info("Both service calls succeeded")
-                    self.success.emit("Winch positioned successfully")
-                else:
-                    error_messages = []
-                    if not base_response.success:
-                        error_messages.append("Base service failed")
-                    if not ef_response.success:
-                        error_messages.append("EF service failed")
-                    
-                    error_msg = " and ".join(error_messages)
-                    self._node.get_logger().error(f"Service failures: {error_msg}")
-                    self.error.emit(f"Service failures: {error_msg}")
-                if self._abort:
-                    return
-                self._node.get_logger().info("Completed winch and spray simulation")
-                self.success.emit("Winch and spray operation completed")
             elif self._cmd_type == "resetYaw":
-                # Simulate yaw reset
-                self._node.get_logger().info("Starting yaw reset simulation")
-                time.sleep(0.8)
-                if self._abort:
-                    return
-                self._node.get_logger().info("Completed yaw reset simulation")
-                self.success.emit("Yaw reset successful")
-
-            elif self._cmd_type == "moveWinchTo":
-                # Simulate positioning - would be a hardware call in real implementation
-                clock = Clock()
-                current_time = clock.now().to_msg()  # This creates a Time message
-                start_time = self.add_time_offset(current_time, seconds=2)
-                
-                # Create service client if it doesn't exist
-                if not hasattr(self, '_paint_base_action_client'):
-                    self._paint_base_action_client = self._node.create_client(PaintAction, '/base/execute_action/service')
-                if not hasattr(self, '_paint_ef_action_client'):
-                    self._paint_ef_action_client = self._node.create_client(PaintAction, '/ef/execute_action/service')
-                
-                # Wait for services with timeout
-                if not self._paint_base_action_client.wait_for_service(timeout_sec=2.0):
-                    error_msg = 'Base Service not available. Timeout waiting for service.'
-                    self._node.get_logger().error(error_msg)
-                    self.error.emit(error_msg)
-                    return
-                
-                if not self._paint_ef_action_client.wait_for_service(timeout_sec=2.0):
-                    error_msg = 'EF Service not available. Timeout waiting for service.'
-                    self._node.get_logger().error(error_msg)
-                    self.error.emit(error_msg)
-                    return
-                
-                # Create and send the Base request
-                base_request = PaintAction.Request()
-                base_request.start_time = start_time
-                base_request.action = f"moveWinchTo_{self._params[0]}_{self._params[1]}"
-                print(f"Base request: {base_request}")
-                
-                # Create and send the EF request (with "none" action)
-                ef_request = PaintAction.Request()
-                ef_request.start_time = start_time
-                ef_request.action = "none"  # Special action to keep EF in ONTASK state
-                
-                self._node.get_logger().info("Starting moveWinchTo service calls")
-                
-                # Send the requests asynchronously
-                base_future = self._paint_base_action_client.call_async(base_request)
-                ef_future = self._paint_ef_action_client.call_async(ef_request)
-                
-                # Wait for responses with timeout (using a combination of sleep and check to allow abortion)
-                max_wait_time = 2.0  # 2 seconds max wait for service responses
-                wait_increment = 0.1  # Check every 0.1 seconds
-                elapsed = 0.0
-                
-                base_response = None
-                ef_response = None
-                
-                while elapsed < max_wait_time:
-                    # Check if base request is done
-                    if base_future.done() and base_response is None:
-                        try:
-                            base_response = base_future.result()
-                            self._node.get_logger().info(f"Base service response received: {base_response}")
-                        except Exception as e:
-                            error_msg = f"Base service call failed: {str(e)}"
-                            self._node.get_logger().error(error_msg)
-                            self.error.emit(error_msg)
-                            return
-                    
-                    # Check if ef request is done
-                    if ef_future.done() and ef_response is None:
-                        try:
-                            ef_response = ef_future.result()
-                            self._node.get_logger().info(f"EF service response received: {ef_response}")
-                        except Exception as e:
-                            error_msg = f"EF service call failed: {str(e)}"
-                            self._node.get_logger().error(error_msg)
-                            self.error.emit(error_msg)
-                            return
-                    
-                    # Both responses received
-                    if base_response is not None and ef_response is not None:
-                        break
-                    
-                    # Check if worker was asked to abort
-                    if self._abort:
-                        self._node.get_logger().info("Winch positioning aborted")
-                        return
-                    
-                    # Wait a bit before checking again
-                    time.sleep(wait_increment)
-                    elapsed += wait_increment
-                
-                # Check for timeouts
-                if base_response is None:
-                    self._node.get_logger().error("Base service call timed out")
-                    self.error.emit("Base service call timed out")
-                    return
-                
-                if ef_response is None:
-                    self._node.get_logger().error("EF service call timed out")
-                    self.error.emit("EF service call timed out")
-                    return
-                
-                # Check responses
-                if base_response.success and ef_response.success:
-                    self._node.get_logger().info("Both service calls succeeded")
-                    self.success.emit("Winch positioned successfully")
+                # Simple yaw reset simulation
+                success, message = self._handle_simple_action("yaw reset", 0.8)
+                if success:
+                    self.success.emit(message)
                 else:
-                    error_messages = []
-                    if not base_response.success:
-                        error_messages.append("Base service failed")
-                    if not ef_response.success:
-                        error_messages.append("EF service failed")
+                    self.error.emit(message)
                     
-                    error_msg = " and ".join(error_messages)
-                    self._node.get_logger().error(f"Service failures: {error_msg}")
-                    self.error.emit(f"Service failures: {error_msg}")
+            elif self._cmd_type in ["gimbalSpray", "extendArmTo", "moveWinchTo", "winchNspray"]:
+                # All these commands use service calls with different parameters
+                
+                # Ensure service clients exist and are ready
+                if not self._ensure_service_clients():
+                    return
+                
+                # Prepare actions based on command type
+                if self._cmd_type == "gimbalSpray":
+                    base_action = "none"
+                    ef_action = f"gimbalSpray_{self._params[0]}_{self._params[1]}_{self._params[2]}"
+                    success_msg = "Winch and spray operation completed"
+                
+                elif self._cmd_type == "extendArmTo":
+                    base_action = "none"
+                    ef_action = f"extendArmTo_{self._params[0]}"
+                    success_msg = "Extension arm completed"
+                
+                elif self._cmd_type == "moveWinchTo":
+                    if len(self._params) == 2:
+                        base_action = f"moveWinchTo_{self._params[0]}_{self._params[1]}"
+                    else:
+                        # Handle different parameter counts if needed
+                        base_action = f"moveWinchTo_{self._params[0]}_{self._params[1]}"
+                    ef_action = "none"
+                    success_msg = "Winch positioned successfully"
+                
+                elif self._cmd_type == "winchNspray":
+                    base_action = f"moveWinchTo_{self._params[0]}_{self._params[1]}_{self._params[2]}_{self._params[3]}"
+                    ef_action = f"spray_{self._params[0]}_{self._params[1]}_{self._params[2]}_{self._params[3]}"
+                    success_msg = "Winch and spray operation completed"
+                
+                # Execute service calls
+                success, message = self._execute_service_calls(base_action, ef_action)
+                
+                if success:
+                    self.success.emit(success_msg)
+                else:
+                    self.error.emit(message)
+            
             else:
-                # Unknown command type (shouldn't reach here)
-                self._node.get_logger().error(f"Unknown command type: {self._cmd_type}")
-                self.error.emit(f"Unknown command type: {self._cmd_type}")
+                # Unknown command type
+                error_msg = f"Unknown command type: {self._cmd_type}"
+                self._node.get_logger().error(error_msg)
+                self.error.emit(error_msg)
                 
         except Exception as e:
             # Handle any exceptions in the thread
@@ -567,6 +260,7 @@ class TrajectoryHandler(QObject):
     actionConfigChanged = Signal()
     showMessage = Signal(str, bool)  # message text, isSuccess
     executingChanged = Signal(bool)  # isExecuting
+    sequenceSaved = Signal(str) 
 
     def __init__(self, node: Node):
         super().__init__()
@@ -709,6 +403,9 @@ class TrajectoryHandler(QObject):
 
         self._saveTrajectory()
         self.trajectoryChanged.emit()
+
+        # Emit the sequence saved signal with the name
+        self.sequenceSaved.emit(name)
 
     @Slot(int)
     def selectTrajectory(self, index):
