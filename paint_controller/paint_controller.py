@@ -217,8 +217,11 @@ class RobotController(Node, QObject):
         self.heartbeat_handler = UIHeartbeatHandler(self)
         self.target_yaw = 0
 
-        self.steam_deck_handler = SteamDeckHandler(deadzone=config.joystick_deadzone, update_rate=60)
-        self.steam_deck_handler.attach_to_node(self)
+        self.steam_deck_handler = SteamDeckHandler(deadzone=config.joystick_deadzone)
+        self.steam_deck_handler.start()
+        # Register Steam Deck button callbacks for UI control
+        self.setup_steam_deck_callbacks()
+        # self.steam_deck_handler.attach_to_node(self)
 
         self.ui_data_model = UIDataModel()
         self.status_updated.connect(self._timer_callback)
@@ -256,6 +259,48 @@ class RobotController(Node, QObject):
         self.frame_ready.emit()
         
         return Gst.FlowReturn.OK
+    
+    def setup_steam_deck_callbacks(self):
+        """Set up callbacks for Steam Deck buttons that control UI elements"""
+        
+        # Navigation callbacks
+        self.steam_deck_handler.register_button_callback('up', self._on_up_pressed)
+        self.steam_deck_handler.register_button_callback('down', self._on_down_pressed)
+        self.steam_deck_handler.register_button_callback('left', self._on_left_pressed)
+        self.steam_deck_handler.register_button_callback('right', self._on_right_pressed)
+        
+        # Menu toggle callbacks
+        self.steam_deck_handler.register_button_callback('r4', self._on_r4_pressed)
+        self.steam_deck_handler.register_button_callback('l4', self._on_l4_pressed)
+        self.steam_deck_handler.register_button_callback('menu', self._on_menu_pressed)
+
+    def _on_up_pressed(self):
+        if self.overlayController.is_showing_menu():
+            self.overlayController.move_up()
+
+    def _on_down_pressed(self):
+        if self.overlayController.is_showing_menu():
+            self.overlayController.move_down()
+
+    def _on_left_pressed(self):
+        if self.overlayController.is_showing_menu():
+            self.overlayController.move_to_first()
+
+    def _on_right_pressed(self):
+        if self.overlayController.is_showing_menu():
+            self.overlayController.move_to_last()
+
+    def _on_r4_pressed(self):
+        self.overlayController.set_active_menu("right")
+        self.overlayController.toggle_right_menu()
+
+    def _on_l4_pressed(self):
+        self.overlayController.set_active_menu("left")
+        self.overlayController.toggle_left_menu()
+
+    def _on_menu_pressed(self):
+        self.overlayController.set_active_menu("power")
+        self.overlayController.toggle_power_menu()
 
     def _timer_callback(self):
         """Update UI elements with latest data"""
@@ -271,27 +316,12 @@ class RobotController(Node, QObject):
 
         self.ui_data_model.display_message = self.ui_data_model.display_message
 
-        if self.steam_deck_handler.get_button_pressed('up') and self.overlayController.is_showing_menu():
-            self.overlayController.move_up()
-        elif self.steam_deck_handler.get_button_pressed('down') and self.overlayController.is_showing_menu():
-            self.overlayController.move_down()
-        elif self.steam_deck_handler.get_button_pressed('left') and self.overlayController.is_showing_menu():
-            self.overlayController.move_to_first()
-        elif self.steam_deck_handler.get_button_pressed('right') and self.overlayController.is_showing_menu():
-            self.overlayController.move_to_last()
-
-        if self.steam_deck_handler.get_button_pressed('r4'):
-            self.overlayController.set_active_menu("right")
-            self.overlayController.toggle_right_menu()
-        elif self.steam_deck_handler.get_button_pressed('l4'):
-            self.overlayController.set_active_menu("left")
-            self.overlayController.toggle_left_menu()
-        elif self.steam_deck_handler.get_button_pressed('menu'):
-            self.overlayController.set_active_menu("power")
-            self.overlayController.toggle_power_menu()
+        # Process control inputs with current state
+        input_state = self.steam_deck_handler.get_current_state()
+        self.controlProcessor.process_input(input_state)
 
         # Process control inputs
-        self.controlProcessor.process_input(input_state)
+        # self.controlProcessor.process_input(input_state)
 
     def display_message(self, message: str):
         self.ui_data_model.display_message = message
