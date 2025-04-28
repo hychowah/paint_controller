@@ -216,29 +216,30 @@ Rectangle {
                     spacing: 20
 
 
-                    Rectangle {
+                    ColumnLayout {
                         id: efView
                         objectName: "efView"
-                        //anchors.fill: parent
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        color: "transparent"
+                        spacing: 0
                         
-                        Image {
-                            id: efFrame
-                            anchors.fill: parent
-                            fillMode: Image.PreserveAspectCrop
-                            cache: false
-                            source: "image://ef_live/frame"
-                        }
-
                         ExecutorPageStatus {
-                            anchors {
-                                top: parent.top
-                                left: parent.left
-                                right: parent.right
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 110
+                        }
+                        
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            color: "transparent"
+                            
+                            Image {
+                                id: efFrame
+                                anchors.fill: parent
+                                fillMode: Image.PreserveAspectCrop
+                                cache: false
+                                source: "image://ef_live/frame"
                             }
-                            height: 100
                         }
                     }
 

@@ -24,7 +24,7 @@ class WinchController(QObject):
         self._node = node
         
         # Initialize property values
-        self._max_speed = 40.0 # output rpm
+        self._max_speed = 60.0 # output rpm
 
         self._cable_length = 0.0
         self._cable_speed = 0.0
