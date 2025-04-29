@@ -12,6 +12,15 @@ python paint_controller.py
 * button detection has been integrated into program, input_node is no longer used.
 
 ## Control
+Control Menu Button
+
+![menu_button](https://github.com/user-attachments/assets/1cb5f0d9-d7fa-4900-858a-e7bf89f65758)
+![Screenshot from 2025-04-30 00-27-14](https://github.com/user-attachments/assets/4a8c3dcd-b281-4cb0-9894-9078ca2e8596)
+
+Joystick Control Selection R4 & L4
+
+![Steam-Deck-OLED-rear webp](https://github.com/user-attachments/assets/6945287c-9d6d-4ba9-81ca-25c86aa887ac)
+![Screenshot from 2025-04-30 00-30-23](https://github.com/user-attachments/assets/a5875e38-b665-4c3f-8f43-fbde514861e6)
 
 
 
