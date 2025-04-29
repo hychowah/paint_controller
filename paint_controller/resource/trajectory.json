@@ -1,18 +1,22 @@
 [
   {
-    "name": "1",
-    "sequence": "extendArmTo_350,extendArmTo_700,extendArmTo_1000,dNs_44300_550_60_60,dNs_36200_550_60_45,dNs_47900_550_60_60,gimbalSpray_60_60_8,dNs_48531_550_60_45,dNs_44862_550_45_45"
-  },
-  {
-    "name": "2",
-    "sequence": "dNs_50000_550_60_60,dNs_38697_550_45_45,dNs_38997_550_45_45,dNs_38279_550_45_45"
-  },
-  {
     "name": "test",
     "sequence": "dNs_35765_550_45_45,extendArmTo_350"
   },
   {
     "name": "lab",
     "sequence": "gimbalSpray_60_60_5,dNs_1504_650_60_60,moveWinchTo_5000_350,extendArmTo_350,moveWinchTo_15000_350,dNs_10378_550_45_45"
+  },
+  {
+    "name": "site",
+    "sequence": "moveWinchTo_16086_350,extendArmTo_1000,extendArmTo_200,dNs_2727_550_45_45"
+  },
+  {
+    "name": "site2",
+    "sequence": "extendArmTo_300,extendArmTo_1000,dNs_1713_550_60_45,dNs_9869_550_60_60,gimbalSpray_55_60_10,moveWinchTo_15264_350"
+  },
+  {
+    "name": "fill",
+    "sequence": "dNs_3722_550_45_45,dNs_5353_550_45_45"
   }
 ]

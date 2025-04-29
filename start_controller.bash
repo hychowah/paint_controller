@@ -31,21 +31,20 @@ if [ -z "$TMUX" ]; then
 
         # Start camera in pane 0
         tmux select-pane -t 0
-        tmux send-keys 'python3 paint_controller/steam_input_node.py' C-m
 
-        # Start wind sensor in pane 1
+        # Start main program
         tmux select-pane -t 1
         tmux send-keys 'python3 paint_controller/paint_controller.py' C-m
 
-        # Start ros2 bag recording in pane 4
+        # Start ros2 bag recording 
         tmux select-pane -t 2
         tmux send-keys "echo 'Waiting 5 seconds for nodes to initialize...' && sleep 5 && timestamp=\$(date '+%Y-%m-%d-%H-%M-%S') && ros2 bag record -o ~/Documents/rosbag_\$timestamp -a" C-m
 
-        # Start teensy node in pane 3
+        # check if client is running
         tmux select-pane -t 3
         tmux send-keys 'sudo chronyc clients' C-m
 
-        # Start ros2 bag recording in pane 4
+        # 
         tmux select-pane -t 4
 
         tmux select-pane -t 5

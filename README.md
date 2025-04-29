@@ -8,11 +8,12 @@ To run the Controller, use the following command:
 python paint_controller.py
 ```
 
-## Running the Steam Input Node
-To run the Steam Input Node, use the following command:
-```bash
-python steam_input_node.py
-```
+##  the Steam Input Node
+* button detection has been integrated into program, input_node is no longer used.
+
+## Control
+
+
 
 ### Remarks:
 You should set the permissions for the Steam Deck device before running the Steam Input Node.
