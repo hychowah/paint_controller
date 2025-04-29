@@ -3,6 +3,7 @@
 The `Paint Controller` is a ROS 2 node designed to provide a user interface for controlling the robot
 
 ## Running the Controller
+(some text color does not shown properly in dark system theme, use light theme to run for now)
 To run the Controller, use the following command:
 ```bash
 python paint_controller.py
