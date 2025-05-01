@@ -82,7 +82,7 @@ class SteamDeckHandler(QObject):
                 'a': False, 'b': False, 'x': False, 'y': False,
                 'l1': False, 'r1': False, 'l4': False, 'r4': False,
                 'l5': False, 'r5': False, 'l3': False,
-                'menu': False, 'quick_access': False, 'steam': False
+                'menu': False, 'switch': False, 'steam': False
             },
             'imu': {'pitch': 0.0, 'roll': 0.0, 'yaw': 0.0}
         }
@@ -94,7 +94,7 @@ class SteamDeckHandler(QObject):
             'a': False, 'b': False, 'x': False, 'y': False,
             'l1': False, 'r1': False, 'l4': False, 'r4': False,
             'l5': False, 'r5': False, 'l3': False,
-            'menu': False, 'quick_access': False, 'steam': False
+            'menu': False, 'switch': False, 'steam': False
         }
         
         # Track the last time each button was pressed for debouncing
@@ -103,7 +103,7 @@ class SteamDeckHandler(QObject):
             'a': 0, 'b': 0, 'x': 0, 'y': 0,
             'l1': 0, 'r1': 0, 'l4': 0, 'r4': 0,
             'l5': 0, 'r5': 0, 'l3': 0,
-            'menu': 0, 'quick_access': 0, 'steam': 0
+            'menu': 0, 'switch': 0, 'steam': 0
         }
         
         # Set per-button debounce times (defaults to the default debounce time)
@@ -124,7 +124,7 @@ class SteamDeckHandler(QObject):
             'r5': self._default_debounce_time,
             'l3': self._default_debounce_time,
             'menu': self._default_debounce_time, 
-            'quick_access': self._default_debounce_time,
+            'switch': self._default_debounce_time,
             'steam': self._default_debounce_time
         }
         
@@ -149,7 +149,7 @@ class SteamDeckHandler(QObject):
             'a': [], 'b': [], 'x': [], 'y': [],
             'l1': [], 'r1': [], 'l4': [], 'r4': [],
             'l5': [], 'r5': [], 'l3': [],
-            'menu': [], 'quick_access': [], 'steam': []
+            'menu': [], 'switch': [], 'steam': []
         }
         
         # Initialize HID device and reader thread
@@ -305,7 +305,7 @@ class SteamDeckHandler(QObject):
             dpad_right = bool(button_byte2 & (1 << 1))
             dpad_left = bool(button_byte2 & (1 << 2))
             dpad_down = bool(button_byte2 & (1 << 3))
-            quick_access = bool(button_byte2 & (1 << 4))
+            switch = bool(button_byte2 & (1 << 4))
             steam = bool(button_byte2 & (1 << 5))
             menu = bool(button_byte2 & (1 << 6))
             l5 = bool(button_byte2 & (1 << 7))
@@ -358,7 +358,7 @@ class SteamDeckHandler(QObject):
                     'r5': r5,
                     'l3': l3,
                     'menu': menu,
-                    'quick_access': quick_access,
+                    'switch': switch,
                     'steam': steam
                 },
                 'imu': {

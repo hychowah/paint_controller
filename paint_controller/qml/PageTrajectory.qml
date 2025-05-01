@@ -215,7 +215,6 @@ Rectangle {
                     anchors.topMargin: 100
                     spacing: 20
 
-
                     ColumnLayout {
                         id: efView
                         objectName: "efView"
@@ -233,12 +232,17 @@ Rectangle {
                             Layout.fillHeight: true
                             color: "transparent"
                             
+                            // Bind image source to control mode
+                            property string imageSource: backend.control_mode === "ef" ? 
+                                                    "image://ef_live/frame" : 
+                                                    "image://base_front_live/frame"
+                            
                             Image {
                                 id: efFrame
                                 anchors.fill: parent
                                 fillMode: Image.PreserveAspectCrop
                                 cache: false
-                                source: "image://ef_live/frame"
+                                source: parent.imageSource
                             }
                         }
                     }
@@ -252,11 +256,13 @@ Rectangle {
                     Connections {
                         target: baseStreamer
                         function onFrame_ready() {
+                            // Clear and update the image source, forcing a refresh
+                            var rect = efView.children[1] // Get the Rectangle containing the Image
+                            var currentSource = rect.imageSource // Get the current source based on mode
                             efFrame.source = ""
-                            efFrame.source = "image://ef_live/frame"
+                            efFrame.source = currentSource
                         }
                     }
-
                 }
             }
         }

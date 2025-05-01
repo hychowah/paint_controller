@@ -18,6 +18,9 @@ Rectangle {
         0.1
     )
     
+    // Add a control mode property (bound to the UI data model)
+    property string controlMode: backend.control_mode
+    
     // Add a subtle gradient background
     gradient: Gradient {
         GradientStop { position: 0.0; color: "#ffffff" }
@@ -31,7 +34,7 @@ Rectangle {
 
         Text {
             Layout.fillWidth: true
-            text: "System Status"
+            text: controlMode === "base" ? "Base Control Mode" : "EF Control Mode"
             font.pixelSize: 18
             font.bold: true
             color: "#333333"
@@ -45,12 +48,278 @@ Rectangle {
             Layout.bottomMargin: 15
         }
         
+        // Base Mode Status
         GridLayout {
+            id: baseStatusGrid
             Layout.fillWidth: true
             Layout.fillHeight: true
             columns: 2
             rowSpacing: 16
             columnSpacing: 20
+            visible: controlMode === "base"
+
+            // Row 1 - Left Wheel Speed
+            Rectangle {
+                Layout.fillWidth: true
+                color: "transparent"
+                height: 28
+                
+                RowLayout {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 10
+                    
+                    Rectangle {
+                        width: 4
+                        height: 20
+                        radius: 2
+                        color: plannerPageStatus.themeColor
+                    }
+                    
+                    Text {
+                        text: "Left Wheel Speed"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#444444"
+                    }
+                }
+            }
+            
+            Rectangle {
+                Layout.preferredWidth: 100
+                color: "transparent"
+                height: 28
+                
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.right: parent.right
+                    width: 70
+                    height: 24
+                    radius: 4
+                    color: plannerPageStatus.themeBgColor
+                    border.color: plannerPageStatus.themeColor
+                    border.width: 1
+                    
+                    Text {
+                        anchors.centerIn: parent
+                        text: wheelController.left_wheel_speed.toFixed(1)
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: plannerPageStatus.themeColor
+                    }
+                }
+            }
+            
+            // Row 2 - Right Wheel Speed
+            Rectangle {
+                Layout.fillWidth: true
+                color: "transparent"
+                height: 28
+                
+                RowLayout {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 10
+                    
+                    Rectangle {
+                        width: 4
+                        height: 20
+                        radius: 2
+                        color: plannerPageStatus.themeColor
+                    }
+                    
+                    Text {
+                        text: "Right Wheel Speed"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#444444"
+                    }
+                }
+            }
+            
+            Rectangle {
+                Layout.preferredWidth: 100
+                color: "transparent"
+                height: 28
+                
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.right: parent.right
+                    width: 70
+                    height: 24
+                    radius: 4
+                    color: plannerPageStatus.themeBgColor
+                    border.color: plannerPageStatus.themeColor
+                    border.width: 1
+                    
+                    Text {
+                        anchors.centerIn: parent
+                        text: wheelController.right_wheel_speed.toFixed(1)
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: plannerPageStatus.themeColor
+                    }
+                }
+            }
+            
+            Rectangle {
+                Layout.fillWidth: true
+                color: "transparent"
+                height: 28
+                
+                RowLayout {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 10
+                    
+                    Rectangle {
+                        width: 4
+                        height: 20
+                        radius: 2
+                        color: plannerPageStatus.themeColor
+                    }
+                    
+                    Text {
+                        text: "LEFT CURRENT"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#444444"
+                    }
+                }
+            }
+            
+            Rectangle {
+                Layout.preferredWidth: 100
+                color: "transparent"
+                height: 28
+                
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.right: parent.right
+                    width: 70
+                    height: 24
+                    radius: 4
+                    color: plannerPageStatus.themeBgColor
+                    border.color: plannerPageStatus.themeColor
+                    border.width: 1
+                    
+                    Text {
+                        anchors.centerIn: parent
+                        text: wheelController.left_wheel_current.toFixed(2) 
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: plannerPageStatus.themeColor
+                    }
+                }
+            }
+            
+            Rectangle {
+                Layout.fillWidth: true
+                color: "transparent"
+                height: 28
+                
+                RowLayout {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 10
+                    
+                    Rectangle {
+                        width: 4
+                        height: 20
+                        radius: 2
+                        color: plannerPageStatus.themeColor
+                    }
+                    
+                    Text {
+                        text: "RIGHT CURRENT"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#444444"
+                    }
+                }
+            }
+            
+            Rectangle {
+                Layout.preferredWidth: 100
+                color: "transparent"
+                height: 28
+                
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.right: parent.right
+                    width: 70
+                    height: 24
+                    radius: 4
+                    color: plannerPageStatus.themeBgColor
+                    border.color: plannerPageStatus.themeColor
+                    border.width: 1
+                    
+                    Text {
+                        anchors.centerIn: parent
+                        text: wheelController.right_wheel_current.toFixed(2)
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: plannerPageStatus.themeColor
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                color: "transparent"
+                height: 28
+                
+                RowLayout {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 10
+                    
+                    Rectangle {
+                        width: 4
+                        height: 20
+                        radius: 2
+                        color: plannerPageStatus.themeColor
+                    }
+                    
+                    Text {
+                        text: "TRAVEL"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#444444"
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.preferredWidth: 100
+                color: "transparent"
+                height: 28
+                
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.right: parent.right
+                    width: 70
+                    height: 24
+                    radius: 4
+                    color: plannerPageStatus.themeBgColor
+                    border.color: plannerPageStatus.themeColor
+                    border.width: 1
+                    
+                    Text {
+                        anchors.centerIn: parent
+                        text: wheelController.right_wheel_position.toFixed(0)
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: plannerPageStatus.themeColor
+                    }
+                }
+            }
+        }
+        
+        // EF Mode Status
+        GridLayout {
+            id: efStatusGrid
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            columns: 2
+            rowSpacing: 16
+            columnSpacing: 20
+            visible: controlMode === "ef"
 
             // Row 1 - Winch Torque
             Rectangle {
@@ -154,7 +423,7 @@ Rectangle {
                 }
             }
             
-            // Row 3 - Cable Speed
+            // Row 3 - EF Yaw Angle
             Rectangle {
                 Layout.fillWidth: true
                 color: "transparent"
@@ -172,7 +441,7 @@ Rectangle {
                     }
                     
                     Text {
-                        text: "Cable Speed"
+                        text: "EF Yaw Angle"
                         font.pixelSize: 14
                         font.bold: true
                         color: "#444444"
@@ -197,7 +466,7 @@ Rectangle {
                     
                     Text {
                         anchors.centerIn: parent
-                        text: Math.abs(winchController.cable_speed).toFixed(1)
+                        text: teensyController.all_status.imu_yaw.toFixed(1)
                         font.pixelSize: 14
                         font.bold: true
                         color: plannerPageStatus.themeColor
@@ -255,56 +524,36 @@ Rectangle {
                     }
                 }
             }
+        }
+    }
+    
+    // Add a smooth transition animation when switching modes
+    Behavior on controlMode {
+        SequentialAnimation {
+            // Fade out current view
+            NumberAnimation {
+                target: controlMode === "base" ? baseStatusGrid : efStatusGrid
+                property: "opacity"
+                from: 1.0
+                to: 0.0
+                duration: 150
+            }
             
-            // Row 5 - Status5
-            Rectangle {
-                Layout.fillWidth: true
-                color: "transparent"
-                height: 28
-                
-                RowLayout {
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 10
-                    
-                    Rectangle {
-                        width: 4
-                        height: 20
-                        radius: 2
-                        color: plannerPageStatus.themeColor
-                    }
-                    
-                    Text {
-                        text: "Status5"
-                        font.pixelSize: 14
-                        font.bold: true
-                        color: "#444444"
-                    }
+            // Switch visibility
+            ScriptAction {
+                script: {
+                    baseStatusGrid.visible = (controlMode === "base");
+                    efStatusGrid.visible = (controlMode === "ef");
                 }
             }
             
-            Rectangle {
-                Layout.preferredWidth: 100
-                color: "transparent"
-                height: 28
-                
-                Rectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.right: parent.right
-                    width: 70
-                    height: 24
-                    radius: 4
-                    color: plannerPageStatus.themeBgColor
-                    border.color: plannerPageStatus.themeColor
-                    border.width: 1
-                    
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Value5"
-                        font.pixelSize: 14
-                        font.bold: true
-                        color: plannerPageStatus.themeColor
-                    }
-                }
+            // Fade in new view
+            NumberAnimation {
+                target: controlMode === "base" ? baseStatusGrid : efStatusGrid
+                property: "opacity"
+                from: 0.0
+                to: 1.0
+                duration: 150
             }
         }
     }

@@ -143,6 +143,12 @@ ApplicationWindow {
         activeMenu: overlayController.active_menu
     }
 
+    CustomPopup {
+        id: messagePopup
+        // This is referenced from Python code
+        objectName: "messagePopup"
+    }
+
     OverlayLayer {
         anchors.fill: parent
         z: 1000

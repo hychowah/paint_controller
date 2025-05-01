@@ -15,9 +15,9 @@ from rclpy.node import Node
 from std_msgs.msg import Float64, Bool, Float32, Int32, String, Int32, UInt8
 from sensor_msgs.msg import LaserScan
 
-from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QThread
+from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QThread, QMetaObject
 from PySide6.QtGui import QImage, QPixmap
-from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType
+from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType, QQmlProperty
 from PySide6.QtWidgets import QApplication
 from PySide6.QtQuick import QQuickImageProvider
 
@@ -185,6 +185,7 @@ class RobotController(Node, QObject):
     frame_ready = Signal()
     new_scan_data = Signal(list, float, float, float, float)
     status_updated = Signal()
+    control_mode_changed = Signal(str)
 
     def __init__(self, config: RobotConfig):
         Node.__init__(self, 'robot_controller')
@@ -215,16 +216,14 @@ class RobotController(Node, QObject):
         self.controlProcessor = ControlProcessor(self)
         self.action_config = ActionConfigPython(self)
         self.heartbeat_handler = UIHeartbeatHandler(self)
-        self.target_yaw = 0
-
         self.steam_deck_handler = SteamDeckHandler(deadzone=config.joystick_deadzone)
         self.steam_deck_handler.start()
-        # Register Steam Deck button callbacks for UI control
         self.setup_steam_deck_callbacks()
-        # self.steam_deck_handler.attach_to_node(self)
 
         self.ui_data_model = UIDataModel()
         self.status_updated.connect(self._timer_callback)
+
+        self._control_mode = "base" # base or ef
 
         
         # Setup ROS subscribers and publishers
@@ -235,6 +234,35 @@ class RobotController(Node, QObject):
 
         # base video stream handler
         self.base_video_stream_handler = BaseVideoStreamHandler()
+
+    @Slot(str, str, str, int)
+    def show_popup(self, title: str, message: str, popup_type: str = "info", dismiss_delay: int = 500):
+        """
+        Show a popup notification that auto-dismisses
+        
+        Args:
+            title: Title of the popup   
+            message: Message content
+            popup_type: Type of popup ("info", "warning", or "error")
+            dismiss_delay: Time in milliseconds before the popup dismisses itself (default: 3000ms)
+        """
+        root_objects = self.engine.rootObjects()
+        if not root_objects:
+            self.get_logger().error('No root QML objects found')
+            return
+            
+        root = root_objects[0]
+        popup = root.findChild(QObject, "messagePopup")
+        
+        if popup:
+            QQmlProperty.write(popup, "messageTitle", title)
+            QQmlProperty.write(popup, "messageText", message)
+            QQmlProperty.write(popup, "messageType", popup_type)
+            QQmlProperty.write(popup, "dismissDelay", dismiss_delay)
+            QMetaObject.invokeMethod(popup, "open")
+            self.get_logger().info(f'Showing {popup_type} popup: {title} - {message}')
+        else:
+            self.get_logger().error('Popup not found in QML')
 
     def on_new_ef_sample(self, sink):
         sample = sink.emit('pull-sample')
@@ -273,6 +301,33 @@ class RobotController(Node, QObject):
         self.steam_deck_handler.register_button_callback('r4', self._on_r4_pressed)
         self.steam_deck_handler.register_button_callback('l4', self._on_l4_pressed)
         self.steam_deck_handler.register_button_callback('menu', self._on_menu_pressed)
+
+        # switch control mode callbacks
+        self.steam_deck_handler.register_button_callback('switch', self._on_switch_pressed)
+
+    # Add property for control_mode
+    @Property(str, notify=control_mode_changed)
+    def control_mode(self):
+        return self._control_mode
+        
+    @control_mode.setter
+    def control_mode(self, mode):
+        if self._control_mode != mode:
+            self._control_mode = mode
+            self.control_mode_changed.emit(mode)
+
+    def _on_switch_pressed(self):
+        """Switch control mode between base and ef"""
+        if self.control_mode == "base":
+            # Switching to EF mode
+            self.control_mode = "ef"
+            self.overlayController.set_joystick_controls("EF Yaw Angle", "Winch Speed")
+            self.show_popup("Control Mode", "Switched to EF control mode", "info")
+        else:
+            # Switching to Base mode
+            self.control_mode = "base"
+            self.overlayController.set_joystick_controls("Left Wheel Speed", "Right Wheel Speed")
+            self.show_popup("Control Mode", "Switched to Base control mode", "info")
 
     def _on_up_pressed(self):
         if self.overlayController.is_showing_menu():
@@ -320,8 +375,6 @@ class RobotController(Node, QObject):
         input_state = self.steam_deck_handler.get_current_state()
         self.controlProcessor.process_input(input_state)
 
-        # Process control inputs
-        # self.controlProcessor.process_input(input_state)
 
     def display_message(self, message: str):
         self.ui_data_model.display_message = message
@@ -445,6 +498,7 @@ def main():
     engine.rootContext().setContextProperty("teensyController", controller.teensy_controller)
     engine.rootContext().setContextProperty("actionConfig", controller.action_config)
     engine.rootContext().setContextProperty("heartbeatHandler", controller.heartbeat_handler)
+    controller.engine = engine
     
     # Start status update timer
     status_timer = QTimer()

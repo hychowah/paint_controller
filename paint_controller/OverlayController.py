@@ -267,3 +267,31 @@ class OverlayController(QObject):
                 
         self._input_locked = True
         self._input_timer.start()
+
+
+    @Slot(str, str)
+    def set_joystick_controls(self, left_control: str, right_control: str):
+        """
+        Configure left and right joystick controls
+        
+        Args:
+            left_control: Control option for left joystick
+            right_control: Control option for right joystick
+        """
+        # Find the indices for the specified control options
+        left_index = self._control_options.index(left_control) if left_control in self._control_options else 0
+        right_index = self._control_options.index(right_control) if right_control in self._control_options else 0
+        
+        # Update the selected indices
+        self._left_selected_index = left_index
+        self._right_selected_index = right_index
+        
+        # Emit signals to update the UI
+        self.leftSelectedIndexChanged.emit(left_index)
+        self.rightSelectedIndexChanged.emit(right_index)
+        
+        # If EF Yaw Angle is selected, initialize the target angle to current IMU yaw
+        if left_control == "EF Yaw Angle" or right_control == "EF Yaw Angle":
+            current_yaw = self.robot.teensy_controller.get_status().get('imu_yaw', 0)
+            self.robot.controlProcessor.controls["EF Yaw Angle"].offset = current_yaw
+            print(f"Set target yaw angle to {current_yaw}")

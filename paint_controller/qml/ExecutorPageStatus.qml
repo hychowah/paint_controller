@@ -7,6 +7,9 @@ Rectangle {
     color: "#1e293b"  // Solid dark background for better readability
     radius: 8
 
+    // Add a control mode property (bound to the controller)
+    property string controlMode: backend.control_mode
+
     // Main content container
     ColumnLayout {
         id: mainLayout
@@ -48,7 +51,7 @@ Rectangle {
             }
 
             Text {
-                text: "SYSTEM STATUS: READY"
+                text: controlMode === "base" ? "BASE CONTROL MODE" : "EF CONTROL MODE"
                 font.pixelSize: 12
                 font.bold: true
                 color: "#ffffff"
@@ -58,12 +61,151 @@ Rectangle {
             Item { Layout.fillWidth: true } // Spacer
         }
 
-        // Metrics in 2x2 grid layout
+        // Base Mode Status
         GridLayout {
+            id: baseStatusGrid
             Layout.fillWidth: true
             columns: 2
             rowSpacing: 12
             columnSpacing: 24
+            visible: controlMode === "base"
+
+            // Left Wheel Speed Section
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 4
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    
+                    Text {
+                        text: "Left Wheel Speed"
+                        font.pixelSize: 13
+                        font.bold: true
+                        color: "#ffffff"
+                    }
+                    
+                    Item { Layout.fillWidth: true } // Spacer
+                    
+                    Text {
+                        text: (wheelController.left_wheel_speed || 0).toFixed(1) + " m/s"
+                        font.pixelSize: 13
+                        color: "#f0f0f0"
+                    }
+                }
+            }
+
+            // Right Wheel Speed Section
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 4
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    
+                    Text {
+                        text: "Right Wheel Speed"
+                        font.pixelSize: 13
+                        font.bold: true
+                        color: "#ffffff"
+                    }
+                    
+                    Item { Layout.fillWidth: true } // Spacer
+                    
+                    Text {
+                        text: (wheelController.right_wheel_speed || 0).toFixed(1) + " m/s"
+                        font.pixelSize: 13
+                        color: "#f0f0f0"
+                    }
+                }
+            }
+
+            // Left Wheel Current Section
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 4
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    
+                    Text {
+                        text: "Left Current"
+                        font.pixelSize: 13
+                        font.bold: true
+                        color: "#ffffff"
+                    }
+                    
+                    Item { Layout.fillWidth: true } // Spacer
+                    
+                    Text {
+                        property real current: Math.abs(wheelController.left_wheel_current || 0)
+                        text: current.toFixed(2) + " A"
+                        font.pixelSize: 13
+                        color: current > 10 ? "#f87171" : "#f0f0f0"
+                    }
+                }
+            }
+
+            // Right Wheel Current Section
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 4
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    
+                    Text {
+                        text: "Right Current"
+                        font.pixelSize: 13
+                        font.bold: true
+                        color: "#ffffff"
+                    }
+                    
+                    Item { Layout.fillWidth: true } // Spacer
+                    
+                    Text {
+                        property real current: Math.abs(wheelController.right_wheel_current || 0)
+                        text: current.toFixed(2) + " A"
+                        font.pixelSize: 13
+                        color: current > 10 ? "#f87171" : "#f0f0f0"
+                    }
+                }
+            }
+            
+            // Travel Section
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 4
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    
+                    Text {
+                        text: "Travel"
+                        font.pixelSize: 13
+                        font.bold: true
+                        color: "#ffffff"
+                    }
+                    
+                    Item { Layout.fillWidth: true } // Spacer
+                    
+                    Text {
+                        text: (wheelController.right_wheel_position || 0).toFixed(0) + " mm"
+                        font.pixelSize: 13
+                        color: "#f0f0f0"
+                    }
+                }
+            }
+        }
+
+        // EF Mode Status
+        GridLayout {
+            id: efStatusGrid
+            Layout.fillWidth: true
+            columns: 2
+            rowSpacing: 12
+            columnSpacing: 24
+            visible: controlMode === "ef"
 
             // Winch Torque Section
             ColumnLayout {
@@ -83,7 +225,7 @@ Rectangle {
                     Item { Layout.fillWidth: true } // Spacer
                     
                     Text {
-                        text: (winchController.winch_torque || 0).toFixed(1) + " / 1400"
+                        text: (winchController.winch_torque || 0).toFixed(1) + " mA"
                         font.pixelSize: 13
                         color: "#f0f0f0"
                     }
@@ -117,7 +259,32 @@ Rectangle {
                 }
             }
 
-            // Cable Length Section
+            // Winch Current Section
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 4
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    
+                    Text {
+                        text: "Winch Speed"
+                        font.pixelSize: 13
+                        font.bold: true
+                        color: "#ffffff"
+                    }
+                    
+                    Item { Layout.fillWidth: true } // Spacer
+                    
+                    Text {
+                        property real current: Math.abs(winchController.cable_speed || 0)
+                        text: current.toFixed(0) + " mm/s"
+                        font.pixelSize: 13
+                        color: current > 10 ? "#f87171" : "#f0f0f0"
+                    }
+                }
+            }
+
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 4
@@ -142,32 +309,6 @@ Rectangle {
                 }
             }
 
-            // Cable Speed Section
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 4
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    
-                    Text {
-                        text: "Cable Speed"
-                        font.pixelSize: 13
-                        font.bold: true
-                        color: "#ffffff"
-                    }
-                    
-                    Item { Layout.fillWidth: true } // Spacer
-                    
-                    Text {
-                        property real speed: Math.abs(winchController.cable_speed || 0)
-                        text: speed.toFixed(1) + " mm/s"
-                        font.pixelSize: 13
-                        color: "#f0f0f0"
-                    }
-                }
-            }
-
             // Arm Extension Section
             ColumnLayout {
                 Layout.fillWidth: true
@@ -186,7 +327,7 @@ Rectangle {
                     Item { Layout.fillWidth: true } // Spacer
                     
                     Text {
-                        text: (teensyController.all_status.arm_extension_dist || 0).toFixed(0) + " / 1600"
+                        text: (teensyController.all_status.arm_extension_dist || 0).toFixed(0) + " mm"
                         font.pixelSize: 13
                         color: "#f0f0f0"
                     }
@@ -218,6 +359,37 @@ Rectangle {
                         }
                     }
                 }
+            }
+        }
+    }
+    
+    // Add a smooth transition animation when switching modes
+    Behavior on controlMode {
+        SequentialAnimation {
+            // Fade out current view
+            NumberAnimation {
+                target: controlMode === "base" ? baseStatusGrid : efStatusGrid
+                property: "opacity"
+                from: 1.0
+                to: 0.0
+                duration: 150
+            }
+            
+            // Switch visibility
+            ScriptAction {
+                script: {
+                    baseStatusGrid.visible = (controlMode === "base");
+                    efStatusGrid.visible = (controlMode === "ef");
+                }
+            }
+            
+            // Fade in new view
+            NumberAnimation {
+                target: controlMode === "base" ? baseStatusGrid : efStatusGrid
+                property: "opacity"
+                from: 0.0
+                to: 1.0
+                duration: 150
             }
         }
     }
