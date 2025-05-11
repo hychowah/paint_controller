@@ -65,3 +65,15 @@ Joystick Control Selection R4 & L4
 ![Steam-Deck-OLED-rear webp](https://github.com/user-attachments/assets/6945287c-9d6d-4ba9-81ca-25c86aa887ac)
 ![Screenshot from 2025-04-30 00-30-23](https://github.com/user-attachments/assets/a5875e38-b665-4c3f-8f43-fbde514861e6)
 
+To switch between Base control mode and EF control mode, press
+
+![image](https://github.com/user-attachments/assets/65a007fc-0d73-40dd-ac61-aee627a318ce)
+
+![image](https://github.com/user-attachments/assets/60012148-6ef2-4e8b-af41-008ad38814be)
+
+To trigger emgenecy stop, press and hold "STEAM" button
+
+![image](https://github.com/user-attachments/assets/f6739bd4-c247-4a22-9948-f8e7ee077a1b)
+
+![image](https://github.com/user-attachments/assets/0c59fd84-ded4-4825-8854-19854437fef9)
+
