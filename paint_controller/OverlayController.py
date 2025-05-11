@@ -292,6 +292,6 @@ class OverlayController(QObject):
         
         # If EF Yaw Angle is selected, initialize the target angle to current IMU yaw
         if left_control == "EF Yaw Angle" or right_control == "EF Yaw Angle":
-            current_yaw = self.robot.teensy_controller.get_status().get('imu_yaw', 0)
+            current_yaw = self.robot.teensy_controller.get_status().get('yaw_command', 0)
             self.robot.controlProcessor.controls["EF Yaw Angle"].offset = current_yaw
             print(f"Set target yaw angle to {current_yaw}")

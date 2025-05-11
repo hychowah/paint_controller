@@ -113,8 +113,8 @@ class ActionConfigPython(QObject):
         elif action_id == "1":  # Descend & Spray
             item["input1"] = str(int(self.robot.winch_controller.get_cable_length()))  # Default target length
             item["input2"] = "550"   # Default speed
-            item["input3"] = "45"    # Default start angle
-            item["input4"] = "45"  # Default end angle
+            item["input3"] = "55"    # Default start angle
+            item["input4"] = "55"  # Default end angle
             item["input5"] = "-1"
             item["input6"] = "-1"
         elif action_id == "2":  # Reset Yaw
@@ -132,8 +132,8 @@ class ActionConfigPython(QObject):
             item["input5"] = "-1"
             item["input6"] = "-1"
         elif action_id == "4":  # Gimbal Spray
-            item["input1"] = "45"
-            item["input2"] = "45"
+            item["input1"] = "55"
+            item["input2"] = "55"
             item["input3"] = "10"
         else:
             # For any other action types, initialize inputs

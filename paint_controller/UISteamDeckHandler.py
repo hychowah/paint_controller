@@ -62,6 +62,8 @@ class SteamDeckHandler(QObject):
     buttons_changed = Signal()
     imu_changed = Signal()
     connection_status_changed = Signal(bool)
+    button_held = Signal(str, float)  # Signal for button hold events (button, duration)
+    button_hold_progress = Signal(str, float, float)  # Signal for hold progress (button, current_duration, target_duration)
     
     def __init__(self, deadzone: float = 0.1, smoothing_factor: float = 0.1, default_debounce_time: float = 0.15):
         super().__init__()
@@ -97,16 +99,29 @@ class SteamDeckHandler(QObject):
             'menu': False, 'switch': False, 'steam': False
         }
         
-        # Track the last time each button was pressed for debouncing
-        self._last_press_time = {
-            'up': 0, 'down': 0, 'left': 0, 'right': 0,
-            'a': 0, 'b': 0, 'x': 0, 'y': 0,
-            'l1': 0, 'r1': 0, 'l4': 0, 'r4': 0,
-            'l5': 0, 'r5': 0, 'l3': 0,
-            'menu': 0, 'switch': 0, 'steam': 0
+        # Unified button timing - track start time and last trigger time for each button
+        self._button_state_timing = {
+            'up': {'start_time': 0, 'last_trigger_time': 0}, 
+            'down': {'start_time': 0, 'last_trigger_time': 0}, 
+            'left': {'start_time': 0, 'last_trigger_time': 0}, 
+            'right': {'start_time': 0, 'last_trigger_time': 0},
+            'a': {'start_time': 0, 'last_trigger_time': 0}, 
+            'b': {'start_time': 0, 'last_trigger_time': 0}, 
+            'x': {'start_time': 0, 'last_trigger_time': 0}, 
+            'y': {'start_time': 0, 'last_trigger_time': 0},
+            'l1': {'start_time': 0, 'last_trigger_time': 0}, 
+            'r1': {'start_time': 0, 'last_trigger_time': 0}, 
+            'l4': {'start_time': 0, 'last_trigger_time': 0}, 
+            'r4': {'start_time': 0, 'last_trigger_time': 0},
+            'l5': {'start_time': 0, 'last_trigger_time': 0},
+            'r5': {'start_time': 0, 'last_trigger_time': 0},
+            'l3': {'start_time': 0, 'last_trigger_time': 0},
+            'menu': {'start_time': 0, 'last_trigger_time': 0}, 
+            'switch': {'start_time': 0, 'last_trigger_time': 0},
+            'steam': {'start_time': 0, 'last_trigger_time': 0}
         }
         
-        # Set per-button debounce times (defaults to the default debounce time)
+        # Set per-button debounce times
         self._debounce_times = {
             'up': self._default_debounce_time, 
             'down': self._default_debounce_time, 
@@ -126,6 +141,24 @@ class SteamDeckHandler(QObject):
             'menu': self._default_debounce_time, 
             'switch': self._default_debounce_time,
             'steam': self._default_debounce_time
+        }
+        
+        # Button hold callbacks
+        self._button_hold_callbacks = {
+            'up': [], 'down': [], 'left': [], 'right': [],
+            'a': [], 'b': [], 'x': [], 'y': [],
+            'l1': [], 'r1': [], 'l4': [], 'r4': [],
+            'l5': [], 'r5': [], 'l3': [],
+            'menu': [], 'switch': [], 'steam': []
+        }
+        
+        # Track which hold callbacks have been triggered in current hold session
+        self._button_hold_triggered = {
+            'up': {}, 'down': {}, 'left': {}, 'right': {},
+            'a': {}, 'b': {}, 'x': {}, 'y': {},
+            'l1': {}, 'r1': {}, 'l4': {}, 'r4': {},
+            'l5': {}, 'r5': {}, 'l3': {},
+            'menu': {}, 'switch': {}, 'steam': {}
         }
         
         self._prev_stick_values = {
@@ -251,6 +284,67 @@ class SteamDeckHandler(QObject):
             print(f"Warning: Button '{button}' is not a valid button name")
             return False
     
+    def register_button_hold_callback(self, button: str, hold_duration: float, callback: Callable[[float], None], 
+                                    update_during_hold: bool = False, update_interval: float = 0.1):
+        """
+        Register a callback function to be called when a specific button is held for a certain duration
+        
+        Args:
+            button: The button name to assign the hold callback to
+            hold_duration: Duration in seconds required for the hold callback
+            callback: Function to call when the button is held (receives current hold duration as argument)
+            update_during_hold: If True, callback will be called repeatedly during hold (for progress updates)
+            update_interval: Interval between updates if update_during_hold is True
+        
+        Returns:
+            True if successful, False if the button name is invalid
+        """
+        if button in self._button_hold_callbacks:
+            with QMutexLocker(self._mutex):
+                callback_id = len(self._button_hold_callbacks[button])
+                self._button_hold_callbacks[button].append({
+                    'duration': hold_duration,
+                    'callback': callback,
+                    'update_during_hold': update_during_hold,
+                    'update_interval': update_interval,
+                    'last_update_time': 0,
+                    'callback_id': callback_id
+                })
+                # Initialize hold triggered state for this callback
+                self._button_hold_triggered[button][callback_id] = False
+            return True
+        else:
+            print(f"Warning: Button '{button}' is not a valid button name")
+            return False
+    
+    def unregister_button_hold_callback(self, button: str, callback: Callable[[float], None]):
+        """
+        Remove a previously registered hold callback for a button
+        
+        Args:
+            button: The button name to remove the hold callback from
+            callback: The callback function to remove
+        
+        Returns:
+            True if removed successfully, False if button is invalid or callback wasn't registered
+        """
+        if button in self._button_hold_callbacks:
+            with QMutexLocker(self._mutex):
+                for i, hold_callback in enumerate(self._button_hold_callbacks[button]):
+                    if hold_callback['callback'] == callback:
+                        # Remove from triggered state
+                        callback_id = hold_callback['callback_id']
+                        if callback_id in self._button_hold_triggered[button]:
+                            del self._button_hold_triggered[button][callback_id]
+                        # Remove the callback
+                        self._button_hold_callbacks[button].pop(i)
+                        return True
+                print(f"Warning: Hold callback not found for button '{button}'")
+                return False
+        else:
+            print(f"Warning: Button '{button}' is not a valid button name")
+            return False
+    
     def _check_availability(self):
         """Check if the Steam Deck controller is still connected"""
         current_time = time.time()
@@ -280,9 +374,6 @@ class SteamDeckHandler(QObject):
             self._available = True
             self.connection_status_changed.emit(True)
             print("Steam Deck reconnected")
-
-        # print(f"Raw data: {data.hex()}")
-        
             
         with QMutexLocker(self._mutex):
             # Store previous state for change detection
@@ -368,14 +459,52 @@ class SteamDeckHandler(QObject):
                 }
             }
             
-            # Update button_pressed state for edge detection
-            self._update_button_pressed_state()
+            # Update button timing and states
+            current_time = time.time()
+            self._update_button_states_and_timing(current_time)
             
             # Store the callbacks we need to execute (to avoid holding the mutex during execution)
             callbacks_to_execute = []
             for button, pressed in self._button_pressed.items():
                 if pressed:
+                    # Add regular button press callbacks
                     callbacks_to_execute.extend([(button, callback) for callback in self._button_callbacks[button]])
+            
+            # Check hold callbacks
+            hold_callbacks_to_execute = []
+            progress_signals_to_emit = []
+            
+            for button, timing in self._button_state_timing.items():
+                current_state = self._input_state.get('buttons', {}).get(button, False)
+                prev_state = self._prev_input_state.get('buttons', {}).get(button, False)
+                
+                if current_state:
+                    # Button is currently pressed
+                    hold_duration = current_time - timing['start_time']
+                    
+                    # Check all hold callbacks for this button
+                    for hold_callback in self._button_hold_callbacks[button]:
+                        callback_id = hold_callback['callback_id']
+                        trigger_duration = hold_callback['duration']
+                        
+                        if hold_duration >= trigger_duration:
+                            # Check if this callback hasn't been triggered yet for this hold session
+                            if not self._button_hold_triggered[button].get(callback_id, False):
+                                hold_callbacks_to_execute.append((button, hold_callback, hold_duration))
+                                self._button_hold_triggered[button][callback_id] = True
+                                # Emit held signal
+                                self.button_held.emit(button, hold_duration)
+                            
+                            # Check for progress updates
+                            if hold_callback['update_during_hold']:
+                                time_since_last_update = current_time - hold_callback['last_update_time']
+                                if time_since_last_update >= hold_callback['update_interval']:
+                                    hold_callbacks_to_execute.append((button, hold_callback, hold_duration))
+                                    hold_callback['last_update_time'] = current_time
+                        
+                        # Emit progress signal for UI updates
+                        if hold_callback['update_during_hold'] or not self._button_hold_triggered[button].get(callback_id, False):
+                            progress_signals_to_emit.append((button, hold_duration, trigger_duration))
         
         # Execute callbacks outside the mutex lock
         for button, callback in callbacks_to_execute:
@@ -383,37 +512,51 @@ class SteamDeckHandler(QObject):
                 callback()
             except Exception as e:
                 print(f"Error in button callback for {button}: {e}")
+        
+        for button, hold_callback, duration in hold_callbacks_to_execute:
+            try:
+                hold_callback['callback'](duration)
+            except Exception as e:
+                print(f"Error in hold callback for {button}: {e}")
+        
+        # Emit progress signals
+        for button, current_duration, target_duration in progress_signals_to_emit:
+            self.button_hold_progress.emit(button, current_duration, target_duration)
                 
         # Emit signals
         self._emit_change_signals()
     
-    def _update_button_pressed_state(self):
+    def _update_button_states_and_timing(self, current_time: float):
         """
-        Update the button_pressed state based on rising edge detection with per-button debouncing
+        Update the button states and timing in a unified manner
         """
-        current_time = time.time()
-        
         for button in self._button_pressed.keys():
             prev_state = self._prev_input_state.get('buttons', {}).get(button, False)
             current_state = self._input_state.get('buttons', {}).get(button, False)
+            timing = self._button_state_timing[button]
             
-            # Rising edge detection: True only when previous was False and current is True
-            is_rising_edge = not prev_state and current_state
-            
-            if is_rising_edge:
-                # Check if enough time has passed since the last press (debouncing)
-                time_since_last_press = current_time - self._last_press_time[button]
-                button_debounce_time = self._debounce_times[button]
-                
-                if time_since_last_press >= button_debounce_time:
-                    # Update the last press time and set button as pressed
-                    self._last_press_time[button] = current_time
+            if not prev_state and current_state:
+                # Button just pressed (rising edge)
+                # Check debounce
+                time_since_last_trigger = current_time - timing['last_trigger_time']
+                if time_since_last_trigger >= self._debounce_times[button]:
+                    # Valid press - update all timings
+                    timing['start_time'] = current_time
+                    timing['last_trigger_time'] = current_time
                     self._button_pressed[button] = True
+                    
+                    # Reset hold triggered states for this button
+                    for callback_id in self._button_hold_triggered[button]:
+                        self._button_hold_triggered[button][callback_id] = False
                 else:
-                    # Not enough time passed, ignore this press (debounce)
+                    # Debounce - ignore this press
                     self._button_pressed[button] = False
+            elif prev_state and not current_state:
+                # Button just released
+                self._button_pressed[button] = False
+                # Keep start_time as is for potential next press timing
             else:
-                # Not a rising edge, so not a new press
+                # No state change
                 self._button_pressed[button] = False
     
     def _emit_change_signals(self):
@@ -452,6 +595,18 @@ class SteamDeckHandler(QObject):
         """
         with QMutexLocker(self._mutex):
             return self._button_pressed.copy()
+    
+    def get_button_hold_duration(self, button: str) -> float:
+        """
+        Get how long a button has been held for
+        Returns 0 if button is not currently being held
+        """
+        with QMutexLocker(self._mutex):
+            current_state = self._input_state.get('buttons', {}).get(button, False)
+            if current_state:
+                current_time = time.time()
+                return current_time - self._button_state_timing[button]['start_time']
+            return 0.0
     
     def set_debounce_time(self, button: str, debounce_time: float):
         """

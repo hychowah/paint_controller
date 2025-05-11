@@ -181,7 +181,7 @@ Item {
                         onClicked: winchController.setLoadDetectionEnabled(!winchController.load_detection_enabled)
                     }
                     
-                    // Wheel Enable Control (new)
+                    // Wheel Enable Control
                     ControlPanel {
                         Layout.fillWidth: true
                         controlName: "Wheel Enable"
@@ -196,6 +196,157 @@ Item {
                             } else {
                                 console.log("Wheel controller not available")
                             }
+                        }
+                    }
+                    
+                    // NEW: Wheel Reset Position Button
+                    Rectangle {
+                        id: resetWheelPositionButton
+                        Layout.fillWidth: true
+                        height: 60
+                        radius: 10
+                        color: resetWheelMouseArea.containsMouse ? "#2A3040" : "#252A36"
+                        border.width: 1
+                        border.color: "#3A5A8C"
+                        
+                        // Button hover and pressed states
+                        states: [
+                            State {
+                                name: "hovered"
+                                PropertyChanges { target: resetWheelPositionButton; color: "#2A3040" }
+                            },
+                            State {
+                                name: "pressed"
+                                PropertyChanges { target: resetWheelPositionButton; color: "#1E2530" }
+                            }
+                        ]
+                        
+                        // Button transitions
+                        transitions: [
+                            Transition {
+                                from: "*"; to: "*"
+                                ColorAnimation { duration: 150 }
+                            }
+                        ]
+                        
+                        // Mouse handling
+                        MouseArea {
+                            id: resetWheelMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                // Call the resetWheelPosition slot
+                                if (wheelController) {
+                                    wheelController.resetWheelPosition()
+                                    
+                                    // Visual feedback animation
+                                    resetWheelFeedback.visible = true
+                                    resetWheelFeedbackTimer.restart()
+                                } else {
+                                    console.log("Wheel controller not available")
+                                }
+                            }
+                            onEntered: parent.state = "hovered"
+                            onExited: parent.state = ""
+                            onPressed: parent.state = "pressed"
+                            onReleased: {
+                                if (containsMouse)
+                                    parent.state = "hovered"
+                                else
+                                    parent.state = ""
+                            }
+                        }
+                        
+                        // Button contents - similar to PageWheel
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 12
+                            
+                            // Reset icon (circular arrow)
+                            Rectangle {
+                                width: 32
+                                height: 32
+                                radius: 16
+                                color: "#4CAF50"  // Green to match the wheel travel color in PageWheel
+                                
+                                // Simple reset icon using a canvas
+                                Canvas {
+                                    anchors.fill: parent
+                                    onPaint: {
+                                        var ctx = getContext("2d");
+                                        ctx.reset();
+                                        ctx.beginPath();
+                                        ctx.arc(16, 16, 8, 0, 1.5 * Math.PI, false);
+                                        ctx.strokeStyle = "white";
+                                        ctx.lineWidth = 2;
+                                        ctx.stroke();
+                                        
+                                        // Arrow head
+                                        ctx.beginPath();
+                                        ctx.moveTo(16, 8);
+                                        ctx.lineTo(12, 12);
+                                        ctx.lineTo(20, 12);
+                                        ctx.fillStyle = "white";
+                                        ctx.fill();
+                                    }
+                                }
+                            }
+                            
+                            // Text label
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                
+                                Text {
+                                    text: "Reset Wheel Position"
+                                    font.pixelSize: 16
+                                    font.bold: true
+                                    color: "#FFFFFF"
+                                }
+                                
+                                Text {
+                                    text: "Set wheel position counters to zero"
+                                    font.pixelSize: 13
+                                    color: "#90CAF9"
+                                }
+                            }
+                        }
+                        
+                        // Visual feedback when button is pressed
+                        Rectangle {
+                            id: resetWheelFeedback
+                            anchors.fill: parent
+                            radius: 10
+                            color: "#324CAF50"  // Semi-transparent green
+                            visible: false
+                            
+                            // Success check mark
+                            Rectangle {
+                                anchors.right: parent.right
+                                anchors.rightMargin: 15
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 24
+                                height: 24
+                                radius: 12
+                                color: "#4CAF50"
+                                
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "✓"
+                                    color: "white"
+                                    font.pixelSize: 16
+                                    font.bold: true
+                                }
+                            }
+                        }
+                        
+                        // Timer to hide feedback
+                        Timer {
+                            id: resetWheelFeedbackTimer
+                            interval: 1500
+                            onTriggered: resetWheelFeedback.visible = false
                         }
                     }
                     

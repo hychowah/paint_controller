@@ -34,6 +34,7 @@ from UIWindMonitor import WindMonitor
 from UITeensyController import TeensyController
 from ActionConfigPython import ActionConfigPython
 from UIHeartbeatHandler import UIHeartbeatHandler
+from UIEmergencyButtonHandler import EmergencyButtonHandler
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -183,6 +184,8 @@ class RosThread(QThread):
 
 class RobotController(Node, QObject):
     frame_ready = Signal()
+    emergency_overlay_changed = Signal(bool, float, float)  # visible, current_duration, target_duration
+    emergency_triggered = Signal()
     new_scan_data = Signal(list, float, float, float, float)
     status_updated = Signal()
     control_mode_changed = Signal(str)
@@ -225,7 +228,12 @@ class RobotController(Node, QObject):
 
         self._control_mode = "base" # base or ef
 
-        
+        # Initialize emergency button handler
+        self.emergency_handler = EmergencyButtonHandler(self.steam_deck_handler, self)
+        # Connect emergency handler signals to our signals
+        self.emergency_handler.overlay_changed.connect(self.emergency_overlay_changed.emit)
+        self.emergency_handler.emergency_triggered.connect(self.emergency_triggered.emit)
+
         # Setup ROS subscribers and publishers
         self._setup_subscribers()
         self.heartbeat_pub = self.create_publisher(UInt8, '/controller/heartbeat', 10)
@@ -305,6 +313,11 @@ class RobotController(Node, QObject):
         # switch control mode callbacks
         self.steam_deck_handler.register_button_callback('switch', self._on_switch_pressed)
 
+        # extend arm
+        self.steam_deck_handler.register_button_callback('l5', self._on_l1_pressed)
+        self.steam_deck_handler.register_button_callback('r5', self._on_r1_pressed)
+
+
     # Add property for control_mode
     @Property(str, notify=control_mode_changed)
     def control_mode(self):
@@ -315,6 +328,14 @@ class RobotController(Node, QObject):
         if self._control_mode != mode:
             self._control_mode = mode
             self.control_mode_changed.emit(mode)
+
+    def _on_l1_pressed(self):
+        self.teensy_controller.extendArm(250)
+        self.show_popup("Retracting Arm", "Retracting arm to 250 mm", "info")
+
+    def _on_r1_pressed(self):
+        self.teensy_controller.extendArm(1000)
+        self.show_popup("Extending Arm", "Extending arm to 1000 mm", "info")
 
     def _on_switch_pressed(self):
         """Switch control mode between base and ef"""
@@ -327,6 +348,9 @@ class RobotController(Node, QObject):
             # Switching to Base mode
             self.control_mode = "base"
             self.overlayController.set_joystick_controls("Left Wheel Speed", "Right Wheel Speed")
+            self.wheel_controller.resetWheelPosition()
+            self.wheel_controller.resetWheelPosition()
+            self.wheel_controller.resetWheelPosition()
             self.show_popup("Control Mode", "Switched to Base control mode", "info")
 
     def _on_up_pressed(self):
@@ -373,7 +397,10 @@ class RobotController(Node, QObject):
 
         # Process control inputs with current state
         input_state = self.steam_deck_handler.get_current_state()
-        self.controlProcessor.process_input(input_state)
+        self.controlProcessor.process_input(input_state)\
+        
+        # Check emergency button state
+        self.emergency_handler.check_emergency_button(input_state.get('buttons', {}))
 
 
     def display_message(self, message: str):
@@ -450,6 +477,7 @@ class RobotController(Node, QObject):
 
     def cleanup(self):
         self.video_stream.stop()
+        self.emergency_handler.reset_state()
 
 #############################################
 ### Main Application

@@ -158,5 +158,12 @@ ApplicationWindow {
         activeMenu: overlayController.active_menu
         controlOptions: overlayController.control_options
     }
+
+    // Emergency Overlay - highest z-index to appear on top
+    EmergencyOverlay {
+        id: emergencyOverlay
+        anchors.fill: parent
+        z: 3000  // Highest z-index to ensure it's on top
+    }
 }
 

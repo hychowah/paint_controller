@@ -1,14 +1,10 @@
 [
   {
-    "name": "site",
-    "sequence": "moveWinchTo_16086_350,extendArmTo_1000,extendArmTo_200,dNs_2727_550_45_45"
-  },
-  {
     "name": "site2",
-    "sequence": "extendArmTo_250,gimbalSpray_45_45_10,extendArmTo_1000,dNs_3466_550_55_55,dNs_9400_550_55_55,moveWinchTo_14800_450"
+    "sequence": "gimbalSpray_55_55_10,dNs_2161_550_55_55,moveWinchTo_16124_450"
   },
   {
     "name": "fill",
-    "sequence": "gimbalSpray_55_55_10,extendArmTo_300,extendArmTo_1000,moveWinchTo_14786_350,dNs_2913_550_55_55"
+    "sequence": "dNs_5365_550_55_55"
   }
 ]

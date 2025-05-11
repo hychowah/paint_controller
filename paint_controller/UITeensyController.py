@@ -98,6 +98,7 @@ class TeensyController(QObject):
         self.teensy_enable_pub = self._node.create_publisher(Bool, 'teensy/enable/cmd', 1)
         self.ef_move_top_rail_speed_pub = self._node.create_publisher(Float32, 'teensy/top_rail/speed/cmd', 1)
         self.ef_move_arm_rail_speed_pub = self._node.create_publisher(Float32, 'teensy/arm_rail/speed/cmd', 1)
+        self.ef_move_arm_rail_pos_pub = self._node.create_publisher(Int32, 'teensy/arm/extend/cmd', 1)
         self.prop_left_pwm_pub = self._node.create_publisher(Int32, 'teensy/prop/left/pwm/cmd', 1)
         self.prop_right_pwm_pub = self._node.create_publisher(Int32, 'teensy/prop/right/pwm/cmd', 1)
         self.prop_left_joint_pub = self._node.create_publisher(Float32, 'teensy/prop/left/joint/cmd', 1)
@@ -276,6 +277,12 @@ class TeensyController(QObject):
         msg = Float32()
         msg.data = float(speed)
         self.ef_move_arm_rail_speed_pub.publish(msg)
+
+    @Slot(int)
+    def extendArm(self, dist: int):
+        msg = Int32()
+        msg.data = int(dist)
+        self.ef_move_arm_rail_pos_pub.publish(msg)
     
     @Slot(int)
     def setLeftPropPWM(self, pwm: int):
