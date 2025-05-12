@@ -456,40 +456,7 @@ Rectangle {
             RowLayout {
                 anchors.fill: parent
                 spacing: 12
-                
-                // E-Stop Button
-                Rectangle {
-                    id: eStopButton
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    color: "#ff6b6b"
-                    radius: 6
-                    border.color: "#e85757"
-                    border.width: 1
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "E-Stop"
-                        font.pixelSize: 16
-                        font.bold: true
-                        color: "#ffffff"
-                    }
-
-                    MouseArea {
-                        enabled: true // Always enabled for emergency stop
-                        anchors.fill: parent
-                        onClicked: {
-                            trajectoryHandler.stopAll()
-                        }
-                        
-                        // Hover effect
-                        hoverEnabled: true
-                        onEntered: parent.color = "#ff5252"
-                        onExited: parent.color = "#ff6b6b"
-                        onPressed: parent.color = "#e74c3c"
-                        onReleased: parent.color = "#ff5252"
-                    }
-                }
+            
 
                 // Start Next Action / Executing Button
                 Rectangle {

@@ -1,7 +1,7 @@
 [
   {
     "name": "site2",
-    "sequence": "gimbalSpray_55_55_10,dNs_2161_550_55_55,moveWinchTo_16124_450"
+    "sequence": "gimbalSpray_55_55_8,dNs_9350_250_55_55,dNs_265_230_55_55,moveWinchTo_14747_450"
   },
   {
     "name": "fill",

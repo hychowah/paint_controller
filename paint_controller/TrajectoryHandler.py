@@ -15,9 +15,9 @@ class ActionWorker(QObject):
     success = Signal(str)  # Signal emitted with success message
     error = Signal(str)  # Signal emitted with error message.
     
-    def __init__(self, node, cmd_type, params):
+    def __init__(self, robot_controller, cmd_type, params):
         super().__init__()
-        self._node = node
+        self._robot_controller = robot_controller
         self._cmd_type = cmd_type
         self._params = params
         self._abort = False
@@ -54,22 +54,22 @@ class ActionWorker(QObject):
     def _ensure_service_clients(self):
         """Ensure service clients are created"""
         if not self._paint_base_action_client:
-            self._paint_base_action_client = self._node.create_client(PaintAction, '/base/execute_action/service')
+            self._paint_base_action_client = self._robot_controller.create_client(PaintAction, '/base/execute_action/service')
         if not self._paint_ef_action_client:
-            self._paint_ef_action_client = self._node.create_client(PaintAction, '/ef/execute_action/service')
+            self._paint_ef_action_client = self._robot_controller.create_client(PaintAction, '/ef/execute_action/service')
         
         # Wait for services with timeout
         services_ready = True
         
         if not self._paint_base_action_client.wait_for_service(timeout_sec=2.0):
             error_msg = 'Base Service not available. Timeout waiting for service.'
-            self._node.get_logger().error(error_msg)
+            self._robot_controller.get_logger().error(error_msg)
             self.error.emit(error_msg)
             services_ready = False
         
         if not self._paint_ef_action_client.wait_for_service(timeout_sec=2.0):
             error_msg = 'EF Service not available. Timeout waiting for service.'
-            self._node.get_logger().error(error_msg)
+            self._robot_controller.get_logger().error(error_msg)
             self.error.emit(error_msg)
             services_ready = False
             
@@ -91,7 +91,7 @@ class ActionWorker(QObject):
         ef_request.start_time = start_time
         ef_request.action = ef_action
         
-        self._node.get_logger().info(f"Starting service calls: Base={base_action}, EF={ef_action}")
+        self._robot_controller.get_logger().info(f"Starting service calls: Base={base_action}, EF={ef_action}")
         
         # Send requests asynchronously
         base_future = self._paint_base_action_client.call_async(base_request)
@@ -108,10 +108,10 @@ class ActionWorker(QObject):
             if base_future.done() and base_response is None:
                 try:
                     base_response = base_future.result()
-                    self._node.get_logger().info(f"Base service response received: {base_response}")
+                    self._robot_controller.get_logger().info(f"Base service response received: {base_response}")
                 except Exception as e:
                     error_msg = f"Base service call failed: {str(e)}"
-                    self._node.get_logger().error(error_msg)
+                    self._robot_controller.get_logger().error(error_msg)
                     self.error.emit(error_msg)
                     return False, error_msg
             
@@ -119,10 +119,10 @@ class ActionWorker(QObject):
             if ef_future.done() and ef_response is None:
                 try:
                     ef_response = ef_future.result()
-                    self._node.get_logger().info(f"EF service response received: {ef_response}")
+                    self._robot_controller.get_logger().info(f"EF service response received: {ef_response}")
                 except Exception as e:
                     error_msg = f"EF service call failed: {str(e)}"
-                    self._node.get_logger().error(error_msg)
+                    self._robot_controller.get_logger().error(error_msg)
                     self.error.emit(error_msg)
                     return False, error_msg
             
@@ -132,7 +132,7 @@ class ActionWorker(QObject):
             
             # Check if worker was asked to abort
             if self._abort:
-                self._node.get_logger().info("Operation aborted")
+                self._robot_controller.get_logger().info("Operation aborted")
                 return False, "Operation aborted"
             
             # Wait a bit before checking again
@@ -142,19 +142,19 @@ class ActionWorker(QObject):
         # Check for timeouts
         if base_response is None:
             error_msg = "Base service call timed out"
-            self._node.get_logger().error(error_msg)
+            self._robot_controller.get_logger().error(error_msg)
             self.error.emit(error_msg)
             return False, error_msg
         
         if ef_response is None:
             error_msg = "EF service call timed out"
-            self._node.get_logger().error(error_msg)
+            self._robot_controller.get_logger().error(error_msg)
             self.error.emit(error_msg)
             return False, error_msg
         
         # Check responses
         if base_response.success and ef_response.success:
-            self._node.get_logger().info("Both service calls succeeded")
+            self._robot_controller.get_logger().info("Both service calls succeeded")
             return True, "Operation completed successfully"
         else:
             error_messages = []
@@ -164,23 +164,23 @@ class ActionWorker(QObject):
                 error_messages.append("EF service failed")
             
             error_msg = " and ".join(error_messages)
-            self._node.get_logger().error(f"Service failures: {error_msg}")
+            self._robot_controller.get_logger().error(f"Service failures: {error_msg}")
             return False, f"Service failures: {error_msg}"
     
     def _handle_simple_action(self, action_name, duration):
         """Handle simple actions that just need a sleep to simulate operation"""
-        self._node.get_logger().info(f"Starting {action_name} simulation")
+        self._robot_controller.get_logger().info(f"Starting {action_name} simulation")
         time.sleep(duration)
         if self._abort:
-            self._node.get_logger().info(f"{action_name} aborted")
+            self._robot_controller.get_logger().info(f"{action_name} aborted")
             return False, f"{action_name} aborted"
-        self._node.get_logger().info(f"Completed {action_name} simulation")
+        self._robot_controller.get_logger().info(f"Completed {action_name} simulation")
         return True, f"{action_name} completed successfully"
     
     def run(self):
         """Main worker method that will be executed in the thread"""
         try:
-            self._node.get_logger().info(f"Worker executing {self._cmd_type}")
+            self._robot_controller.get_logger().info(f"Worker executing {self._cmd_type}")
             
             if self._cmd_type == "winch":
                 # Simple winch simulation
@@ -223,31 +223,40 @@ class ActionWorker(QObject):
                         # Handle different parameter counts if needed
                         base_action = f"moveWinchTo_{self._params[0]}_{self._params[1]}"
                     ef_action = "none"
-                    success_msg = "Winch positioned successfully"
+                    success_msg = "Sending Winch position command"
                 
                 elif self._cmd_type == "winchNspray":
                     base_action = f"moveWinchTo_{self._params[0]}_{self._params[1]}_{self._params[2]}_{self._params[3]}"
                     ef_action = f"spray_{self._params[0]}_{self._params[1]}_{self._params[2]}_{self._params[3]}"
-                    success_msg = "Winch and spray operation completed"
+                    # check if current winch cable is more than target
+                    current_cable_length = self._robot_controller.winch_controller.get_cable_length()
+                    target_cable_length = abs(float(self._params[0]))
+                    if current_cable_length < target_cable_length:
+                        # Show error message
+                        error_msg = "Current winch cable length is less than target length"
+                        self._robot_controller.get_logger().error(error_msg)
+                        self._robot_controller.show_popup("Command Error", error_msg, "error")
+                        return
+                    success_msg = "Sending decent and spray command"
                 
                 # Execute service calls
                 success, message = self._execute_service_calls(base_action, ef_action)
                 
                 if success:
-                    self.success.emit(success_msg)
+                    self._robot_controller.show_popup(success_msg, "Success", "success")
                 else:
-                    self.error.emit(message)
+                    self._robot_controller.show_popup(message, "Error", "error")
             
             else:
                 # Unknown command type
                 error_msg = f"Unknown command type: {self._cmd_type}"
-                self._node.get_logger().error(error_msg)
+                self._robot_controller.get_logger().error(error_msg)
                 self.error.emit(error_msg)
                 
         except Exception as e:
             # Handle any exceptions in the thread
             error_msg = f"Error executing command: {str(e)}"
-            self._node.get_logger().error(error_msg)
+            self._robot_controller.get_logger().error(error_msg)
             self.error.emit(error_msg)
         finally:
             # Always emit finished signal
@@ -262,9 +271,10 @@ class TrajectoryHandler(QObject):
     executingChanged = Signal(bool)  # isExecuting
     sequenceSaved = Signal(str) 
 
-    def __init__(self, node: Node):
+    def __init__(self, robot_controller):
         super().__init__()
         self._trajectory = []
+        self._robot_controller = robot_controller
         self._currentTrajDescription = []
         self._currentTrajCmd = []
         self._isExecuting = False  # Track execution state
@@ -273,10 +283,9 @@ class TrajectoryHandler(QObject):
         self._thread = None
         self._worker = None
 
-        self._node = node
         self.filePath = os.path.join(os.path.dirname(__file__), 'resource', 'trajectory.json')      
         # Create action config instance
-        self._action_config = ActionConfigPython()
+        self._action_config = ActionConfigPython(self._robot_controller)
         
         # Register action handlers
         self._action_handlers = {
@@ -298,7 +307,7 @@ class TrajectoryHandler(QObject):
         
     def _setExecuting(self, executing):
         """Set execution state and emit signal"""
-        self._node.get_logger().info(f"Setting executing state to: {executing}")
+        self._robot_controller.get_logger().info(f"Setting executing state to: {executing}")
         if self._isExecuting != executing:
             self._isExecuting = executing
             self.executingChanged.emit(executing)
@@ -439,7 +448,7 @@ class TrajectoryHandler(QObject):
                             self._currentTrajCmd.append(commands[i])
                 else:
                     # Handle unknown action types
-                    self._node.get_logger().warning(f"Unknown action: {action_prefix}")
+                    self._robot_controller.get_logger().warning(f"Unknown action: {action_prefix}")
                     self._currentTrajDescription.append(f"Unknown action: {action_prefix}")
                     self._currentTrajCmd.append(["unknown", action_prefix])
 
@@ -449,17 +458,17 @@ class TrajectoryHandler(QObject):
     
     def _handle_worker_success(self, message):
         """Handle success signal from worker"""
-        self._node.get_logger().info(f"Worker success: {message}")
+        self._robot_controller.get_logger().info(f"Worker success: {message}")
         self.showMessage.emit(message, True)
     
     def _handle_worker_error(self, message):
         """Handle error signal from worker"""
-        self._node.get_logger().error(f"Worker error: {message}")
+        self._robot_controller.get_logger().error(f"Worker error: {message}")
         self.showMessage.emit(message, False)
     
     def _handle_worker_finished(self):
         """Handle finished signal from worker"""
-        self._node.get_logger().info("Worker finished")
+        self._robot_controller.get_logger().info("Worker finished")
         
         # Clean up thread and worker
         if self._thread:
@@ -482,7 +491,7 @@ class TrajectoryHandler(QObject):
             
         # Check if thread is still running
         if self._thread and self._thread.isRunning():
-            self._node.get_logger().warning("Thread is still running, cannot start new execution")
+            self._robot_controller.get_logger().warning("Thread is still running, cannot start new execution")
             self.showMessage.emit("Another action thread is still running", False)
             return False
             
@@ -490,7 +499,7 @@ class TrajectoryHandler(QObject):
         if 0 <= index < len(self._currentTrajCmd):
             cmd_type = self._currentTrajCmd[index][0]
             cmd_params = self._currentTrajCmd[index][1:]
-            self._node.get_logger().info(f"Starting execution of {cmd_type} command")
+            self._robot_controller.get_logger().info(f"Starting execution of {cmd_type} command")
             
             # Set executing state to true
             self._setExecuting(True)
@@ -500,7 +509,7 @@ class TrajectoryHandler(QObject):
                 self._thread = QThread()
                 
                 # Create the worker and move it to the thread
-                self._worker = ActionWorker(self._node, cmd_type, cmd_params)
+                self._worker = ActionWorker(self._robot_controller, cmd_type, cmd_params)
                 self._worker.moveToThread(self._thread)
                 
                 # Connect signals and slots
@@ -512,11 +521,11 @@ class TrajectoryHandler(QObject):
                 # Start the thread
                 self._thread.start()
                 
-                self._node.get_logger().info(f"Started thread for {cmd_type} command")
+                self._robot_controller.get_logger().info(f"Started thread for {cmd_type} command")
                 return True
             except Exception as e:
                 error_msg = f"Error starting execution thread: {str(e)}"
-                self._node.get_logger().error(error_msg)
+                self._robot_controller.get_logger().error(error_msg)
                 self.showMessage.emit(error_msg, False)
                 self._setExecuting(False)
                 
@@ -548,7 +557,7 @@ class TrajectoryHandler(QObject):
         """Check if the action thread is still running"""
         if self._thread:
             is_running = self._thread.isRunning()
-            self._node.get_logger().info(f"Thread is running: {is_running}")
+            self._robot_controller.get_logger().info(f"Thread is running: {is_running}")
             return is_running
         return False
         
@@ -556,7 +565,7 @@ class TrajectoryHandler(QObject):
     @Slot()
     def forceResetExecution(self):
         """Force reset the execution state (for debugging)"""
-        self._node.get_logger().info("Forcing execution state reset")
+        self._robot_controller.get_logger().info("Forcing execution state reset")
         
         # Clean up thread if it exists
         if self._thread and self._thread.isRunning():
@@ -568,7 +577,7 @@ class TrajectoryHandler(QObject):
             
             # If thread is still running, terminate it (harsh)
             if self._thread.isRunning():
-                self._node.get_logger().warning("Thread did not quit, terminating")
+                self._robot_controller.get_logger().warning("Thread did not quit, terminating")
                 self._thread.terminate()
                 self._thread.wait()
                 

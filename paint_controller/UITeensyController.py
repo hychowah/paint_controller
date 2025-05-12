@@ -18,9 +18,9 @@ class TeensyController(QObject):
     spray_gun_leveling_changed = Signal(bool)
     spray_gun_led_changed = Signal(bool)
     
-    def __init__(self, node: Node):
+    def __init__(self, robot_controller):
         super().__init__()
-        self._node = node  # Store reference to the ROS node
+        self._robot_controller = robot_controller  # Store reference to the robot controller
         
         # Initialize status variables with default values instead of empty dictionary
         self._status = {
@@ -94,27 +94,27 @@ class TeensyController(QObject):
         
     def _setup_publishers(self):
         """Set up ROS publishers for Teensy control"""
-        self.teensy_relay_pub = self._node.create_publisher(Bool, 'teensy/relay/cmd', 1)
-        self.teensy_enable_pub = self._node.create_publisher(Bool, 'teensy/enable/cmd', 1)
-        self.ef_move_top_rail_speed_pub = self._node.create_publisher(Float32, 'teensy/top_rail/speed/cmd', 1)
-        self.ef_move_arm_rail_speed_pub = self._node.create_publisher(Float32, 'teensy/arm_rail/speed/cmd', 1)
-        self.ef_move_arm_rail_pos_pub = self._node.create_publisher(Int32, 'teensy/arm/extend/cmd', 1)
-        self.prop_left_pwm_pub = self._node.create_publisher(Int32, 'teensy/prop/left/pwm/cmd', 1)
-        self.prop_right_pwm_pub = self._node.create_publisher(Int32, 'teensy/prop/right/pwm/cmd', 1)
-        self.prop_left_joint_pub = self._node.create_publisher(Float32, 'teensy/prop/left/joint/cmd', 1)
-        self.prop_right_joint_pub = self._node.create_publisher(Float32, 'teensy/prop/right/joint/cmd', 1)
-        self.ef_spray_trigger_pub = self._node.create_publisher(Int32, 'teensy/spray_gun/trigger/cmd', 1)
-        self.ef_spray_gimbal_speed_pub = self._node.create_publisher(Int32, 'teensy/spray_gun/gimbal/speed/cmd', 1)
-        self.ef_spray_led_pub = self._node.create_publisher(Bool, 'teensy/spray_gun/led/cmd', 1)
-        self.ef_yaw_enable_pub = self._node.create_publisher(Bool, 'teensy/yaw_control/enable/cmd', 1)
-        self.ef_yaw_angle_pub = self._node.create_publisher(Float32, 'teensy/yaw_control/angle/cmd', 1)
-        self.ef_yaw_param_pub = self._node.create_publisher(TeensyYaw, 'teensy/yaw_control/params/cmd', 1)
-        self.ef_spray_level_enable_pub = self._node.create_publisher(Bool, 'teensy/spray_gun/leveling_enable/cmd', 1)
+        self.teensy_relay_pub = self._robot_controller.create_publisher(Bool, 'teensy/relay/cmd', 1)
+        self.teensy_enable_pub = self._robot_controller.create_publisher(Bool, 'teensy/enable/cmd', 1)
+        self.ef_move_top_rail_speed_pub = self._robot_controller.create_publisher(Float32, 'teensy/top_rail/speed/cmd', 1)
+        self.ef_move_arm_rail_speed_pub = self._robot_controller.create_publisher(Float32, 'teensy/arm_rail/speed/cmd', 1)
+        self.ef_move_arm_rail_pos_pub = self._robot_controller.create_publisher(Int32, 'teensy/arm/extend/cmd', 1)
+        self.prop_left_pwm_pub = self._robot_controller.create_publisher(Int32, 'teensy/prop/left/pwm/cmd', 1)
+        self.prop_right_pwm_pub = self._robot_controller.create_publisher(Int32, 'teensy/prop/right/pwm/cmd', 1)
+        self.prop_left_joint_pub = self._robot_controller.create_publisher(Float32, 'teensy/prop/left/joint/cmd', 1)
+        self.prop_right_joint_pub = self._robot_controller.create_publisher(Float32, 'teensy/prop/right/joint/cmd', 1)
+        self.ef_spray_trigger_pub = self._robot_controller.create_publisher(Int32, 'teensy/spray_gun/trigger/cmd', 1)
+        self.ef_spray_gimbal_speed_pub = self._robot_controller.create_publisher(Int32, 'teensy/spray_gun/gimbal/speed/cmd', 1)
+        self.ef_spray_led_pub = self._robot_controller.create_publisher(Bool, 'teensy/spray_gun/led/cmd', 1)
+        self.ef_yaw_enable_pub = self._robot_controller.create_publisher(Bool, 'teensy/yaw_control/enable/cmd', 1)
+        self.ef_yaw_angle_pub = self._robot_controller.create_publisher(Float32, 'teensy/yaw_control/angle/cmd', 1)
+        self.ef_yaw_param_pub = self._robot_controller.create_publisher(TeensyYaw, 'teensy/yaw_control/params/cmd', 1)
+        self.ef_spray_level_enable_pub = self._robot_controller.create_publisher(Bool, 'teensy/spray_gun/leveling_enable/cmd', 1)
 
 
     def _setup_subscribers(self):
         """Set up ROS subscribers"""
-        self._node.create_subscription(
+        self._robot_controller.create_subscription(
             TeensyStatus,
             'teensy/status',
             self._status_callback,
@@ -245,7 +245,7 @@ class TeensyController(QObject):
         msg = Bool()
         msg.data = enabled
         self.teensy_enable_pub.publish(msg)
-        self._node.get_logger().info(f'Teensy {"enabled" if enabled else "disabled"}')
+        self._robot_controller.get_logger().info(f'Teensy {"enabled" if enabled else "disabled"}')
         
         # Emit status changed signal for UI updates
         self.status_changed.emit(self._status)
@@ -259,7 +259,7 @@ class TeensyController(QObject):
         msg = Bool()
         msg.data = enabled
         self.teensy_relay_pub.publish(msg)
-        self._node.get_logger().info(f'Teensy relay {"enabled" if enabled else "disabled"}')
+        self._robot_controller.get_logger().info(f'Teensy relay {"enabled" if enabled else "disabled"}')
         
         # Emit status changed signal for UI updates
         self.status_changed.emit(self._status)
@@ -329,7 +329,7 @@ class TeensyController(QObject):
     @Slot(bool)
     def setSprayGunLevelingEnabled(self, enabled: bool):
         """Enable/disable spray gun leveling"""
-        self._node.get_logger().info(f'Spray gun leveling {"enabled" if enabled else "disabled"}')
+        self._robot_controller.get_logger().info(f'Spray gun leveling {"enabled" if enabled else "disabled"}')
         msg = Bool()
         msg.data = enabled
         self.ef_spray_level_enable_pub.publish(msg)
@@ -339,7 +339,7 @@ class TeensyController(QObject):
     @Slot(bool)
     def setSprayGunLED(self, on: bool):
         """Turn the spray gun LED on/off"""
-        self._node.get_logger().info(f'Spray gun LED {"on" if on else "off"}')
+        self._robot_controller.get_logger().info(f'Spray gun LED {"on" if on else "off"}')
         msg = Bool()
         msg.data = on
         self.ef_spray_led_pub.publish(msg)
@@ -379,7 +379,7 @@ class TeensyController(QObject):
         msg.yaw_pid_d = d
         msg.yaw_pwm = pwm
         self.ef_yaw_control_pub.publish(msg)
-        self._node.get_logger().info(f'Yaw control {"enabled" if enabled else "disabled"} with Target: {target} P:{p} I:{i} D:{d} PWM:{pwm}')
+        self._robot_controller.get_logger().info(f'Yaw control {"enabled" if enabled else "disabled"} with Target: {target} P:{p} I:{i} D:{d} PWM:{pwm}')
     
     # Define a property to expose the entire status dictionary
     def get_all_status(self) -> Dict:

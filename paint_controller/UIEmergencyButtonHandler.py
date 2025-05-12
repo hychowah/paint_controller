@@ -75,22 +75,24 @@ class EmergencyButtonHandler(QObject):
     def _trigger_emergency(self, duration: float):
         """Trigger the emergency action"""
         # Immediately hide the overlay and stop counting
-        self._state['overlay_visible'] = False
-        self._state['is_holding'] = False
-        self.overlay_changed.emit(False, 0, 0)
-        
-        # Stop all motors
-        self.robot_controller.winch_controller.command_speed(0)
-        self.robot_controller.teensy_controller.setSprayTrigger(0)
-        
-        # Show emergency popup
-        self.robot_controller.show_popup("EMERGENCY", "Emergency stop activated!", "error", 1000)
-        
-        # Log the event
-        self.robot_controller.get_logger().error(f'Emergency activated by user at {time.time()}')
-        
-        # Emit signal for other components
-        self.emergency_triggered.emit()
+        try:
+            self._state['overlay_visible'] = False
+            self._state['is_holding'] = False
+            self.overlay_changed.emit(False, 0, 0)
+            
+            self.robot_controller.winch_controller.command_speed(0)
+            self.robot_controller.teensy_controller.setSprayTrigger(1000)
+            
+            # Show emergency popup
+            self.robot_controller.show_popup("EMERGENCY", "Emergency stop activated!", "error", 1000)
+            
+            # Log the event
+            self.robot_controller.get_logger().error(f'Emergency activated by user at {time.time()}')
+            
+            # Emit signal for other components
+            self.emergency_triggered.emit()
+        except Exception as e:
+            self.robot_controller.get_logger().error(f'Error during emergency trigger: {e}')
     
     def _stop_all_motors(self):
         """Stop all motors during emergency"""

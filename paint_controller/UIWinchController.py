@@ -132,8 +132,7 @@ class WinchController(QObject):
         if not self._available:
             print("Cannot command speed: Winch not available")
             return False
-            
-        safe_speed = self._apply_safety_limits(speed)
+        safe_speed = float(self._apply_safety_limits(speed))
         msg = Float64()
         msg.data = safe_speed
         self._speed_pub.publish(msg)
