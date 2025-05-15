@@ -334,8 +334,23 @@ class RobotController(Node, QObject):
         self.show_popup("Retracting Arm", "Retracting arm to 250 mm", "info")
 
     def _on_r1_pressed(self):
-        self.teensy_controller.extendArm(1000)
-        self.show_popup("Extending Arm", "Extending arm to 1000 mm", "info")
+        # Define arm extension presets if they don't exist
+        if not hasattr(self, '_arm_extension_presets'):
+            self._arm_extension_presets = [800, 1000]  # List of preset values in mm
+            self._arm_preset_index = 0
+
+        # Get the current preset index
+        current_index = self._arm_preset_index
+        
+        # Get the preset value to use
+        preset_value = self._arm_extension_presets[current_index]
+        
+        # Extend the arm to the current preset
+        self.teensy_controller.extendArm(preset_value)
+        self.show_popup("Extending Arm", f"Extending arm to {preset_value} mm", "info")
+        
+        # Update the index for next time (toggle between 0 and 1)
+        self._arm_preset_index = (current_index + 1) % len(self._arm_extension_presets)
 
     def _on_switch_pressed(self):
         """Switch control mode between base and ef"""
