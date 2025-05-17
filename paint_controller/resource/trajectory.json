@@ -1,10 +1,14 @@
 [
   {
     "name": "pipe",
-    "sequence": "gimbalSpray_55_55_10,dNs_9706_425_55_55,dNs_1777_425_55_55,moveWinchTo_15050_450"
+    "sequence": "gimbalSpray_55_55_10,dNs_8852_580_55_55,dNs_163_580_55_55,moveWinchTo_14234_450"
   },
   {
     "name": "straight",
-    "sequence": "moveWinchTo_16307_450,dNs_1754_500_55_55"
+    "sequence": "moveWinchTo_16307_450,dNs_1953_580_55_55"
+  },
+  {
+    "name": "tedt",
+    "sequence": "moveWinchTo_5000_350,dNs_0_550_55_55"
   }
 ]

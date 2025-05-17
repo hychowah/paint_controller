@@ -1,3 +1,4 @@
+
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
@@ -15,6 +16,14 @@ Rectangle {
     StackLayout {
         id: stackLayout
         anchors.fill: parent
+        
+        // Direct binding to the property for reliable updates
+        currentIndex: trajectoryHandler.currentPage
+        
+        // Debug log for index changes
+        onCurrentIndexChanged: {
+            console.log("StackLayout index changed to: " + currentIndex)
+        }
 
         Item {
             id: plannerPage
@@ -49,7 +58,7 @@ Rectangle {
                 RowLayout {
                     anchors.fill: parent
                     anchors.margins: 20
-                    anchors.topMargin: 100
+                    anchors.topMargin: 20
                     spacing: 20
 
                     ColumnLayout {
@@ -212,7 +221,7 @@ Rectangle {
                 RowLayout {
                     anchors.fill: parent
                     anchors.margins: 20
-                    anchors.topMargin: 100
+                    anchors.topMargin: 20
                     spacing: 20
 
                     ColumnLayout {
@@ -268,56 +277,26 @@ Rectangle {
         }
     }
 
-    RowLayout {
+    // Minimal mode indicator - position in top right corner
+    Rectangle {
+        id: modeIndicator
+        anchors.right: parent.right
         anchors.top: parent.top
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.margins: 20
-        height: 50
+        anchors.margins: 10
+        width: 8  // Very small
+        height: 8
+        radius: 4  // Makes it a small circle
+        // Different color for each mode
+        color: stackLayout.currentIndex == 0 ? "#4CAF50" : "#2196F3"  // Green for Planner, Blue for Executor
+        opacity: 0.7
+    }
 
-        Rectangle {
-            width: 100
-            height: parent.height
-            color: stackLayout.currentIndex == 0 ? "#007bff" : "#e0e0e0"
-            radius: 20
-
-            Text {
-                text: "Planner"
-                anchors.centerIn: parent
-                anchors.horizontalCenter: parent.horizontalCenter
-                color: stackLayout.currentIndex == 0 ? "#ffffff" : "#6c757d"
-                font.pixelSize: 15
-                font.bold: true
-            }
-
-            MouseArea {
-                anchors.fill: parent
-                onClicked: {
-                    stackLayout.currentIndex = 0
-                }
-            }
-        }
-
-        Rectangle {
-            width: 100
-            height: parent.height
-            color: stackLayout.currentIndex == 1 ? "#007bff" : "#e0e0e0"
-            radius: 20
-
-            Text {
-                text: "Executor"
-                anchors.centerIn: parent
-                anchors.horizontalCenter: parent.horizontalCenter
-                color: stackLayout.currentIndex == 1 ? "#ffffff" : "#6c757d"
-                font.pixelSize: 15
-                font.bold: true
-            }
-
-            MouseArea {
-                anchors.fill: parent
-                onClicked: {
-                    stackLayout.currentIndex = 1
-                }
-            }
+    // Connect to the pageChanged signal
+    Connections {
+        target: trajectoryHandler
+        function onPageChanged(page) {
+            console.log("Page change signal received: " + page)
+            stackLayout.currentIndex = page
         }
     }
 }

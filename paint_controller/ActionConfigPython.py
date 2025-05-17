@@ -17,7 +17,9 @@ class ActionConfigPython(QObject):
                 "prefix": "moveWinchTo",
                 "fields": [
                     {"label": "Distance", "key": "input1"},
-                    {"label": "Velocity", "key": "input2"}
+                    {"label": "Velocity", "key": "input2"},
+                    {"label": "Start Arm Position", "key": "input3"},
+                    {"label": "End Arm Position", "key": "input4"}
                 ]
             },
             "1": {
@@ -106,8 +108,8 @@ class ActionConfigPython(QObject):
         if action_id == "0":  # Move Winch To
             item["input1"] =  str(int(self.robot.winch_controller.get_cable_length()))  # Default distance
             item["input2"] =  "350" # Default velocity
-            item["input3"] = "-1"
-            item["input4"] = "-1"
+            item["input3"] = "200"
+            item["input4"] = "800"
             item["input5"] = "-1"
             item["input6"] = "-1"
         elif action_id == "1":  # Descend & Spray

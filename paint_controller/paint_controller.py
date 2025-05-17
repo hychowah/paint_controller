@@ -330,27 +330,51 @@ class RobotController(Node, QObject):
             self.control_mode_changed.emit(mode)
 
     def _on_l1_pressed(self):
-        self.teensy_controller.extendArm(250)
-        self.show_popup("Retracting Arm", "Retracting arm to 250 mm", "info")
+        # Initialize class attributes if they don't exist
+        if not hasattr(self, '_l1_last_press_time'):
+            self._l1_last_press_time = 0.0
+            
+        # Get current time
+        current_time = time.time()
+        time_since_last_press = current_time - self._l1_last_press_time
+        
+        # Update the last press time
+        self._l1_last_press_time = current_time
+        self.show_popup("Extending Arm", "Press again to retract the arm", "info")
+        
+        # Check if this is a double press (within 0.5 seconds)
+        if time_since_last_press <= 1:
+            # Double press detected - retract arm to 250mm
+            self.teensy_controller.extendArm(250)
+            self.show_popup("Retracting Arm", "Retracting arm to 250 mm", "info")
 
     def _on_r1_pressed(self):
-        # Define arm extension presets if they don't exist
-        if not hasattr(self, '_arm_extension_presets'):
-            self._arm_extension_presets = [800, 1000]  # List of preset values in mm
+        # Initialize class attributes if they don't exist
+        if not hasattr(self, '_r1_last_press_time'):
+            self._r1_last_press_time = 0.0
+            self._arm_extension_presets = [800]  # List of preset values in mm
             self._arm_preset_index = 0
-
-        # Get the current preset index
-        current_index = self._arm_preset_index
         
-        # Get the preset value to use
-        preset_value = self._arm_extension_presets[current_index]
+        # Get current time
+        current_time = time.time()
+        time_since_last_press = current_time - self._r1_last_press_time
         
-        # Extend the arm to the current preset
-        self.teensy_controller.extendArm(preset_value)
-        self.show_popup("Extending Arm", f"Extending arm to {preset_value} mm", "info")
+        # Update the last press time
+        self._r1_last_press_time = current_time
+        self.show_popup("Extending Arm", "Press again to extend the arm", "info")
         
-        # Update the index for next time (toggle between 0 and 1)
-        self._arm_preset_index = (current_index + 1) % len(self._arm_extension_presets)
+        # Check if this is a double press (within 0.5 seconds)
+        if time_since_last_press <= 1:
+            # Double press detected - perform the action
+            current_index = self._arm_preset_index
+            preset_value = self._arm_extension_presets[current_index]
+            
+            # Extend the arm to the current preset
+            self.teensy_controller.extendArm(preset_value)
+            self.show_popup("Extending Arm", f"Extending arm to {preset_value} mm", "info")
+            
+            # Update the index for next time (toggle between 0 and 1)
+            self._arm_preset_index = (current_index + 1) % len(self._arm_extension_presets)
 
     def _on_switch_pressed(self):
         """Switch control mode between base and ef"""
@@ -379,10 +403,17 @@ class RobotController(Node, QObject):
     def _on_left_pressed(self):
         if self.overlayController.is_showing_menu():
             self.overlayController.move_to_first()
+        else:
+            # If no menu is showing, switch to previous page (Planner)
+            self.trajectoryHandler.switch_to_page(0)  # Switch to Planner
 
     def _on_right_pressed(self):
         if self.overlayController.is_showing_menu():
             self.overlayController.move_to_last()
+        else:
+            # If no menu is showing, switch to next page (Executor)
+            self.trajectoryHandler.switch_to_page(1)  # Switch to Executor
+
 
     def _on_r4_pressed(self):
         self.overlayController.set_active_menu("right")

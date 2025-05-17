@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Dict, Optional
 from std_msgs.msg import Float32, Int32
 import time
+from UIHeartbeatHandler import HeartbeatStatus
 
 @dataclass
 class ControlConfig:
@@ -83,12 +84,27 @@ class ControlProcessor:
             if self.robot.overlayController.get_left_selected_option() == "None":
                 left_part = "None"
             else:
-                left_part = f"{self.current_values['left_mode']} {self.current_values['left_value']:.2f}" if self.current_values['left_mode'] else "None"
+                left_mode = self.current_values['left_mode']
+                left_value = self.current_values['left_value']
+                
+                # Add LOCKED indicator for Winch Speed when locked
+                if left_mode == "Winch Speed" and self._is_winch_control_locked():
+                    left_part = f"{left_mode} {left_value:.2f} (LOCKED)" if left_mode else "None"
+                else:
+                    left_part = f"{left_mode} {left_value:.2f}" if left_mode else "None"
 
             if self.robot.overlayController.get_right_selected_option() == "None":
                 right_part = "None"
             else:
-                right_part = f"{self.current_values['right_mode']} {self.current_values['right_value']:.2f}" if self.current_values['right_mode'] else "None"
+                right_mode = self.current_values['right_mode']
+                right_value = self.current_values['right_value']
+                
+                # Add LOCKED indicator for Winch Speed when locked
+                if right_mode == "Winch Speed" and self._is_winch_control_locked():
+                    right_part = f"{right_mode} {right_value:.2f} (LOCKED)" if right_mode else "None"
+                else:
+                    right_part = f"{right_mode} {right_value:.2f}" if right_mode else "None"
+                    
             message = f"LEFT: {left_part} | RIGHT: {right_part}"
             self.robot.display_message(message)
 
@@ -143,6 +159,7 @@ class ControlProcessor:
         else:
             self.current_values['right_mode'] = mode
             self.current_values['right_value'] = command_angle
+            
 
     def _publish_value(self, value: float, publisher, config: ControlConfig):
         """Publish a value with proper typing"""
@@ -173,11 +190,18 @@ class ControlProcessor:
                 if not self.robot.winch_controller.get_available():
                     print("Winch not available")
                     return
+                
                 if self.robot.winch_controller.get_motor_brake():
                     print("Winch motor brake is on")
                     return
+                
+                if self._is_winch_control_locked():
+                    print("Winch control locked: Base or EF is in ONTASK state")
+                    return
+                
                 print(f"Commanding winch speed: {value}")
                 self.robot.winch_controller.command_speed(value)
+
             except Exception as e:
                 print(f"Error commanding winch speed: {str(e)}")
             return
@@ -241,3 +265,19 @@ class ControlProcessor:
     def set_winch_speed_limit(self, limit):
         """Set the winch speed limit"""
         self.controls["Winch Speed"].scale = abs(limit) / 32768
+
+    def _is_winch_control_locked(self) -> bool:
+        """
+        Check if winch control should be locked based on heartbeat status
+        Returns:
+            bool: True if winch control should be locked, False otherwise
+        """
+        # Get the current heartbeat status for base and EF
+        base_status = self.robot.heartbeat_handler.get_base_status()
+        ef_status = self.robot.heartbeat_handler.get_ef_status()
+        
+        # Check if either component is in ONTASK status (0x01)
+        if base_status == HeartbeatStatus.ONTASK.value or ef_status == HeartbeatStatus.ONTASK.value:
+            return True
+            
+        return False

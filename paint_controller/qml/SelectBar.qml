@@ -226,54 +226,13 @@ Rectangle {
             }
 
 
-            // Page 5 Button
+            // Page 6 Button
             Rectangle {
-                id: buttonPage5
+                id: buttonPage7
                 width: buttonSize
                 height: buttonSize
                 radius: 20
-                color: selectBar.selectedButton === "buttonPage5" ? "#E2E2E2" : "#70A3D2"
-                anchors.horizontalCenter: parent.horizontalCenter
-
-                Image {
-                    source: "../resource/radio.svg"
-                    anchors.centerIn: parent
-                    width: parent.width * 0.6
-                    height: parent.height * 0.6
-                    fillMode: Image.PreserveAspectFit
-                    antialiasing: true  
-                    smooth: true 
-                    sourceSize: Qt.size(96, 96) 
-                }
-
-                Text {
-                    text: "Lidar"
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 5
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    color: "black"
-                    font.pixelSize: 15
-                    font.bold: true
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        if (selectBar.selectedButton !== "buttonPage5") {
-                            selectBar.navigateToPage(4)
-                            selectBar.selectedButton = "buttonPage5"
-                        }
-                    }
-                }
-            }
-
-            // Page 5 Button
-            Rectangle {
-                id: buttonPage6
-                width: buttonSize
-                height: buttonSize
-                radius: 20
-                color: selectBar.selectedButton === "buttonPage6" ? "#E2E2E2" : "#70A3D2"
+                color: selectBar.selectedButton === "buttonPage7" ? "#E2E2E2" : "#70A3D2"
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 Image {
@@ -286,44 +245,6 @@ Rectangle {
 
                 Text {
                     text: "Spray"
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 5
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    color: "black"
-                    font.pixelSize: 15
-                    font.bold: true
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        if (selectBar.selectedButton !== "buttonPage6") {
-                            selectBar.navigateToPage(5)
-                            selectBar.selectedButton = "buttonPage6"
-                        }
-                    }
-                }
-            }
-
-            // Page 6 Button
-            Rectangle {
-                id: buttonPage7
-                width: buttonSize
-                height: buttonSize
-                radius: 20
-                color: selectBar.selectedButton === "buttonPage7" ? "#E2E2E2" : "#70A3D2"
-                anchors.horizontalCenter: parent.horizontalCenter
-
-                Image {
-                    source: "../resource/trajectory.svg"
-                    anchors.centerIn: parent
-                    width: parent.width * 0.6
-                    height: parent.height * 0.6
-                    fillMode: Image.PreserveAspectFit
-                }
-
-                Text {
-                    text: "Trajectory"
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 5
                     anchors.horizontalCenter: parent.horizontalCenter

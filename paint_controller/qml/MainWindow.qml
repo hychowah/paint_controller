@@ -121,16 +121,6 @@ ApplicationWindow {
     }
 
     Component {
-        id: page5Component
-        Page5 {}
-    }
-
-    Component {
-        id: page6Component
-        PageSpray {}
-    }
-
-    Component {
         id: page7Component
         PageTrajectory {}
     }

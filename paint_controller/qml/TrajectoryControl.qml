@@ -503,7 +503,7 @@ Rectangle {
                         enabled: !control.isExecuting && control.currentActionIndex >= 0
                         anchors.fill: parent
                         onClicked: {
-                            overlayController.avoidAutoRunOverwrite()
+                            // overlayController.avoidAutoRunOverwrite()
                             trajectoryHandler.startExecution(control.currentActionIndex)
 
                         }

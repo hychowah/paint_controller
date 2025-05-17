@@ -217,6 +217,7 @@ class ActionWorker(QObject):
                     success_msg = "Extension arm completed"
                 
                 elif self._cmd_type == "moveWinchTo":
+                    self._robot_controller.teensy_controller.extendArm(250)
                     if len(self._params) == 2:
                         base_action = f"moveWinchTo_{self._params[0]}_{self._params[1]}"
                     else:
@@ -270,6 +271,7 @@ class TrajectoryHandler(QObject):
     showMessage = Signal(str, bool)  # message text, isSuccess
     executingChanged = Signal(bool)  # isExecuting
     sequenceSaved = Signal(str) 
+    pageChanged = Signal(int) 
 
     def __init__(self, robot_controller):
         super().__init__()
@@ -278,6 +280,7 @@ class TrajectoryHandler(QObject):
         self._currentTrajDescription = []
         self._currentTrajCmd = []
         self._isExecuting = False  # Track execution state
+        self._current_page = 0
         
         # Thread and worker for actions
         self._thread = None
@@ -635,3 +638,59 @@ class TrajectoryHandler(QObject):
                 item[f"input{i}"] = "-1"
                 
         return item
+    
+    @Slot(int)
+    def switch_to_page(self, page_index):
+        """
+        Switch to the specified page index.
+        
+        Args:
+            page_index: 0 for Planner, 1 for Executor
+        """
+        if page_index in [0, 1] and page_index != self._current_page:
+            self._current_page = page_index
+            self.pageChanged.emit(page_index)  # Changed from page_changed to pageChanged
+            page_name = "Planner" if page_index == 0 else "Executor"
+            self._robot_controller.show_popup("Page Changed", f"Switched to {page_name} mode", "info", 1500)
+
+    @Slot()
+    def switchPage(self):
+        """
+        Direct method to toggle between pages.
+        Can be called directly from QML for testing.
+        """
+        # Toggle between 0 and 1
+        new_page = 1 if self._current_page == 0 else 0
+        
+        # Print debug info
+        print(f"Direct page switch from {self._current_page} to {new_page}")
+        
+        # Set the page without using signals (for testing)
+        self._current_page = new_page
+        
+        # Emit signal for normal operation
+        self.pageChanged.emit(new_page)
+        
+        # Show popup
+        page_name = "Planner" if new_page == 0 else "Executor"
+        self._robot_controller.show_popup("Page Changed", f"Directly switched to {page_name} mode", "info", 1500)
+        
+        # Return the new page index for immediate use in QML if needed
+        return new_page
+
+    @Slot()
+    def next_page(self):
+        """Switch to the next page (cycling if needed)"""
+        next_index = (self._current_page + 1) % 2
+        self.switch_to_page(next_index)
+
+    @Slot()
+    def previous_page(self):
+        """Switch to the previous page (cycling if needed)"""
+        prev_index = (self._current_page - 1) % 2
+        self.switch_to_page(prev_index)
+
+    @Property(int)
+    def current_page(self):
+        """Get the current page index"""
+        return self._current_page
