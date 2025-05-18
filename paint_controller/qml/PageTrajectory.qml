@@ -1,4 +1,3 @@
-
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
@@ -10,19 +9,56 @@ Rectangle {
     Layout.fillHeight: true
     color: "#9F9F9F"
 
-    // Use the context property directly - no need for a proxy
-    // actionConfig is now a global context property
+    // Store the last known valid page index
+    property int lastKnownPageIndex: 0
+
+    // Initialize the current page explicitly when the component is created
+    Component.onCompleted: {
+        var currentPage = trajectoryHandler.currentPage;
+        console.log("PageTrajectory completed, handler page:", currentPage);
+        
+        // Only update if we have a valid value
+        if (currentPage !== undefined && currentPage !== null) {
+            stackLayout.currentIndex = currentPage;
+            lastKnownPageIndex = currentPage;
+        } else {
+            // Otherwise, directly query the handler for the latest state
+            console.log("Requesting current page from trajectoryHandler...");
+            trajectoryHandler.requestCurrentPage();
+        }
+    }
+
+    // Also ensure the correct page is shown when this component becomes visible again
+    onVisibleChanged: {
+        if (visible) {
+            var currentPage = trajectoryHandler.currentPage;
+            console.log("PageTrajectory visible again, handler page:", currentPage);
+            
+            // Use the valid value or fall back to last known state
+            if (currentPage !== undefined && currentPage !== null) {
+                stackLayout.currentIndex = currentPage;
+                lastKnownPageIndex = currentPage;
+            } else {
+                // Request current page again, but use lastKnownPageIndex as fallback
+                stackLayout.currentIndex = lastKnownPageIndex;
+                console.log("Using last known page index:", lastKnownPageIndex);
+                trajectoryHandler.requestCurrentPage();
+            }
+        }
+    }
 
     StackLayout {
         id: stackLayout
         anchors.fill: parent
         
-        // Direct binding to the property for reliable updates
+        // Keep the binding to the property for ongoing updates
         currentIndex: trajectoryHandler.currentPage
         
         // Debug log for index changes
         onCurrentIndexChanged: {
-            console.log("StackLayout index changed to: " + currentIndex)
+            console.log("StackLayout index changed to:", currentIndex);
+            // Update our last known good index
+            lastKnownPageIndex = currentIndex;
         }
 
         Item {
@@ -295,8 +331,9 @@ Rectangle {
     Connections {
         target: trajectoryHandler
         function onPageChanged(page) {
-            console.log("Page change signal received: " + page)
-            stackLayout.currentIndex = page
+            console.log("Page change signal received: " + page);
+            stackLayout.currentIndex = page;
+            lastKnownPageIndex = page; // Update the last known page
         }
     }
 }

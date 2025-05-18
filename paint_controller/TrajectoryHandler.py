@@ -836,3 +836,11 @@ class TrajectoryHandler(QObject):
     def current_page(self):
         """Get the current page index"""
         return self._current_page
+    
+    @Slot()
+    def requestCurrentPage(self):
+        """Request the current page state and emit the pageChanged signal."""
+        current_page = self._current_page 
+        self.pageChanged.emit(current_page)
+
+

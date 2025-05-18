@@ -95,7 +95,7 @@ Rectangle {
                     delegate: Rectangle {
                         property var action: {
                             var act = actionConfig.getAction(modelData);
-                            console.log("Action for ID " + modelData + ":", JSON.stringify(act));
+                            // console.log("Action for ID " + modelData + ":", JSON.stringify(act));
                             return act;
                         }
                         
@@ -134,22 +134,22 @@ Rectangle {
         }
     }
 
-    Component.onCompleted: {
-        console.log("ActionItem initialized");
-        if (actionConfig) {
-            console.log("actionConfig available:", typeof actionConfig);
-            if (actionConfig.actions) {
-                console.log("actionConfig.actions available");
-                try {
-                    console.log("actionConfig.actions:", JSON.stringify(actionConfig.actions));
-                } catch (e) {
-                    console.error("Error stringifying actionConfig.actions:", e);
-                }
-            } else {
-                console.error("actionConfig.actions is not available");
-            }
-        } else {
-            console.error("actionConfig is not available");
-        }
-    }
+    // Component.onCompleted: {
+    //     // console.log("ActionItem initialized");
+    //     if (actionConfig) {
+    //         console.log("actionConfig available:", typeof actionConfig);
+    //         if (actionConfig.actions) {
+    //             console.log("actionConfig.actions available");
+    //             try {
+    //                 console.log("actionConfig.actions:", JSON.stringify(actionConfig.actions));
+    //             } catch (e) {
+    //                 console.error("Error stringifying actionConfig.actions:", e);
+    //             }
+    //         } else {
+    //             console.error("actionConfig.actions is not available");
+    //         }
+    //     } else {
+    //         console.error("actionConfig is not available");
+    //     }
+    // }
 }
