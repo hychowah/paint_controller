@@ -1,21 +1,64 @@
-import QtQuick 6.7
-import QtQuick.Controls 6.7
-import QtQuick.Layouts 6.7
-import QtCharts 6.7
-import QtMultimedia 6.7
+// SelectBar.qml
+import QtQuick 2.15
+import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
 
 Rectangle {
     id: selectBar
-    stackView: stackView
-    width: 150
-    Layout.fillHeight: true
-    color: "#4374A2"
-
     property var stackView
     property string selectedButton: "buttonPage1"
-    property int buttonSize: width * 0.8
+    property int expandedWidth: 150
+    property int collapsedWidth: 50
+    property int buttonSize: expanded ? expandedWidth * 0.8 : collapsedWidth - 10
     property int buttonSpacing: 20
+    property bool expanded: true
+    property bool animationInProgress: false
 
+    signal expandedStateChanged(bool isExpanded, int newWidth)
+    
+    width: expanded ? expandedWidth : collapsedWidth
+    Layout.fillHeight: true
+    color: "#4374A2"
+    
+    // Add smooth animation for expanding/collapsing
+    Behavior on width {
+        NumberAnimation { 
+            id: widthAnimation
+            duration: 250
+            easing.type: Easing.InOutQuad
+            onRunningChanged: {
+                if (running) {
+                    // Animation started
+                    animationInProgress = true;
+                } else {
+                    // Animation completed - now update button sizes
+                    animationInProgress = false;
+                    // Emit signal when animation completes
+                    expandedStateChanged(expanded, width);
+                    // Trigger button size changes after width animation completes
+                    buttonSizeTimer.start();
+                }
+            }
+        }
+    }
+    
+    Timer {
+        id: buttonSizeTimer
+        interval: 10 // Short delay
+        repeat: false
+        onTriggered: {
+            // Force update of button sizes after width animation completes
+            buttonColumn.updateButtonSizes();
+        }
+    }
+    
+    // Expose a function to toggle sidebar state from external controllers
+    function toggleSidebar() {
+        if (!animationInProgress) {
+            expanded = !expanded;
+        }
+    }
+    
     function navigateToPage(index) {
         console.log("Before navigation - currentIndex:", stackView.currentIndex, "depth:", stackView.targetIndex)
         if (index !== stackView.currentIndex) {
@@ -42,7 +85,7 @@ Rectangle {
     Rectangle {
         id: topSpacer
         width: parent.width
-        height: 20
+        height: 50
         color: "transparent"
         anchors.top: parent.top
     }
@@ -52,7 +95,7 @@ Rectangle {
         id: buttonFlickable
         width: parent.width
         anchors.top: topSpacer.bottom
-        anchors.bottom: connectionStatusRow.top
+        anchors.bottom: connectionStatusPanel.top
         anchors.bottomMargin: 20
         contentWidth: width
         contentHeight: buttonColumn.height
@@ -69,21 +112,55 @@ Rectangle {
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: buttonSpacing
             width: parent.width
+            
+            // Function to update button sizes
+            function updateButtonSizes() {
+                // Notify all buttons to update their sizes
+                buttonPage1.updateSize();
+                buttonPage2.updateSize();
+                buttonPage3.updateSize();
+                buttonPage4.updateSize();
+                buttonPage7.updateSize();
+                buttonExit.updateSize();
+            }
 
-            // Page 1 Button
+            // Page 1 Button - Base
             Rectangle {
                 id: buttonPage1
-                width: buttonSize
-                height: buttonSize
+                property int targetSize: selectBar.buttonSize
+                width: animationInProgress ? width : targetSize
+                height: animationInProgress ? height : targetSize
                 radius: 20
                 color: selectBar.selectedButton === "buttonPage1" ? "#E2E2E2" : "#70A3D2"
                 anchors.horizontalCenter: parent.horizontalCenter
+                
+                function updateSize() {
+                    sizeAnimation.start();
+                }
+                
+                ParallelAnimation {
+                    id: sizeAnimation
+                    NumberAnimation { 
+                        target: buttonPage1
+                        property: "width" 
+                        to: selectBar.buttonSize
+                        duration: 250
+                        easing.type: Easing.InOutQuad 
+                    }
+                    NumberAnimation { 
+                        target: buttonPage1
+                        property: "height" 
+                        to: selectBar.buttonSize
+                        duration: 250
+                        easing.type: Easing.InOutQuad 
+                    }
+                }
 
                 Image {
                     source: "../resource/base.png"
                     anchors.centerIn: parent
-                    width: parent.width * 0.8
-                    height: parent.height * 0.8
+                    width: parent.width * 0.7
+                    height: parent.height * 0.7
                     fillMode: Image.PreserveAspectFit
                 }
 
@@ -95,6 +172,12 @@ Rectangle {
                     color: "black"
                     font.pixelSize: 15
                     font.bold: true
+                    visible: selectBar.expanded
+                    opacity: selectBar.expanded ? 1.0 : 0.0
+                    
+                    Behavior on opacity {
+                        NumberAnimation { duration: 150 }
+                    }
                 }
 
                 MouseArea {
@@ -108,14 +191,37 @@ Rectangle {
                 }
             }
 
-            // Page 2 Button
+            // Page 2 Button - Winch
             Rectangle {
                 id: buttonPage2
-                width: buttonSize
-                height: buttonSize
+                property int targetSize: selectBar.buttonSize
+                width: animationInProgress ? width : targetSize
+                height: animationInProgress ? height : targetSize
                 radius: 20
                 color: selectBar.selectedButton === "buttonPage2" ? "#E2E2E2" : "#70A3D2"
                 anchors.horizontalCenter: parent.horizontalCenter
+                
+                function updateSize() {
+                    sizeAnimation2.start();
+                }
+                
+                ParallelAnimation {
+                    id: sizeAnimation2
+                    NumberAnimation { 
+                        target: buttonPage2
+                        property: "width" 
+                        to: selectBar.buttonSize
+                        duration: 250
+                        easing.type: Easing.InOutQuad 
+                    }
+                    NumberAnimation { 
+                        target: buttonPage2
+                        property: "height" 
+                        to: selectBar.buttonSize
+                        duration: 250
+                        easing.type: Easing.InOutQuad 
+                    }
+                }
 
                 Image {
                     source: "../resource/winch.png"
@@ -133,6 +239,12 @@ Rectangle {
                     color: "black"
                     font.pixelSize: 15
                     font.bold: true
+                    visible: selectBar.expanded
+                    opacity: selectBar.expanded ? 1.0 : 0.0
+                    
+                    Behavior on opacity {
+                        NumberAnimation { duration: 150 }
+                    }
                 }
 
                 MouseArea {
@@ -146,24 +258,47 @@ Rectangle {
                 }
             }
 
-            // Page 3 Button
+            // Page 3 Button - Monitor
             Rectangle {
                 id: buttonPage3
-                width: buttonSize
-                height: buttonSize
+                property int targetSize: selectBar.buttonSize
+                width: animationInProgress ? width : targetSize
+                height: animationInProgress ? height : targetSize
                 radius: 20
                 color: selectBar.selectedButton === "buttonPage3" ? "#E2E2E2" : "#70A3D2"
                 anchors.horizontalCenter: parent.horizontalCenter
+                
+                function updateSize() {
+                    sizeAnimation3.start();
+                }
+                
+                ParallelAnimation {
+                    id: sizeAnimation3
+                    NumberAnimation { 
+                        target: buttonPage3
+                        property: "width" 
+                        to: selectBar.buttonSize
+                        duration: 250
+                        easing.type: Easing.InOutQuad 
+                    }
+                    NumberAnimation { 
+                        target: buttonPage3
+                        property: "height" 
+                        to: selectBar.buttonSize
+                        duration: 250
+                        easing.type: Easing.InOutQuad 
+                    }
+                }
 
                 Image {
-                    source: "../resource/monitor.svg" 
+                    source: "../resource/monitor.svg"
                     anchors.centerIn: parent
                     width: parent.width * 0.6
                     height: parent.height * 0.6
                     fillMode: Image.PreserveAspectFit
-                    antialiasing: true  
-                    smooth: true 
-                    sourceSize: Qt.size(96, 96)  // Force higher resolution rendering     
+                    antialiasing: true
+                    smooth: true
+                    sourceSize: Qt.size(96, 96)
                 }
 
                 Text {
@@ -174,12 +309,18 @@ Rectangle {
                     color: "black"
                     font.pixelSize: 15
                     font.bold: true
+                    visible: selectBar.expanded
+                    opacity: selectBar.expanded ? 1.0 : 0.0
+                    
+                    Behavior on opacity {
+                        NumberAnimation { duration: 150 }
+                    }
                 }
 
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
-                        if (selectBar.selectedButton !== "butonPage3") {
+                        if (selectBar.selectedButton !== "buttonPage3") {
                             selectBar.navigateToPage(2)
                             selectBar.selectedButton = "buttonPage3"
                         }
@@ -187,14 +328,37 @@ Rectangle {
                 }
             }
 
-            // Page 4 Button
+            // Page 4 Button - Tuning
             Rectangle {
                 id: buttonPage4
-                width: buttonSize
-                height: buttonSize
+                property int targetSize: selectBar.buttonSize
+                width: animationInProgress ? width : targetSize
+                height: animationInProgress ? height : targetSize
                 radius: 20
                 color: selectBar.selectedButton === "buttonPage4" ? "#E2E2E2" : "#70A3D2"
                 anchors.horizontalCenter: parent.horizontalCenter
+                
+                function updateSize() {
+                    sizeAnimation4.start();
+                }
+                
+                ParallelAnimation {
+                    id: sizeAnimation4
+                    NumberAnimation { 
+                        target: buttonPage4
+                        property: "width" 
+                        to: selectBar.buttonSize
+                        duration: 250
+                        easing.type: Easing.InOutQuad 
+                    }
+                    NumberAnimation { 
+                        target: buttonPage4
+                        property: "height" 
+                        to: selectBar.buttonSize
+                        duration: 250
+                        easing.type: Easing.InOutQuad 
+                    }
+                }
 
                 Image {
                     source: "../resource/icon-pid.png"
@@ -212,6 +376,12 @@ Rectangle {
                     color: "black"
                     font.pixelSize: 15
                     font.bold: true
+                    visible: selectBar.expanded
+                    opacity: selectBar.expanded ? 1.0 : 0.0
+                    
+                    Behavior on opacity {
+                        NumberAnimation { duration: 150 }
+                    }
                 }
 
                 MouseArea {
@@ -225,15 +395,37 @@ Rectangle {
                 }
             }
 
-
-            // Page 6 Button
+            // Page 7 Button - Spray
             Rectangle {
                 id: buttonPage7
-                width: buttonSize
-                height: buttonSize
+                property int targetSize: selectBar.buttonSize
+                width: animationInProgress ? width : targetSize
+                height: animationInProgress ? height : targetSize
                 radius: 20
                 color: selectBar.selectedButton === "buttonPage7" ? "#E2E2E2" : "#70A3D2"
                 anchors.horizontalCenter: parent.horizontalCenter
+                
+                function updateSize() {
+                    sizeAnimation7.start();
+                }
+                
+                ParallelAnimation {
+                    id: sizeAnimation7
+                    NumberAnimation { 
+                        target: buttonPage7
+                        property: "width" 
+                        to: selectBar.buttonSize
+                        duration: 250
+                        easing.type: Easing.InOutQuad 
+                    }
+                    NumberAnimation { 
+                        target: buttonPage7
+                        property: "height" 
+                        to: selectBar.buttonSize
+                        duration: 250
+                        easing.type: Easing.InOutQuad 
+                    }
+                }
 
                 Image {
                     source: "../resource/spray.png"
@@ -251,6 +443,12 @@ Rectangle {
                     color: "black"
                     font.pixelSize: 15
                     font.bold: true
+                    visible: selectBar.expanded
+                    opacity: selectBar.expanded ? 1.0 : 0.0
+                    
+                    Behavior on opacity {
+                        NumberAnimation { duration: 150 }
+                    }
                 }
 
                 MouseArea {
@@ -263,407 +461,24 @@ Rectangle {
                     }
                 }
             }
-            // Template for additional buttons
-            // Copy and modify this structure for new pages
-            // Rectangle {
-            //     id: buttonPageX
-            //     width: buttonSize
-            //     height: buttonSize
-            //     radius: 20
-            //     color: selectBar.selectedButton === "buttonPageX" ? "#E2E2E2" : "#70A3D2"
-            //     anchors.horizontalCenter: parent.horizontalCenter
-            //     
-            //     Image {
-            //         source: "../resource/your-image.png"
-            //         anchors.centerIn: parent
-            //         width: parent.width * 0.6
-            //         height: parent.height * 0.6
-            //         fillMode: Image.PreserveAspectFit
-            //     }
-            //     
-            //     MouseArea {
-            //         anchors.fill: parent
-            //         onClicked: {
-            //             if (selectBar.selectedButton !== "buttonPageX") {
-            //                 selectBar.navigateToPage(X)
-            //                 selectBar.selectedButton = "buttonPageX"
-            //             }
-            //         }
-            //     }
-            // }
         }
     }
 
-    // Connection status section remains the same
+    // Connection status panel - using the existing component
     Rectangle {
         width: parent.width
         height: 2
         color: "white"
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: connectionStatusRow.top
+        anchors.bottom: connectionStatusPanel.top
     }
 
-    Rectangle {
-        id: connectionStatusRow
-        width: parent.width
-        height: 100
-        color: "#A4A589"  
+    ConnectionStatusPanel {
+        id: connectionStatusPanel
+        expanded: selectBar.expanded
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: buttonExit.top 
-        anchors.bottomMargin: 50
-
-        // Add state property to track which view is shown
-        property bool showDeviceStatus: true
-
-        // Define natural-looking colors as properties
-        property color availableColor: "#7ED957"  // Softer green
-        property color idleColor: "#4CD964"       // Natural green
-        property color onTaskColor: "#4A90E2"     // Soft blue
-        property color warningColor: "#FFCC00"    // Amber yellow
-        property color errorColor: "#FF5E3A"      // Soft red
-        property color offlineColor: "#8E8E93"    // Medium gray
-
-        // Make the rectangle clickable
-        MouseArea {
-            anchors.fill: parent
-            onClicked: parent.showDeviceStatus = !parent.showDeviceStatus
-        }
-
-        Column {
-            anchors.fill: parent
-            spacing: 8  // Increased spacing for better readability
-            anchors.margins: 12  // Increased margins
-
-            // Device Status View
-            Column {
-                visible: parent.parent.showDeviceStatus
-                width: parent.width
-                spacing: parent.spacing
-
-                Row {
-                    spacing: 8  // Increased spacing
-                    width: parent.width
-
-                    Text {
-                        text: "WINCH"
-                        color: "white"
-                        font.pixelSize: 12
-                        font.bold: true
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: selectBar.width * 0.45  // Adjusted for alignment
-                    }
-                    
-                    // Status lights container for better alignment
-                    Row {
-                        spacing: 8
-                        anchors.verticalCenter: parent.verticalCenter
-                        
-                        // Controller availability indicator
-                        Rectangle {
-                            width: 14
-                            height: 14
-                            radius: 7
-                            color: winchController.available ? connectionStatusRow.availableColor : connectionStatusRow.warningColor
-                            anchors.verticalCenter: parent.verticalCenter
-                            
-                            // Add a subtle glow effect
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: parent.radius
-                                color: "transparent"
-                                border.width: 1
-                                border.color: Qt.rgba(parent.color.r, parent.color.g, parent.color.b, 0.5)
-                            }
-                        }
-                        
-                        // Base heartbeat status indicator with SWAPPED colors (idle = green, onTask = blue)
-                        Rectangle {
-                            width: 14
-                            height: 14
-                            radius: 7
-                            color: {
-                                if (!heartbeatHandler.base_online) return connectionStatusRow.offlineColor;
-                                switch(heartbeatHandler.base_status) {
-                                    case 0x00: return connectionStatusRow.idleColor;     // IDLE - NOW GREEN
-                                    case 0x01: return connectionStatusRow.onTaskColor;   // ONTASK - NOW BLUE
-                                    case 0x02: return connectionStatusRow.warningColor;  // WARNING
-                                    case 0x03: return connectionStatusRow.errorColor;    // ERROR
-                                    default: return connectionStatusRow.offlineColor;
-                                }
-                            }
-                            anchors.verticalCenter: parent.verticalCenter
-                            
-                            // Add a subtle glow effect
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: parent.radius
-                                color: "transparent"
-                                border.width: 1
-                                border.color: Qt.rgba(parent.color.r, parent.color.g, parent.color.b, 0.5)
-                            }
-                            
-                            ToolTip.visible: baseHeartbeatMouseArea.containsMouse
-                            ToolTip.text: {
-                                let statusText = "Unknown";
-                                if (!heartbeatHandler.base_online) {
-                                    statusText = "OFFLINE";
-                                } else {
-                                    switch(heartbeatHandler.base_status) {
-                                        case 0x00: statusText = "IDLE"; break;
-                                        case 0x01: statusText = "ONTASK"; break;
-                                        case 0x02: statusText = "WARNING"; break;
-                                        case 0x03: statusText = "ERROR"; break;
-                                        case 0x04: statusText = "CLEAR_ERROR"; break;
-                                    }
-                                }
-                                return "Base heartbeat: " + statusText;
-                            }
-                            
-                            MouseArea {
-                                id: baseHeartbeatMouseArea
-                                anchors.fill: parent
-                                hoverEnabled: true
-                            }
-                        }
-                    }
-                }
-
-                Row {
-                    spacing: 8
-                    width: parent.width
-
-                    Text {
-                        text: "WHEEL"
-                        color: "white"
-                        font.pixelSize: 12
-                        font.bold: true
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: selectBar.width * 0.45
-                    }
-                    
-                    // Status lights container for better alignment
-                    Row {
-                        spacing: 8
-                        anchors.verticalCenter: parent.verticalCenter
-                        
-                        // Controller availability indicator
-                        Rectangle {
-                            width: 14
-                            height: 14
-                            radius: 7
-                            color: wheelController.available ? connectionStatusRow.availableColor : connectionStatusRow.warningColor
-                            anchors.verticalCenter: parent.verticalCenter
-                            
-                            // Add a subtle glow effect
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: parent.radius
-                                color: "transparent"
-                                border.width: 1
-                                border.color: Qt.rgba(parent.color.r, parent.color.g, parent.color.b, 0.5)
-                            }
-                        }
-                        
-                        // Base heartbeat status indicator with SWAPPED colors (idle = green, onTask = blue)
-                        Rectangle {
-                            width: 14
-                            height: 14
-                            radius: 7
-                            color: {
-                                if (!heartbeatHandler.base_online) return connectionStatusRow.offlineColor;
-                                switch(heartbeatHandler.base_status) {
-                                    case 0x00: return connectionStatusRow.idleColor;     // IDLE - NOW GREEN
-                                    case 0x01: return connectionStatusRow.onTaskColor;   // ONTASK - NOW BLUE
-                                    case 0x02: return connectionStatusRow.warningColor;  // WARNING
-                                    case 0x03: return connectionStatusRow.errorColor;    // ERROR
-                                    default: return connectionStatusRow.offlineColor;
-                                }
-                            }
-                            anchors.verticalCenter: parent.verticalCenter
-                            
-                            // Add a subtle glow effect
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: parent.radius
-                                color: "transparent"
-                                border.width: 1
-                                border.color: Qt.rgba(parent.color.r, parent.color.g, parent.color.b, 0.5)
-                            }
-                            
-                            ToolTip.visible: baseHeartbeatMouseArea2.containsMouse
-                            ToolTip.text: {
-                                let statusText = "Unknown";
-                                if (!heartbeatHandler.base_online) {
-                                    statusText = "OFFLINE";
-                                } else {
-                                    switch(heartbeatHandler.base_status) {
-                                        case 0x00: statusText = "IDLE"; break;
-                                        case 0x01: statusText = "ONTASK"; break;
-                                        case 0x02: statusText = "WARNING"; break;
-                                        case 0x03: statusText = "ERROR"; break;
-                                        case 0x04: statusText = "CLEAR_ERROR"; break;
-                                    }
-                                }
-                                return "Base heartbeat: " + statusText;
-                            }
-                            
-                            MouseArea {
-                                id: baseHeartbeatMouseArea2
-                                anchors.fill: parent
-                                hoverEnabled: true
-                            }
-                        }
-                    }
-                }
-
-                Row {
-                    spacing: 8
-                    width: parent.width
-
-                    Text {
-                        text: "EF"
-                        color: "white"
-                        font.pixelSize: 12
-                        font.bold: true
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: selectBar.width * 0.45
-                    }
-                    
-                    // Status lights container for better alignment
-                    Row {
-                        spacing: 8
-                        anchors.verticalCenter: parent.verticalCenter
-                        
-                        // Controller availability indicator
-                        Rectangle {
-                            width: 14
-                            height: 14
-                            radius: 7
-                            color: teensyController.available ? connectionStatusRow.availableColor : connectionStatusRow.warningColor
-                            anchors.verticalCenter: parent.verticalCenter
-                            
-                            // Add a subtle glow effect
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: parent.radius
-                                color: "transparent"
-                                border.width: 1
-                                border.color: Qt.rgba(parent.color.r, parent.color.g, parent.color.b, 0.5)
-                            }
-                        }
-                        
-                        // EF heartbeat status indicator with SWAPPED colors (idle = green, onTask = blue)
-                        Rectangle {
-                            width: 14
-                            height: 14
-                            radius: 7
-                            color: {
-                                if (!heartbeatHandler.ef_online) return connectionStatusRow.offlineColor;
-                                switch(heartbeatHandler.ef_status) {
-                                    case 0x00: return connectionStatusRow.idleColor;     // IDLE - NOW GREEN
-                                    case 0x01: return connectionStatusRow.onTaskColor;   // ONTASK - NOW BLUE
-                                    case 0x02: return connectionStatusRow.warningColor;  // WARNING
-                                    case 0x03: return connectionStatusRow.errorColor;    // ERROR
-                                    default: return connectionStatusRow.offlineColor;
-                                }
-                            }
-                            anchors.verticalCenter: parent.verticalCenter
-                            
-                            // Add a subtle glow effect
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: parent.radius
-                                color: "transparent"
-                                border.width: 1
-                                border.color: Qt.rgba(parent.color.r, parent.color.g, parent.color.b, 0.5)
-                            }
-                            
-                            ToolTip.visible: efHeartbeatMouseArea.containsMouse
-                            ToolTip.text: {
-                                let statusText = "Unknown";
-                                if (!heartbeatHandler.ef_online) {
-                                    statusText = "OFFLINE";
-                                } else {
-                                    switch(heartbeatHandler.ef_status) {
-                                        case 0x00: statusText = "IDLE"; break;
-                                        case 0x01: statusText = "ONTASK"; break;
-                                        case 0x02: statusText = "WARNING"; break;
-                                        case 0x03: statusText = "ERROR"; break;
-                                        case 0x04: statusText = "CLEAR_ERROR"; break;
-                                    }
-                                }
-                                return "EF heartbeat: " + statusText;
-                            }
-                            
-                            MouseArea {
-                                id: efHeartbeatMouseArea
-                                anchors.fill: parent
-                                hoverEnabled: true
-                            }
-                        }
-                    }
-                }
-            }
-
-            // IP Status View
-            Column {
-                visible: !parent.parent.showDeviceStatus
-                width: parent.width
-                spacing: parent.spacing
-
-                Row {
-                    spacing: 5
-                    width: parent.width
-
-                    Text {
-                        text: "EF IP:"
-                        color: "white"
-                        font.pixelSize: 12
-                        font.bold: true
-                        width: selectBar.width * 0.7
-                    }
-                    Text {
-                        text: uiData.ef_ip
-                        color: "white"  // Changed to white for better contrast
-                        font.bold: true
-                        font.pixelSize: 10
-                        Layout.fillWidth: true
-                        anchors.right: parent.right
-                    }
-                }
-
-                Row {
-                    spacing: 5
-                    width: parent.width
-
-                    Text {
-                        text: "BASE IP:"
-                        color: "white"
-                        font.pixelSize: 12
-                        font.bold: true
-                        width: selectBar.width * 0.7
-                    }
-                    Text {
-                        text: uiData.base_ip
-                        color: "white"  // Changed to white for better contrast
-                        font.bold: true
-                        font.pixelSize: 10
-                        Layout.fillWidth: true
-                        anchors.right: parent.right
-                    }
-                }
-            }
-
-            // Optional: Add an indicator to show which view is currently displayed
-            Text {
-                anchors.bottom: parent.bottom
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: parent.parent.showDeviceStatus ? "Touch to show IP" : "Touch to show Device Status"
-                color: "white"
-                font.pixelSize: 10
-                font.italic: true
-            }
-        }
+        anchors.bottom: buttonExit.top
+        anchors.bottomMargin: selectBar.expanded ? 50 : 20
     }
 
     Rectangle {
@@ -671,24 +486,86 @@ Rectangle {
         height: 2
         color: "white"
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: connectionStatusRow.bottom
+        anchors.top: connectionStatusPanel.bottom
     }
 
+    // Exit button
     Rectangle {
         id: buttonExit
-        width: selectBar.width * 0.8
-        height: selectBar.width * 0.8
+        property int targetSize: selectBar.expanded ? selectBar.width * 0.8 : selectBar.width - 10
+        width: animationInProgress ? width : targetSize
+        height: animationInProgress ? height : targetSize
         radius: 20
         color: "#FF5733"
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 20
+        
+        function updateSize() {
+            exitSizeAnimation.start();
+        }
+        
+        ParallelAnimation {
+            id: exitSizeAnimation
+            NumberAnimation { 
+                target: buttonExit
+                property: "width" 
+                to: selectBar.expanded ? selectBar.width * 0.8 : selectBar.width - 10
+                duration: 250
+                easing.type: Easing.InOutQuad 
+            }
+            NumberAnimation { 
+                target: buttonExit
+                property: "height" 
+                to: selectBar.expanded ? selectBar.width * 0.8 : selectBar.width - 10
+                duration: 250
+                easing.type: Easing.InOutQuad 
+            }
+        }
 
         Text {
             text: "Exit"
             anchors.centerIn: parent
             color: "#FFFFFF"
-            font.pixelSize: 20
+            font.pixelSize: selectBar.expanded ? 20 : 14
+            font.bold: true
+            visible: selectBar.expanded
+            opacity: selectBar.expanded ? 1.0 : 0.0
+            
+            Behavior on opacity {
+                NumberAnimation { duration: 150 }
+            }
+        }
+
+        // Exit icon for collapsed state
+        Rectangle {
+            visible: !selectBar.expanded
+            anchors.centerIn: parent
+            width: parent.width * 0.6
+            height: width
+            radius: width / 2
+            color: "transparent"
+            
+            Canvas {
+                anchors.fill: parent
+                onPaint: {
+                    var ctx = getContext("2d");
+                    ctx.reset();
+                    ctx.strokeStyle = "white";
+                    ctx.lineWidth = width * 0.1;
+                    
+                    // Draw an X
+                    ctx.beginPath();
+                    ctx.moveTo(width * 0.2, height * 0.2);
+                    ctx.lineTo(width * 0.8, height * 0.8);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(width * 0.8, height * 0.2);
+                    ctx.lineTo(width * 0.2, height * 0.8);
+                    ctx.stroke();
+                }
+            }
         }
 
         MouseArea {

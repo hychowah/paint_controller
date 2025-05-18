@@ -7,6 +7,8 @@ ApplicationWindow {
     visibility: Window.FullScreen
     property var screens: Qt.application.screens
     property var targetScreen: screens.length > 1 ? screens[0] : screens[0]
+
+    property int sidebarWidth: 150 // Initial value (expanded width)
     
     x: targetScreen.virtualX
     y: targetScreen.virtualY
@@ -33,63 +35,93 @@ ApplicationWindow {
             anchors.fill: parent
             spacing: 10
             
-            SelectBar {
-                id: selectBar
-                stackView: stackView
-                Layout.fillHeight: true
-            }
-            
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                color: "#5E5C64"
+            Item {
+                id: contentContainer
+                anchors.fill: parent
                 
-                ColumnLayout {
-                    anchors.fill: parent
-                    spacing: 0
+                SelectBar {
+                    id: selectBar
+                    objectName: "selectBar"
+                    stackView: stackView
+                    height: parent.height
+                    // Connect to the signal
+                    onExpandedStateChanged: {
+                        sidebarWidth = newWidth
+                        // Force layout update - the key part!
+                        contentLayout.anchors.leftMargin = sidebarWidth
+                    }
+                }
+                
+                // Main content with dynamic margin
+                Item {
+                    id: contentLayout
+                    anchors.left: parent.left
+                    anchors.leftMargin: sidebarWidth // Bind to the sidebar width
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
                     
-                    TopBar {
-                        Layout.fillWidth: true
-                        Component.onCompleted: {
-                            for(var i = 0; i < children.length; i++) {
-                                var child = children[i];
-                                if (child.objectName === "topBar") {
-                                    child.uiData = uiData;
-                                }
-                            }
+                    // Animation for smooth transition
+                    Behavior on anchors.leftMargin {
+                        NumberAnimation { 
+                            duration: 250
+                            easing.type: Easing.InOutQuad
                         }
                     }
                     
-                    Item {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
+                    Rectangle {
+                        id: contentRect
+                        anchors.fill: parent
+                        color: "#5E5C64"
                         
-                        StackView {
-                            id: stackView
-                            objectName: "stackView"
+                        ColumnLayout {
                             anchors.fill: parent
-                            initialItem: page1Component
+                            spacing: 0
                             
-                            property int currentIndex: 0
-                            property int targetIndex: 0
-                            
-                            replaceEnter: Transition {
-                                NumberAnimation {
-                                    property: "y"
-                                    from: stackView.currentIndex > stackView.targetIndex ? -stackView.height : stackView.height
-                                    to: 0
-                                    duration: 400
-                                    easing.type: Easing.InOutQuad
+                            TopBar {
+                                Layout.fillWidth: true
+                                Component.onCompleted: {
+                                    for(var i = 0; i < children.length; i++) {
+                                        var child = children[i];
+                                        if (child.objectName === "topBar") {
+                                            child.uiData = uiData;
+                                        }
+                                    }
                                 }
                             }
                             
-                            replaceExit: Transition {
-                                NumberAnimation {
-                                    property: "y"
-                                    from: 0
-                                    to: stackView.currentIndex > stackView.targetIndex ? stackView.height : -stackView.height
-                                    duration: 400
-                                    easing.type: Easing.InOutQuad
+                            Item {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                
+                                StackView {
+                                    id: stackView
+                                    objectName: "stackView"
+                                    anchors.fill: parent
+                                    initialItem: page1Component
+                                    
+                                    property int currentIndex: 0
+                                    property int targetIndex: 0
+                                    
+                                    replaceEnter: Transition {
+                                        NumberAnimation {
+                                            property: "y"
+                                            from: stackView.currentIndex > stackView.targetIndex ? -stackView.height : stackView.height
+                                            to: 0
+                                            duration: 400
+                                            easing.type: Easing.InOutQuad
+                                        }
+                                    }
+                                    
+                                    replaceExit: Transition {
+                                        NumberAnimation {
+                                            property: "y"
+                                            from: 0
+                                            to: stackView.currentIndex > stackView.targetIndex ? stackView.height : -stackView.height
+                                            duration: 400
+                                            easing.type: Easing.InOutQuad
+                                        }
+                                    }
                                 }
                             }
                         }

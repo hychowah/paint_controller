@@ -84,7 +84,7 @@ class SteamDeckHandler(QObject):
                 'a': False, 'b': False, 'x': False, 'y': False,
                 'l1': False, 'r1': False, 'l4': False, 'r4': False,
                 'l5': False, 'r5': False, 'l3': False,
-                'menu': False, 'switch': False, 'steam': False
+                'menu': False, 'switch': False, 'steam': False, 'dot': False
             },
             'imu': {'pitch': 0.0, 'roll': 0.0, 'yaw': 0.0}
         }
@@ -96,7 +96,7 @@ class SteamDeckHandler(QObject):
             'a': False, 'b': False, 'x': False, 'y': False,
             'l1': False, 'r1': False, 'l4': False, 'r4': False,
             'l5': False, 'r5': False, 'l3': False,
-            'menu': False, 'switch': False, 'steam': False
+            'menu': False, 'switch': False, 'steam': False, 'dot': False
         }
         
         # Unified button timing - track start time and last trigger time for each button
@@ -118,7 +118,8 @@ class SteamDeckHandler(QObject):
             'l3': {'start_time': 0, 'last_trigger_time': 0},
             'menu': {'start_time': 0, 'last_trigger_time': 0}, 
             'switch': {'start_time': 0, 'last_trigger_time': 0},
-            'steam': {'start_time': 0, 'last_trigger_time': 0}
+            'steam': {'start_time': 0, 'last_trigger_time': 0},
+            'dot': {'start_time': 0, 'last_trigger_time': 0}
         }
         
         # Set per-button debounce times
@@ -140,7 +141,8 @@ class SteamDeckHandler(QObject):
             'l3': self._default_debounce_time,
             'menu': self._default_debounce_time, 
             'switch': self._default_debounce_time,
-            'steam': self._default_debounce_time
+            'steam': self._default_debounce_time,
+            'dot': self._default_debounce_time
         }
         
         # Button hold callbacks
@@ -149,7 +151,7 @@ class SteamDeckHandler(QObject):
             'a': [], 'b': [], 'x': [], 'y': [],
             'l1': [], 'r1': [], 'l4': [], 'r4': [],
             'l5': [], 'r5': [], 'l3': [],
-            'menu': [], 'switch': [], 'steam': []
+            'menu': [], 'switch': [], 'steam': [], 'dot': []
         }
         
         # Track which hold callbacks have been triggered in current hold session
@@ -158,7 +160,7 @@ class SteamDeckHandler(QObject):
             'a': {}, 'b': {}, 'x': {}, 'y': {},
             'l1': {}, 'r1': {}, 'l4': {}, 'r4': {},
             'l5': {}, 'r5': {}, 'l3': {},
-            'menu': {}, 'switch': {}, 'steam': {}
+            'menu': {}, 'switch': {}, 'steam': {}, 'dot': {}
         }
         
         self._prev_stick_values = {
@@ -182,7 +184,7 @@ class SteamDeckHandler(QObject):
             'a': [], 'b': [], 'x': [], 'y': [],
             'l1': [], 'r1': [], 'l4': [], 'r4': [],
             'l5': [], 'r5': [], 'l3': [],
-            'menu': [], 'switch': [], 'steam': []
+            'menu': [], 'switch': [], 'steam': [], 'dot': []
         }
         
         # Initialize HID device and reader thread
@@ -412,6 +414,9 @@ class SteamDeckHandler(QObject):
             button_byte4 = data[13]
             l4 = bool(button_byte4 & (1 << 1))
             r4 = bool(button_byte4 & (1 << 2))
+
+            button_byte5 = data[14]
+            dot_button = bool(button_byte5 & (1 << 2))
             
             # Process analog inputs
             imu_pitch = struct.unpack('<h', bytes([data[38], data[39]]))[0]
@@ -450,7 +455,8 @@ class SteamDeckHandler(QObject):
                     'l3': l3,
                     'menu': menu,
                     'switch': switch,
-                    'steam': steam
+                    'steam': steam,
+                    'dot': dot_button
                 },
                 'imu': {
                     'pitch': imu_pitch,

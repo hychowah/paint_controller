@@ -6,9 +6,5 @@
   {
     "name": "straight",
     "sequence": "moveWinchTo_16307_450,dNs_1953_580_55_55"
-  },
-  {
-    "name": "tedt",
-    "sequence": "moveWinchTo_5000_350,dNs_0_550_55_55"
   }
 ]

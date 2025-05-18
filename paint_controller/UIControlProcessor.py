@@ -34,11 +34,11 @@ class ControlProcessor:
                 min_interval=0.1,  # 10Hz
             ),
             "Left Wheel Speed": ControlConfig(
-                scale=8/32768,
+                scale=6/32768,
                 min_interval=0.1  # 10Hz
             ),
             "Right Wheel Speed": ControlConfig(
-                scale=8/32768,
+                scale=6/32768,
                 min_interval=0.1  # 10Hz
             ),
             "EF arm": ControlConfig(

@@ -313,6 +313,9 @@ class RobotController(Node, QObject):
         # switch control mode callbacks
         self.steam_deck_handler.register_button_callback('switch', self._on_switch_pressed)
 
+        # expand or hide menu
+        self.steam_deck_handler.register_button_callback('dot', self.toggle_sidebar)
+
         # extend arm
         self.steam_deck_handler.register_button_callback('l5', self._on_l1_pressed)
         self.steam_deck_handler.register_button_callback('r5', self._on_r1_pressed)
@@ -329,11 +332,31 @@ class RobotController(Node, QObject):
             self._control_mode = mode
             self.control_mode_changed.emit(mode)
 
+    @Slot()
+    def toggle_sidebar(self):
+        """Toggle the sidebar expanded/collapsed state"""
+        # Get access to the root objects
+        root_objects = self.engine.rootObjects()
+        if not root_objects:
+            self.get_logger().error('No root QML objects found')
+            return
+            
+        root = root_objects[0]
+        # Find the selectBar component
+        select_bar = root.findChild(QObject, "selectBar")
+        
+        if select_bar:
+            # Invoke the toggleSidebar method
+            QMetaObject.invokeMethod(select_bar, "toggleSidebar")
+            self.get_logger().info('Toggled sidebar state')
+        else:
+            self.get_logger().error('SelectBar not found in QML')
+
     def _on_l1_pressed(self):
         # Initialize class attributes if they don't exist
         if not hasattr(self, '_l1_last_press_time'):
             self._l1_last_press_time = 0.0
-            
+            self._arm_extension_presets = [800]  # List of preset values in mm
         # Get current time
         current_time = time.time()
         time_since_last_press = current_time - self._l1_last_press_time

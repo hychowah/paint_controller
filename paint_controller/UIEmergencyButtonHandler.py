@@ -22,7 +22,7 @@ class EmergencyButtonHandler(QObject):
             'hold_start_time': 0,
             'overlay_visible': False,
             'completed': False,
-            'duration_target': 0.5,  # 1 second
+            'duration_target': 0.2,  # 1 second
             'last_steam_state': False,
             'cooldown_start': 0,    # When emergency was last triggered
             'cooldown_duration': 1.0  # Minimum time between emergency activations
