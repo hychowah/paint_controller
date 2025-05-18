@@ -1,7 +1,7 @@
 [
   {
     "name": "pipe",
-    "sequence": "gimbalSpray_55_55_10,dNs_8852_580_55_55,dNs_163_580_55_55,moveWinchTo_14234_450"
+    "sequence": "gimbalSpray_55_55_10,dNs_8852_580_55_55,dNs_163_580_55_55,moveWinchTo_14234_450_0_0,moveWinchTo_8852_350_200_800"
   },
   {
     "name": "straight",

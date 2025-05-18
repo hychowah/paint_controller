@@ -8,6 +8,18 @@ from rclpy.clock import Clock
 from paint_interfaces.srv import PaintAction
 from ActionConfigPython import ActionConfigPython
 
+import os.path
+import json
+import time
+
+from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer, QThread
+from rclpy.node import Node
+from rclpy.clock import Clock
+from paint_interfaces.srv import PaintAction
+from ActionConfigPython import ActionConfigPython
+from UIHeartbeatHandler import HeartbeatStatus
+
+
 class ActionWorker(QObject):
     """Worker object that performs actions in a separate thread"""
     
@@ -23,7 +35,7 @@ class ActionWorker(QObject):
         self._abort = False
         self._paint_base_action_client = None
         self._paint_ef_action_client = None
-        
+    
     def abort(self):
         """Set abort flag to stop operations"""
         self._abort = True
@@ -51,6 +63,81 @@ class ActionWorker(QObject):
         
         return result
     
+    def _check_components_online(self):
+        """
+        Check if components are online
+        
+        Returns:
+            tuple: (success, message)
+        """
+        heartbeat_handler = self._robot_controller.heartbeat_handler
+        
+        # Check if components are online
+        if not heartbeat_handler.get_base_online():
+            return False, "Base component is offline"
+        
+        if not heartbeat_handler.get_ef_online():
+            return False, "EF component is offline"
+        
+        return True, "Components are online"
+    
+    def _check_components_idle(self):
+        """
+        Check if components are in IDLE state
+        
+        Returns:
+            tuple: (success, message)
+        """
+        heartbeat_handler = self._robot_controller.heartbeat_handler
+        
+        # First check if components are online
+        online_success, online_message = self._check_components_online()
+        if not online_success:
+            return False, online_message
+            
+        # Check for error states
+        base_state = heartbeat_handler.get_base_status()
+        ef_state = heartbeat_handler.get_ef_status()
+        
+        if base_state == HeartbeatStatus.ERROR.value:
+            return False, "Base component is in ERROR state"
+        
+        if ef_state == HeartbeatStatus.ERROR.value:
+            return False, "EF component is in ERROR state"
+        
+        # Check for IDLE state
+        if base_state != HeartbeatStatus.IDLE.value:
+            base_state_str = heartbeat_handler.get_status_string("base")
+            return False, f"Base component is not in IDLE state (current: {base_state_str})"
+        
+        if ef_state != HeartbeatStatus.IDLE.value:
+            ef_state_str = heartbeat_handler.get_status_string("ef")
+            return False, f"EF component is not in IDLE state (current: {ef_state_str})"
+        
+        return True, "Components are in IDLE state"
+    
+    def _are_components_on_task(self):
+        """
+        Check if at least one component is in ONTASK state
+        
+        Returns:
+            bool: True if at least one component is ONTASK
+        """
+        heartbeat_handler = self._robot_controller.heartbeat_handler
+        
+        # Check if components are online first
+        online_success, _ = self._check_components_online()
+        if not online_success:
+            return False
+        
+        # Get current states
+        base_state = heartbeat_handler.get_base_status()
+        ef_state = heartbeat_handler.get_ef_status()
+        
+        # Check if either component is in ONTASK state
+        return (base_state == HeartbeatStatus.ONTASK.value or 
+                ef_state == HeartbeatStatus.ONTASK.value)
+    
     def _ensure_service_clients(self):
         """Ensure service clients are created"""
         if not self._paint_base_action_client:
@@ -77,6 +164,14 @@ class ActionWorker(QObject):
     
     def _execute_service_calls(self, base_action, ef_action, max_wait_time=2.0):
         """Execute service calls to base and EF controllers"""
+        # First check if components are in IDLE state
+        idle_success, idle_message = self._check_components_idle()
+        if not idle_success:
+            error_msg = f"Cannot execute service calls: {idle_message}"
+            self._robot_controller.get_logger().error(error_msg)
+            self.error.emit(error_msg)
+            return False, error_msg
+        
         # Get current time and add offset
         clock = Clock()
         current_time = clock.now().to_msg()
@@ -152,11 +247,8 @@ class ActionWorker(QObject):
             self.error.emit(error_msg)
             return False, error_msg
         
-        # Check responses
-        if base_response.success and ef_response.success:
-            self._robot_controller.get_logger().info("Both service calls succeeded")
-            return True, "Operation completed successfully"
-        else:
+        # Check initial responses
+        if not (base_response.success and ef_response.success):
             error_messages = []
             if not base_response.success:
                 error_messages.append("Base service failed")
@@ -166,9 +258,55 @@ class ActionWorker(QObject):
             error_msg = " and ".join(error_messages)
             self._robot_controller.get_logger().error(f"Service failures: {error_msg}")
             return False, f"Service failures: {error_msg}"
+        
+        # If we got here, the initial service calls succeeded
+        self._robot_controller.get_logger().info("Both service calls succeeded, waiting for completion")
+        
+        # Wait a short time for components to transition to ONTASK state
+        time.sleep(0.1)
+        
+        # Now continuously check if components are on task and then back to IDLE
+        on_task_detected = False
+        check_interval = 0.1  # seconds
+        
+        while True:
+            # Check if worker was asked to abort
+            if self._abort:
+                self._robot_controller.get_logger().info("Operation aborted while waiting for completion")
+                return False, "Operation aborted while waiting for completion"
+            
+            # Check if components are ONTASK
+            if not on_task_detected and self._are_components_on_task():
+                self._robot_controller.get_logger().info("Components are now ONTASK, waiting for completion")
+                on_task_detected = True
+            
+            # Once we've seen ONTASK state, check if back to IDLE
+            if on_task_detected:
+                idle_success, _ = self._check_components_idle()
+                if idle_success:
+                    self._robot_controller.get_logger().info("Components have returned to IDLE state, operation complete")
+                    return True, "Operation completed successfully"
+            
+            # If we haven't detected ONTASK yet, check if components are already back to IDLE
+            # This handles very quick operations
+            if not on_task_detected:
+                idle_success, _ = self._check_components_idle()
+                if idle_success:
+                    self._robot_controller.get_logger().info("Operation completed (very quick)")
+                    return True, "Operation completed successfully"
+            
+            # Wait before checking again
+            time.sleep(check_interval)
     
     def _handle_simple_action(self, action_name, duration):
         """Handle simple actions that just need a sleep to simulate operation"""
+        # Check component status before executing
+        idle_success, idle_message = self._check_components_idle()
+        if not idle_success:
+            error_msg = f"Cannot execute {action_name}: {idle_message}"
+            self._robot_controller.get_logger().error(error_msg)
+            return False, error_msg
+            
         self._robot_controller.get_logger().info(f"Starting {action_name} simulation")
         time.sleep(duration)
         if self._abort:
@@ -217,8 +355,8 @@ class ActionWorker(QObject):
                     success_msg = "Extension arm completed"
                 
                 elif self._cmd_type == "moveWinchTo":
-                    self._robot_controller.teensy_controller.extendArm(250)
-                    if len(self._params) == 2:
+                    self._robot_controller.teensy_controller.extendArm(self._params[2])
+                    if len(self._params) == 4:
                         base_action = f"moveWinchTo_{self._params[0]}_{self._params[1]}"
                     else:
                         # Handle different parameter counts if needed
@@ -244,6 +382,10 @@ class ActionWorker(QObject):
                 success, message = self._execute_service_calls(base_action, ef_action)
                 
                 if success:
+                    if self._cmd_type == "moveWinchTo":
+                        time.sleep(1)  
+                        self._robot_controller.teensy_controller.extendArm(self._params[3])
+                        time.sleep(2)
                     self._robot_controller.show_popup(success_msg, "Success", "success")
                 else:
                     self._robot_controller.show_popup(message, "Error", "error")
@@ -337,7 +479,7 @@ class TrajectoryHandler(QObject):
     def _handle_move_winch_to(self, params):
         """Handle moveWinchTo action"""
         description = f"Move winch to {params[0]}mm with speed {params[1]}mm/s"
-        command = ["moveWinchTo", params[0], params[1]]
+        command = ["moveWinchTo", params[0], params[1], params[2], params[3]]
         return description, command
     
     def _handle_extend_arm_to(self, params):
@@ -378,7 +520,7 @@ class TrajectoryHandler(QObject):
     def _handle_descend_and_spray(self, params):
         """Handle dNs (descend and spray) action"""
         descriptions = [
-            f"Descent {params[0]}mm with speed {params[1]}mm/s and spray with speed {params[3]}mm/s"
+            f"Descent {params[0]}mm with speed {params[1]}mm/s and spray from {params[2]} to {params[3]}"
         ]
         commands = [
             ["winchNspray", f"-{params[0]}", params[1], params[2], params[3]]

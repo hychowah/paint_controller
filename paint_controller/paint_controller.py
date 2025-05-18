@@ -317,8 +317,8 @@ class RobotController(Node, QObject):
         self.steam_deck_handler.register_button_callback('dot', self.toggle_sidebar)
 
         # extend arm
-        self.steam_deck_handler.register_button_callback('l5', self._on_l1_pressed)
-        self.steam_deck_handler.register_button_callback('r5', self._on_r1_pressed)
+        self.steam_deck_handler.register_button_callback('l5', self._on_l5_pressed)
+        self.steam_deck_handler.register_button_callback('r5', self._on_r5_pressed)
 
 
     # Add property for control_mode
@@ -352,7 +352,7 @@ class RobotController(Node, QObject):
         else:
             self.get_logger().error('SelectBar not found in QML')
 
-    def _on_l1_pressed(self):
+    def _on_l5_pressed(self):
         # Initialize class attributes if they don't exist
         if not hasattr(self, '_l1_last_press_time'):
             self._l1_last_press_time = 0.0
@@ -369,9 +369,9 @@ class RobotController(Node, QObject):
         if time_since_last_press <= 1:
             # Double press detected - retract arm to 250mm
             self.teensy_controller.extendArm(250)
-            self.show_popup("Retracting Arm", "Retracting arm to 250 mm", "info")
+            # self.show_popup("Retracting Arm", "Retracting arm to 250 mm", "info")
 
-    def _on_r1_pressed(self):
+    def _on_r5_pressed(self):
         # Initialize class attributes if they don't exist
         if not hasattr(self, '_r1_last_press_time'):
             self._r1_last_press_time = 0.0
@@ -394,7 +394,7 @@ class RobotController(Node, QObject):
             
             # Extend the arm to the current preset
             self.teensy_controller.extendArm(preset_value)
-            self.show_popup("Extending Arm", f"Extending arm to {preset_value} mm", "info")
+            # self.show_popup("Extending Arm", f"Extending arm to {preset_value} mm", "info")
             
             # Update the index for next time (toggle between 0 and 1)
             self._arm_preset_index = (current_index + 1) % len(self._arm_extension_presets)

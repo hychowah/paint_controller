@@ -283,6 +283,7 @@ class TeensyController(QObject):
         msg = Int32()
         msg.data = int(dist)
         self.ef_move_arm_rail_pos_pub.publish(msg)
+        self._robot_controller.show_popup("Extending Arm", f"Extending arm to {dist} mm", "info")
     
     @Slot(int)
     def setLeftPropPWM(self, pwm: int):
