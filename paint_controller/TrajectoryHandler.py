@@ -387,6 +387,7 @@ class ActionWorker(QObject):
                         self._robot_controller.teensy_controller.extendArm(self._params[3])
                         time.sleep(2)
                     self._robot_controller.show_popup(success_msg, "Success", "success")
+                    self.success.emit(success_msg)
                 else:
                     self._robot_controller.show_popup(message, "Error", "error")
             
@@ -410,8 +411,9 @@ class TrajectoryHandler(QObject):
 
     trajectoryChanged = Signal()
     actionConfigChanged = Signal()
-    showMessage = Signal(str, bool)  # message text, isSuccess
-    executingChanged = Signal(bool)  # isExecuting
+    showMessage = Signal(str, bool) 
+    executingChanged = Signal(bool) 
+    executionCompleted = Signal(bool)
     sequenceSaved = Signal(str) 
     pageChanged = Signal(int) 
 
@@ -422,6 +424,7 @@ class TrajectoryHandler(QObject):
         self._currentTrajDescription = []
         self._currentTrajCmd = []
         self._isExecuting = False  # Track execution state
+        self._lastExecutionSuccess = False
         self._current_page = 0
         
         # Thread and worker for actions
@@ -603,13 +606,14 @@ class TrajectoryHandler(QObject):
     
     def _handle_worker_success(self, message):
         """Handle success signal from worker"""
-        self._robot_controller.get_logger().info(f"Worker success: {message}")
-        self.showMessage.emit(message, True)
+        self.executionCompleted.emit(True)
+        
     
     def _handle_worker_error(self, message):
         """Handle error signal from worker"""
-        self._robot_controller.get_logger().error(f"Worker error: {message}")
-        self.showMessage.emit(message, False)
+        return
+        # self._robot_controller.get_logger().error(f"Worker error: {message}")
+        # self.showMessage.emit(message, False)
     
     def _handle_worker_finished(self):
         """Handle finished signal from worker"""
@@ -626,6 +630,7 @@ class TrajectoryHandler(QObject):
         
         # Reset executing state
         self._setExecuting(False)
+        
     
     @Slot(int, result=bool)
     def startExecution(self, index):
@@ -658,6 +663,7 @@ class TrajectoryHandler(QObject):
                 self._worker.moveToThread(self._thread)
                 
                 # Connect signals and slots
+                self._lastExecutionSuccess = False
                 self._thread.started.connect(self._worker.run)
                 self._worker.finished.connect(self._handle_worker_finished)
                 self._worker.success.connect(self._handle_worker_success)

@@ -28,8 +28,15 @@ Rectangle {
         
         // Handle the executingChanged signal
         function onExecutingChanged(executing) {
-            // When execution completes and was successful, prepare to move to next action after a delay
-            if (!executing && control.currentActionIndex < control.currentActions.length - 1) {
+        }
+
+        function onExecutionCompleted(isSuccess) {
+            // // Store the result
+            // control.lastExecutionSuccess = isSuccess
+            console.log("Execution completed with success:", isSuccess)
+            
+            // Only move to next action if execution was successful
+            if (isSuccess && control.currentActionIndex < control.currentActions.length - 1) {
                 executionTimer.start()
             }
         }
@@ -74,11 +81,11 @@ Rectangle {
     // Use a timer to delay moving to the next action for better UI experience
     Timer {
         id: executionTimer
-        interval: 1000 // ms
+        interval: 400 // ms
         repeat: false
         onTriggered: {
             control.currentActionIndex++
-        }
+      }
     }
 
     // Add popup component
