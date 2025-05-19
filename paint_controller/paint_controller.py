@@ -411,7 +411,9 @@ class RobotController(Node, QObject):
             self.control_mode = "base"
             self.overlayController.set_joystick_controls("Left Wheel Speed", "Right Wheel Speed")
             self.wheel_controller.resetWheelPosition()
+            time.sleep(0.1)
             self.wheel_controller.resetWheelPosition()
+            time.sleep(0.1)
             self.wheel_controller.resetWheelPosition()
             self.show_popup("Control Mode", "Switched to Base control mode", "info")
 
