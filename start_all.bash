@@ -242,7 +242,7 @@ start_complete_system() {
     fi
     
     # Check connectivity to both systems
-    check_device $EF_IP "Paint Tool (EF)"
+    check_device $EF_IP "(EF)"
     EF_ONLINE=$?
     
     check_device $BASE_IP "Base Robot"
@@ -255,7 +255,7 @@ start_complete_system() {
     
     if [ $EF_ONLINE -ne 0 ] || [ $BASE_ONLINE -ne 0 ]; then
         DEVICES_OFFLINE=""
-        [ $EF_ONLINE -ne 0 ] && DEVICES_OFFLINE="$DEVICES_OFFLINE\n• Paint Tool (EF)"
+        [ $EF_ONLINE -ne 0 ] && DEVICES_OFFLINE="$DEVICES_OFFLINE\n• EF"
         [ $BASE_ONLINE -ne 0 ] && DEVICES_OFFLINE="$DEVICES_OFFLINE\n• Base Robot"
         
         # Create a more advanced menu for handling connection issues
@@ -277,7 +277,7 @@ start_complete_system() {
             
         elif [ $EF_ONLINE -ne 0 ]; then
             # Only EF is offline
-            CONNECTIVITY_CHOICE=$(dialog --title "Connection Issues" --menu "Paint Tool (EF) is unreachable.\n\nWhat would you like to do?" 13 70 3 \
+            CONNECTIVITY_CHOICE=$(dialog --title "Connection Issues" --menu "EF is unreachable.\n\nWhat would you like to do?" 13 70 3 \
                 "1" "Continue anyway (not recommended)" \
                 "2" "Launch start_ef.bash directly on EF" \
                 "3" "Cancel operation" \
@@ -734,7 +734,7 @@ launch_subsystem_menu() {
 # Function to check system status
 check_system_status() {
     # Check connectivity
-    check_device $EF_IP "Paint Tool (EF)"
+    check_device $EF_IP "EF"
     EF_ONLINE=$?
     
     check_device $BASE_IP "Base Robot"
@@ -795,7 +795,7 @@ check_system_status() {
     # Display status
     dialog --title "System Status" --msgbox "\
 DEVICE CONNECTIVITY:
-- Paint Tool (EF): $EF_STATUS
+- EF: $EF_STATUS
 - Base Robot: $BASE_STATUS
 
 SYSTEM STATUS:
@@ -813,9 +813,10 @@ show_help() {
     dialog --title "Paint System Help" --msgbox "\
 C3SPRAY PAINT SYSTEM CONTROL CENTER
 
-This application helps you manage the C3Spray Paint System with easy-to-use controls.
+This application helps you manage the C3Spray Paint System with buggy controls.
 
-MAIN FUNCTIONS:
+
+MAIN FUNCTIONS (not sure if any of these work):
 
 - Start System - Starts the complete paint system including:
   - Paint Tool (End Effector)
@@ -891,7 +892,7 @@ manage_components() {
     while true; do
         CHOICE=$(dialog --title "Component Management" \
                     --menu "Select a system to manage:" 12 60 4 \
-                    "1" "Paint Tool (EF) Components" \
+                    "1" "EF Components" \
                     "2" "Base Robot Components" \
                     "3" "Controller Components" \
                     "4" "Back to Main Menu" \
@@ -910,7 +911,7 @@ manage_components() {
 }
 
 # Display welcome screen
-dialog --title "Welcome" --msgbox "Welcome to the C3SPRAY Paint System Control Center!\n\nThis application will help you manage all aspects of the paint system.\n\nPress OK to continue." 10 60
+dialog --title "Welcome" --msgbox "C3 paint" 10 60
 
 # Main menu loop
 while true; do
@@ -976,7 +977,6 @@ while true; do
             dialog --title "Confirm Exit" --yesno "Are you sure you want to exit?\n\nNote: Any running systems will continue to run." 8 50
             if [ $? -eq 0 ]; then
                 clear
-                echo "Thank you for using the C3SPRAY Paint System Control Center."
                 exit 0
             fi
             ;;

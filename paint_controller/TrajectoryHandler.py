@@ -383,7 +383,7 @@ class ActionWorker(QObject):
                 
                 if success:
                     if self._cmd_type == "moveWinchTo":
-                        time.sleep(1)  
+                        time.sleep(2.5)  
                         self._robot_controller.teensy_controller.extendArm(self._params[3])
                         time.sleep(2)
                     self._robot_controller.show_popup(success_msg, "Success", "success")
