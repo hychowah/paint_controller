@@ -30,91 +30,106 @@ Rectangle {
         anchors.margins: 20
         spacing: 20
 
-        // Left Side: Winch Status
-        Rectangle {
+        ColumnLayout {
             Layout.preferredWidth: parent.width / 4
             Layout.fillHeight: true
-            color: "#FFFFFF"
-            radius: 10
+            spacing: 20
 
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 15
-                spacing: 15
+            // Left Side: Winch Status
+            Rectangle {
+                Layout.fillWidth: true                   
+                Layout.fillHeight: true
+                Layout.preferredHeight: parent.height * 0.7
+                color: "#FFFFFF"
+                radius: 10
 
-                RowLayout {
-                    spacing: 10
-                    Label {
-                        text: "Winch Status"
-                        font.pixelSize: 24
-                        font.bold: true
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 15
+                    spacing: 15
+
+                    RowLayout {
+                        spacing: 10
+                        Label {
+                            text: "Winch Status"
+                            font.pixelSize: 24
+                            font.bold: true
+                        }
+                        // rectange for spacing
+                        Rectangle {
+                            Layout.fillWidth: true
+                        }
+                        TouchSwitch {
+                                id: winchEnableSwitch
+                                checked: winchController.enabled
+                                onToggled: winchController.setEnabled(checked)
+                        }
                     }
-                    // rectange for spacing
-                    Rectangle {
+
+                    GridLayout {
+                        columns: 2
+                        rowSpacing: 10
+                        columnSpacing: 20
+                        Layout.fillHeight: true
                         Layout.fillWidth: true
-                    }
-                    TouchSwitch {
-                            id: winchEnableSwitch
-                            checked: winchController.enabled
-                            onToggled: winchController.setEnabled(checked)
+                        Layout.alignment: Qt.AlignTop
+
+                        Label { text: "Status:"; font.bold: true }
+                        Label { 
+                            text: winchController.available ? "Connected" : "Disconnected"
+                            color: winchController.available ? "green" : "red"
+                        }
+
+
+                        Label { text: "Cable Length:"; font.bold: true }
+                        Label { text: String((winchController.cable_length).toFixed(0)) + " mm" }
+
+                        Label {text: "Cable Speed:"; font.bold: true}
+                        Label {text: String(winchController.cable_speed.toFixed(0)) + " m/s"}
+
+                        Label { text: "Torque:"; font.bold: true }
+                        Label { text: String(winchController.winch_torque.toFixed(1)) + " Nm" }
+
+                        Label { text: "Temperature:"; font.bold: true }
+                        Label { text: winchController.motor_temperature.toFixed(1) + " °C" }
+
+                        Label { text: "Voltage:"; font.bold: true }
+                        Label { text: winchController.motor_voltage.toFixed(1) + " V" }
+
+                        Label { text: "Brake:"; font.bold: true }
+                        Label { 
+                            text: winchController.motor_brake ? "Engaged" : "Released"
+                            color: winchController.motor_brake ? "red" : "green"
+                        }
+
+                        Label { text: "Load Detection:"; font.bold: true }
+                        Label { 
+                            text: winchController.load_detection_enabled ? "True" : "False"
+                            color: winchController.load_detection_enabled ? "green" : "red"
+                        }
+
+                        Label { text: "Unusual Load:"; font.bold: true }
+                        Label { 
+                            text: winchController.unusual_load_detected ? "True" : "False"
+                            color: winchController.unusual_load_detected ? "green" : "red"
+                        }
+
                     }
                 }
+            }
 
-                GridLayout {
-                    columns: 2
-                    rowSpacing: 10
-                    columnSpacing: 20
-                    Layout.fillHeight: true
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignTop
-
-                    Label { text: "Status:"; font.bold: true }
-                    Label { 
-                        text: winchController.available ? "Connected" : "Disconnected"
-                        color: winchController.available ? "green" : "red"
-                    }
-
-
-                    Label { text: "Cable Length:"; font.bold: true }
-                    Label { text: String((winchController.cable_length).toFixed(0)) + " mm" }
-
-                    Label {text: "Cable Speed:"; font.bold: true}
-                    Label {text: String(winchController.cable_speed.toFixed(0)) + " m/s"}
-
-                    Label { text: "Torque:"; font.bold: true }
-                    Label { text: String(winchController.winch_torque.toFixed(1)) + " Nm" }
-
-                    Label { text: "Temperature:"; font.bold: true }
-                    Label { text: winchController.motor_temperature.toFixed(1) + " °C" }
-
-                    Label { text: "Voltage:"; font.bold: true }
-                    Label { text: winchController.motor_voltage.toFixed(1) + " V" }
-
-                    Label { text: "Brake:"; font.bold: true }
-                    Label { 
-                        text: winchController.motor_brake ? "Engaged" : "Released"
-                        color: winchController.motor_brake ? "red" : "green"
-                    }
-
-                    Label { text: "Load Detection:"; font.bold: true }
-                    Label { 
-                        text: winchController.load_detection_enabled ? "True" : "False"
-                        color: winchController.load_detection_enabled ? "green" : "red"
-                    }
-
-                    Label { text: "Unusual Load:"; font.bold: true }
-                    Label { 
-                        text: winchController.unusual_load_detected ? "True" : "False"
-                        color: winchController.unusual_load_detected ? "green" : "red"
-                    }
-
-                }
+            // Wind Visualizer
+            WindVisualizer {
+                Layout.fillWidth: true
+                Layout.preferredHeight: parent.height * 0.3 
+                windSpeed: 2.7  // Replace with actual wind speed data
+                windDirection: 45  // Replace with actual wind direction data
             }
         }
 
         // teensy status
         Rectangle {
-            Layout.fillWidth: true
+            Layout.preferredWidth: parent.width / 2
             Layout.fillHeight: true
             color: "#FFFFFF"
             radius: 10
@@ -351,29 +366,7 @@ Rectangle {
                                         anchors.margins: 10
                                         spacing: 10
                                         
-                                        // Temperature warning
-                                        Row {
-                                            spacing: 10
-                                            Rectangle {
-                                                width: 12
-                                                height: 12
-                                                radius: 6
-                                                color: "#FFA500" // Orange for warning
-                                            }
-                                            Text { text: "Temperature Warning" }
-                                        }
-                                        
-                                        // Voltage warning
-                                        Row {
-                                            spacing: 10
-                                            Rectangle {
-                                                width: 12
-                                                height: 12
-                                                radius: 6
-                                                color: "#FFA500" // Orange for warning
-                                            }
-                                            Text { text: "Voltage Level Low" }
-                                        }
+
                                     }
                                 }
                             }

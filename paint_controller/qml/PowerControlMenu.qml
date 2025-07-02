@@ -199,154 +199,21 @@ Item {
                         }
                     }
                     
-                    // NEW: Wheel Reset Position Button
-                    Rectangle {
-                        id: resetWheelPositionButton
+                    // Wheel Reset Position Button using ActionButton component
+                    ActionButton {
                         Layout.fillWidth: true
-                        height: 60
-                        radius: 10
-                        color: resetWheelMouseArea.containsMouse ? "#2A3040" : "#252A36"
-                        border.width: 1
-                        border.color: "#3A5A8C"
+                        buttonText: "Reset Wheel Position"
+                        buttonDescription: "Set wheel position counters to zero"
+                        iconColor: "#4CAF50"
+                        iconType: "reset"
                         
-                        // Button hover and pressed states
-                        states: [
-                            State {
-                                name: "hovered"
-                                PropertyChanges { target: resetWheelPositionButton; color: "#2A3040" }
-                            },
-                            State {
-                                name: "pressed"
-                                PropertyChanges { target: resetWheelPositionButton; color: "#1E2530" }
+                        onClicked: {
+                            if (wheelController) {
+                                wheelController.resetWheelPosition()
+                                showFeedback()
+                            } else {
+                                console.log("Wheel controller not available")
                             }
-                        ]
-                        
-                        // Button transitions
-                        transitions: [
-                            Transition {
-                                from: "*"; to: "*"
-                                ColorAnimation { duration: 150 }
-                            }
-                        ]
-                        
-                        // Mouse handling
-                        MouseArea {
-                            id: resetWheelMouseArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                // Call the resetWheelPosition slot
-                                if (wheelController) {
-                                    wheelController.resetWheelPosition()
-                                    
-                                    // Visual feedback animation
-                                    resetWheelFeedback.visible = true
-                                    resetWheelFeedbackTimer.restart()
-                                } else {
-                                    console.log("Wheel controller not available")
-                                }
-                            }
-                            onEntered: parent.state = "hovered"
-                            onExited: parent.state = ""
-                            onPressed: parent.state = "pressed"
-                            onReleased: {
-                                if (containsMouse)
-                                    parent.state = "hovered"
-                                else
-                                    parent.state = ""
-                            }
-                        }
-                        
-                        // Button contents - similar to PageWheel
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 12
-                            
-                            // Reset icon (circular arrow)
-                            Rectangle {
-                                width: 32
-                                height: 32
-                                radius: 16
-                                color: "#4CAF50"  // Green to match the wheel travel color in PageWheel
-                                
-                                // Simple reset icon using a canvas
-                                Canvas {
-                                    anchors.fill: parent
-                                    onPaint: {
-                                        var ctx = getContext("2d");
-                                        ctx.reset();
-                                        ctx.beginPath();
-                                        ctx.arc(16, 16, 8, 0, 1.5 * Math.PI, false);
-                                        ctx.strokeStyle = "white";
-                                        ctx.lineWidth = 2;
-                                        ctx.stroke();
-                                        
-                                        // Arrow head
-                                        ctx.beginPath();
-                                        ctx.moveTo(16, 8);
-                                        ctx.lineTo(12, 12);
-                                        ctx.lineTo(20, 12);
-                                        ctx.fillStyle = "white";
-                                        ctx.fill();
-                                    }
-                                }
-                            }
-                            
-                            // Text label
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 2
-                                
-                                Text {
-                                    text: "Reset Wheel Position"
-                                    font.pixelSize: 16
-                                    font.bold: true
-                                    color: "#FFFFFF"
-                                }
-                                
-                                Text {
-                                    text: "Set wheel position counters to zero"
-                                    font.pixelSize: 13
-                                    color: "#90CAF9"
-                                }
-                            }
-                        }
-                        
-                        // Visual feedback when button is pressed
-                        Rectangle {
-                            id: resetWheelFeedback
-                            anchors.fill: parent
-                            radius: 10
-                            color: "#324CAF50"  // Semi-transparent green
-                            visible: false
-                            
-                            // Success check mark
-                            Rectangle {
-                                anchors.right: parent.right
-                                anchors.rightMargin: 15
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: 24
-                                height: 24
-                                radius: 12
-                                color: "#4CAF50"
-                                
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "✓"
-                                    color: "white"
-                                    font.pixelSize: 16
-                                    font.bold: true
-                                }
-                            }
-                        }
-                        
-                        // Timer to hide feedback
-                        Timer {
-                            id: resetWheelFeedbackTimer
-                            interval: 1500
-                            onTriggered: resetWheelFeedback.visible = false
                         }
                     }
                     
@@ -364,13 +231,13 @@ Item {
                     color: "#333333"
                 }
                 
-                // Right column - End Effector Controls
+                // Right column - End Effector Controls (Now Scrollable)
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     spacing: 10
                     
-                    // End Effector Category
+                    // End Effector Category Header (Fixed at top)
                     Item {
                         Layout.fillWidth: true
                         height: 32
@@ -393,65 +260,99 @@ Item {
                         }
                     }
 
-                    // Teensy Relay Control
-                    ControlPanel {
+                    // Scrollable Controls Area
+                    ScrollView {
                         Layout.fillWidth: true
-                        controlName: "Teensy Relay"
-                        controlStatus: teensyController.all_status.relay_on ? "Connected" : "Disconnected"
-                        enabledState: teensyController.all_status.relay_on
-                        iconText: "TR"
-                        
-                        onClicked: teensyController.setRelayEnabled(!teensyController.all_status.relay_on)
-                    }
-                    
-                    // Teensy Enable Control
-                    ControlPanel {
-                        Layout.fillWidth: true
-                        controlName: "Teensy Enable"
-                        controlStatus: teensyController.all_status.enabled ? "Powered" : "Unpowered"
-                        enabledState: teensyController.all_status.enabled
-                        iconText: "T"
-                        
-                        onClicked: teensyController.setEnabled(!teensyController.all_status.enabled)
-                    }
-                    
-                    // Yaw Control
-                    ControlPanel {
-                        Layout.fillWidth: true
-                        controlName: "Yaw Control"
-                        controlStatus: teensyController.all_status.yaw_enabled ? "Active" : "Inactive"
-                        enabledState: teensyController.all_status.yaw_enabled
-                        iconText: "Y"
-                        
-                        onClicked: teensyController.setYawEnabled(!teensyController.all_status.yaw_enabled)
-                    }
-
-                    // SprayGun Levelling
-                    ControlPanel {
-                        Layout.fillWidth: true
-                        controlName: "SprayGun Levelling"
-                        controlStatus: teensyController.spray_gun_leveling_enabled ? "Active" : "Inactive"
-                        enabledState: teensyController.spray_gun_leveling_enabled
-                        iconText: "SL"
-
-                        onClicked: teensyController.setSprayGunLevelingEnabled(!teensyController.spray_gun_leveling_enabled)
-                    }
-
-                    // SprayGun Led Control
-                    ControlPanel {
-                        Layout.fillWidth: true
-                        controlName: "SprayGun LED"
-                        controlStatus: teensyController.spray_gun_led_on ? "On" : "Off"
-                        enabledState: teensyController.spray_gun_led_on
-                        iconText: "LED"
-                        
-                        onClicked: teensyController.setSprayGunLED(!teensyController.spray_gun_led_on)
-                    }
-                    
-                    // Spacer
-                    Item { 
                         Layout.fillHeight: true
-                        Layout.fillWidth: true
+                        clip: true
+                        
+                        // Customize scrollbar appearance
+                        ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                        
+                        // Content area with all the controls
+                        ColumnLayout {
+                            width: parent.width
+                            spacing: 10
+                            
+                            // Teensy Relay Control
+                            ControlPanel {
+                                Layout.fillWidth: true
+                                controlName: "Teensy Relay"
+                                controlStatus: teensyController.all_status.relay_on ? "Connected" : "Disconnected"
+                                enabledState: teensyController.all_status.relay_on
+                                iconText: "TR"
+                                
+                                onClicked: teensyController.setRelayEnabled(!teensyController.all_status.relay_on)
+                            }
+                            
+                            // Teensy Enable Control
+                            ControlPanel {
+                                Layout.fillWidth: true
+                                controlName: "Teensy Enable"
+                                controlStatus: teensyController.all_status.enabled ? "Powered" : "Unpowered"
+                                enabledState: teensyController.all_status.enabled
+                                iconText: "T"
+                                
+                                onClicked: teensyController.setEnabled(!teensyController.all_status.enabled)
+                            }
+                            
+                            // Yaw Control
+                            ControlPanel {
+                                Layout.fillWidth: true
+                                controlName: "Yaw Control"
+                                controlStatus: teensyController.all_status.yaw_enabled ? "Active" : "Inactive"
+                                enabledState: teensyController.all_status.yaw_enabled
+                                iconText: "Y"
+                                
+                                onClicked: teensyController.setYawEnabled(!teensyController.all_status.yaw_enabled)
+                            }
+
+                            // SprayGun Levelling
+                            ControlPanel {
+                                Layout.fillWidth: true
+                                controlName: "SprayGun Levelling"
+                                controlStatus: teensyController.spray_gun_leveling_enabled ? "Active" : "Inactive"
+                                enabledState: teensyController.spray_gun_leveling_enabled
+                                iconText: "SL"
+
+                                onClicked: teensyController.setSprayGunLevelingEnabled(!teensyController.spray_gun_leveling_enabled)
+                            }
+
+                            // SprayGun Led Control
+                            ControlPanel {
+                                Layout.fillWidth: true
+                                controlName: "SprayGun LED"
+                                controlStatus: teensyController.spray_gun_led_on ? "On" : "Off"
+                                enabledState: teensyController.spray_gun_led_on
+                                iconText: "LED"
+                                
+                                onClicked: teensyController.setSprayGunLED(!teensyController.spray_gun_led_on)
+                            }
+                            
+                            ActionButton {
+                                Layout.fillWidth: true
+                                buttonText: "Home Top Rail"
+                                buttonDescription: "(Be careful of the tilting during the process)"
+                                iconColor: "#4CAF50"
+                                iconType: "reset"
+                                
+                                onClicked: {
+                                    if (teensyController) {
+                                        teensyController.homeTopRail(true)
+                                        showFeedback()
+                                    } else {
+                                        console.log("Teensy controller not available")
+                                    }
+                                }
+                            }
+                            
+                            // Bottom spacer to ensure last item isn't cut off
+                            Item { 
+                                Layout.fillWidth: true
+                                height: 10
+                            }
+                        }
                     }
                 }
             }
@@ -703,6 +604,196 @@ Item {
                     ColorAnimation { duration: 200 }
                 }
             }
+        }
+    }
+    
+    // Reusable action button component for single-action buttons
+    component ActionButton: Rectangle {
+        id: actionButton
+        property string buttonText: "Action"
+        property string buttonDescription: "Perform action"
+        property string iconColor: "#4CAF50"
+        property string iconType: "reset" // "reset", "warning", "info", etc.
+        
+        signal clicked()
+        
+        function showFeedback() {
+            feedbackOverlay.visible = true
+            feedbackTimer.restart()
+        }
+        
+        height: 60
+        radius: 10
+        color: actionMouseArea.containsMouse ? "#2A3040" : "#252A36"
+        border.width: 1
+        border.color: "#3A5A8C"
+        
+        // This ensures consistent layout
+        Layout.fillWidth: true
+        
+        // Button hover and pressed states
+        states: [
+            State {
+                name: "hovered"
+                PropertyChanges { target: actionButton; color: "#2A3040" }
+            },
+            State {
+                name: "pressed"
+                PropertyChanges { target: actionButton; color: "#1E2530" }
+            }
+        ]
+        
+        // Button transitions
+        transitions: [
+            Transition {
+                from: "*"; to: "*"
+                ColorAnimation { duration: 150 }
+            }
+        ]
+        
+        // Mouse handling
+        MouseArea {
+            id: actionMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: actionButton.clicked()
+            onEntered: parent.state = "hovered"
+            onExited: parent.state = ""
+            onPressed: parent.state = "pressed"
+            onReleased: {
+                if (containsMouse)
+                    parent.state = "hovered"
+                else
+                    parent.state = ""
+            }
+        }
+        
+        // Button contents
+        RowLayout {
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 12
+            
+            // Icon with different types
+            Rectangle {
+                width: 32
+                height: 32
+                radius: 16
+                color: actionButton.iconColor
+                
+                // Icon content based on type
+                Item {
+                    anchors.fill: parent
+                    
+                    // Reset icon (circular arrow)
+                    Canvas {
+                        anchors.fill: parent
+                        visible: iconType === "reset"
+                        onPaint: {
+                            var ctx = getContext("2d");
+                            ctx.reset();
+                            ctx.beginPath();
+                            ctx.arc(16, 16, 8, 0, 1.5 * Math.PI, false);
+                            ctx.strokeStyle = "white";
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                            
+                            // Arrow head
+                            ctx.beginPath();
+                            ctx.moveTo(16, 8);
+                            ctx.lineTo(12, 12);
+                            ctx.lineTo(20, 12);
+                            ctx.fillStyle = "white";
+                            ctx.fill();
+                        }
+                    }
+                    
+                    // Warning icon
+                    Text {
+                        anchors.centerIn: parent
+                        text: "⚠"
+                        font.pixelSize: 16
+                        color: "white"
+                        font.bold: true
+                        visible: iconType === "warning"
+                    }
+                    
+                    // Info icon
+                    Text {
+                        anchors.centerIn: parent
+                        text: "i"
+                        font.pixelSize: 16
+                        color: "white"
+                        font.bold: true
+                        visible: iconType === "info"
+                    }
+                    
+                    // Generic action icon
+                    Text {
+                        anchors.centerIn: parent
+                        text: "⚡"
+                        font.pixelSize: 16
+                        color: "white"
+                        font.bold: true
+                        visible: iconType !== "reset" && iconType !== "warning" && iconType !== "info"
+                    }
+                }
+            }
+            
+            // Text label
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+                
+                Text {
+                    text: actionButton.buttonText
+                    font.pixelSize: 16
+                    font.bold: true
+                    color: "#FFFFFF"
+                }
+                
+                Text {
+                    text: actionButton.buttonDescription
+                    font.pixelSize: 13
+                    color: "#90CAF9"
+                }
+            }
+        }
+        
+        // Visual feedback when button is pressed
+        Rectangle {
+            id: feedbackOverlay
+            anchors.fill: parent
+            radius: 10
+            color: "#32" + actionButton.iconColor.substring(1) // Semi-transparent version of icon color
+            visible: false
+            
+            // Success check mark
+            Rectangle {
+                anchors.right: parent.right
+                anchors.rightMargin: 15
+                anchors.verticalCenter: parent.verticalCenter
+                width: 24
+                height: 24
+                radius: 12
+                color: actionButton.iconColor
+                
+                Text {
+                    anchors.centerIn: parent
+                    text: "✓"
+                    color: "white"
+                    font.pixelSize: 16
+                    font.bold: true
+                }
+            }
+        }
+        
+        // Timer to hide feedback
+        Timer {
+            id: feedbackTimer
+            interval: 500
+            onTriggered: feedbackOverlay.visible = false
         }
     }
 }

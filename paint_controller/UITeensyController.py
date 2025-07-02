@@ -97,6 +97,7 @@ class TeensyController(QObject):
         self.teensy_relay_pub = self._robot_controller.create_publisher(Bool, 'teensy/relay/cmd', 1)
         self.teensy_enable_pub = self._robot_controller.create_publisher(Bool, 'teensy/enable/cmd', 1)
         self.ef_move_top_rail_speed_pub = self._robot_controller.create_publisher(Float32, 'teensy/top_rail/speed/cmd', 1)
+        self.ef_home_top_rail_pub = self._robot_controller.create_publisher(Bool, 'teensy/top_rail/home/cmd', 1)
         self.ef_move_arm_rail_speed_pub = self._robot_controller.create_publisher(Float32, 'teensy/arm_rail/speed/cmd', 1)
         self.ef_move_arm_rail_pos_pub = self._robot_controller.create_publisher(Int32, 'teensy/arm/extend/cmd', 1)
         self.prop_left_pwm_pub = self._robot_controller.create_publisher(Int32, 'teensy/prop/left/pwm/cmd', 1)
@@ -270,6 +271,14 @@ class TeensyController(QObject):
         msg = Float32()
         msg.data = float(speed)
         self.ef_move_top_rail_speed_pub.publish(msg)
+
+    @Slot(bool)
+    def homeTopRail(self, home: bool):
+        """Home the top rail"""
+        msg = Bool()
+        msg.data = True
+        self.ef_home_top_rail_pub.publish(msg)
+        self._robot_controller.show_popup("Homing Top Rail", "Homing top rail", "info")
     
     @Slot(float)
     def setArmRailSpeed(self, speed: float):
