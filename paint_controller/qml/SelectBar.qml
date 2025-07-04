@@ -20,6 +20,91 @@ Rectangle {
     Layout.fillHeight: true
     color: "#4374A2"
     
+    // NavigationButton Component Definition
+    component NavigationButton: Rectangle {
+        id: navigationButton
+        
+        // Properties that can be customized
+        property string buttonId: ""
+        property string buttonText: ""
+        property string iconSource: ""
+        property int pageIndex: 0
+        property bool isSelected: false
+        property int targetSize: selectBar.buttonSize
+        property real iconScale: 0.6
+        
+        // Button appearance
+        width: selectBar.animationInProgress ? width : targetSize
+        height: selectBar.animationInProgress ? height : targetSize
+        radius: 20
+        color: isSelected ? "#E2E2E2" : "#70A3D2"
+        anchors.horizontalCenter: parent.horizontalCenter
+        
+        // Public function to update size
+        function updateSize() {
+            sizeAnimation.start();
+        }
+        
+        // Size animation
+        ParallelAnimation {
+            id: sizeAnimation
+            NumberAnimation { 
+                target: navigationButton
+                property: "width" 
+                to: selectBar.buttonSize
+                duration: 250
+                easing.type: Easing.InOutQuad 
+            }
+            NumberAnimation { 
+                target: navigationButton
+                property: "height" 
+                to: selectBar.buttonSize
+                duration: 250
+                easing.type: Easing.InOutQuad 
+            }
+        }
+
+        // Icon
+        Image {
+            source: iconSource
+            anchors.centerIn: parent
+            width: parent.width * iconScale
+            height: parent.height * iconScale
+            fillMode: Image.PreserveAspectFit
+            antialiasing: true
+            smooth: true
+            sourceSize: Qt.size(96, 96)
+        }
+
+        // Text label
+        Text {
+            text: buttonText
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 5
+            anchors.horizontalCenter: parent.horizontalCenter
+            color: "black"
+            font.pixelSize: 15
+            font.bold: true
+            visible: selectBar.expanded
+            opacity: selectBar.expanded ? 1.0 : 0.0
+            
+            Behavior on opacity {
+                NumberAnimation { duration: 150 }
+            }
+        }
+
+        // Mouse interaction
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                if (!isSelected) {
+                    selectBar.navigateToPage(pageIndex)
+                    selectBar.selectedButton = buttonId
+                }
+            }
+        }
+    }
+    
     // Add smooth animation for expanding/collapsing
     Behavior on width {
         NumberAnimation { 
@@ -72,6 +157,7 @@ Rectangle {
                 case 4: targetComponent = page5Component; break;
                 case 5: targetComponent = page6Component; break;
                 case 6: targetComponent = page7Component; break;
+                case 7: targetComponent = settingPageComponent; break;
                 // Add more cases for additional pages
             }
             
@@ -116,350 +202,72 @@ Rectangle {
             // Function to update button sizes
             function updateButtonSizes() {
                 // Notify all buttons to update their sizes
-                buttonPage1.updateSize();
-                buttonPage2.updateSize();
-                buttonPage3.updateSize();
-                buttonPage4.updateSize();
-                buttonPage7.updateSize();
-                buttonExit.updateSize();
+                for (var i = 0; i < children.length; i++) {
+                    if (children[i].updateSize) {
+                        children[i].updateSize();
+                    }
+                }
             }
 
             // Page 1 Button - Base
-            Rectangle {
+            NavigationButton {
                 id: buttonPage1
-                property int targetSize: selectBar.buttonSize
-                width: animationInProgress ? width : targetSize
-                height: animationInProgress ? height : targetSize
-                radius: 20
-                color: selectBar.selectedButton === "buttonPage1" ? "#E2E2E2" : "#70A3D2"
-                anchors.horizontalCenter: parent.horizontalCenter
-                
-                function updateSize() {
-                    sizeAnimation.start();
-                }
-                
-                ParallelAnimation {
-                    id: sizeAnimation
-                    NumberAnimation { 
-                        target: buttonPage1
-                        property: "width" 
-                        to: selectBar.buttonSize
-                        duration: 250
-                        easing.type: Easing.InOutQuad 
-                    }
-                    NumberAnimation { 
-                        target: buttonPage1
-                        property: "height" 
-                        to: selectBar.buttonSize
-                        duration: 250
-                        easing.type: Easing.InOutQuad 
-                    }
-                }
-
-                Image {
-                    source: "../resource/base.png"
-                    anchors.centerIn: parent
-                    width: parent.width * 0.7
-                    height: parent.height * 0.7
-                    fillMode: Image.PreserveAspectFit
-                }
-
-                Text {
-                    text: "Base"
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 5
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    color: "black"
-                    font.pixelSize: 15
-                    font.bold: true
-                    visible: selectBar.expanded
-                    opacity: selectBar.expanded ? 1.0 : 0.0
-                    
-                    Behavior on opacity {
-                        NumberAnimation { duration: 150 }
-                    }
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        if (selectBar.selectedButton !== "buttonPage1") {
-                            selectBar.navigateToPage(0)
-                            selectBar.selectedButton = "buttonPage1"
-                        }
-                    }
-                }
+                buttonId: "buttonPage1"
+                buttonText: "Base"
+                iconSource: "../resource/base.png"
+                pageIndex: 0
+                isSelected: selectBar.selectedButton === "buttonPage1"
+                iconScale: 0.7
             }
 
             // Page 2 Button - Winch
-            Rectangle {
+            NavigationButton {
                 id: buttonPage2
-                property int targetSize: selectBar.buttonSize
-                width: animationInProgress ? width : targetSize
-                height: animationInProgress ? height : targetSize
-                radius: 20
-                color: selectBar.selectedButton === "buttonPage2" ? "#E2E2E2" : "#70A3D2"
-                anchors.horizontalCenter: parent.horizontalCenter
-                
-                function updateSize() {
-                    sizeAnimation2.start();
-                }
-                
-                ParallelAnimation {
-                    id: sizeAnimation2
-                    NumberAnimation { 
-                        target: buttonPage2
-                        property: "width" 
-                        to: selectBar.buttonSize
-                        duration: 250
-                        easing.type: Easing.InOutQuad 
-                    }
-                    NumberAnimation { 
-                        target: buttonPage2
-                        property: "height" 
-                        to: selectBar.buttonSize
-                        duration: 250
-                        easing.type: Easing.InOutQuad 
-                    }
-                }
-
-                Image {
-                    source: "../resource/winch.png"
-                    anchors.centerIn: parent
-                    width: parent.width * 0.6
-                    height: parent.height * 0.6
-                    fillMode: Image.PreserveAspectFit
-                }
-
-                Text {
-                    text: "Winch"
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 5
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    color: "black"
-                    font.pixelSize: 15
-                    font.bold: true
-                    visible: selectBar.expanded
-                    opacity: selectBar.expanded ? 1.0 : 0.0
-                    
-                    Behavior on opacity {
-                        NumberAnimation { duration: 150 }
-                    }
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        if (selectBar.selectedButton !== "buttonPage2") {
-                            selectBar.navigateToPage(1)
-                            selectBar.selectedButton = "buttonPage2"
-                        }
-                    }
-                }
+                buttonId: "buttonPage2"
+                buttonText: "Winch"
+                iconSource: "../resource/winch.png"
+                pageIndex: 1
+                isSelected: selectBar.selectedButton === "buttonPage2"
             }
 
             // Page 3 Button - Monitor
-            Rectangle {
+            NavigationButton {
                 id: buttonPage3
-                property int targetSize: selectBar.buttonSize
-                width: animationInProgress ? width : targetSize
-                height: animationInProgress ? height : targetSize
-                radius: 20
-                color: selectBar.selectedButton === "buttonPage3" ? "#E2E2E2" : "#70A3D2"
-                anchors.horizontalCenter: parent.horizontalCenter
-                
-                function updateSize() {
-                    sizeAnimation3.start();
-                }
-                
-                ParallelAnimation {
-                    id: sizeAnimation3
-                    NumberAnimation { 
-                        target: buttonPage3
-                        property: "width" 
-                        to: selectBar.buttonSize
-                        duration: 250
-                        easing.type: Easing.InOutQuad 
-                    }
-                    NumberAnimation { 
-                        target: buttonPage3
-                        property: "height" 
-                        to: selectBar.buttonSize
-                        duration: 250
-                        easing.type: Easing.InOutQuad 
-                    }
-                }
-
-                Image {
-                    source: "../resource/monitor.svg"
-                    anchors.centerIn: parent
-                    width: parent.width * 0.6
-                    height: parent.height * 0.6
-                    fillMode: Image.PreserveAspectFit
-                    antialiasing: true
-                    smooth: true
-                    sourceSize: Qt.size(96, 96)
-                }
-
-                Text {
-                    text: "Monitor"
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 5
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    color: "black"
-                    font.pixelSize: 15
-                    font.bold: true
-                    visible: selectBar.expanded
-                    opacity: selectBar.expanded ? 1.0 : 0.0
-                    
-                    Behavior on opacity {
-                        NumberAnimation { duration: 150 }
-                    }
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        if (selectBar.selectedButton !== "buttonPage3") {
-                            selectBar.navigateToPage(2)
-                            selectBar.selectedButton = "buttonPage3"
-                        }
-                    }
-                }
+                buttonId: "buttonPage3"
+                buttonText: "Monitor"
+                iconSource: "../resource/monitor.svg"
+                pageIndex: 2
+                isSelected: selectBar.selectedButton === "buttonPage3"
             }
 
             // Page 4 Button - Tuning
-            Rectangle {
+            NavigationButton {
                 id: buttonPage4
-                property int targetSize: selectBar.buttonSize
-                width: animationInProgress ? width : targetSize
-                height: animationInProgress ? height : targetSize
-                radius: 20
-                color: selectBar.selectedButton === "buttonPage4" ? "#E2E2E2" : "#70A3D2"
-                anchors.horizontalCenter: parent.horizontalCenter
-                
-                function updateSize() {
-                    sizeAnimation4.start();
-                }
-                
-                ParallelAnimation {
-                    id: sizeAnimation4
-                    NumberAnimation { 
-                        target: buttonPage4
-                        property: "width" 
-                        to: selectBar.buttonSize
-                        duration: 250
-                        easing.type: Easing.InOutQuad 
-                    }
-                    NumberAnimation { 
-                        target: buttonPage4
-                        property: "height" 
-                        to: selectBar.buttonSize
-                        duration: 250
-                        easing.type: Easing.InOutQuad 
-                    }
-                }
-
-                Image {
-                    source: "../resource/icon-pid.png"
-                    anchors.centerIn: parent
-                    width: parent.width * 0.6
-                    height: parent.height * 0.6
-                    fillMode: Image.PreserveAspectFit
-                }
-
-                Text {
-                    text: "Tuning"
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 5
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    color: "black"
-                    font.pixelSize: 15
-                    font.bold: true
-                    visible: selectBar.expanded
-                    opacity: selectBar.expanded ? 1.0 : 0.0
-                    
-                    Behavior on opacity {
-                        NumberAnimation { duration: 150 }
-                    }
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        if (selectBar.selectedButton !== "buttonPage4") {
-                            selectBar.navigateToPage(3)
-                            selectBar.selectedButton = "buttonPage4"
-                        }
-                    }
-                }
+                buttonId: "buttonPage4"
+                buttonText: "Tuning"
+                iconSource: "../resource/icon-pid.png"
+                pageIndex: 3
+                isSelected: selectBar.selectedButton === "buttonPage4"
             }
 
             // Page 7 Button - Spray
-            Rectangle {
+            NavigationButton {
                 id: buttonPage7
-                property int targetSize: selectBar.buttonSize
-                width: animationInProgress ? width : targetSize
-                height: animationInProgress ? height : targetSize
-                radius: 20
-                color: selectBar.selectedButton === "buttonPage7" ? "#E2E2E2" : "#70A3D2"
-                anchors.horizontalCenter: parent.horizontalCenter
-                
-                function updateSize() {
-                    sizeAnimation7.start();
-                }
-                
-                ParallelAnimation {
-                    id: sizeAnimation7
-                    NumberAnimation { 
-                        target: buttonPage7
-                        property: "width" 
-                        to: selectBar.buttonSize
-                        duration: 250
-                        easing.type: Easing.InOutQuad 
-                    }
-                    NumberAnimation { 
-                        target: buttonPage7
-                        property: "height" 
-                        to: selectBar.buttonSize
-                        duration: 250
-                        easing.type: Easing.InOutQuad 
-                    }
-                }
+                buttonId: "buttonPage7"
+                buttonText: "Spray"
+                iconSource: "../resource/spray.png"
+                pageIndex: 6
+                isSelected: selectBar.selectedButton === "buttonPage7"
+            }
 
-                Image {
-                    source: "../resource/spray.png"
-                    anchors.centerIn: parent
-                    width: parent.width * 0.6
-                    height: parent.height * 0.6
-                    fillMode: Image.PreserveAspectFit
-                }
-
-                Text {
-                    text: "Spray"
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 5
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    color: "black"
-                    font.pixelSize: 15
-                    font.bold: true
-                    visible: selectBar.expanded
-                    opacity: selectBar.expanded ? 1.0 : 0.0
-                    
-                    Behavior on opacity {
-                        NumberAnimation { duration: 150 }
-                    }
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        if (selectBar.selectedButton !== "buttonPage7") {
-                            selectBar.navigateToPage(6)
-                            selectBar.selectedButton = "buttonPage7"
-                        }
-                    }
-                }
+            // Page Settings Button
+            NavigationButton {
+                id: buttonPageSettings
+                buttonId: "buttonPageSettings"
+                buttonText: "Settings"
+                iconSource: "../resource/setting.svg"
+                pageIndex: 7
+                isSelected: selectBar.selectedButton === "buttonPageSettings"
             }
         }
     }

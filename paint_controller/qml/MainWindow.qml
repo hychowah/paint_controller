@@ -157,6 +157,11 @@ ApplicationWindow {
         PageTrajectory {}
     }
 
+    Component {
+        id: settingPageComponent
+        PageSettings {}
+    }
+
     PowerControlMenu {
         anchors.fill: parent
         id: powerControlMenu
