@@ -29,7 +29,8 @@ class OverlayController(QObject):
             "EF prop joint",
             "EF spray trigger",
             "EF spray gimbal",
-            "EF Yaw Angle"
+            "EF Yaw Angle",
+            "EF Force"
         ]
 
         # Current active indices

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, Optional
 from std_msgs.msg import Float32, Int32
+from geometry_msgs.msg import Twist, Vector3
 import time
 from UIHeartbeatHandler import HeartbeatStatus
 
@@ -75,6 +76,10 @@ class ControlProcessor:
             "EF Yaw Angle": ControlConfig(
                 scale=0.6/32768,
                 min_interval=0.1  # 10Hz
+            ),
+            "EF Force": ControlConfig(
+                scale=1.6/32768,  # Maps full joystick range to -1 to 1
+                min_interval=0.1  # 10Hz
             )
         }
 
@@ -90,6 +95,12 @@ class ControlProcessor:
                 # Add LOCKED indicator for Winch Speed when locked
                 if left_mode == "Winch Speed" and self._is_winch_control_locked():
                     left_part = f"{left_mode} {left_value:.2f} (LOCKED)" if left_mode else "None"
+                elif left_mode == "EF Force":
+                    # left_value contains a tuple (Fx, Fy) for EF Force
+                    if isinstance(left_value, tuple):
+                        left_part = f"{left_mode} Fx:{left_value[0]:.2f} Fy:{left_value[1]:.2f}"
+                    else:
+                        left_part = f"{left_mode} {left_value:.2f}"
                 else:
                     left_part = f"{left_mode} {left_value:.2f}" if left_mode else "None"
 
@@ -102,6 +113,12 @@ class ControlProcessor:
                 # Add LOCKED indicator for Winch Speed when locked
                 if right_mode == "Winch Speed" and self._is_winch_control_locked():
                     right_part = f"{right_mode} {right_value:.2f} (LOCKED)" if right_mode else "None"
+                elif right_mode == "EF Force":
+                    # right_value contains a tuple (Fx, Fy) for EF Force
+                    if isinstance(right_value, tuple):
+                        right_part = f"{right_mode} Fx:{right_value[0]:.2f} Fy:{right_value[1]:.2f}"
+                    else:
+                        right_part = f"{right_mode} {right_value:.2f}"
                 else:
                     right_part = f"{right_mode} {right_value:.2f}" if right_mode else "None"
                     
@@ -127,7 +144,6 @@ class ControlProcessor:
             return True
         return False
 
-
     def _process_joint_control(self, input_state: Dict, mode: str, stick: str):
         """Handle prop joint specific control"""
         config = self.controls[mode]
@@ -144,6 +160,28 @@ class ControlProcessor:
         else:
             self.current_values['right_mode'] = mode
             self.current_values['right_value'] = command_angle
+
+    def _process_ef_force_control(self, input_state: Dict, mode: str, stick: str):
+        """Handle EF Force specific control - reads both x and y axes"""
+        config = self.controls[mode]
+        
+        # Read both x and y axes from the joystick
+        x_input = input_state[f'{stick}_stick']['x']
+        y_input = input_state[f'{stick}_stick']['y']
+        
+        # Map joystick input (-32768 to 32767) to force values (-1 to 1)
+        Fx = x_input * config.scale
+        Fy = y_input * config.scale
+        
+        # Update current values with both Fx and Fy
+        if stick == 'left':
+            self.current_values['left_mode'] = mode
+            self.current_values['left_value'] = (Fx, Fy)
+        else:
+            self.current_values['right_mode'] = mode
+            self.current_values['right_value'] = (Fx, Fy)
+        
+        self.robot.teensy_controller.set_ef_force(Fx, Fy)
 
     def _process_yaw_control(self, input_state: Dict, mode: str, stick: str):
         """Handle EF Yaw Angle specific control"""
@@ -236,6 +274,8 @@ class ControlProcessor:
                     self._process_joint_control(input_state, left_mode, 'left')
                 elif left_mode == "EF Yaw Angle":
                     self._process_yaw_control(input_state, left_mode, 'left')
+                elif left_mode == "EF Force":
+                    self._process_ef_force_control(input_state, left_mode, 'left')
                 else:
                     self._process_standard_control(input_state, left_mode, 'left')
             
@@ -247,6 +287,8 @@ class ControlProcessor:
                     self._process_joint_control(input_state, right_mode, 'right')
                 elif right_mode == "EF Yaw Angle":
                     self._process_yaw_control(input_state, right_mode, 'right')
+                elif right_mode == "EF Force":
+                    self._process_ef_force_control(input_state, right_mode, 'right')
                 else:
                     self._process_standard_control(input_state, right_mode, 'right')
 

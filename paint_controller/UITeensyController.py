@@ -6,6 +6,7 @@ import time
 
 from rclpy.node import Node
 from std_msgs.msg import Bool, Float32, Int32
+from geometry_msgs.msg import Twist, Vector3
 from paint_interfaces.msg import TeensyStatus, TeensyYaw
 
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
@@ -111,6 +112,7 @@ class TeensyController(QObject):
         self.ef_yaw_angle_pub = self._robot_controller.create_publisher(Float32, 'teensy/yaw_control/angle/cmd', 1)
         self.ef_yaw_param_pub = self._robot_controller.create_publisher(TeensyYaw, 'teensy/yaw_control/params/cmd', 1)
         self.ef_spray_level_enable_pub = self._robot_controller.create_publisher(Bool, 'teensy/spray_gun/leveling_enable/cmd', 1)
+        self.ef_force_pub = self._robot_controller.create_publisher(Twist, 'teensy/force/cmd', 1)
 
 
     def _setup_subscribers(self):
@@ -390,6 +392,19 @@ class TeensyController(QObject):
         msg.yaw_pwm = pwm
         self.ef_yaw_control_pub.publish(msg)
         self._robot_controller.get_logger().info(f'Yaw control {"enabled" if enabled else "disabled"} with Target: {target} P:{p} I:{i} D:{d} PWM:{pwm}')
+
+    def set_ef_force(self, Fx: float, Fy: float):
+        """Internal method to send EF force values"""
+        # Create a Twist message for EF force
+        msg = Twist()
+        msg.linear = Vector3(x=Fx, y=Fy, z=0.0)
+        
+        # Publish to the appropriate topic
+        if hasattr(self._robot_controller.teensy_controller, 'ef_force_pub'):
+            self._robot_controller.teensy_controller.ef_force_pub.publish(msg)
+            self._robot_controller.get_logger().info(f'Sent EF force: Fx={Fx}, Fy={Fy}')
+        else:
+            self._robot_controller.get_logger().error("EF force publisher not initialized. Cannot send force values.")
     
     # Define a property to expose the entire status dictionary
     def get_all_status(self) -> Dict:
