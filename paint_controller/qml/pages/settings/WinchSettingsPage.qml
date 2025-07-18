@@ -7,12 +7,10 @@ ScrollView {
     contentWidth: availableWidth
     clip: true
     
-    property real winchMaxSpeed: 50.0
     property bool winchTorqueLimitEnabled: true
     property real winchTorqueLimit: 75.0
     property var pidValues: [1.0, 0.5, 0.1, 0.0]
     
-    signal backRequested()
     signal winchMaxSpeedChanged(real value)
     signal winchTorqueLimitEnabledChanged(bool value)
     signal winchTorqueLimitChanged(real value)
@@ -26,7 +24,6 @@ ScrollView {
             title: "Winch Settings"
             showBack: true
             
-            onBackClicked: root.backRequested()
         }
         
         Rectangle {

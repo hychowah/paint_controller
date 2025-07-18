@@ -62,6 +62,7 @@ Rectangle {
             onPidValuesChanged: function(values) {
                 settingsMenu.pidValues = values
             }
+            
         }
         
         WheelsSettingsPage {
