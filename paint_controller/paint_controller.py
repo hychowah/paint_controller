@@ -35,6 +35,7 @@ from UITeensyController import TeensyController
 from ActionConfigPython import ActionConfigPython
 from UIHeartbeatHandler import UIHeartbeatHandler
 from UIEmergencyButtonHandler import EmergencyButtonHandler
+from UIInputHandler import UIInputHandler
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -220,6 +221,7 @@ class RobotController(Node, QObject):
         self.action_config = ActionConfigPython(self)
         self.heartbeat_handler = UIHeartbeatHandler(self)
         self.steam_deck_handler = SteamDeckHandler(deadzone=config.joystick_deadzone)
+        self.input_handler = UIInputHandler(self)
         self.steam_deck_handler.start()
         self.setup_steam_deck_callbacks()
 
@@ -297,28 +299,18 @@ class RobotController(Node, QObject):
         return Gst.FlowReturn.OK
     
     def setup_steam_deck_callbacks(self):
-        """Set up callbacks for Steam Deck buttons that control UI elements"""
-        
-        # Navigation callbacks
-        self.steam_deck_handler.register_button_callback('up', self._on_up_pressed)
-        self.steam_deck_handler.register_button_callback('down', self._on_down_pressed)
-        self.steam_deck_handler.register_button_callback('left', self._on_left_pressed)
-        self.steam_deck_handler.register_button_callback('right', self._on_right_pressed)
-        
-        # Menu toggle callbacks
-        self.steam_deck_handler.register_button_callback('r4', self._on_r4_pressed)
-        self.steam_deck_handler.register_button_callback('l4', self._on_l4_pressed)
-        self.steam_deck_handler.register_button_callback('menu', self._on_menu_pressed)
-
-        # switch control mode callbacks
-        self.steam_deck_handler.register_button_callback('switch', self._on_switch_pressed)
-
-        # expand or hide menu
+        ih = self.input_handler
+        self.steam_deck_handler.register_button_callback('up', ih.on_up_pressed)
+        self.steam_deck_handler.register_button_callback('down', ih.on_down_pressed)
+        self.steam_deck_handler.register_button_callback('left', ih.on_left_pressed)
+        self.steam_deck_handler.register_button_callback('right', ih.on_right_pressed)
+        self.steam_deck_handler.register_button_callback('r4', ih.on_r4_pressed)
+        self.steam_deck_handler.register_button_callback('l4', ih.on_l4_pressed)
+        self.steam_deck_handler.register_button_callback('menu', ih.on_menu_pressed)
+        self.steam_deck_handler.register_button_callback('switch', ih.on_switch_pressed)
+        self.steam_deck_handler.register_button_callback('l5', ih.on_l5_pressed)
+        self.steam_deck_handler.register_button_callback('r5', ih.on_r5_pressed)
         self.steam_deck_handler.register_button_callback('dot', self.toggle_sidebar)
-
-        # extend arm
-        self.steam_deck_handler.register_button_callback('l5', self._on_l5_pressed)
-        self.steam_deck_handler.register_button_callback('r5', self._on_r5_pressed)
 
 
     # Add property for control_mode
@@ -352,105 +344,6 @@ class RobotController(Node, QObject):
         else:
             self.get_logger().error('SelectBar not found in QML')
 
-    def _on_l5_pressed(self):
-        # Initialize class attributes if they don't exist
-        if not hasattr(self, '_l1_last_press_time'):
-            self._l1_last_press_time = 0.0
-            self._arm_extension_presets = [800]  # List of preset values in mm
-        # Get current time
-        current_time = time.time()
-        time_since_last_press = current_time - self._l1_last_press_time
-        
-        # Update the last press time
-        self._l1_last_press_time = current_time
-        self.show_popup("Extending Arm", "Press again to retract the arm", "info")
-        
-        # Check if this is a double press (within 0.5 seconds)
-        if time_since_last_press <= 1:
-            # Double press detected - retract arm to 250mm
-            self.teensy_controller.extendArm(250)
-            # self.show_popup("Retracting Arm", "Retracting arm to 250 mm", "info")
-
-    def _on_r5_pressed(self):
-        # Initialize class attributes if they don't exist
-        if not hasattr(self, '_r1_last_press_time'):
-            self._r1_last_press_time = 0.0
-            self._arm_extension_presets = [800]  # List of preset values in mm
-            self._arm_preset_index = 0
-        
-        # Get current time
-        current_time = time.time()
-        time_since_last_press = current_time - self._r1_last_press_time
-        
-        # Update the last press time
-        self._r1_last_press_time = current_time
-        self.show_popup("Extending Arm", "Press again to extend the arm", "info")
-        
-        # Check if this is a double press (within 0.5 seconds)
-        if time_since_last_press <= 1:
-            # Double press detected - perform the action
-            current_index = self._arm_preset_index
-            preset_value = self._arm_extension_presets[current_index]
-            
-            # Extend the arm to the current preset
-            self.teensy_controller.extendArm(preset_value)
-            # self.show_popup("Extending Arm", f"Extending arm to {preset_value} mm", "info")
-            
-            # Update the index for next time (toggle between 0 and 1)
-            self._arm_preset_index = (current_index + 1) % len(self._arm_extension_presets)
-
-    def _on_switch_pressed(self):
-        """Switch control mode between base and ef"""
-        if self.control_mode == "base":
-            # Switching to EF mode
-            self.control_mode = "ef"
-            self.overlayController.set_joystick_controls("EF Yaw Angle", "Winch Speed")
-            self.show_popup("Control Mode", "Switched to EF control mode", "info")
-        else:
-            # Switching to Base mode
-            self.control_mode = "base"
-            self.overlayController.set_joystick_controls("Left Wheel Speed", "Right Wheel Speed")
-            self.wheel_controller.resetWheelPosition()
-            time.sleep(0.1)
-            self.wheel_controller.resetWheelPosition()
-            time.sleep(0.1)
-            self.wheel_controller.resetWheelPosition()
-            self.show_popup("Control Mode", "Switched to Base control mode", "info")
-
-    def _on_up_pressed(self):
-        if self.overlayController.is_showing_menu():
-            self.overlayController.move_up()
-
-    def _on_down_pressed(self):
-        if self.overlayController.is_showing_menu():
-            self.overlayController.move_down()
-
-    def _on_left_pressed(self):
-        if self.overlayController.is_showing_menu():
-            self.overlayController.move_to_first()
-        else:
-            # If no menu is showing, switch to previous page (Planner)
-            self.trajectoryHandler.switch_to_page(0)  # Switch to Planner
-
-    def _on_right_pressed(self):
-        if self.overlayController.is_showing_menu():
-            self.overlayController.move_to_last()
-        else:
-            # If no menu is showing, switch to next page (Executor)
-            self.trajectoryHandler.switch_to_page(1)  # Switch to Executor
-
-
-    def _on_r4_pressed(self):
-        self.overlayController.set_active_menu("right")
-        self.overlayController.toggle_right_menu()
-
-    def _on_l4_pressed(self):
-        self.overlayController.set_active_menu("left")
-        self.overlayController.toggle_left_menu()
-
-    def _on_menu_pressed(self):
-        self.overlayController.set_active_menu("power")
-        self.overlayController.toggle_power_menu()
 
     def _timer_callback(self):
         """Update UI elements with latest data"""

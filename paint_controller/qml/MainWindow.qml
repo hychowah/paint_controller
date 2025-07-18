@@ -1,6 +1,10 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "pages"
+import "bar"
+import "components"
+import "overlays"
 
 ApplicationWindow {
     visible: true
@@ -98,7 +102,7 @@ ApplicationWindow {
                                     id: stackView
                                     objectName: "stackView"
                                     anchors.fill: parent
-                                    initialItem: page1Component
+                                    initialItem: homeComponent
                                     
                                     property int currentIndex: 0
                                     property int targetIndex: 0
@@ -132,6 +136,11 @@ ApplicationWindow {
     }
 
     // Components
+    Component {
+        id: homeComponent
+        PageHome {}
+    }
+
     Component {
         id: page1Component
         PageWheel {}

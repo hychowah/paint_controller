@@ -69,12 +69,12 @@ class ControlProcessor:
                 msg_type=Int32
             ),
             "EF spray gimbal": ControlConfig(
-                scale=100/32768,
+                scale=30/32768,
                 min_interval=0.2,  # 5Hz
                 msg_type=Int32
             ),
             "EF Yaw Angle": ControlConfig(
-                scale=0.6/32768,
+                scale=2/32768,
                 min_interval=0.1  # 10Hz
             ),
             "EF Force": ControlConfig(

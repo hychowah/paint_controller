@@ -4,6 +4,8 @@ import QtQuick.Layouts 6.7
 import QtCharts 6.7
 import QtMultimedia 6.7
 import Qt5Compat.GraphicalEffects
+import "../"
+import "../components"
 
 Rectangle {
     id: page5Rect

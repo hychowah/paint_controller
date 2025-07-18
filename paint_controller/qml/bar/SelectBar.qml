@@ -2,11 +2,12 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../"
 
 Rectangle {
     id: selectBar
     property var stackView
-    property string selectedButton: "buttonPage1"
+    property string selectedButton: "buttonHome"
     property int expandedWidth: 150
     property int collapsedWidth: 50
     property int buttonSize: expanded ? expandedWidth * 0.8 : collapsedWidth - 10
@@ -150,15 +151,15 @@ Rectangle {
             var targetComponent;
             stackView.targetIndex = index
             switch(index) {
-                case 0: targetComponent = page1Component; break;
-                case 1: targetComponent = page2Component; break;
-                case 2: targetComponent = page3Component; break;
-                case 3: targetComponent = page4Component; break;
-                case 4: targetComponent = page5Component; break;
-                case 5: targetComponent = page6Component; break;
-                case 6: targetComponent = page7Component; break;
-                case 7: targetComponent = settingPageComponent; break;
-                // Add more cases for additional pages
+                case 0: targetComponent = homeComponent; break;
+                case 1: targetComponent = page1Component; break;
+                case 2: targetComponent = page2Component; break;
+                case 3: targetComponent = page3Component; break;
+                case 4: targetComponent = page4Component; break;
+                case 5: targetComponent = page5Component; break;
+                case 6: targetComponent = page6Component; break;
+                case 7: targetComponent = page7Component; break;
+                case 8: targetComponent = settingPageComponent; break;
             }
             
             console.log("Navigating to page:", index)
@@ -208,14 +209,24 @@ Rectangle {
                     }
                 }
             }
+            // home button
+            NavigationButton {
+                id: buttonHome
+                buttonId: "buttonHome"
+                buttonText: "Home"
+                iconSource: "../../resource/homepage.svg"
+                pageIndex: 0
+                isSelected: selectBar.selectedButton === "buttonHome"
+                iconScale: 0.7
+            }
 
             // Page 1 Button - Base
             NavigationButton {
                 id: buttonPage1
                 buttonId: "buttonPage1"
                 buttonText: "Base"
-                iconSource: "../resource/base.png"
-                pageIndex: 0
+                iconSource: "../../resource/base.png"
+                pageIndex: 1
                 isSelected: selectBar.selectedButton === "buttonPage1"
                 iconScale: 0.7
             }
@@ -225,8 +236,8 @@ Rectangle {
                 id: buttonPage2
                 buttonId: "buttonPage2"
                 buttonText: "Winch"
-                iconSource: "../resource/winch.png"
-                pageIndex: 1
+                iconSource: "../../resource/winch.png"
+                pageIndex: 2
                 isSelected: selectBar.selectedButton === "buttonPage2"
             }
 
@@ -235,8 +246,8 @@ Rectangle {
                 id: buttonPage3
                 buttonId: "buttonPage3"
                 buttonText: "Monitor"
-                iconSource: "../resource/monitor.svg"
-                pageIndex: 2
+                iconSource: "../../resource/monitor.svg"
+                pageIndex: 3
                 isSelected: selectBar.selectedButton === "buttonPage3"
             }
 
@@ -245,8 +256,8 @@ Rectangle {
                 id: buttonPage4
                 buttonId: "buttonPage4"
                 buttonText: "Tuning"
-                iconSource: "../resource/icon-pid.png"
-                pageIndex: 3
+                iconSource: "../../resource/icon-pid.png"
+                pageIndex: 4
                 isSelected: selectBar.selectedButton === "buttonPage4"
             }
 
@@ -255,8 +266,8 @@ Rectangle {
                 id: buttonPage7
                 buttonId: "buttonPage7"
                 buttonText: "Spray"
-                iconSource: "../resource/spray.png"
-                pageIndex: 6
+                iconSource: "../../resource/spray.png"
+                pageIndex: 7
                 isSelected: selectBar.selectedButton === "buttonPage7"
             }
 
@@ -265,8 +276,8 @@ Rectangle {
                 id: buttonPageSettings
                 buttonId: "buttonPageSettings"
                 buttonText: "Settings"
-                iconSource: "../resource/setting.svg"
-                pageIndex: 7
+                iconSource: "../../resource/setting.svg"
+                pageIndex: 8
                 isSelected: selectBar.selectedButton === "buttonPageSettings"
             }
         }

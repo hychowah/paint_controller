@@ -2,6 +2,8 @@ import QtQuick 6.7
 import QtQuick.Controls 6.7
 import QtQuick.Layouts 6.7
 import QtCharts 6.7
+import "../"
+import "../components"
 
 Item {
     id: pidTuningPage
@@ -70,8 +72,8 @@ Item {
             ValueAxis {
                 id: axisY
                 titleText: "Degrees"
-                min: getCommandValue() - 15
-                max: getCommandValue() + 15
+                min: getCommandValue() - 5
+                max: getCommandValue() + 5
                 tickCount: 7
                 titleVisible: true
             }
@@ -149,10 +151,10 @@ Item {
                             color: "white"
                         }
                         Button {
-                            text: "-10%"
+                            text: "-5%"
                             onClicked: {
                                 let currentP = getCurrentP()
-                                pInput.text = (currentP * 0.9).toFixed(6)
+                                pInput.text = (currentP * 0.95).toFixed(6)
                             }
                         }
                         TextField {
@@ -166,10 +168,10 @@ Item {
                             }
                         }
                         Button {
-                            text: "+10%"
+                            text: "+5%"
                             onClicked: {
                                 let currentP = getCurrentP()
-                                pInput.text = (currentP * 1.1).toFixed(6)
+                                pInput.text = (currentP * 1.05).toFixed(6)
                             }
                         }
                         Label {
@@ -184,10 +186,10 @@ Item {
                             color: "white"
                         }
                         Button {
-                            text: "-10%"
+                            text: "-5%"
                             onClicked: {
                                 let currentI = getCurrentI()
-                                iInput.text = (currentI * 0.9).toFixed(6)
+                                iInput.text = (currentI * 0.95).toFixed(6)
                             }
                         }
                         TextField {
@@ -201,10 +203,10 @@ Item {
                             }
                         }
                         Button {
-                            text: "+10%"
+                            text: "+5%"
                             onClicked: {
                                 let currentI = getCurrentI()
-                                iInput.text = (currentI * 1.1).toFixed(6)
+                                iInput.text = (currentI * 1.05).toFixed(6)
                             }
                         }
                         Label {
@@ -219,10 +221,10 @@ Item {
                             color: "white"
                         }
                         Button {
-                            text: "-10%"
+                            text: "-5%"
                             onClicked: {
                                 let currentD = getCurrentD()
-                                dInput.text = (currentD * 0.9).toFixed(6)
+                                dInput.text = (currentD * 0.95).toFixed(6)
                             }
                         }
                         TextField {
@@ -236,10 +238,10 @@ Item {
                             }
                         }
                         Button {
-                            text: "+10%"
+                            text: "+5%"
                             onClicked: {
                                 let currentD = getCurrentD()
-                                dInput.text = (currentD * 1.1).toFixed(6)
+                                dInput.text = (currentD * 1.05).toFixed(6)
                             }
                         }
                         Label {
