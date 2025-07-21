@@ -9,8 +9,6 @@ ScrollView {
     
     property var coordinateValues: [10.5, 25.3, -5.2, 45.0, 90.0]
     
-    signal backRequested()
-    signal coordinateValuesChanged(var values)
     
     ColumnLayout {
         width: parent.width
@@ -19,7 +17,6 @@ ScrollView {
         SettingsHeader {
             title: "Camera Settings"
             showBack: true
-            onBackClicked: root.backRequested()
         }
         
         Rectangle {
@@ -40,7 +37,6 @@ ScrollView {
             applyButtonText: "Update Position"
             
             onApplyInputValues: function(values) {
-                root.coordinateValuesChanged(values)
                 console.log("Camera position applied:", values)
             }
         }

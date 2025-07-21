@@ -7,14 +7,11 @@ ScrollView {
     contentWidth: availableWidth
     clip: true
     
+    property real winchMaxSpeed: 50.0
     property bool winchTorqueLimitEnabled: true
     property real winchTorqueLimit: 75.0
     property var pidValues: [1.0, 0.5, 0.1, 0.0]
-    
-    signal winchMaxSpeedChanged(real value)
-    signal winchTorqueLimitEnabledChanged(bool value)
-    signal winchTorqueLimitChanged(real value)
-    signal pidValuesChanged(var values)
+
     
     ColumnLayout {
         width: parent.width
@@ -42,7 +39,6 @@ ScrollView {
             unit: " RPM"
             
             onValueChanged: function(value) {
-                root.winchMaxSpeedChanged(value)
             }
         }
         
@@ -53,7 +49,6 @@ ScrollView {
             toggleValue: root.winchTorqueLimitEnabled
             
             onToggled: function(value) {
-                root.winchTorqueLimitEnabledChanged(value)
             }
         }
         
@@ -67,7 +62,6 @@ ScrollView {
             unit: "%"
             
             onValueChanged: function(value) {
-                root.winchTorqueLimitChanged(value)
             }
         }
         
@@ -93,7 +87,6 @@ ScrollView {
             unit: ""
             
             onMultipleValuesChanged: function(values) {
-                root.pidValuesChanged(values)
                 console.log("PID values updated:", values)
             }
         }
@@ -119,10 +112,7 @@ ScrollView {
             
             onActionButtonClicked: {
                 console.log("Resetting winch to factory defaults...")
-                root.winchMaxSpeedChanged(50.0)
-                root.winchTorqueLimitEnabledChanged(true)
-                root.winchTorqueLimitChanged(75.0)
-                root.pidValuesChanged([1.0, 0.5, 0.1, 0.0])
+
             }
         }
     }

@@ -6,9 +6,7 @@ ScrollView {
     id: root
     contentWidth: availableWidth
     clip: true
-    
-    signal backRequested()
-    
+        
     ColumnLayout {
         width: parent.width
         spacing: 0
@@ -16,7 +14,6 @@ ScrollView {
         SettingsHeader {
             title: "Wheels Settings"
             showBack: true
-            onBackClicked: root.backRequested()
         }
         
         Rectangle {

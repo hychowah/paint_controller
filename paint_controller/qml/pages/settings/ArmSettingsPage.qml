@@ -7,7 +7,6 @@ ScrollView {
     contentWidth: availableWidth
     clip: true
     
-    signal backRequested()
     
     ColumnLayout {
         width: parent.width
@@ -16,7 +15,6 @@ ScrollView {
         SettingsHeader {
             title: "Arm Settings"
             showBack: true
-            onBackClicked: root.backRequested()
         }
         
         Rectangle {

@@ -45,45 +45,20 @@ Rectangle {
             winchTorqueLimit: settingsMenu.winchTorqueLimit
             pidValues: settingsMenu.pidValues
             
-            onBackRequested: settingsMenu.currentPage = "main"
-            
-            onWinchMaxSpeedChanged: function(value) {
-                settingsMenu.winchMaxSpeed = value
-            }
-            
-            onWinchTorqueLimitEnabledChanged: function(value) {
-                settingsMenu.winchTorqueLimitEnabled = value
-            }
-            
-            onWinchTorqueLimitChanged: function(value) {
-                settingsMenu.winchTorqueLimit = value
-            }
-            
-            onPidValuesChanged: function(values) {
-                settingsMenu.pidValues = values
-            }
-            
         }
         
         WheelsSettingsPage {
             id: wheelsPage
-            onBackRequested: settingsMenu.currentPage = "main"
         }
         
         CameraSettingsPage {
             id: cameraPage
             coordinateValues: settingsMenu.coordinateValues
-            
-            onBackRequested: settingsMenu.currentPage = "main"
-            
-            onCoordinateValuesChanged: function(values) {
-                settingsMenu.coordinateValues = values
-            }
+
         }
         
         ArmSettingsPage {
             id: armPage
-            onBackRequested: settingsMenu.currentPage = "main"
         }
     }
 }

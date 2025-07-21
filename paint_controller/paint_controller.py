@@ -36,6 +36,7 @@ from ActionConfigPython import ActionConfigPython
 from UIHeartbeatHandler import UIHeartbeatHandler
 from UIEmergencyButtonHandler import EmergencyButtonHandler
 from UIInputHandler import UIInputHandler
+from UISSHController import UISSHController
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -223,6 +224,8 @@ class RobotController(Node, QObject):
         self.steam_deck_handler = SteamDeckHandler(deadzone=config.joystick_deadzone)
         self.input_handler = UIInputHandler(self)
         self.steam_deck_handler.start()
+        self.ssh_controller = UISSHController()
+        # self.ssh_controller.set_ui_callback(self.show_popup)
         self.setup_steam_deck_callbacks()
 
         self.ui_data_model = UIDataModel()
@@ -490,6 +493,7 @@ def main():
     engine.rootContext().setContextProperty("teensyController", controller.teensy_controller)
     engine.rootContext().setContextProperty("actionConfig", controller.action_config)
     engine.rootContext().setContextProperty("heartbeatHandler", controller.heartbeat_handler)
+    engine.rootContext().setContextProperty("sshHandler", controller.ssh_controller)
     controller.engine = engine
     
     # Start status update timer
