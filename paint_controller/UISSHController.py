@@ -1,5 +1,6 @@
 from PySide6.QtCore import QObject, Slot
 import os
+import json
 import paramiko
 import threading
 
@@ -45,61 +46,48 @@ class SSHLauncher:
 
 
 class UISSHController(QObject):
-    def __init__(self, parent=None):
+    def __init__(self, robot_controller, parent=None):
         super().__init__(parent)
+        self.robot_controller = robot_controller
 
-        # Step 1: Define remote hosts (per physical device)
-        self.remote_hosts = {
-            "BASE": SSHLauncher(hostname="192.168.1.106", username="c3-pc01", password="312213"),
-            "END_EFFECTOR": SSHLauncher(hostname="192.168.1.133", username="sparyrobot", password="C3robotics"),
-        }
+        # Store config paths instead of content
+        config_dir = os.path.join(os.getcwd(), "config")
+        self.ssh_path = os.path.join(config_dir, "ssh_config.json")
+        self.bash_path = os.path.join(config_dir, "bash_config.json")
 
-        # Step 2: Define commands per service on each host
-        self.command_map = {
-            "BASE": {
-                "Winch": {
-                    "start": (
-                        "bash -c 'source /opt/ros/jazzy/setup.bash && "
-                        "source ~/ros2_ws/install/setup.bash && export ROS_DOMAIN_ID=2 && "
-                        "cd ~/ros2_ws/src/paint_base/paint_base/winch/python/ && "
-                        "python3 winch_node.py --nosensor --port /dev/ttyUSB0'"
-                    ),
-                    "stop": "pkill -f winch_node.py && echo 'winch_node.py killed.'"
-                },
-                "Camera": {
-                    "start": "...",
-                    "stop": "..."
-                }
-            },
-            "END_EFFECTOR": {
-                "Camera": {
-                    "start": (
-                        "bash -c 'source ~/ros2_ws/src/paint_end_effector/start_cam.bash'"
-                    ),
-                    "stop": "pkill -f gst-launch-1.0 && echo 'GStreamer process killed.'"
-                },
-                "Teensy": {
-                    "start": (
-                        "bash -c 'source /opt/ros/humble/setup.bash && "
-                        "source ~/ros2_ws/install/setup.bash && export ROS_DOMAIN_ID=2 && "
-                        "cd ~/ros2_ws/src/paint_base/paint_base/winch/python/ && "
-                        "python3 winch_node.py --nosensor --port /dev/ttyUSB0'"
-                    ),
-                    "stop": "..."
-                }
-            }
+    def _load_json_file(self, path):
+        try:
+            with open(path, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"[UISSHController] Failed to load JSON config from {path}: {e}")
+            return {}
+
+    def _load_ssh_config(self, path):
+        ssh_config = self._load_json_file(path)
+        return {
+            name: SSHLauncher(**info)
+            for name, info in ssh_config.items()
         }
 
     @Slot(str, str, str)
     def handle_device_command(self, device_name: str, service_name: str, action: str):
-        print(f"[UISSHController] Handling {action.upper()} for {service_name} on {device_name}")
+        # Reload configs on every command
+        remote_hosts = self._load_ssh_config(self.ssh_path)
+        command_map = self._load_json_file(self.bash_path)
 
-        launcher = self.remote_hosts.get(device_name)
+        self.robot_controller.show_popup(
+            title="Device Command",
+            message=f"Handling {action.upper()} for {service_name} on {device_name}",
+            popup_type="info"
+        )
+
+        launcher = remote_hosts.get(device_name)
         if not launcher:
             print(f"[UISSHController] ERROR: Unknown device '{device_name}'")
             return
 
-        service_commands = self.command_map.get(device_name, {}).get(service_name)
+        service_commands = command_map.get(device_name, {}).get(service_name)
         if not service_commands:
             print(f"[UISSHController] ERROR: '{service_name}' not defined on device '{device_name}'")
             return
@@ -110,7 +98,11 @@ class UISSHController(QObject):
             return
 
         def callback(stdout, stderr):
-            print(f"[{device_name}] {service_name} {action.upper()} complete")
+            self.robot_controller.show_popup(
+                title="Device Command",
+                message=f"Command executed on {device_name}:\n{command}",
+                popup_type="info"
+            )
             if stderr:
                 print(f"[{device_name}] STDERR:\n{stderr.strip()}")
             else:

@@ -3,7 +3,7 @@
 import sys
 import os
 import time
-import threading
+import signal
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Dict, Optional, List, Any, Callable, overload
@@ -224,7 +224,7 @@ class RobotController(Node, QObject):
         self.steam_deck_handler = SteamDeckHandler(deadzone=config.joystick_deadzone)
         self.input_handler = UIInputHandler(self)
         self.steam_deck_handler.start()
-        self.ssh_controller = UISSHController()
+        self.ssh_controller = UISSHController(self)
         # self.ssh_controller.set_ui_callback(self.show_popup)
         self.setup_steam_deck_callbacks()
 
@@ -459,6 +459,12 @@ def main():
     
     # Create Qt application
     app = QApplication(sys.argv)
+
+    def handle_sigint(signum, frame):
+        print("Caught Ctrl+C. Quitting application...")
+        app.quit()
+
+    signal.signal(signal.SIGINT, handle_sigint)
     
     # Create robot controller
     controller = RobotController(config)

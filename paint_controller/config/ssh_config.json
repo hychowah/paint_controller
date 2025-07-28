@@ -1,0 +1,12 @@
+{
+  "BASE": {
+    "hostname": "192.168.1.106",
+    "username": "c3-pc01",
+    "password": "312213"
+  },
+  "END_EFFECTOR": {
+    "hostname": "192.168.1.133",
+    "username": "sparyrobot",
+    "password": "C3robotics"
+  }
+}

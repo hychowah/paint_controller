@@ -329,6 +329,15 @@ Item {
                                 
                                 onClicked: teensyController.setSprayGunLED(!teensyController.spray_gun_led_on)
                             }
+
+                            ControlPanel {
+                                Layout.fillWidth: true
+                                controlName: "Lidar Power"
+                                iconText: "LED"
+                                selfContained: true 
+                                
+                                onClicked: teensyController.setLidarPower(enabledState)
+                            }
                             
                             ActionButton {
                                 Layout.fillWidth: true
@@ -475,6 +484,7 @@ Item {
         property string controlStatus: "Unknown"
         property bool enabledState: false
         property string iconText: "X"
+        property bool selfContained: false
         
         signal clicked()
         
@@ -500,8 +510,13 @@ Item {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: controlPanel.clicked()
-            
+            onClicked: {
+                if (controlPanel.selfContained) {
+                    controlPanel.enabledState = !controlPanel.enabledState
+                    controlPanel.controlStatus = controlPanel.enabledState ? "Enabled" : "Disabled"
+                }
+                controlPanel.clicked()
+            }
             // Hover effect
             onEntered: {
                 parent.color = enabledState ? "#2A3040" : "#2A2A2A"

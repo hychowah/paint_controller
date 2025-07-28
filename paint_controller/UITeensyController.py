@@ -113,6 +113,7 @@ class TeensyController(QObject):
         self.ef_yaw_param_pub = self._robot_controller.create_publisher(TeensyYaw, 'teensy/yaw_control/params/cmd', 1)
         self.ef_spray_level_enable_pub = self._robot_controller.create_publisher(Bool, 'teensy/spray_gun/leveling_enable/cmd', 1)
         self.ef_force_pub = self._robot_controller.create_publisher(Twist, 'teensy/force/cmd', 1)
+        self.ef_lidar_power_pub = self._robot_controller.create_publisher(Bool, 'unilidar/power', 1)
 
 
     def _setup_subscribers(self):
@@ -357,6 +358,14 @@ class TeensyController(QObject):
         self.ef_spray_led_pub.publish(msg)
         self._spray_gun_led_on = on
         self.spray_gun_led_changed.emit(on)
+
+    @Slot(bool)
+    def setLidarPower(self, on: bool):
+        """Turn the Lidar power on/off"""
+        self._robot_controller.get_logger().info(f'Lidar power {"on" if on else "off"}')
+        msg = Bool()
+        msg.data = on
+        self.ef_lidar_power_pub.publish(msg)
 
     @Slot(bool)
     def setYawEnabled(self, enabled: bool):
