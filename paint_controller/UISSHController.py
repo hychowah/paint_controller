@@ -1,4 +1,4 @@
-from PySide6.QtCore import QObject, Slot
+from PySide6.QtCore import QObject, Slot, Signal
 import os
 import json
 import paramiko
@@ -46,6 +46,9 @@ class SSHLauncher:
 
 
 class UISSHController(QObject):
+    # Signals for QML
+    configUpdated = Signal(str, str)  # Signal when config is updated
+    
     def __init__(self, robot_controller, parent=None):
         super().__init__(parent)
         self.robot_controller = robot_controller
@@ -54,6 +57,9 @@ class UISSHController(QObject):
         config_dir = os.path.join(os.getcwd(), "config")
         self.ssh_path = os.path.join(config_dir, "ssh_config.json")
         self.bash_path = os.path.join(config_dir, "bash_config.json")
+        
+        # Ensure config directory exists
+        os.makedirs(config_dir, exist_ok=True)
 
     def _load_json_file(self, path):
         try:
@@ -63,12 +69,90 @@ class UISSHController(QObject):
             print(f"[UISSHController] Failed to load JSON config from {path}: {e}")
             return {}
 
+    def _save_json_file(self, path, data):
+        try:
+            with open(path, 'w') as f:
+                json.dump(data, f, indent=4)
+            return True
+        except Exception as e:
+            print(f"[UISSHController] Failed to save JSON config to {path}: {e}")
+            return False
+
     def _load_ssh_config(self, path):
         ssh_config = self._load_json_file(path)
         return {
             name: SSHLauncher(**info)
             for name, info in ssh_config.items()
         }
+
+    @Slot(str, result=str)
+    def get_device_config(self, device_name: str):
+        """Get the current configuration for a device as JSON string"""
+        ssh_config = self._load_json_file(self.ssh_path)
+        device_config = ssh_config.get(device_name, {})
+        
+        # Return relevant fields for the UI
+        ui_config = {
+            "ip": device_config.get("hostname", ""),
+            "port": str(device_config.get("port", 22)),
+            "username": device_config.get("username", ""),
+            "key_path": device_config.get("key_path", "")
+        }
+        
+        return json.dumps(ui_config)
+
+    @Slot(str, str, str, str, str)
+    def update_device_config(self, device_name: str, ip: str, port: str, username: str, key_path: str):
+        """Update device configuration and save to JSON file"""
+        try:
+            # Load existing config
+            ssh_config = self._load_json_file(self.ssh_path)
+
+            print(f"[UISSHController] Updating config for {device_name} with IP: {ip}, Port: {port}, Username: {username}, Key Path: {key_path}")
+            
+            # Update the device config
+            if device_name not in ssh_config:
+                ssh_config[device_name] = {}
+            
+            ssh_config[device_name]["hostname"] = ip
+            ssh_config[device_name]["port"] = int(port) if port else 22
+            ssh_config[device_name]["username"] = username
+            
+            # Only set key_path if provided
+            if key_path.strip():
+                ssh_config[device_name]["key_path"] = key_path
+            elif "key_path" in ssh_config[device_name]:
+                # Remove key_path if empty string provided
+                del ssh_config[device_name]["key_path"]
+            
+            # Save updated config
+            if self._save_json_file(self.ssh_path, ssh_config):
+                print(f"[UISSHController] Updated config for {device_name}")
+                self.configUpdated.emit(device_name, "Configuration updated successfully")
+                
+                # Show success popup
+                self.robot_controller.show_popup(
+                    title="Configuration Updated",
+                    message=f"{device_name} settings have been saved successfully",
+                    popup_type="success"
+                )
+                return True
+            else:
+                self.robot_controller.show_popup(
+                    title="Configuration Error",
+                    message=f"Failed to save {device_name} settings",
+                    popup_type="error"
+                )
+                return False
+                
+        except Exception as e:
+            print(f"[UISSHController] Error updating config for {device_name}: {e}")
+            self.robot_controller.show_popup(
+                title="Configuration Error", 
+                message=f"Error updating {device_name}: {str(e)}",
+                popup_type="error"
+            )
+            return False
 
     @Slot(str, str, str)
     def handle_device_command(self, device_name: str, service_name: str, action: str):

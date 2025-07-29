@@ -428,13 +428,7 @@ class RobotController(Node, QObject):
     @Slot()
     def terminateNodes(self):
         """Terminate all ROS nodes"""
-        try:
-            home_dir = os.path.expanduser("~")
-            script_path = os.path.join(home_dir, "stop_all_nodes.bash")
-            subprocess.run(["bash", script_path])
-            self.get_logger().info('Terminated all nodes')
-        except subprocess.CalledProcessError as e:
-            self.get_logger().error(f'Error terminating nodes: {e}')
+        return
 
     @Slot(bool)
     def toggleSwitchChanged(self, checked: bool):
