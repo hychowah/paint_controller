@@ -9,6 +9,11 @@ Rectangle {
     width: parent.width
     height: parent.height
     color: "#5E5C64"
+
+    property color availableColor: "#7ED957"  // Softer green
+    property color unavailableColor: "#FF5E3A"  // Softer red
+
+    property real ledSize: 30
     
     // Function to show message popup
     function showMessage(message, type) {
@@ -407,16 +412,33 @@ Rectangle {
                         color: "#4A4A54"
                         border.color: "#6A6A74"
                         border.width: 1
-                        
+
+                        // BASE SETTINGS text on the left
                         Text {
                             text: "BASE SETTINGS"
                             font.pixelSize: 25
                             font.bold: true
                             font.weight: Font.Medium
                             color: "#ffffff"
-                            anchors.centerIn: parent
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.left: parent.left
+                            anchors.leftMargin: 30
                         }
-                        
+
+                        // LED aligned to the right
+                        Rectangle {
+                            id: ledIndicator
+                            width: ledSize
+                            height: ledSize
+                            radius: ledSize / 2 // Circular LED
+                            color: sshHandler.deviceAvailability.BASE ? availableColor : unavailableColor
+                            border.color: "#ffffff"
+                            border.width: 1
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.right: parent.right
+                            anchors.rightMargin: 30
+                        }
+
                         MouseArea {
                             anchors.fill: parent
                             onClicked: baseSettingsPopup.open()
@@ -483,16 +505,32 @@ Rectangle {
                         color: "#4A4A54"
                         border.color: "#6A6A74"
                         border.width: 1
-                        
+
+                        // Manual layouting instead of RowLayout
                         Text {
                             text: "END EFFECTOR"
                             font.pixelSize: 25
                             font.bold: true
                             font.weight: Font.Medium
                             color: "#ffffff"
-                            anchors.centerIn: parent
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.left: parent.left
+                            anchors.leftMargin: 30
                         }
-                        
+
+                        Rectangle {
+                            id: endEffectorLedIndicator
+                            width: ledSize
+                            height: ledSize
+                            radius: ledSize / 2
+                            color: sshHandler.deviceAvailability.END_EFFECTOR ? availableColor : unavailableColor
+                            border.color: "#ffffff"
+                            border.width: 1
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.right: parent.right
+                            anchors.rightMargin: 30
+                        }
+
                         MouseArea {
                             anchors.fill: parent
                             onClicked: endEffectorPopup.open()
