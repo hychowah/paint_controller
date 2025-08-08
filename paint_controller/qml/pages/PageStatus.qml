@@ -332,7 +332,7 @@ Rectangle {
                                 Label { text: "Temperature:"; font.bold: true }
                                 Label { text: teensyController.all_status.temperature.toFixed(1) + " °C" }
                                 Label { text: "Runtime:"; font.bold: true }
-                                Label { text: teensyController.all_status.voltage.toFixed(1) }
+                                Label { text: teensyController.all_status.run_time.toFixed(0) }
                                 
                                 Label { text: "Loop Time:"; font.bold: true }
                                 Label { text: teensyController.all_status.loop_time.toFixed(0) + " µs" }

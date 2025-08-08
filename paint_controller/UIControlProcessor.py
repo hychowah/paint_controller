@@ -180,6 +180,9 @@ class ControlProcessor:
         else:
             self.current_values['right_mode'] = mode
             self.current_values['right_value'] = (Fx, Fy)
+
+        # hardcode x to 0 for now
+        Fx = 0.0
         
         self.robot.teensy_controller.set_ef_force(Fx, Fy)
 
