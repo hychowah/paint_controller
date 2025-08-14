@@ -7,7 +7,7 @@ import time
 from rclpy.node import Node
 from std_msgs.msg import Bool, Float32, Int32
 from geometry_msgs.msg import Twist, Vector3
-from paint_interfaces.msg import TeensyStatus, TeensyYaw
+from paint_interfaces.msg import TeensyStatus, TeensyYaw, MoveWinchLength
 
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 
@@ -101,16 +101,19 @@ class TeensyController(QObject):
         self.ef_home_top_rail_pub = self._robot_controller.create_publisher(Bool, 'teensy/top_rail/home/cmd', 1)
         self.ef_move_arm_rail_speed_pub = self._robot_controller.create_publisher(Float32, 'teensy/arm_rail/speed/cmd', 1)
         self.ef_move_arm_rail_pos_pub = self._robot_controller.create_publisher(Int32, 'teensy/arm/extend/cmd', 1)
+        self.ef_home_arm_rail_pub = self._robot_controller.create_publisher(Bool, 'teensy/arm/home/cmd', 1)
         self.prop_left_pwm_pub = self._robot_controller.create_publisher(Int32, 'teensy/prop/left/pwm/cmd', 1)
         self.prop_right_pwm_pub = self._robot_controller.create_publisher(Int32, 'teensy/prop/right/pwm/cmd', 1)
         self.prop_left_joint_pub = self._robot_controller.create_publisher(Float32, 'teensy/prop/left/joint/cmd', 1)
         self.prop_right_joint_pub = self._robot_controller.create_publisher(Float32, 'teensy/prop/right/joint/cmd', 1)
         self.ef_spray_trigger_pub = self._robot_controller.create_publisher(Int32, 'teensy/spray_gun/trigger/cmd', 1)
         self.ef_spray_gimbal_speed_pub = self._robot_controller.create_publisher(Int32, 'teensy/spray_gun/gimbal/speed/cmd', 1)
+        self.ef_spray_gimbal_pub = self._robot_controller.create_publisher(MoveWinchLength, 'teensy/spray_gun/gimbal/angle/cmd', 1)
         self.ef_spray_led_pub = self._robot_controller.create_publisher(Bool, 'teensy/spray_gun/led/cmd', 1)
         self.ef_yaw_enable_pub = self._robot_controller.create_publisher(Bool, 'teensy/yaw_control/enable/cmd', 1)
         self.ef_yaw_angle_pub = self._robot_controller.create_publisher(Float32, 'teensy/yaw_control/angle/cmd', 1)
-        self.ef_yaw_param_pub = self._robot_controller.create_publisher(TeensyYaw, 'teensy/yaw_control/params/cmd', 1)
+        self.ef_short_param_pub = self._robot_controller.create_publisher(TeensyYaw, 'teensy/yaw_control/short_params/cmd', 1)
+        self.ef_long_param_pub = self._robot_controller.create_publisher(TeensyYaw, 'teensy/yaw_control/long_params/cmd', 1)
         self.ef_spray_level_enable_pub = self._robot_controller.create_publisher(Bool, 'teensy/spray_gun/leveling_enable/cmd', 1)
         self.ef_force_pub = self._robot_controller.create_publisher(Twist, 'teensy/force/cmd', 1)
         self.ef_lidar_power_pub = self._robot_controller.create_publisher(Bool, 'unilidar/power', 1)
@@ -296,7 +299,14 @@ class TeensyController(QObject):
         msg.data = int(dist)
         self.ef_move_arm_rail_pos_pub.publish(msg)
         self._robot_controller.show_popup("Extending Arm", f"Extending arm to {dist} mm", "info")
-    
+
+    @Slot(bool)
+    def homeArm(self, home: bool):
+        """Home the arm rail"""
+        msg = Bool()
+        msg.data = home
+        self.ef_home_arm_rail_pub.publish(msg)
+
     @Slot(int)
     def setLeftPropPWM(self, pwm: int):
         """Set the left propeller PWM"""
@@ -349,6 +359,22 @@ class TeensyController(QObject):
         self._spray_gun_leveling_enabled = enabled
         self.spray_gun_leveling_changed.emit(enabled)
 
+    @Slot(float, float)
+    def setSprayGunGimbalAngle(self, angle: float, speed: float):
+        """Set the spray gun gimbal angle and speed"""
+        self._robot_controller.get_logger().info(f'Setting spray gun gimbal angle to {angle} with speed {speed}')
+        msg = MoveWinchLength()
+        msg.length_mm = int(angle)
+        msg.speed_mm_s = int(speed)
+        self.ef_spray_gimbal_pub.publish(msg)
+
+    @Slot(float, float, float, float, float)
+    def demoAction(self, gimbal_angle: float, gimbal_speed: float, cable_length: float, cable_speed: float, force_y: float):
+        """Perform a demo action with the spray gun"""
+        self.setSprayGunGimbalAngle(gimbal_angle, gimbal_speed)
+        self._robot_controller.winch_controller.move_absolute(cable_length, cable_speed)
+        self.set_ef_force(0.0, force_y)
+
     @Slot(bool)
     def setSprayGunLED(self, on: bool):
         """Turn the spray gun LED on/off"""
@@ -382,14 +408,23 @@ class TeensyController(QObject):
         self.ef_yaw_angle_pub.publish(msg)
 
     @Slot(float, float, float)
-    def setYawParams(self, p: float, i: float, d: float):
+    def setShortParams(self, p: float, i: float, d: float):
+        """Set the yaw PID parameters """
+        msg = TeensyYaw()
+        msg.yaw_pid_p = p
+        msg.yaw_pid_i = i
+        msg.yaw_pid_d = d
+        self.ef_short_param_pub.publish(msg)
+
+    @Slot(float, float, float)
+    def setLongParams(self, p: float, i: float, d: float):
         """Set the yaw PID parameters"""
         msg = TeensyYaw()
         msg.yaw_pid_p = p
         msg.yaw_pid_i = i
         msg.yaw_pid_d = d
-        self.ef_yaw_param_pub.publish(msg)
-    
+        self.ef_long_param_pub.publish(msg)
+
     def _set_yaw_control(self, enabled: bool, target: float, p: float, i: float, d: float, pwm: int):
         """Internal method to send yaw control message"""
         msg = TeensyYaw()

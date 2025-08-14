@@ -1,0 +1,484 @@
+import QtQuick 2.15
+import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
+import "../components"
+
+Item {
+    id: commandTab
+
+    // Command definitions with their parameters
+    property var commandDefinitions: {
+        "Move to Position": {
+            description: "Move robot to specific coordinates",
+            parameters: [
+                { name: "X Position", type: "number", placeholder: "0.0", unit: "m" },
+                { name: "Y Position", type: "number", placeholder: "0.0", unit: "m" },
+                { name: "Z Position", type: "number", placeholder: "0.0", unit: "m" },
+                { name: "Speed", type: "number", placeholder: "1.0", unit: "m/s" }
+            ]
+        },
+        "Set Spray Gun Angle": {
+            description: "Configure spray gun angle",
+            parameters: [
+                { name: "Angle", type: "number", placeholder: "0.0", unit: "degrees" },
+                { name: "Speed", type: "number", placeholder: "1.0", unit: "degrees/s" }
+            ]
+        },
+        "Demo": {
+            description: "Run demo action",
+            parameters: [
+                { name: "Gimbal Angle", type: "number", placeholder: "0.0", unit: "degrees" },
+                { name: "Gimbal Speed", type: "number", placeholder: "1.0", unit: "degrees/s" },
+                { name: "Cable Length", type: "number", placeholder: "1.0", unit: "m" },
+                { name: "Cable Speed", type: "number", placeholder: "0.5", unit: "m/s" },
+                { name: "Force Y", type: "number", placeholder: "0.0", unit: "N" }
+            ]
+        },
+        "Winch Control": {
+            description: "Control winch movement",
+            parameters: [
+                { name: "Direction", type: "dropdown", options: ["Up", "Down", "Stop"], placeholder: "Select direction" },
+                { name: "Speed", type: "number", placeholder: "0.5", unit: "m/s" },
+                { name: "Distance", type: "number", placeholder: "1.0", unit: "m" }
+            ]
+        },
+        "Extend Arm": {
+            description: "Extend the robotic arm",
+            parameters: [
+                { name: "Length", type: "number", placeholder: "1.0", unit: "mm" }
+            ]
+        }
+    }
+
+    property string selectedCommand: ""
+    property var currentParameters: []
+    property var parameterValues: ({})
+
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: 20
+        
+        // Header
+        Item {
+            Layout.fillWidth: true
+            height: 32
+            
+            Text {
+                text: "Command Interface"
+                color: "#FFFFFF"
+                font.family: "Helvetica"
+                font.pixelSize: 18
+                font.bold: true
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            
+            Rectangle {
+                height: 1
+                width: parent.width - 180
+                color: "#333333"
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+            }
+        }
+        
+        // Command selection and parameters
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            color: "#252A36"
+            border.color: "#3A5A8C"
+            border.width: 1
+            radius: 10
+            
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 20
+                spacing: 20
+                
+                // Command Selection Section
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+                    
+                    Text {
+                        text: "Select Command"
+                        color: "#FFFFFF"
+                        font.pixelSize: 16
+                        font.bold: true
+                    }
+                    
+                    // Command Dropdown
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 50
+                        color: commandDropdown.activeFocus ? "#2A3040" : "#1A1A1A"
+                        border.color: commandDropdown.activeFocus ? "#3A5A8C" : "#333333"
+                        border.width: 1
+                        radius: 8
+                        
+                        ComboBox {
+                            id: commandDropdown
+                            anchors.fill: parent
+                            model: Object.keys(commandDefinitions)
+                            
+                            background: Rectangle {
+                                color: "transparent"
+                            }
+                            
+                            contentItem: Text {
+                                leftPadding: 15
+                                rightPadding: commandDropdown.indicator.width + commandDropdown.spacing
+                                text: commandDropdown.displayText || "Select a command..."
+                                font.pixelSize: 14
+                                color: commandDropdown.displayText ? "#FFFFFF" : "#999999"
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                            
+                            indicator: Text {
+                                x: commandDropdown.width - width - 15
+                                y: commandDropdown.topPadding + (commandDropdown.availableHeight - height) / 2
+                                text: "▼"
+                                font.pixelSize: 12
+                                color: "#CCCCCC"
+                            }
+                            
+                            popup: Popup {
+                                y: commandDropdown.height - 1
+                                width: commandDropdown.width
+                                implicitHeight: contentItem.implicitHeight
+                                padding: 1
+                                
+                                contentItem: ListView {
+                                    clip: true
+                                    implicitHeight: contentHeight
+                                    model: commandDropdown.popup.visible ? commandDropdown.delegateModel : null
+                                    currentIndex: commandDropdown.highlightedIndex
+                                    
+                                    ScrollIndicator.vertical: ScrollIndicator { }
+                                }
+                                
+                                background: Rectangle {
+                                    color: "#1A1A1A"
+                                    border.color: "#3A5A8C"
+                                    border.width: 1
+                                    radius: 8
+                                }
+                            }
+                            
+                            delegate: ItemDelegate {
+                                width: commandDropdown.width
+                                height: 40
+                                
+                                contentItem: Text {
+                                    text: modelData
+                                    color: "#FFFFFF"
+                                    font.pixelSize: 14
+                                    verticalAlignment: Text.AlignVCenter
+                                    leftPadding: 15
+                                }
+                                
+                                background: Rectangle {
+                                    color: parent.hovered ? "#2A3040" : "transparent"
+                                }
+                            }
+                            
+                            onCurrentTextChanged: {
+                                selectedCommand = currentText
+                                currentParameters = commandDefinitions[selectedCommand]?.parameters || []
+                                parameterValues = {}
+                                commandDescription.text = commandDefinitions[selectedCommand]?.description || ""
+                            }
+                        }
+                    }
+                    
+                    // Command Description
+                    Text {
+                        id: commandDescription
+                        Layout.fillWidth: true
+                        text: selectedCommand ? commandDefinitions[selectedCommand].description : "Select a command to see its description"
+                        color: "#CCCCCC"
+                        font.pixelSize: 13
+                        wrapMode: Text.WordWrap
+                    }
+                }
+                
+                // Parameters Section
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    spacing: 15
+                    visible: currentParameters.length > 0
+                    
+                    Text {
+                        text: "Parameters"
+                        color: "#FFFFFF"
+                        font.pixelSize: 16
+                        font.bold: true
+                    }
+                    
+                    // Scrollable parameter inputs
+                    ScrollView {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.minimumHeight: 100
+                        clip: true
+                        
+                        ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                        
+                        ColumnLayout {
+                            width: parent.width
+                            spacing: 15
+                            
+                            // Dynamic parameter inputs
+                            Repeater {
+                                model: currentParameters
+                                
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 5
+                                    
+                                    Text {
+                                        text: modelData.name + (modelData.unit ? " (" + modelData.unit + ")" : "")
+                                        color: "#FFFFFF"
+                                        font.pixelSize: 14
+                                    }
+                                    
+                                    // Number input
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        height: 40
+                                        color: "#1A1A1A"
+                                        border.color: "#333333"
+                                        border.width: 1
+                                        radius: 6
+                                        visible: modelData.type === "number"
+                                        
+                                        TextInput {
+                                            id: numberInput
+                                            anchors.fill: parent
+                                            anchors.margins: 10
+                                            text: ""
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 14
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            validator: DoubleValidator { bottom: -999999; top: 999999; decimals: 3 }
+                                            
+                                            onTextChanged: {
+                                                parameterValues[modelData.name] = text
+                                            }
+                                            
+                                            Rectangle {
+                                                anchors.fill: parent
+                                                color: "transparent"
+                                                border.color: parent.activeFocus ? "#3A5A8C" : "transparent"
+                                                border.width: 1
+                                                radius: 6
+                                            }
+                                        }
+
+                                        // Placeholder text
+                                        Text {
+                                            anchors.fill: numberInput
+                                            anchors.margins: 10
+                                            text: modelData.placeholder || ""
+                                            color: "#666666"
+                                            font.pixelSize: 14
+                                            verticalAlignment: Text.AlignVCenter
+                                            visible: numberInput.text === "" && !numberInput.activeFocus
+                                        }
+                                    }
+                                    
+                                    // Dropdown input
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        height: 40
+                                        color: "#1A1A1A"
+                                        border.color: "#333333"
+                                        border.width: 1
+                                        radius: 6
+                                        visible: modelData.type === "dropdown"
+                                        
+                                        ComboBox {
+                                            id: paramDropdown
+                                            anchors.fill: parent
+                                            model: modelData.options || []
+                                            
+                                            background: Rectangle {
+                                                color: "transparent"
+                                                border.color: paramDropdown.activeFocus ? "#3A5A8C" : "transparent"
+                                                border.width: 1
+                                                radius: 6
+                                            }
+                                            
+                                            contentItem: Text {
+                                                leftPadding: 10
+                                                rightPadding: paramDropdown.indicator.width + paramDropdown.spacing
+                                                text: paramDropdown.displayText || modelData.placeholder
+                                                font.pixelSize: 14
+                                                color: paramDropdown.displayText ? "#FFFFFF" : "#999999"
+                                                verticalAlignment: Text.AlignVCenter
+                                            }
+                                            
+                                            indicator: Text {
+                                                x: paramDropdown.width - width - 10
+                                                y: paramDropdown.topPadding + (paramDropdown.availableHeight - height) / 2
+                                                text: "▼"
+                                                font.pixelSize: 10
+                                                color: "#CCCCCC"
+                                            }
+                                            
+                                            popup: Popup {
+                                                y: paramDropdown.height - 1
+                                                width: paramDropdown.width
+                                                implicitHeight: contentItem.implicitHeight
+                                                padding: 1
+                                                
+                                                contentItem: ListView {
+                                                    clip: true
+                                                    implicitHeight: contentHeight
+                                                    model: paramDropdown.popup.visible ? paramDropdown.delegateModel : null
+                                                    currentIndex: paramDropdown.highlightedIndex
+                                                }
+                                                
+                                                background: Rectangle {
+                                                    color: "#1A1A1A"
+                                                    border.color: "#3A5A8C"
+                                                    border.width: 1
+                                                    radius: 6
+                                                }
+                                            }
+                                            
+                                            delegate: ItemDelegate {
+                                                width: paramDropdown.width
+                                                height: 35
+                                                
+                                                contentItem: Text {
+                                                    text: modelData
+                                                    color: "#FFFFFF"
+                                                    font.pixelSize: 14
+                                                    verticalAlignment: Text.AlignVCenter
+                                                    leftPadding: 10
+                                                }
+                                                
+                                                background: Rectangle {
+                                                    color: parent.hovered ? "#2A3040" : "transparent"
+                                                }
+                                            }
+                                            
+                                            onCurrentTextChanged: {
+                                                parameterValues[modelData.name] = currentText
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Bottom spacer to ensure last parameter isn't cut off
+                            Item { 
+                                Layout.fillWidth: true
+                                height: 10
+                            }
+                        }
+                    }
+                }
+                
+                // Send Button Section
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 10
+                    
+                    Item {
+                        Layout.fillWidth: true
+                    }
+                    
+                    Rectangle {
+                        id: sendButton
+                        width: 120
+                        height: 45
+                        radius: 8
+                        color: sendButtonArea.containsMouse ? "#4CAF50" : (selectedCommand ? "#3A8F3A" : "#444444")
+                        border.color: selectedCommand ? "#4CAF50" : "#666666"
+                        border.width: 1
+                        enabled: selectedCommand !== ""
+                        
+                        Behavior on color {
+                            ColorAnimation { duration: 200 }
+                        }
+                        
+                        MouseArea {
+                            id: sendButtonArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: parent.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            onClicked: {
+                                if (parent.enabled) {
+                                    sendCommand()
+                                }
+                            }
+                        }
+                        
+                        RowLayout {
+                            anchors.centerIn: parent
+                            spacing: 8
+                            
+                            Text {
+                                text: "▶"
+                                color: sendButton.enabled ? "#FFFFFF" : "#999999"
+                                font.pixelSize: 12
+                            }
+                            
+                            Text {
+                                text: "Send"
+                                color: sendButton.enabled ? "#FFFFFF" : "#999999"
+                                font.pixelSize: 14
+                                font.bold: true
+                            }
+                        }
+                    }
+                }
+                
+                // Spacer
+                Item {
+                    Layout.fillHeight: true
+                }
+            }
+        }
+    }
+    
+    // Function to send command
+    function sendCommand() {
+        if (!selectedCommand) return
+        
+        console.log("Sending command:", selectedCommand)
+        console.log("Parameters:", JSON.stringify(parameterValues))
+        
+        switch(selectedCommand) {
+            case "Move to Position":
+                // movementController.moveToPosition(parameterValues["X Position"], parameterValues["Y Position"], parameterValues["Z Position"], parameterValues["Speed"])
+                break
+            case "Set Spray Gun Angle":
+                // sprayController.setParameters(parameterValues["Pressure"], parameterValues["Flow Rate"], parameterValues["Pattern Width"])
+                teensyController.setSprayGunGimbalAngle(parameterValues["Angle"], parameterValues["Speed"])
+                break
+            case "Demo":
+                teensyController.demoAction(parameterValues["Gimbal Angle"], parameterValues["Gimbal Speed"], parameterValues["Cable Length"], parameterValues["Cable Speed"], parameterValues["Force Y"])
+                break
+            case "Extend Arm":
+                teensyController.extendArm(parameterValues["Length"])
+                break
+
+            default:
+                console.log("Unknown command:", selectedCommand)
+        }
+        
+        // Show visual feedback
+        showCommandFeedback()
+    }
+    
+    // Visual feedback function
+    function showCommandFeedback() {
+        // You could add a temporary overlay or notification here
+        console.log("Command sent successfully!")
+    }
+}

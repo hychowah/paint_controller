@@ -8,20 +8,104 @@ import "../components"
 Item {
     id: pidTuningPage
     
-    property real currentP: 0.0
-    property real currentI: 0.0
-    property real currentD: 0.0
-    property real currentTarget: 0.0
-    property int pwmValue: 1000
-    property bool controlEnabled: false
-    
     property int timeWindow: 30000
     property var startTime: new Date().getTime()
     property real yAxisMin: -180
     property real yAxisMax: 180
     
-    // Parameter selection
-    property string selectedParameter: "yaw"
+    // Parameter set definitions with their parameters
+    property var parameterSetDefinitions: {
+        "Short Yaw PID": {
+            description: "Tune yaw axis PID parameters",
+            chartSeries: "yaw",
+            currentValueGetter: () => teensyController.all_status.imu_yaw,
+            targetValueGetter: () => teensyController.all_status.yaw_command,
+            parameters: [
+                { 
+                    name: "P Value", 
+                    type: "number", 
+                    currentGetter: () => teensyController.all_status.yaw_pid_p,
+                    unit: "",
+                    stepPercent: 5 
+                },
+                { 
+                    name: "I Value", 
+                    type: "number", 
+                    currentGetter: () => teensyController.all_status.yaw_pid_i,
+                    unit: "",
+                    stepPercent: 5 
+                },
+                { 
+                    name: "D Value", 
+                    type: "number", 
+                    currentGetter: () => teensyController.all_status.yaw_pid_d,
+                    unit: "",
+                    stepPercent: 5 
+                },
+                { 
+                    name: "Target", 
+                    type: "number", 
+                    currentGetter: () => teensyController.all_status.yaw_command,
+                    unit: "degrees",
+                    stepPercent: 10 
+                }
+            ],
+            sendFunction: (params) => {
+                teensyController.setShortParams(
+                    params["P Value"] !== undefined ? params["P Value"] : teensyController.all_status.yaw_pid_p,
+                    params["I Value"] !== undefined ? params["I Value"] : teensyController.all_status.yaw_pid_i,
+                    params["D Value"] !== undefined ? params["D Value"] : teensyController.all_status.yaw_pid_d
+                )
+            }
+        },
+        "Long Yaw PID": {
+            description: "Tune long yaw axis PID parameters",
+            chartSeries: "yaw",
+            currentValueGetter: () => teensyController.all_status.imu_yaw,
+            targetValueGetter: () => teensyController.all_status.yaw_command,
+            parameters: [
+                { 
+                    name: "P Value", 
+                    type: "number", 
+                    currentGetter: () => teensyController.all_status.yaw_pid_p,
+                    unit: "",
+                    stepPercent: 5 
+                },
+                { 
+                    name: "I Value", 
+                    type: "number", 
+                    currentGetter: () => teensyController.all_status.yaw_pid_i,
+                    unit: "",
+                    stepPercent: 5 
+                },
+                { 
+                    name: "D Value", 
+                    type: "number", 
+                    currentGetter: () => teensyController.all_status.yaw_pid_d,
+                    unit: "",
+                    stepPercent: 5 
+                },
+                { 
+                    name: "Target", 
+                    type: "number", 
+                    currentGetter: () => teensyController.all_status.yaw_command,
+                    unit: "degrees",
+                    stepPercent: 10 
+                }
+            ],
+            sendFunction: (params) => {
+                teensyController.setLongParams(
+                    params["P Value"] !== undefined ? params["P Value"] : teensyController.all_status.yaw_pid_p,
+                    params["I Value"] !== undefined ? params["I Value"] : teensyController.all_status.yaw_pid_i,
+                    params["D Value"] !== undefined ? params["D Value"] : teensyController.all_status.yaw_pid_d
+                )
+            }
+        }
+    }
+
+    property string selectedParameterSet: "Short Yaw PID"
+    property var currentParameters: []
+    property var parameterValues: ({})
 
     Timer {
         id: updateTimer
@@ -44,6 +128,13 @@ Item {
             
             axisX.min = currentTime - startTime - timeWindow
             axisX.max = currentTime - startTime
+            
+            // Update Y axis based on current values
+            if (selectedParameterSet && parameterSetDefinitions[selectedParameterSet]) {
+                let targetValue = parameterSetDefinitions[selectedParameterSet].targetValueGetter()
+                axisY.min = targetValue - 10
+                axisY.max = targetValue + 10
+            }
         }
     }
 
@@ -72,8 +163,8 @@ Item {
             ValueAxis {
                 id: axisY
                 titleText: "Degrees"
-                min: getCommandValue() - 5
-                max: getCommandValue() + 5
+                min: -10
+                max: 10
                 tickCount: 7
                 titleVisible: true
             }
@@ -84,7 +175,7 @@ Item {
                 axisX: axisX
                 axisY: axisY
                 color: "red"
-                visible: selectedParameter === "pitch"
+                visible: getChartSeries() === "pitch"
             }
 
             LineSeries {
@@ -93,7 +184,7 @@ Item {
                 axisX: axisX
                 axisY: axisY
                 color: "green"
-                visible: selectedParameter === "roll"
+                visible: getChartSeries() === "roll"
             }
 
             LineSeries {
@@ -102,358 +193,330 @@ Item {
                 axisX: axisX
                 axisY: axisY
                 color: "blue"
-                visible: selectedParameter === "yaw"
+                visible: getChartSeries() === "yaw"
             }
         }
 
-        // PID Controls Area with Parameter Selection
+        // Tuning Controls Area
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: parent.height * 0.35
-            color: "#2a2a2a"
+            Layout.preferredHeight: parent.height * 0.4
+            color: "#252A36"
+            border.color: "#3A5A8C"
+            border.width: 1
+            radius: 10
 
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: 15
-                spacing: 15
+                anchors.margins: 20
+                spacing: 20
 
-                // PID Controls (Left Side) - Make it scrollable
-                Rectangle {
+                // Parameter Controls (Left Side - 3/4 of the space)
+                ColumnLayout {
                     Layout.fillHeight: true
-                    Layout.fillWidth: true
-                    color: "transparent"
+                    Layout.preferredWidth: parent.width * 0.75
+                    spacing: 15
 
-                    ScrollView {
-                        anchors.fill: parent
-                        contentWidth: availableWidth
-                        clip: true
-
-                        GridLayout {
-                            width: parent.parent.width
-                            columns: 5
-                            rowSpacing: 12
-                            columnSpacing: 8
-
-                        // Header showing selected parameter
-                        Label {
-                            Layout.columnSpan: 5
-                            Layout.alignment: Qt.AlignHCenter
-                            text: "Tuning " + selectedParameter.toUpperCase() + " Parameters"
+                    // Header
+                    RowLayout {
+                        Layout.fillWidth: true
+                        
+                        Text {
+                            text: "Tuning Parameters"
+                            color: "#FFFFFF"
+                            font.family: "Helvetica"
+                            font.pixelSize: 18
                             font.bold: true
-                            font.pointSize: 14
+                        }
+                        
+                        Item { Layout.fillWidth: true }
+                        
+                        Text {
+                            text: selectedParameterSet
                             color: "#4CAF50"
-                        }
-
-                        // P Value Row
-                        Label {
-                            text: "P Value"
+                            font.pixelSize: 16
                             font.bold: true
-                            color: "white"
                         }
-                        Button {
-                            text: "-5%"
-                            onClicked: {
-                                let currentP = getCurrentP()
-                                pInput.text = (currentP * 0.95).toFixed(6)
-                            }
-                        }
-                        TextField {
-                            id: pInput
-                            Layout.preferredWidth: 100
-                            placeholderText: getCurrentP().toString()
-                            validator: DoubleValidator {}
-                            background: Rectangle {
-                                color: "#ffffff"
-                                radius: 5
-                            }
-                        }
-                        Button {
-                            text: "+5%"
-                            onClicked: {
-                                let currentP = getCurrentP()
-                                pInput.text = (currentP * 1.05).toFixed(6)
-                            }
-                        }
-                        Label {
-                            text: "Current P: " + getCurrentP()
-                            color: "white"
-                        }
+                    }
 
-                        // I Value Row
-                        Label {
-                            text: "I Value"
-                            font.bold: true
-                            color: "white"
-                        }
-                        Button {
-                            text: "-5%"
-                            onClicked: {
-                                let currentI = getCurrentI()
-                                iInput.text = (currentI * 0.95).toFixed(6)
-                            }
-                        }
-                        TextField {
-                            id: iInput
-                            Layout.preferredWidth: 100
-                            placeholderText: getCurrentI().toString()
-                            validator: DoubleValidator {}
-                            background: Rectangle {
-                                color: "#ffffff"
-                                radius: 5
-                            }
-                        }
-                        Button {
-                            text: "+5%"
-                            onClicked: {
-                                let currentI = getCurrentI()
-                                iInput.text = (currentI * 1.05).toFixed(6)
-                            }
-                        }
-                        Label {
-                            text: "Current I: " + getCurrentI()
-                            color: "white"
-                        }
+                    Text {
+                        Layout.fillWidth: true
+                        text: parameterSetDefinitions[selectedParameterSet]?.description || ""
+                        color: "#CCCCCC"
+                        font.pixelSize: 13
+                        wrapMode: Text.WordWrap
+                    }
 
-                        // D Value Row
-                        Label {
-                            text: "D Value"
-                            font.bold: true
-                            color: "white"
-                        }
-                        Button {
-                            text: "-5%"
-                            onClicked: {
-                                let currentD = getCurrentD()
-                                dInput.text = (currentD * 0.95).toFixed(6)
-                            }
-                        }
-                        TextField {
-                            id: dInput
-                            Layout.preferredWidth: 100
-                            placeholderText: getCurrentD().toString()
-                            validator: DoubleValidator {}
-                            background: Rectangle {
-                                color: "#ffffff"
-                                radius: 5
-                            }
-                        }
-                        Button {
-                            text: "+5%"
-                            onClicked: {
-                                let currentD = getCurrentD()
-                                dInput.text = (currentD * 1.05).toFixed(6)
-                            }
-                        }
-                        Label {
-                            text: "Current D: " + getCurrentD()
-                            color: "white"
-                        }
-
-                        // Target Value Row
-                        Label {
-                            text: "Target"
-                            font.bold: true
-                            color: "white"
-                        }
-                        Button {
-                            text: "-10%"
-                            onClicked: {
-                                let currentTarget = getCommandValue()
-                                targetInput.text = (currentTarget * 0.9).toFixed(6)
-                            }
-                        }
-                        TextField {
-                            id: targetInput
-                            Layout.preferredWidth: 100
-                            placeholderText: getCommandValue().toString()
-                            validator: DoubleValidator {}
-                            background: Rectangle {
-                                color: "#ffffff"
-                                radius: 5
-                            }
-                        }
-                        Button {
-                            text: "+10%"
-                            onClicked: {
-                                let currentTarget = getCommandValue()
-                                targetInput.text = (currentTarget * 1.1).toFixed(6)
-                            }
-                        }
-                        Label {
-                            text: "Target: " + getCommandValue() + " Current: " + getCurrentValue()
-                            color: "white"
-                        }
-
-                            // Send Button (spanning all columns)
-                            Rectangle {
-                                Layout.columnSpan: 5
-                                Layout.alignment: Qt.AlignHCenter
-                                Layout.topMargin: 10
-                                Layout.bottomMargin: 10
-                                width: 120
-                                height: 40
-                                color: sendMouseArea.pressed ? "#2196F3" : "#1976D2"
-                                radius: 5
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "SEND"
-                                    color: "white"
-                                    font.bold: true
-                                }
-
-                                MouseArea {
-                                    id: sendMouseArea
-                                    anchors.fill: parent
-                                    onClicked: {
-                                        let p = pInput.text !== "" ? parseFloat(pInput.text) : getCurrentP()
-                                        let i = iInput.text !== "" ? parseFloat(iInput.text) : getCurrentI()
-                                        let d = dInput.text !== "" ? parseFloat(dInput.text) : getCurrentD()
-                                        let target = targetInput.text !== "" ? parseFloat(targetInput.text) : getCommandValue()
+                    // Parameters Section
+                    ScrollView {
+                        id: scrollView
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        clip: true
+                        
+                        ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                        
+                        ColumnLayout {
+                            width: scrollView.width
+                            spacing: 15
+                            
+                            // Dynamic parameter inputs
+                            Repeater {
+                                model: currentParameters
+                                
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 8
+                                    
+                                    RowLayout {
+                                        Layout.fillWidth: true
                                         
-                                        if (selectedParameter === "yaw") {
-                                            teensyController.setYawParams(p, i, d)
-                                        } else if (selectedParameter === "pitch") {
-                                            teensyController.setPitchParams(p, i, d)
+                                        Text {
+                                            text: modelData.name + (modelData.unit ? " (" + modelData.unit + ")" : "")
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 14
+                                            font.bold: true
+                                            Layout.preferredWidth: 140
+                                        }
+                                        
+                                        Text {
+                                            text: "Current: " + (modelData.currentGetter ? modelData.currentGetter().toFixed(6) : "N/A")
+                                            color: "#CCCCCC"
+                                            font.pixelSize: 12
+                                            Layout.fillWidth: true
+                                        }
+                                    }
+                                    
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 8
+                                        
+                                        // Decrease button
+                                        Rectangle {
+                                            width: 80
+                                            height: 40
+                                            color: decreaseArea.containsMouse ? "#d32f2f" : "#f44336"
+                                            radius: 4
+                                            
+                                            MouseArea {
+                                                id: decreaseArea
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                onClicked: {
+                                                    let currentVal = modelData.currentGetter ? modelData.currentGetter() : 0
+                                                    let stepPercent = modelData.stepPercent || 5
+                                                    let newVal = currentVal * (1 - stepPercent / 100)
+                                                    parameterInput.text = newVal.toFixed(6)
+                                                    parameterValues[modelData.name] = newVal
+                                                }
+                                            }
+                                            
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: "-" + (modelData.stepPercent || 5) + "%"
+                                                color: "white"
+                                                font.pixelSize: 12
+                                                font.bold: true
+                                            }
+                                        }
+                                        
+                                        // Input field
+                                        Rectangle {
+                                            Layout.fillWidth: true
+                                            height: 40
+                                            color: "#1A1A1A"
+                                            border.color: parameterInput.activeFocus ? "#3A5A8C" : "#333333"
+                                            border.width: 1
+                                            radius: 4
+                                            
+                                            TextInput {
+                                                id: parameterInput
+                                                anchors.fill: parent
+                                                anchors.margins: 10
+                                                text: ""
+                                                color: "#FFFFFF"
+                                                font.pixelSize: 14
+                                                verticalAlignment: TextInput.AlignVCenter
+                                                validator: DoubleValidator { bottom: -999999; top: 999999; decimals: 6 }
+                                                
+                                                onTextChanged: {
+                                                    if (text !== "") {
+                                                        parameterValues[modelData.name] = parseFloat(text)
+                                                    } else {
+                                                        delete parameterValues[modelData.name]
+                                                    }
+                                                }
+                                            }
+                                            
+                                            Text {
+                                                anchors.fill: parameterInput
+                                                anchors.margins: 10
+                                                text: modelData.currentGetter ? modelData.currentGetter().toFixed(6) : "0.000000"
+                                                color: "#666666"
+                                                font.pixelSize: 14
+                                                verticalAlignment: Text.AlignVCenter
+                                                visible: parameterInput.text === "" && !parameterInput.activeFocus
+                                            }
+                                        }
+                                        
+                                        // Increase button
+                                        Rectangle {
+                                            width: 80
+                                            height: 40
+                                            color: increaseArea.containsMouse ? "#2e7d32" : "#4caf50"
+                                            radius: 4
+                                            
+                                            MouseArea {
+                                                id: increaseArea
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                onClicked: {
+                                                    let currentVal = modelData.currentGetter ? modelData.currentGetter() : 0
+                                                    let stepPercent = modelData.stepPercent || 5
+                                                    let newVal = currentVal * (1 + stepPercent / 100)
+                                                    parameterInput.text = newVal.toFixed(6)
+                                                    parameterValues[modelData.name] = newVal
+                                                }
+                                            }
+                                            
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: "+" + (modelData.stepPercent || 5) + "%"
+                                                color: "white"
+                                                font.pixelSize: 12
+                                                font.bold: true
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
                     }
+
+                    // Send Button
+                    Rectangle {
+                        id: sendButton
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.topMargin: 10
+                        width: 140
+                        height: 50
+                        radius: 8
+                        color: sendButtonArea.containsMouse ? "#4CAF50" : "#3A8F3A"
+                        border.color: "#4CAF50"
+                        border.width: 1
+                        
+                        MouseArea {
+                            id: sendButtonArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: sendParameters()
+                        }
+                        
+                        RowLayout {
+                            anchors.centerIn: parent
+                            spacing: 8
+                            
+                            Text {
+                                text: "▶"
+                                color: "#FFFFFF"
+                                font.pixelSize: 14
+                            }
+                            
+                            Text {
+                                text: "SEND"
+                                color: "#FFFFFF"
+                                font.pixelSize: 16
+                                font.bold: true
+                            }
+                        }
+                    }
                 }
 
-                // Parameter Selection (Right Side)
+                // Parameter Set Selection (Right Side - 1/4 of the space)
                 Rectangle {
-                    Layout.preferredWidth: 180
+                    Layout.preferredWidth: parent.width * 0.25
                     Layout.fillHeight: true
-                    color: "#3a3a3a"
-                    radius: 10
+                    color: "#1A1A1A"
+                    border.color: "#333333"
+                    border.width: 1
+                    radius: 8
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 8
+                        anchors.margins: 15
+                        spacing: 10
 
-                        Label {
-                            text: "Select Parameter"
+                        Text {
+                            text: "Parameter Sets"
                             font.bold: true
-                            font.pointSize: 11
+                            font.pointSize: 12
                             color: "white"
                             Layout.alignment: Qt.AlignHCenter
                         }
 
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 1
+                            color: "#333333"
+                        }
+
+                        // Scrollable parameter set list
                         ScrollView {
-                            id: scrollView
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             clip: true
+                            
+                            ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
-                            ColumnLayout {
-                                width: scrollView.availableWidth
-                                spacing: 6
+                            ListView {
+                                anchors.fill: parent
+                                model: Object.keys(parameterSetDefinitions)
+                                spacing: 8
 
-                                // Yaw Parameter Button
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    height: 50
-                                    color: selectedParameter === "yaw" ? "#4CAF50" : "#555555"
-                                    radius: 6
-                                    border.color: selectedParameter === "yaw" ? "#66BB6A" : "#777777"
+                                delegate: Rectangle {
+                                    width: ListView.view.width
+                                    height: 60
+                                    color: selectedParameterSet === modelData ? "#3A5A8C" : (paramSetMouseArea.containsMouse ? "#2A3040" : "transparent")
+                                    border.color: selectedParameterSet === modelData ? "#4CAF50" : "#333333"
                                     border.width: 1
+                                    radius: 6
 
                                     MouseArea {
+                                        id: paramSetMouseArea
                                         anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
                                         onClicked: {
-                                            selectedParameter = "yaw"
-                                            clearInputs()
+                                            selectedParameterSet = modelData
+                                            currentParameters = parameterSetDefinitions[selectedParameterSet]?.parameters || []
+                                            parameterValues = {}
                                         }
                                     }
 
                                     ColumnLayout {
-                                        anchors.centerIn: parent
-                                        spacing: 2
-
-                                        Text {
-                                            text: "YAW"
-                                            color: "white"
-                                            font.bold: true
-                                            font.pointSize: 11
-                                            Layout.alignment: Qt.AlignHCenter
-                                        }
-                                        Text {
-                                            text: "Current: " + teensyController.all_status.imu_yaw.toFixed(1) + "°"
-                                            color: "#CCCCCC"
-                                            font.pointSize: 9
-                                            Layout.alignment: Qt.AlignHCenter
-                                        }
-                                    }
-                                }
-
-                                // Pitch Parameter Button
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    height: 50
-                                    color: selectedParameter === "pitch" ? "#4CAF50" : "#555555"
-                                    radius: 6
-                                    border.color: selectedParameter === "pitch" ? "#66BB6A" : "#777777"
-                                    border.width: 1
-
-                                    MouseArea {
                                         anchors.fill: parent
-                                        onClicked: {
-                                            selectedParameter = "pitch"
-                                            clearInputs()
-                                        }
-                                    }
-
-                                    ColumnLayout {
-                                        anchors.centerIn: parent
-                                        spacing: 2
+                                        anchors.margins: 10
+                                        spacing: 4
 
                                         Text {
-                                            text: "PITCH"
-                                            color: "white"
-                                            font.bold: true
+                                            text: modelData
+                                            color: selectedParameterSet === modelData ? "#FFFFFF" : "#CCCCCC"
+                                            font.bold: selectedParameterSet === modelData
                                             font.pointSize: 11
-                                            Layout.alignment: Qt.AlignHCenter
+                                            Layout.fillWidth: true
                                         }
+
                                         Text {
-                                            text: "Current: " + teensyController.all_status.imu_pitch.toFixed(1) + "°"
-                                            color: "#CCCCCC"
+                                            text: parameterSetDefinitions[modelData]?.description || ""
+                                            color: "#999999"
                                             font.pointSize: 9
-                                            Layout.alignment: Qt.AlignHCenter
-                                        }
-                                    }
-                                }
-
-                                // Add more parameters here as needed
-                                // Pitch Parameter Button (example for future expansion)
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    height: 50
-                                    color: selectedParameter === "pitch" ? "#4CAF50" : "#555555"
-                                    radius: 6
-                                    border.color: selectedParameter === "pitch" ? "#66BB6A" : "#777777"
-                                    border.width: 1
-                                    opacity: 0.5  // Disabled for now
-
-                                    ColumnLayout {
-                                        anchors.centerIn: parent
-                                        spacing: 2
-
-                                        Text {
-                                            text: "PITCH"
-                                            color: "white"
-                                            font.bold: true
-                                            font.pointSize: 11
-                                            Layout.alignment: Qt.AlignHCenter
-                                        }
-                                        Text {
-                                            text: "(Coming Soon)"
-                                            color: "#888888"
-                                            font.pointSize: 8
-                                            Layout.alignment: Qt.AlignHCenter
+                                            wrapMode: Text.WordWrap
+                                            Layout.fillWidth: true
+                                            maximumLineCount: 2
+                                            elide: Text.ElideRight
                                         }
                                     }
                                 }
@@ -465,56 +528,40 @@ Item {
         }
     }
 
-    // Helper functions to get current values based on selected parameter
-    function getCurrentP() {
-        if (selectedParameter === "yaw") {
-            return teensyController.all_status.yaw_pid_p
-        } else if (selectedParameter === "pitch") {
-            return teensyController.all_status.pitch_pid_p || 0
-        }
-        return 0
-    }
-
-    function getCurrentI() {
-        if (selectedParameter === "yaw") {
-            return teensyController.all_status.yaw_pid_i
-        } else if (selectedParameter === "pitch") {
-            return teensyController.all_status.pitch_pid_i || 0
-        }
-        return 0
-    }
-
-    function getCurrentD() {
-        if (selectedParameter === "yaw") {
-            return teensyController.all_status.yaw_pid_d
-        } else if (selectedParameter === "pitch") {
-            return teensyController.all_status.pitch_pid_d || 0
-        }
-        return 0
-    }
-
-    function getCommandValue() {
-        if (selectedParameter === "yaw") {
-            return teensyController.all_status.yaw_command
-        } else if (selectedParameter === "pitch") {
-            return teensyController.all_status.pitch_command || 0
-        }
-        return 0
+    // Helper functions
+    function getChartSeries() {
+        return parameterSetDefinitions[selectedParameterSet]?.chartSeries || "yaw"
     }
 
     function getCurrentValue() {
-        if (selectedParameter === "yaw") {
-            return teensyController.all_status.imu_yaw
-        } else if (selectedParameter === "pitch") {
-            return teensyController.all_status.imu_pitch
-        }
-        return 0
+        let getter = parameterSetDefinitions[selectedParameterSet]?.currentValueGetter
+        return getter ? getter() : 0
     }
 
-    function clearInputs() {
-        pInput.text = ""
-        iInput.text = ""
-        dInput.text = ""
-        targetInput.text = ""
+    function getTargetValue() {
+        let getter = parameterSetDefinitions[selectedParameterSet]?.targetValueGetter
+        return getter ? getter() : 0
+    }
+
+    function sendParameters() {
+        if (!selectedParameterSet || !parameterSetDefinitions[selectedParameterSet]) return
+        
+        console.log("Sending parameters for:", selectedParameterSet)
+        console.log("Parameters:", JSON.stringify(parameterValues))
+        
+        let sendFunc = parameterSetDefinitions[selectedParameterSet].sendFunction
+        if (sendFunc) {
+            sendFunc(parameterValues)
+        }
+        
+        // Clear inputs after sending
+        parameterValues = {}
+    }
+
+    // Initialize with default selection
+    Component.onCompleted: {
+        selectedParameterSet = "Short Yaw PID"
+        currentParameters = parameterSetDefinitions[selectedParameterSet].parameters
+        parameterValues = {}
     }
 }

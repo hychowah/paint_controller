@@ -807,7 +807,7 @@ Item {
                                     text: "GO TO POSITION"
                                     enabled: winchController.enabled && absoluteLengthField.text.length > 0 && absoluteSpeedField.text.length > 0 // && absoluteLengthField.acceptableInput && absoluteSpeedField.acceptableInput
                                     onClicked: {
-                                        winchController.moveAbosulte(
+                                        winchController.moveAbsolute(
                                             parseInt(absoluteLengthField.text),
                                             parseInt(absoluteSpeedField.text)
                                         );

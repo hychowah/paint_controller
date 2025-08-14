@@ -156,7 +156,7 @@ class WinchController(QObject):
             print(f'Error moving winch: {e}')
             return False
         
-    def move_abosulte(self, length_mm: int, speed_mm_s: int) -> bool:
+    def move_absolute(self, length_mm: int, speed_mm_s: int) -> bool:
         """Move winch to an absolute position"""
         if not self._available:
             print("Cannot move absolute: Winch not available")
@@ -308,9 +308,9 @@ class WinchController(QObject):
         return self.move_increment(length_mm, speed_mm_s)
     
     @Slot(int, int)
-    def moveAbosulte(self, length_mm: int, speed_mm_s: int):
+    def moveAbsolute(self, length_mm: int, speed_mm_s: int):
         """Move winch to absolute position from QML"""
-        return self.move_abosulte(length_mm, speed_mm_s)
+        return self.move_absolute(length_mm, speed_mm_s)
     
     @Slot(bool)
     def setEnabled(self, enabled: bool):

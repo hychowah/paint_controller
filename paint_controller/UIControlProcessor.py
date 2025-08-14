@@ -150,8 +150,8 @@ class ControlProcessor:
         command_angle = input_state[f'{stick}_stick']['x'] * config.scale
         msg = Float32(data=command_angle)
         neg_msg = Float32(data=-command_angle)
-        self.robot.teensy_controller.prop_left_pwm_pub.publish(msg)
-        self.robot.teensy_controller.prop_left_pwm_pub.publish(neg_msg)
+        self.robot.teensy_controller.prop_left_joint_pub.publish(msg)
+        self.robot.teensy_controller.prop_right_joint_pub.publish(neg_msg)
         
         # Update current values
         if stick == 'left':
