@@ -1,7 +1,7 @@
-import QtQuick 6.7
-import QtQuick.Controls 6.7
-import QtQuick.Layouts 6.7
-import QtCharts 6.7
+import QtQuick 2.15
+import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
+import QtCharts 2.15
 import "../"
 import "../components"
 
@@ -241,7 +241,7 @@ Item {
 
                     Text {
                         Layout.fillWidth: true
-                        text: parameterSetDefinitions[selectedParameterSet]?.description || ""
+                        text: parameterSetDefinitions[selectedParameterSet] ? parameterSetDefinitions[selectedParameterSet].description : ""
                         color: "#CCCCCC"
                         font.pixelSize: 13
                         wrapMode: Text.WordWrap
@@ -491,7 +491,7 @@ Item {
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
                                             selectedParameterSet = modelData
-                                            currentParameters = parameterSetDefinitions[selectedParameterSet]?.parameters || []
+                                            currentParameters = parameterSetDefinitions[selectedParameterSet] ? parameterSetDefinitions[selectedParameterSet].parameters : []
                                             parameterValues = {}
                                         }
                                     }
@@ -510,7 +510,7 @@ Item {
                                         }
 
                                         Text {
-                                            text: parameterSetDefinitions[modelData]?.description || ""
+                                            text: parameterSetDefinitions[modelData] ? parameterSetDefinitions[modelData].description : ""
                                             color: "#999999"
                                             font.pointSize: 9
                                             wrapMode: Text.WordWrap
@@ -530,16 +530,16 @@ Item {
 
     // Helper functions
     function getChartSeries() {
-        return parameterSetDefinitions[selectedParameterSet]?.chartSeries || "yaw"
+        return parameterSetDefinitions[selectedParameterSet] ? parameterSetDefinitions[selectedParameterSet].chartSeries : "yaw"
     }
 
     function getCurrentValue() {
-        let getter = parameterSetDefinitions[selectedParameterSet]?.currentValueGetter
+        let getter = parameterSetDefinitions[selectedParameterSet] ? parameterSetDefinitions[selectedParameterSet].currentValueGetter : null
         return getter ? getter() : 0
     }
 
     function getTargetValue() {
-        let getter = parameterSetDefinitions[selectedParameterSet]?.targetValueGetter
+        let getter = parameterSetDefinitions[selectedParameterSet] ? parameterSetDefinitions[selectedParameterSet].targetValueGetter : null
         return getter ? getter() : 0
     }
 

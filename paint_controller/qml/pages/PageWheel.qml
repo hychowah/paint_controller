@@ -1,9 +1,9 @@
-import QtQuick 6.7
-import QtQuick.Controls 6.7
-import QtQuick.Layouts 6.7
-import QtCharts 6.7
-import QtMultimedia 6.7
-import Qt5Compat.GraphicalEffects
+import QtQuick 2.15
+import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
+import QtCharts 2.15
+import QtMultimedia 5.15
+import QtGraphicalEffects 1.15
 import "../"
 import "../components"
 

@@ -197,9 +197,9 @@ Item {
                             
                             onCurrentTextChanged: {
                                 selectedCommand = currentText
-                                currentParameters = commandDefinitions[selectedCommand]?.parameters || []
+                                currentParameters = commandDefinitions[selectedCommand] ? commandDefinitions[selectedCommand].parameters : []
                                 parameterValues = {}
-                                commandDescription.text = commandDefinitions[selectedCommand]?.description || ""
+                                commandDescription.text = commandDefinitions[selectedCommand] ? commandDefinitions[selectedCommand].description : ""
                             }
                         }
                     }
