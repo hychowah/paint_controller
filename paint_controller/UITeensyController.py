@@ -5,7 +5,7 @@ from typing import Dict, Optional, Any, Union
 import time
 
 from rclpy.node import Node
-from std_msgs.msg import Bool, Float32, Int32
+from std_msgs.msg import Bool, Float32, Int32, Int32MultiArray
 from geometry_msgs.msg import Twist, Vector3
 from paint_interfaces.msg import TeensyStatus, TeensyYaw, MoveWinchLength
 
@@ -117,6 +117,9 @@ class TeensyController(QObject):
         self.ef_spray_level_enable_pub = self._robot_controller.create_publisher(Bool, 'teensy/spray_gun/leveling_enable/cmd', 1)
         self.ef_force_pub = self._robot_controller.create_publisher(Twist, 'teensy/force/cmd', 1)
         self.ef_lidar_power_pub = self._robot_controller.create_publisher(Bool, 'unilidar/power', 1)
+        self.ef_tap_freq_pub = self._robot_controller.create_publisher(Int32MultiArray, 'teensy/tapper/tap_freq/cmd', 1)
+        self.ef_tap_once_pub = self._robot_controller.create_publisher(Int32, 'teensy/tapper/tap_once/cmd', 1)
+        self.ef_tap_stop_pub = self._robot_controller.create_publisher(Bool, 'teensy/tapper/stop/cmd', 1)
 
 
     def _setup_subscribers(self):
@@ -424,6 +427,30 @@ class TeensyController(QObject):
         msg.yaw_pid_i = i
         msg.yaw_pid_d = d
         self.ef_long_param_pub.publish(msg)
+
+    @Slot(float, float)
+    def startTapFreq(self, power: float, period: float):
+        """Start tapping the frequency"""
+        self._robot_controller.get_logger().info(f'Starting tap frequency with Power: {power} Period: {period}')
+        msg = Int32MultiArray()
+        msg.data = [int(power), int(period*1000)]
+        self.ef_tap_freq_pub.publish(msg)
+
+    @Slot(float)
+    def tapOnce(self, power: float):
+        """ Tap once"""
+        self._robot_controller.get_logger().info(f'Tapping once with Power: {power}')
+        msg = Int32()
+        msg.data = int(power)
+        self.ef_tap_once_pub.publish(msg)
+
+    @Slot(float)
+    def tapStop(self, power: float):
+        """ Stop tapping"""
+        self._robot_controller.get_logger().info(f'Stopping tap with Power: {power}')
+        msg = Bool()
+        msg.data = True
+        self.ef_tap_stop_pub.publish(msg)
 
     def _set_yaw_control(self, enabled: bool, target: float, p: float, i: float, d: float, pwm: int):
         """Internal method to send yaw control message"""

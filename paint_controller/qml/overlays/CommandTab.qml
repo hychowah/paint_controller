@@ -42,6 +42,19 @@ Item {
                 { name: "Distance", type: "number", placeholder: "1.0", unit: "m" }
             ]
         },
+        "Frequency Tap": {
+            description: "Start Frequency Tap",
+            parameters: [
+                { name: "Power", type: "number", placeholder: "1.0", unit: "%" },
+                { name: "Period", type: "number", placeholder: "1.0", unit: "s" }
+            ]
+        },
+        "Tap Once": {
+            description: "Tap once",
+            parameters: [
+                { name: "Power", type: "number", placeholder: "1.0", unit: "%" }
+            ]
+        },
         "Extend Arm": {
             description: "Extend the robotic arm",
             parameters: [
@@ -467,6 +480,16 @@ Item {
             case "Extend Arm":
                 teensyController.extendArm(parameterValues["Length"])
                 break
+            case "Frequency Tap":
+                teensyController.startTapFreq(parameterValues["Power"], parameterValues["Period"])
+                break
+            case "Tap Once":
+                teensyController.tapOnce(parameterValues["Power"])
+                break
+            case "Tap Stop":
+                teensyController.tapStop(1)
+                break
+            
 
             default:
                 console.log("Unknown command:", selectedCommand)
