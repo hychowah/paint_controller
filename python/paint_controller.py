@@ -2,24 +2,19 @@
 
 import sys
 import os
-import time
 import signal
 from dataclasses import dataclass
-from enum import Enum, auto
-from typing import Dict, Optional, List, Any, Callable, overload
+from enum import Enum
+from typing import Dict, Optional, List, Any, Callable
 import yaml
-import math
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float64, Bool, Float32, Int32, String, Int32, UInt8
-from sensor_msgs.msg import LaserScan
+from std_msgs.msg import UInt8
 
-from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QThread, QMetaObject
-from PySide6.QtGui import QImage, QPixmap
-from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType, QQmlProperty
+from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Property, Signal, QThread, QMetaObject
+from PySide6.QtQml import QQmlApplicationEngine, QQmlProperty
 from PySide6.QtWidgets import QApplication
-from PySide6.QtQuick import QQuickImageProvider
 
 from UIDataModel import UIDataModel
 from OverlayController import OverlayController
@@ -27,7 +22,7 @@ from UIControlProcessor import ControlProcessor
 from UISteamDeckHandler import SteamDeckHandler
 from TrajectoryHandler import TrajectoryHandler
 from WarningHandler import WarningHandler
-from BaseVideoStreamHandler import BaseVideoStreamHandler
+from VideoStreamHandler import VideoStreamHandler
 from UIWheelController import WheelController
 from UIWinchController import WinchController
 from UIWindMonitor import WindMonitor
@@ -37,11 +32,6 @@ from UIHeartbeatHandler import UIHeartbeatHandler
 from UIEmergencyButtonHandler import EmergencyButtonHandler
 from UIInputHandler import UIInputHandler
 from UISSHController import UISSHController
-
-import gi
-gi.require_version('Gst', '1.0')
-gi.require_version('GstApp', '1.0')
-from gi.repository import Gst, GstApp
 
 #############################################
 ### Configuration
@@ -75,70 +65,6 @@ class ConfigLoader:
             print(f"Error loading config: {e}")
             return RobotConfig()
         
-
-#############################################
-### Video Streaming
-#############################################
-
-class ImageProvider(QQuickImageProvider):
-    def __init__(self):
-        super().__init__(QQuickImageProvider.Image)
-        self.image = QImage(640, 480, QImage.Format_RGB888)
-
-    def requestImage(self, id, size, requestedSize):
-        return self.image
-
-class VideoStream:
-    def __init__(self, port: int):
-        Gst.init(None)
-        self.pipeline = Gst.parse_launch(
-            f"udpsrc port={port} caps=\"application/x-rtp, media=(string)video, "
-            f"clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96\" "
-            f"! rtph264depay ! avdec_h264 ! videoconvert ! video/x-raw,format=RGB ! appsink name=sink"
-        )
-        self.sink = self.pipeline.get_by_name('sink')
-        self.sink.set_property('emit-signals', True)
-        
-    def start(self):
-        self.pipeline.set_state(Gst.State.PLAYING)
-        
-    def stop(self):
-        self.pipeline.set_state(Gst.State.NULL)
-
-    def connect_new_sample_callback(self, callback: Callable):
-        self.sink.connect('new-sample', callback)
-
-class NetworkMonitor:
-    def __init__(self):
-        self.ef_ip = ""
-        self.ef_signal_strength = 0
-        self.base_ip = ""
-        self.base_signal_strength = 0
-
-    def _ef_ip_callback(self, msg: String):
-        self.ef_ip = msg.data
-    
-    def _ef_signal_strength_callback(self, msg: Int32):
-        self.ef_signal_strength = msg.data
-
-    def _base_ip_callback(self, msg: String):
-        self.base_ip = msg.data
-
-    def _base_signal_strength_callback(self, msg: Int32):
-        self.base_signal_strength = msg.data
-
-    def get_ef_ip(self) -> str:
-        return self.ef_ip
-    
-    def get_ef_signal_strength(self) -> int:
-        return self.ef_signal_strength
-    
-    def get_base_ip(self) -> str:
-        return self.base_ip
-    
-    def get_base_signal_strength(self) -> int:
-        return self.base_signal_strength
-
 
 #############################################
 ### ROS Integration
@@ -188,33 +114,23 @@ class RobotController(Node, QObject):
     frame_ready = Signal()
     emergency_overlay_changed = Signal(bool, float, float)  # visible, current_duration, target_duration
     emergency_triggered = Signal()
-    new_scan_data = Signal(list, float, float, float, float)
     status_updated = Signal()
     control_mode_changed = Signal(str)
 
     def __init__(self, config: RobotConfig):
         Node.__init__(self, 'robot_controller')
         QObject.__init__(self)
-        Gst.init(None)
         
         # Initialize components
         self.warningHandler = WarningHandler()
 
-        self.ef_image_provider = ImageProvider()
-        self.ef_pipeline = Gst.parse_launch(
-            "udpsrc port=5001 caps=\"application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96\" ! rtph264depay ! avdec_h264 ! videoconvert ! video/x-raw,format=RGB ! appsink name=sink"
-        )
-        self.ef_sink = self.ef_pipeline.get_by_name('sink')
-        self.ef_sink.set_property('emit-signals', True)
-        self.ef_sink.connect('new-sample', self.on_new_ef_sample)
-        self.ef_pipeline.set_state(Gst.State.PLAYING)
+        # Initialize unified video stream handler
+        self.video_stream_handler = VideoStreamHandler(config.video_port)
         
         self.current_status = HeartbeatStatus.IDLE
         self.config = config
-        self.video_stream = VideoStream(config.video_port)
         self.winch_controller = WinchController(self)
         self.wheel_controller = WheelController(self)
-        self.netowrk_monitor = NetworkMonitor()   
         self.overlayController = OverlayController(self)
         self.teensy_controller = TeensyController(self)
         self.wind_monitor = WindMonitor(self)    
@@ -225,7 +141,6 @@ class RobotController(Node, QObject):
         self.input_handler = UIInputHandler(self)
         self.steam_deck_handler.start()
         self.ssh_controller = UISSHController(self)
-        # self.ssh_controller.set_ui_callback(self.show_popup)
         self.setup_steam_deck_callbacks()
 
         self.ui_data_model = UIDataModel()
@@ -245,8 +160,11 @@ class RobotController(Node, QObject):
 
         self.trajectoryHandler = TrajectoryHandler(self)
 
-        # base video stream handler
-        self.base_video_stream_handler = BaseVideoStreamHandler()
+        # Connect video stream signals
+        self.video_stream_handler.endEffectorFrameReady.connect(self.frame_ready.emit)
+        
+        # Start all video streams
+        self.video_stream_handler.start_all_streams()
 
     @Slot(str, str, str, int)
     def show_popup(self, title: str, message: str, popup_type: str = "info", dismiss_delay: int = 500):
@@ -277,30 +195,6 @@ class RobotController(Node, QObject):
         else:
             self.get_logger().error('Popup not found in QML')
 
-    def on_new_ef_sample(self, sink):
-        sample = sink.emit('pull-sample')
-        buffer = sample.get_buffer()
-        caps = sample.get_caps()
-        
-        structure = caps.get_structure(0)
-        width = structure.get_value('width')
-        height = structure.get_value('height')
-        
-        _, map_info = buffer.map(Gst.MapFlags.READ)
-        
-        # Ensure the data is in the correct format (RGB)
-        data = map_info.data
-        
-        # Create QImage directly from the buffer data
-        ef_image = QImage(data, width, height, width * 3, QImage.Format_RGB888)
-        
-        self.ef_image_provider.image = ef_image.copy()  # Create a deep copy of the image
-        buffer.unmap(map_info)
-        
-        self.frame_ready.emit()
-        
-        return Gst.FlowReturn.OK
-    
     def setup_steam_deck_callbacks(self):
         ih = self.input_handler
         self.steam_deck_handler.register_button_callback('up', ih.on_up_pressed)
@@ -351,20 +245,9 @@ class RobotController(Node, QObject):
     def _timer_callback(self):
         """Update UI elements with latest data"""
 
-        # Update Steam Deck Controls
-        input_state = self.steam_deck_handler.get_current_state()
-
-        # Update Network Monitor
-        self.ui_data_model.ef_ip = self.netowrk_monitor.get_ef_ip()
-        self.ui_data_model.ef_signal_strength = self.netowrk_monitor.get_ef_signal_strength()
-        self.ui_data_model.base_ip = self.netowrk_monitor.get_base_ip()
-        self.ui_data_model.base_signal_strength = self.netowrk_monitor.get_base_signal_strength()
-
-        self.ui_data_model.display_message = self.ui_data_model.display_message
-
         # Process control inputs with current state
         input_state = self.steam_deck_handler.get_current_state()
-        self.controlProcessor.process_input(input_state)\
+        self.controlProcessor.process_input(input_state)
         
         # Check emergency button state
         self.emergency_handler.check_emergency_button(input_state.get('buttons', {}))
@@ -380,33 +263,8 @@ class RobotController(Node, QObject):
         self.heartbeat_pub.publish(msg)
         
     def _setup_subscribers(self):
-        self.create_subscription(
-            String,
-            'connection/ef/ip',
-            self.netowrk_monitor._ef_ip_callback,
-            1
-        )
-
-        self.create_subscription(
-            Int32,
-            'connection/ef/signal_strength',
-            self.netowrk_monitor._ef_signal_strength_callback,
-            1
-        )
-
-        self.create_subscription(
-            String,
-            'connection/base/ip',
-            self.netowrk_monitor._base_ip_callback,
-            1
-        )
-
-        self.create_subscription(
-            Int32,
-            'connection/base/signal_strength',
-            self.netowrk_monitor._base_signal_strength_callback,
-            1
-        )
+        # No subscribers currently needed
+        pass
 
     #############################################
     ### UI Control Methods
@@ -437,7 +295,7 @@ class RobotController(Node, QObject):
         # Add specific toggle switch handling logic here
 
     def cleanup(self):
-        self.video_stream.stop()
+        self.video_stream_handler.cleanup()
         self.emergency_handler.reset_state()
 
 #############################################
@@ -470,9 +328,9 @@ def main():
     
     # Setup QML engine
     engine = QQmlApplicationEngine()
-    engine.addImageProvider("ef_live", controller.ef_image_provider)
-    engine.addImageProvider("base_front_live", controller.base_video_stream_handler.front_image_provider)
-    engine.addImageProvider("base_rear_live", controller.base_video_stream_handler.rear_image_provider)
+    engine.addImageProvider("ef_live", controller.video_stream_handler.ef_image_provider)
+    engine.addImageProvider("base_front_live", controller.video_stream_handler.front_image_provider)
+    engine.addImageProvider("base_rear_live", controller.video_stream_handler.rear_image_provider)
     
     # Load QML interface
     qml_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'qml', 'MainWindow.qml')
@@ -485,7 +343,7 @@ def main():
     engine.rootContext().setContextProperty("overlayController", controller.overlayController)
     engine.rootContext().setContextProperty("trajectoryHandler", controller.trajectoryHandler)
     engine.rootContext().setContextProperty("warningHandler", controller.warningHandler)
-    engine.rootContext().setContextProperty("baseStreamHandler", controller.base_video_stream_handler)
+    engine.rootContext().setContextProperty("baseStreamHandler", controller.video_stream_handler)
     engine.rootContext().setContextProperty("wheelController", controller.wheel_controller)
     engine.rootContext().setContextProperty("winchController", controller.winch_controller)
     engine.rootContext().setContextProperty("steamDeckHandler", controller.steam_deck_handler)
@@ -503,7 +361,7 @@ def main():
 
     heartbeat_timer = QTimer()
     heartbeat_timer.timeout.connect(controller._publish_heartbeat)
-    heartbeat_timer.start(0.5)
+    heartbeat_timer.start(500)  # 500 milliseconds = 0.5 seconds
     
     # Run application
     try:
