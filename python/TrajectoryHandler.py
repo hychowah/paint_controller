@@ -431,7 +431,7 @@ class TrajectoryHandler(QObject):
         self._thread = None
         self._worker = None
 
-        self.filePath = os.path.join(os.path.dirname(__file__), 'resource', 'trajectory.json')      
+        self.filePath = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'resource', 'trajectory.json')      
         # Create action config instance
         self._action_config = ActionConfigPython(self._robot_controller)
         

@@ -3,7 +3,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import QtCharts 2.15
 import QtMultimedia 5.15
-import QtGraphicalEffects 1.15
+import Qt5Compat.GraphicalEffects
 import "../"
 import "../components"
 
