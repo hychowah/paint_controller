@@ -2,6 +2,52 @@
 
 The `Paint Controller` is a ROS 2 node designed to provide a user interface for controlling the robot
 
+## Dependencies
+
+### System Requirements
+This package requires the following system libraries and dependencies:
+
+#### Required Packages
+```bash
+# Install required system packages
+sudo apt update
+sudo apt install -y \
+    libhidapi-dev \
+    libqt5quick5 \
+    libqt5qml5 \
+    libqt5widgets5 \
+    libqt5core5a \
+    qtdeclarative5-dev \
+    libgstreamer1.0-dev \
+    libgstreamer-plugins-base1.0-dev \
+    pkg-config
+```
+
+#### Library Dependencies
+- **hidapi**: For Steam Deck controller HID communication
+- **Qt5**: For GUI framework (Core, Widgets, Quick, Qml)
+- **GStreamer**: For video streaming capabilities
+- **ROS 2**: Humble or later
+
+#### C++ Steam Deck Handler
+The C++ implementation includes a Steam Deck handler that provides:
+- Real-time button and joystick input reading
+- IMU (accelerometer/gyroscope) data access
+- Trigger and analog input processing
+- Thread-safe input state management
+- Qt signal integration for GUI updates
+
+To test the Steam Deck handler independently:
+```bash
+# Build the package
+cd ~/ros2_workspace
+colcon build --packages-select paint_controller_ros2
+
+# Run the Steam Deck test program
+source install/setup.bash
+LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 ./install/paint_controller_ros2/lib/paint_controller_ros2/steam_deck_test
+```
+
 
 ### Setting Up Permissions
 Before running the `Paint Controller`, configure permissions for the Steam Deck device to ensure proper access. Run the following commands to set permissions permanently:
@@ -40,19 +86,94 @@ The `Paint Controller` depends on the `paint_interfaces` package. Follow these s
 4. Source the workspace:
    ```bash
    source ~/ros2_workspace/install/setup.bash
+   ```
 
-## Running the UI
-**Note:** Some text colors in the interface may not display correctly in dark system themes. Use a light theme for the best experience.
+## Building the Package
 
-To run the `Paint Controller`, execute the following command from your ROS 2 workspace:
+### C++ Implementation
+To build the C++ version of the Paint Controller:
+
+```bash
+cd ~/ros2_workspace
+colcon build --packages-select paint_controller_ros2
+source install/setup.bash
+```
+
+### Running the Applications
+
+#### C++ Paint Controller
+```bash
+# Run with pthread library preload to avoid snap conflicts
+LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 ros2 run paint_controller_ros2 paint_controller_cpp
+```
+
+#### Python Paint Controller (Legacy)
 ```bash
 python paint_controller.py
 ```
 
-Ensure your ROS 2 workspace is sourced before running the command.
+#### Steam Deck Test Program
+```bash
+# Test Steam Deck controller functionality independently
+LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 ./install/paint_controller_ros2/lib/paint_controller_ros2/steam_deck_test
+```
    
 ## Steam Input Node
 The Steam Input Node is deprecated. Button detection has been integrated directly into the `Paint Controller`, eliminating the need for a separate input node.
+
+## Troubleshooting
+
+### Library Conflicts
+If you encounter library conflicts or undefined symbol errors, use the `LD_PRELOAD` workaround:
+```bash
+LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 <command>
+```
+
+### Steam Deck Not Detected
+1. Ensure the Steam Deck is connected via USB
+2. Make sure it's in desktop mode (not gaming mode)
+3. Check that udev rules are properly configured (see Setting Up Permissions section)
+4. Try running with sudo if permission issues persist:
+   ```bash
+   sudo LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 ./install/paint_controller_ros2/lib/paint_controller_ros2/steam_deck_test
+   ```
+
+### Build Issues
+If you encounter build errors:
+1. Ensure all dependencies are installed (see Dependencies section)
+2. Clean and rebuild:
+   ```bash
+   rm -rf build/ install/ log/
+   colcon build --packages-select paint_controller_ros2
+   ```
+
+# pthread Library Issue
+
+## Problem
+The application requires `LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0` to run properly due to conflicts between system pthread library and snap-installed libraries.
+
+## Solution
+Use the following alias (already added to ~/.bashrc):
+
+```bash
+alias run-paint-controller="LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 ros2 run paint_controller_ros2 paint_controller_cpp"
+```
+
+## Usage
+```bash
+run-paint-controller
+```
+
+Instead of:
+```bash
+LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 ros2 run paint_controller_ros2 paint_controller_cpp
+```
+
+
+### Qt/GUI Issues
+- Use a light system theme for better text visibility
+- Ensure Qt5 development packages are properly installed
+- Check that the QML files are in the correct location
 
 ## Control
 Control Menu Button
