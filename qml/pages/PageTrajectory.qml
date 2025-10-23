@@ -301,13 +301,18 @@ Rectangle {
                     }
 
                     Connections {
-                        target: baseStreamer
-                        function onFrame_ready() {
-                            // Clear and update the image source, forcing a refresh
-                            var rect = efView.children[1] // Get the Rectangle containing the Image
-                            var currentSource = rect.imageSource // Get the current source based on mode
-                            efFrame.source = ""
-                            efFrame.source = currentSource
+                        target: baseStreamHandler
+                        function onEndEffectorFrameReady() {
+                            if (backend.control_mode === "ef") {
+                                efFrame.source = ""
+                                efFrame.source = "image://ef_live/frame"
+                            }
+                        }
+                        function onBaseFrontFrameReady() {
+                            if (backend.control_mode !== "ef") {
+                                efFrame.source = ""
+                                efFrame.source = "image://base_front_live/frame"
+                            }
                         }
                     }
                 }

@@ -41,11 +41,11 @@ class UIInputHandler(QObject):
             self.controller.show_popup("Control Mode", "Switched to EF control mode", "info")
         else:
             self.controller.control_mode = "base"
-            self.controller.overlayController.set_joystick_controls("Left Wheel Speed", "Right Wheel Speed")
+            self.controller.overlayController.set_joystick_controls("Track Control", "None")
             for _ in range(3):
                 self.controller.wheel_controller.resetWheelPosition()
                 time.sleep(0.1)
-            self.controller.show_popup("Control Mode", "Switched to Base control mode", "info")
+            self.controller.show_popup("Control Mode", "Switched to Base control mode (Track Control)", "info")
 
     @Slot()
     def on_up_pressed(self):

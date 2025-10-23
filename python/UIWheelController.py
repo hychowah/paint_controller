@@ -2,7 +2,7 @@
 import time
 from typing import Dict
 from rclpy.node import Node
-from std_msgs.msg import Bool, Float32
+from std_msgs.msg import Bool, Int16
 from paint_interfaces.msg import WheelStatus
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 
@@ -50,9 +50,9 @@ class WheelController(QObject):
         self._availability_timer.start(200)  # Check every 200ms
 
     def _setup_publishers(self):
-        """Setup ROS publishers for wheel control"""
-        self._left_wheel_speed_pub = self._node.create_publisher(Float32, 'wheel/left/speed/cmd', 1)
-        self._right_wheel_speed_pub = self._node.create_publisher(Float32, 'wheel/right/speed/cmd', 1)
+        """Setup ROS publishers for track control"""
+        self._left_wheel_speed_pub = self._node.create_publisher(Int16, 'base/left_track/cmd', 1)
+        self._right_wheel_speed_pub = self._node.create_publisher(Int16, 'base/right_track/cmd', 1)
         self._disable_pub = self._node.create_publisher(Bool, 'wheel/disable/cmd', 1)
         self._set_zero_pub = self._node.create_publisher(Bool, 'wheel/set_zero/cmd', 1)
 
@@ -104,23 +104,22 @@ class WheelController(QObject):
             print(f"Error in wheel status callback: {e}")
 
     def command_left_wheel_speed(self, speed: float):
-        if not self._available:
-            print("Cannot command left wheel: Controller not available")
-            return False
-            
-        msg = Float32()
-        msg.data = speed
+        # if not self._available:
+        #     print("Cannot command left wheel: Controller not available")
+        #     return False
+        msg = Int16()
+        msg.data = int(speed)
         self._left_wheel_speed_pub.publish(msg)
         self._last_command_time = time.time()
         return True
 
     def command_right_wheel_speed(self, speed: float): 
-        if not self._available:
-            print("Cannot command right wheel: Controller not available")
-            return False
+        # if not self._available:
+        #     print("Cannot command right wheel: Controller not available")
+        #     return False
             
-        msg = Float32()
-        msg.data = speed
+        msg = Int16()
+        msg.data = int(speed)
         self._right_wheel_speed_pub.publish(msg)
         self._last_command_time = time.time()
         return True

@@ -34,12 +34,8 @@ class ControlProcessor:
                 scale=55/32768,
                 min_interval=0.1,  # 10Hz
             ),
-            "Left Wheel Speed": ControlConfig(
-                scale=6/32768,
-                min_interval=0.1  # 10Hz
-            ),
-            "Right Wheel Speed": ControlConfig(
-                scale=6/32768,
+            "Track Control": ControlConfig(
+                scale=100/32768,
                 min_interval=0.1  # 10Hz
             ),
             "EF arm": ControlConfig(
@@ -95,6 +91,9 @@ class ControlProcessor:
                 # Add LOCKED indicator for Winch Speed when locked
                 if left_mode == "Winch Speed" and self._is_winch_control_locked():
                     left_part = f"{left_mode} {left_value:.2f} (LOCKED)" if left_mode else "None"
+                elif left_mode == "Track Control":
+                    # Track Control already returns a formatted string
+                    left_part = f"{left_mode} {left_value}" if left_mode else "None"
                 elif left_mode == "EF Force":
                     # left_value contains a tuple (Fx, Fy) for EF Force
                     if isinstance(left_value, tuple):
@@ -113,6 +112,9 @@ class ControlProcessor:
                 # Add LOCKED indicator for Winch Speed when locked
                 if right_mode == "Winch Speed" and self._is_winch_control_locked():
                     right_part = f"{right_mode} {right_value:.2f} (LOCKED)" if right_mode else "None"
+                elif right_mode == "Track Control":
+                    # Track Control already returns a formatted string
+                    right_part = f"{right_mode} {right_value}" if right_mode else "None"
                 elif right_mode == "EF Force":
                     # right_value contains a tuple (Fx, Fy) for EF Force
                     if isinstance(right_value, tuple):
@@ -143,6 +145,45 @@ class ControlProcessor:
             self.last_command_times[mode] = current_time
             return True
         return False
+
+    def _process_track_control(self, input_state: Dict, mode: str, stick: str):
+        """Handle Track Control using single joystick (RC tank style)
+        Y-axis: forward/backward speed
+        X-axis: turning (differential drive)
+        """
+        config = self.controls[mode]
+        
+        # Get joystick inputs
+        forward_input = input_state[f'{stick}_stick']['y']  # Y-axis for forward/backward
+        turn_input = input_state[f'{stick}_stick']['x']      # X-axis for turning
+        
+        # Scale inputs to -100 to 100 range
+        forward_speed = forward_input * config.scale
+        turn_speed = turn_input * config.scale
+        
+        # Apply differential drive mixing (RC tank style)
+        # left_track = forward - turn, right_track = forward + turn
+        left_track = forward_speed - turn_speed
+        right_track = forward_speed + turn_speed
+        
+        # Clamp values to -100 to 100
+        left_track = max(-100, min(100, left_track))
+        right_track = max(-100, min(100, right_track))
+        
+        # Update current values for display
+        if stick == 'left':
+            self.current_values['left_mode'] = mode
+            self.current_values['left_value'] = f"L:{left_track:.0f} R:{right_track:.0f}"
+        else:
+            self.current_values['right_mode'] = mode
+            self.current_values['right_value'] = f"L:{left_track:.0f} R:{right_track:.0f}"
+        
+        # Command both tracks
+        try:
+            self.robot.wheel_controller.command_left_wheel_speed(left_track)
+            self.robot.wheel_controller.command_right_wheel_speed(right_track)
+        except Exception as e:
+            print(f"Error commanding track control: {str(e)}")
 
     def _process_joint_control(self, input_state: Dict, mode: str, stick: str):
         """Handle prop joint specific control"""
@@ -256,8 +297,6 @@ class ControlProcessor:
                 "EF top rail": self.robot.teensy_controller.ef_move_top_rail_speed_pub,
                 "EF prop pwm": [self.robot.teensy_controller.prop_left_pwm_pub, self.robot.teensy_controller.prop_right_pwm_pub],
                 "EF spray gimbal": self.robot.teensy_controller.ef_spray_gimbal_speed_pub,
-                "Left Wheel Speed": self.robot.wheel_controller._left_wheel_speed_pub,
-                "Right Wheel Speed": self.robot.wheel_controller._right_wheel_speed_pub
             }
             
             if publisher := publishers.get(mode):
@@ -273,7 +312,9 @@ class ControlProcessor:
             # Process left joystick
             left_mode = self.robot.overlayController.get_left_selected_option()
             if left_mode in self.controls and self._can_send_command(left_mode):
-                if left_mode == "EF prop joint":
+                if left_mode == "Track Control":
+                    self._process_track_control(input_state, left_mode, 'left')
+                elif left_mode == "EF prop joint":
                     self._process_joint_control(input_state, left_mode, 'left')
                 elif left_mode == "EF Yaw Angle":
                     self._process_yaw_control(input_state, left_mode, 'left')
@@ -286,7 +327,9 @@ class ControlProcessor:
             # Process right joystick
             right_mode = self.robot.overlayController.get_right_selected_option()
             if right_mode in self.controls and self._can_send_command(right_mode):
-                if right_mode == "EF prop joint":
+                if right_mode == "Track Control":
+                    self._process_track_control(input_state, right_mode, 'right')
+                elif right_mode == "EF prop joint":
                     self._process_joint_control(input_state, right_mode, 'right')
                 elif right_mode == "EF Yaw Angle":
                     self._process_yaw_control(input_state, right_mode, 'right')
