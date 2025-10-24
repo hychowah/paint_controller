@@ -8,12 +8,16 @@ import "components"
 import "overlays"
 
 ApplicationWindow {
+    id: mainWindow
     visible: true
     visibility: Window.FullScreen
     property var screens: Qt.application.screens
     property var targetScreen: screens.length > 1 ? screens[0] : screens[0]
 
     property int sidebarWidth: 150 // Initial value (expanded width)
+    
+    // Expose the video fullscreen overlay as a property
+    property alias videoFullscreenOverlay: videoFullscreenOverlay
     
     x: targetScreen.virtualX
     y: targetScreen.virtualY
@@ -201,6 +205,13 @@ ApplicationWindow {
         id: emergencyOverlay
         anchors.fill: parent
         z: 3000  // Highest z-index to ensure it's on top
+    }
+
+    // Video Fullscreen Overlay - above everything for fullscreen video with DJI-style overlay
+    VideoFullscreenOverlay {
+        id: videoFullscreenOverlay
+        anchors.fill: parent
+        z: 5000  // Above everything including emergency overlay
     }
 }
 

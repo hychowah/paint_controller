@@ -131,7 +131,7 @@ class UISSHController(QObject):
             if previous != is_available:
                 self.deviceAvailabilityChanged.emit()
             self.deviceAvailable.emit(name, is_available, message)
-            print(f"[UISSHController] {message} (check took {elapsed:.3f}s)")
+            # print(f"[UISSHController] {message} (check took {elapsed:.3f}s)")
 
         runnable = AvailabilityCheckRunnable(device_name, hostname, port, timeout, handle_result)
         self.thread_pool.start(runnable)

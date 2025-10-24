@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Window 2.15
 import "../"
 import "../components"
 
@@ -248,8 +249,6 @@ Rectangle {
             id: executorPage
             width: parent.width
             height: parent.height
-            
-            property bool videoFullscreen: false
 
             Rectangle {
                 width: parent.width
@@ -258,37 +257,11 @@ Rectangle {
                 anchors.margins: 5
                 color: "#9F9F9F"
                 
-                // Fullscreen video overlay
-                Rectangle {
-                    id: fullscreenVideoOverlay
-                    anchors.fill: parent
-                    color: "black"
-                    visible: executorPage.videoFullscreen
-                    z: 100
-                    
-                    Image {
-                        id: fullscreenFrame
-                        anchors.fill: parent
-                        fillMode: Image.PreserveAspectFit
-                        cache: false
-                        source: efFrame.source
-                    }
-                    
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            executorPage.videoFullscreen = false
-                        }
-                    }
-                }
-                
                 RowLayout {
                     anchors.fill: parent
                     anchors.margins: 20
                     anchors.topMargin: 20
                     spacing: 20
-                    visible: !executorPage.videoFullscreen
 
                     ColumnLayout {
                         id: efView
@@ -325,7 +298,30 @@ Rectangle {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    executorPage.videoFullscreen = true
+                                    var mainWindow = ApplicationWindow.window
+                                    if (!mainWindow) {
+                                        mainWindow = Window.window
+                                    }
+                                    
+                                    if (mainWindow) {
+                                        if (mainWindow.videoFullscreenOverlay) {
+                                            mainWindow.videoFullscreenOverlay.videoSource = efFrame.source
+                                            mainWindow.videoFullscreenOverlay.active = true
+                                        } else {
+                                            // Fallback: search parent tree
+                                            var p = parent
+                                            var depth = 0
+                                            while (p && depth < 20) {
+                                                if (p.videoFullscreenOverlay) {
+                                                    p.videoFullscreenOverlay.videoSource = efFrame.source
+                                                    p.videoFullscreenOverlay.active = true
+                                                    break
+                                                }
+                                                p = p.parent
+                                                depth++
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
