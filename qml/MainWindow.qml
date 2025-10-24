@@ -210,8 +210,9 @@ ApplicationWindow {
     // Video Fullscreen Overlay - above everything for fullscreen video with DJI-style overlay
     VideoFullscreenOverlay {
         id: videoFullscreenOverlay
+        objectName: "videoFullscreenOverlay"
         anchors.fill: parent
-        z: 5000  // Above everything including emergency overlay
+        z: 500  // Above everything including emergency overlay
     }
 }
 

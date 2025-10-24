@@ -35,7 +35,7 @@ Rectangle {
         
         // App message with improved typography
         Text {
-            text: uiData ? uiData.display_message || "" : ""
+            text: backend ? backend.display_message || "" : ""
             color: "white"
             font.family: "Roboto"
             font.pixelSize: 16

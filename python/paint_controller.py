@@ -6,6 +6,7 @@ import signal
 from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Optional, List, Any, Callable
+from threading import Lock
 import yaml
 
 import rclpy
@@ -16,7 +17,6 @@ from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Property, Signal, QThrea
 from PySide6.QtQml import QQmlApplicationEngine, QQmlProperty
 from PySide6.QtWidgets import QApplication
 
-from UIDataModel import UIDataModel
 from OverlayController import OverlayController
 from UIControlProcessor import ControlProcessor
 from UISteamDeckHandler import SteamDeckHandler
@@ -71,24 +71,46 @@ class ConfigLoader:
 #############################################
 
 class RosThread(QThread):
+    """Isolated thread for running ROS event loop with thread-safe shutdown."""
     error_occurred = Signal(str)
     node_started = Signal()
     node_stopped = Signal()
 
     def __init__(self, node: Node):
+        """
+        Initialize ROS thread.
+        
+        Args:
+            node: ROS2 node to spin
+        """
         super().__init__()
         self.node = node
         self._running = False
         self._shutdown_requested = False
+        self._lock = Lock()  # Thread-safe access to shared state
 
-    def run(self):
+    def run(self) -> None:
+        """
+        Run the ROS event loop in a separate thread.
+        
+        Continuously spins the node until shutdown is requested.
+        Handles exceptions and ensures proper cleanup.
+        """
         try:
             self._running = True
             self.node_started.emit()
             
-            while not self._shutdown_requested:
+            while True:
+                # Thread-safe check of shutdown flag
+                with self._lock:
+                    if self._shutdown_requested:
+                        break
+                
                 if not rclpy.ok():
-                    raise RuntimeError("ROS context is not valid")
+                    error_msg = "ROS context is not valid"
+                    self.error_occurred.emit(error_msg)
+                    break
+                    
                 rclpy.spin_once(self.node, timeout_sec=0.1)
                 
             self._cleanup()
@@ -99,10 +121,23 @@ class RosThread(QThread):
             self._running = False
             self.node_stopped.emit()
 
-    def request_shutdown(self):
-        self._shutdown_requested = True
+    def request_shutdown(self) -> None:
+        """
+        Request thread shutdown.
+        
+        Thread-safe: Uses lock to ensure visibility across threads.
+        This method should be called from the main thread to gracefully
+        shut down the ROS event loop.
+        """
+        with self._lock:
+            self._shutdown_requested = True
 
-    def _cleanup(self):
+    def _cleanup(self) -> None:
+        """
+        Clean up ROS node resources.
+        
+        Called when thread is shutting down to properly destroy the node.
+        """
         if self.node:
             self.node.destroy_node()
 
@@ -116,6 +151,9 @@ class RobotController(Node, QObject):
     emergency_triggered = Signal()
     status_updated = Signal()
     control_mode_changed = Signal(str)
+    display_message_changed = Signal(str)  # For displaying messages in UI
+    left_joystick_control_changed = Signal(str)
+    right_joystick_control_changed = Signal(str)
 
     def __init__(self, config: RobotConfig):
         Node.__init__(self, 'robot_controller')
@@ -129,6 +167,12 @@ class RobotController(Node, QObject):
         
         self.current_status = HeartbeatStatus.IDLE
         self.config = config
+        
+        # Initialize state variables (replaces UIDataModel)
+        self._display_message = ""
+        self._left_joystick_control = "None"
+        self._right_joystick_control = "None"
+        
         self.winch_controller = WinchController(self)
         self.wheel_controller = WheelController(self)
         self.overlayController = OverlayController(self)
@@ -143,10 +187,12 @@ class RobotController(Node, QObject):
         self.ssh_controller = UISSHController(self)
         self.setup_steam_deck_callbacks()
 
-        self.ui_data_model = UIDataModel()
         self.status_updated.connect(self._timer_callback)
 
         self._control_mode = "base" # base or ef
+        
+        # Connect control mode changes to update fullscreen video source
+        self.control_mode_changed.connect(self.update_fullscreen_video_source)
 
         # Initialize emergency button handler
         self.emergency_handler = EmergencyButtonHandler(self.steam_deck_handler, self)
@@ -207,7 +253,7 @@ class RobotController(Node, QObject):
         self.steam_deck_handler.register_button_callback('switch', ih.on_switch_pressed)
         self.steam_deck_handler.register_button_callback('l5', ih.on_l5_pressed)
         self.steam_deck_handler.register_button_callback('r5', ih.on_r5_pressed)
-        self.steam_deck_handler.register_button_callback('dot', self.toggle_sidebar)
+        self.steam_deck_handler.register_button_callback('dot', self.toggle_fullscreen)
 
 
     # Add property for control_mode
@@ -220,6 +266,38 @@ class RobotController(Node, QObject):
         if self._control_mode != mode:
             self._control_mode = mode
             self.control_mode_changed.emit(mode)
+
+    # Properties for display message (replaces UIDataModel.display_message)
+    @Property(str, notify=display_message_changed)
+    def display_message(self) -> str:
+        return self._display_message
+    
+    @display_message.setter
+    def display_message(self, message: str) -> None:
+        if self._display_message != message:
+            self._display_message = message
+            self.display_message_changed.emit(message)
+
+    # Properties for joystick control modes (replaces UIDataModel.left/right_joystick_control)
+    @Property(str, notify=left_joystick_control_changed)
+    def left_joystick_control(self) -> str:
+        return self._left_joystick_control
+    
+    @left_joystick_control.setter
+    def left_joystick_control(self, mode: str) -> None:
+        if self._left_joystick_control != mode:
+            self._left_joystick_control = mode
+            self.left_joystick_control_changed.emit(mode)
+
+    @Property(str, notify=right_joystick_control_changed)
+    def right_joystick_control(self) -> str:
+        return self._right_joystick_control
+    
+    @right_joystick_control.setter
+    def right_joystick_control(self, mode: str) -> None:
+        if self._right_joystick_control != mode:
+            self._right_joystick_control = mode
+            self.right_joystick_control_changed.emit(mode)
 
     @Slot()
     def toggle_sidebar(self):
@@ -241,6 +319,57 @@ class RobotController(Node, QObject):
         else:
             self.get_logger().error('SelectBar not found in QML')
 
+    @Slot()
+    def toggle_fullscreen(self):
+        """Toggle the video fullscreen overlay"""
+        root_objects = self.engine.rootObjects()
+        if not root_objects:
+            self.get_logger().error('No root QML objects found')
+            return
+            
+        root = root_objects[0]
+        # Find the videoFullscreenOverlay by object name
+        video_overlay = root.findChild(QObject, "videoFullscreenOverlay")
+        
+        if video_overlay:
+            # Get current active state
+            is_active = QQmlProperty.read(video_overlay, "active")
+            
+            if is_active:
+                # If already active, deactivate it
+                QQmlProperty.write(video_overlay, "active", False)
+                self.get_logger().info('Deactivated fullscreen overlay')
+            else:
+                # If not active, activate it with the appropriate video source
+                # Determine video source based on control mode
+                video_source = "image://ef_live/frame" if self._control_mode == "ef" else "image://base_front_live/frame"
+                
+                QQmlProperty.write(video_overlay, "videoSource", video_source)
+                QQmlProperty.write(video_overlay, "active", True)
+                self.get_logger().info(f'Activated fullscreen overlay with source: {video_source}')
+        else:
+            self.get_logger().error('VideoFullscreenOverlay not found in QML')
+
+    @Slot()
+    def update_fullscreen_video_source(self):
+        """Update the fullscreen overlay video source based on control mode (if active)"""
+        root_objects = self.engine.rootObjects()
+        if not root_objects:
+            return
+            
+        root = root_objects[0]
+        video_overlay = root.findChild(QObject, "videoFullscreenOverlay")
+        
+        if video_overlay:
+            # Only update if the overlay is currently active
+            is_active = QQmlProperty.read(video_overlay, "active")
+            
+            if is_active:
+                # Determine video source based on control mode
+                video_source = "image://ef_live/frame" if self._control_mode == "ef" else "image://base_front_live/frame"
+                QQmlProperty.write(video_overlay, "videoSource", video_source)
+                self.get_logger().info(f'Updated fullscreen video source to: {video_source}')
+
 
     def _timer_callback(self):
         """Update UI elements with latest data"""
@@ -252,9 +381,6 @@ class RobotController(Node, QObject):
         # Check emergency button state
         self.emergency_handler.check_emergency_button(input_state.get('buttons', {}))
 
-
-    def display_message(self, message: str):
-        self.ui_data_model.display_message = message
 
     def _publish_heartbeat(self):
         """Publish a heartbeat message every 0.5 seconds"""
@@ -339,7 +465,6 @@ def main():
     # Set context properties
     engine.rootContext().setContextProperty("backend", controller)
     engine.rootContext().setContextProperty("baseStreamer", controller)
-    engine.rootContext().setContextProperty("uiData", controller.ui_data_model)
     engine.rootContext().setContextProperty("overlayController", controller.overlayController)
     engine.rootContext().setContextProperty("trajectoryHandler", controller.trajectoryHandler)
     engine.rootContext().setContextProperty("warningHandler", controller.warningHandler)

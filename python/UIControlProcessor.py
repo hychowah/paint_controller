@@ -125,7 +125,7 @@ class ControlProcessor:
                     right_part = f"{right_mode} {right_value:.2f}" if right_mode else "None"
                     
             message = f"LEFT: {left_part} | RIGHT: {right_part}"
-            self.robot.display_message(message)
+            self.robot.display_message = message
 
     def _can_send_message(self) -> bool:
         """Check if we should update the display"""
@@ -339,7 +339,9 @@ class ControlProcessor:
                     self._process_standard_control(input_state, right_mode, 'right')
 
             if left_mode != "EF Yaw Angle" and right_mode != "EF Yaw Angle":
-                self.controls["EF Yaw Angle"].offset = float(self.robot.ui_data_model.teensy_imu_yaw) * 100
+                # Get IMU yaw from TeensyController instead of UIDataModel
+                teensy_imu_yaw = self.robot.teensy_controller.get_status_value('imu_yaw') or 0.0
+                self.controls["EF Yaw Angle"].offset = float(teensy_imu_yaw) * 100
                 # print("Resetting EF Yaw Angle offset to:", self.controls["EF Yaw Angle"].offset)
 
             # Update display at 5Hz
@@ -347,7 +349,7 @@ class ControlProcessor:
 
         except Exception as e:
             print(f"Error processing control input: {str(e)}")
-            self.robot.display_message(f"Error processing control input: {str(e)}")
+            self.robot.display_message = f"Error processing control input: {str(e)}"
 
 
     def set_winch_speed_limit(self, limit):
