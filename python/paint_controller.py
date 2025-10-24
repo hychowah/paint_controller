@@ -421,8 +421,20 @@ class RobotController(Node, QObject):
         # Add specific toggle switch handling logic here
 
     def cleanup(self):
+        """Cleanup all controller resources"""
+        self.get_logger().info('Starting controller cleanup...')
+        
+        # Clean up video streams
         self.video_stream_handler.cleanup()
+        
+        # Clean up emergency handler
         self.emergency_handler.reset_state()
+        
+        # Clean up Steam Deck handler
+        if hasattr(self, 'steam_deck_handler') and self.steam_deck_handler:
+            self.steam_deck_handler.cleanup()
+        
+        self.get_logger().info('Controller cleanup complete')
 
 #############################################
 ### Main Application

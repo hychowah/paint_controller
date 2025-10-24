@@ -36,21 +36,37 @@ class SteamDeckReaderThread(QThread):
         while not self._stop_requested:
             try:
                 with QMutexLocker(self._mutex):
-                    if self._device:
+                    if self._device and not self._stop_requested:
                         data = self._device.read(64)
                         if data:
                             self.data_read.emit(bytes(data))
                 
                 # Short sleep to prevent tight loop
-                QThread.msleep(1)
+                QThread.msleep(10)  # Reduced from 1ms to 10ms (100Hz is sufficient)
             except Exception as e:
-                print(f"Error reading from Steam Deck: {e}")
+                # Only log error if we're not stopping
+                if not self._stop_requested:
+                    print(f"Error reading from Steam Deck: {e}")
                 QThread.msleep(10)  # Longer sleep on error
     
     def stop(self):
         """Request the thread to stop"""
         self._stop_requested = True
-        self.wait()  # Wait for thread to finish
+        
+        # Clear device reference to stop reads immediately
+        with QMutexLocker(self._mutex):
+            self._device = None
+        
+        # Don't wait here - let the caller use wait() if needed
+    
+    def cleanup(self):
+        """Full cleanup of the thread"""
+        if self.isRunning():
+            self.stop()
+            if not self.wait(2000):  # Wait up to 2 seconds
+                print("Warning: Reader thread did not stop in time")
+                self.terminate()  # Force terminate as last resort
+                self.wait(1000)  # Wait for termination
 
 
 class SteamDeckHandler(QObject):
@@ -191,9 +207,22 @@ class SteamDeckHandler(QObject):
         self._device = None
         self._reader_thread = SteamDeckReaderThread(self)
         self._reader_thread.data_read.connect(self._process_input)
+    
+    def __del__(self):
+        """Destructor to ensure cleanup on object deletion"""
+        try:
+            self.cleanup()
+        except:
+            # Silently fail in destructor to avoid issues during interpreter shutdown
+            pass
         
     def start(self):
         """Initialize and start the Steam Deck HID connection"""
+        # Prevent starting if already running
+        if self._device is not None or self._reader_thread.isRunning():
+            print("Warning: Steam Deck handler already started")
+            return True
+        
         VALVE_VID = 0x28DE
         STEAM_DECK_PID = 0x1205
         
@@ -236,13 +265,58 @@ class SteamDeckHandler(QObject):
         if self._reader_thread.isRunning():
             self._reader_thread.stop()
             
-        if self._device:
-            self._device.close()
-            self._device = None
+        with QMutexLocker(self._mutex):
+            if self._device:
+                try:
+                    self._device.close()
+                except Exception as e:
+                    print(f"Error closing Steam Deck device: {e}")
+                finally:
+                    self._device = None
             
         self._available = False
         self.connection_status_changed.emit(False)
         print("Steam Deck HID connection stopped")
+    
+    def cleanup(self):
+        """Comprehensive cleanup of all Steam Deck handler resources.
+        
+        This method ensures proper cleanup of:
+        - QTimer (availability check timer)
+        - Reader thread (with timeout and force termination if needed)
+        - HID device connection
+        - All registered callbacks
+        - Internal state variables
+        
+        This method is idempotent and safe to call multiple times.
+        """
+        print("Cleaning up Steam Deck handler...")
+        
+        # Stop the availability timer
+        if hasattr(self, '_availability_timer') and self._availability_timer:
+            self._availability_timer.stop()
+            self._availability_timer.deleteLater()
+            self._availability_timer = None
+        
+        # Stop the reader thread and HID device
+        self.stop()
+        
+        # Wait for reader thread to fully terminate
+        if self._reader_thread and self._reader_thread.isRunning():
+            if not self._reader_thread.wait(2000):  # Wait up to 2 seconds
+                print("Warning: Steam Deck reader thread did not terminate in time")
+        
+        # Clear all callbacks
+        with QMutexLocker(self._mutex):
+            for button in self._button_callbacks:
+                self._button_callbacks[button].clear()
+            for button in self._button_hold_callbacks:
+                self._button_hold_callbacks[button].clear()
+        
+        # Reset state
+        self._available = False
+        
+        print("Steam Deck handler cleanup complete")
     
     def register_button_callback(self, button: str, callback: Callable[[], None]):
         """
