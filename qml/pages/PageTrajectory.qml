@@ -248,6 +248,8 @@ Rectangle {
             id: executorPage
             width: parent.width
             height: parent.height
+            
+            property bool videoFullscreen: false
 
             Rectangle {
                 width: parent.width
@@ -256,11 +258,37 @@ Rectangle {
                 anchors.margins: 5
                 color: "#9F9F9F"
                 
+                // Fullscreen video overlay
+                Rectangle {
+                    id: fullscreenVideoOverlay
+                    anchors.fill: parent
+                    color: "black"
+                    visible: executorPage.videoFullscreen
+                    z: 100
+                    
+                    Image {
+                        id: fullscreenFrame
+                        anchors.fill: parent
+                        fillMode: Image.PreserveAspectFit
+                        cache: false
+                        source: efFrame.source
+                    }
+                    
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            executorPage.videoFullscreen = false
+                        }
+                    }
+                }
+                
                 RowLayout {
                     anchors.fill: parent
                     anchors.margins: 20
                     anchors.topMargin: 20
                     spacing: 20
+                    visible: !executorPage.videoFullscreen
 
                     ColumnLayout {
                         id: efView
@@ -290,6 +318,15 @@ Rectangle {
                                 fillMode: Image.PreserveAspectCrop
                                 cache: false
                                 source: parent.imageSource
+                            }
+                            
+                            // Tap to fullscreen
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    executorPage.videoFullscreen = true
+                                }
                             }
                         }
                     }

@@ -6,7 +6,7 @@
         "password": "312213"
     },
     "END_EFFECTOR": {
-        "hostname": "192.168.1.133",
+        "hostname": "192.168.1.129",
         "username": "sparyrobot",
         "port": 22,
         "password": "C3robotics"
