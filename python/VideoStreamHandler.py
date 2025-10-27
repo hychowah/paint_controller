@@ -1,9 +1,11 @@
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Signal, QMutex, QMutexLocker
 from PySide6.QtGui import QImage
 from PySide6.QtQuick import QQuickImageProvider
 from typing import Dict, Optional, Callable
 from dataclasses import dataclass
 from enum import Enum, auto
+import threading
+from copy import copy
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -28,24 +30,30 @@ class CameraConfig:
     height: int = 480
 
 class ImageProvider(QQuickImageProvider):
-    """Enhanced image provider for camera streams"""
+    """Enhanced image provider for camera streams with thread-safe access"""
     def __init__(self, camera_type: CameraType, width: int = 640, height: int = 480):
         super().__init__(QQuickImageProvider.Image)
         self.camera_type = camera_type
         self.image = QImage(width, height, QImage.Format_RGB888)
+        self._image_lock = QMutex()  # ✅ Thread-safe Qt mutex for concurrent access
 
     def requestImage(self, id, size, requestedSize):
-        return self.image
+        locker = QMutexLocker(self._image_lock)
+        # Return a deep copy to prevent external modifications
+        return self.image.copy()
 
-class CameraStream:
-    """Individual camera stream handler"""
+class CameraStream(QObject):
+    """Individual camera stream handler with thread-safe state management"""
+    frameReady = Signal(CameraType, QImage)
+    
     def __init__(self, config: CameraConfig):
+        super().__init__()
         self.config = config
         self.pipeline = None
         self.sink = None
         self.image_provider = ImageProvider(config.camera_type, config.width, config.height)
-        self._sample_callback = None
         self._is_running = False
+        self._running_lock = threading.RLock()
         
         if config.enabled:
             self._create_pipeline()
@@ -78,80 +86,123 @@ class CameraStream:
             self.sink = None
 
     def _on_new_sample(self, sink):
-        """Handle new video sample"""
+        sample = None
+        map_info = None
+        
         try:
             sample = sink.emit('pull-sample')
             if not sample:
                 return Gst.FlowReturn.ERROR
-                
+            
             buffer = sample.get_buffer()
             caps = sample.get_caps()
             
+            if not buffer or not caps:
+                return Gst.FlowReturn.ERROR
+            
             structure = caps.get_structure(0)
+            if not structure:
+                return Gst.FlowReturn.ERROR
+            
             width = structure.get_value('width')
             height = structure.get_value('height')
             
-            success, map_info = buffer.map(Gst.MapFlags.READ)
-            if not success:
+            if not width or not height:
                 return Gst.FlowReturn.ERROR
             
-            # Create QImage from buffer data
-            data = map_info.data
-            image = QImage(data, width, height, width * 3, QImage.Format_RGB888)
+            success, map_info = buffer.map(Gst.MapFlags.READ)
+            if not success or not map_info:
+                return Gst.FlowReturn.ERROR
             
-            # Update image provider with a deep copy
-            self.image_provider.image = image.copy()
-            
-            buffer.unmap(map_info)
-            
-            # Call external callback if registered
-            if self._sample_callback:
-                self._sample_callback(self.config.camera_type, image)
+            try:
+                image = QImage(map_info.data, width, height, width * 3, QImage.Format_RGB888)
+                image_copy = image.copy()
                 
-            return Gst.FlowReturn.OK
+                locker = QMutexLocker(self.image_provider._image_lock)
+                self.image_provider.image = image_copy
+                locker.unlock()
+                
+                self.frameReady.emit(self.config.camera_type, image_copy)
+                
+                return Gst.FlowReturn.OK
+            
+            finally:
+                if map_info is not None:
+                    buffer.unmap(map_info)
+                    map_info = None
             
         except Exception as e:
             print(f"Error processing sample for {self.config.name}: {e}")
             return Gst.FlowReturn.ERROR
+        
+        finally:
+            if sample is not None:
+                sample = None
 
     def start(self):
-        """Start the camera stream"""
-        if self.pipeline and not self._is_running:
-            try:
-                self.pipeline.set_state(Gst.State.PLAYING)
-                self._is_running = True
-                return True
-            except Exception as e:
-                print(f"Error starting stream for {self.config.name}: {e}")
-                return False
+        with self._running_lock:  # ✅ Thread-safe lock
+            if self.pipeline and not self._is_running:
+                try:
+                    self.pipeline.set_state(Gst.State.PLAYING)
+                    self._is_running = True
+                    print(f"Started stream for {self.config.name}")
+                    return True
+                except Exception as e:
+                    print(f"Error starting stream for {self.config.name}: {e}")
+                    return False
         return False
 
     def stop(self):
-        """Stop the camera stream"""
-        if self.pipeline and self._is_running:
-            try:
-                self.pipeline.set_state(Gst.State.NULL)
-                self._is_running = False
-                return True
-            except Exception as e:
-                print(f"Error stopping stream for {self.config.name}: {e}")
-                return False
+        with self._running_lock:  # ✅ Thread-safe lock
+            if self.pipeline and self._is_running:
+                try:
+                    self.pipeline.set_state(Gst.State.NULL)
+                    self._is_running = False
+                    print(f"Stopped stream for {self.config.name}")
+                    return True
+                except Exception as e:
+                    print(f"Error stopping stream for {self.config.name}: {e}")
+                    return False
         return False
 
     def set_sample_callback(self, callback: Callable[[CameraType, QImage], None]):
-        """Set callback for new samples"""
-        self._sample_callback = callback
+        """Deprecated: Use frameReady signal instead"""
+        pass
 
     def is_running(self) -> bool:
-        """Check if stream is running"""
-        return self._is_running
+        with self._running_lock:  # ✅ Thread-safe lock
+            return self._is_running
 
     def cleanup(self):
-        """Clean up resources"""
-        self.stop()
-        if self.pipeline:
-            self.pipeline = None
-        self.sink = None
+        try:
+            self.stop()
+            
+            if self.sink:
+                try:
+                    self.sink.disconnect('new-sample')
+                except:
+                    pass
+            
+            # This triggers garbage collection and memory release
+            if self.sink is not None:
+                self.sink = None
+            
+            if self.pipeline is not None:
+                # Ensure pipeline is in NULL state before releasing
+                try:
+                    if self.pipeline.get_state(0)[1] != Gst.State.NULL:
+                        self.pipeline.set_state(Gst.State.NULL)
+                except:
+                    pass
+                self.pipeline = None
+            
+            if self.image_provider:
+                self.image_provider.image = None
+            
+            print(f"Cleaned up stream for {self.config.name}")
+            
+        except Exception as e:
+            print(f"Error during cleanup for {self.config.name}: {e}")
 
 class VideoStreamHandler(QObject):
     """Unified video stream handler for multiple cameras"""
@@ -170,6 +221,9 @@ class VideoStreamHandler(QObject):
         
         # Initialize GStreamer
         Gst.init(None)
+        
+        # ✅ Thread-safe lock for camera_streams dictionary
+        self._streams_lock = threading.RLock()
         
         # Define camera configurations
         self.camera_configs = {
@@ -209,15 +263,13 @@ class VideoStreamHandler(QObject):
             if config.enabled:
                 try:
                     stream = CameraStream(config)
-                    stream.set_sample_callback(self._on_camera_frame)
+                    stream.frameReady.connect(self._on_camera_frame)
                     self.camera_streams[camera_type] = stream
                     print(f"Created stream for {config.name}")
                 except Exception as e:
                     print(f"Failed to create stream for {config.name}: {e}")
 
     def _on_camera_frame(self, camera_type: CameraType, image: QImage):
-        """Handle new frame from any camera"""
-        # Emit specific signal based on camera type
         if camera_type == CameraType.END_EFFECTOR:
             self.endEffectorFrameReady.emit()
         elif camera_type == CameraType.BASE_FRONT:
@@ -226,14 +278,30 @@ class VideoStreamHandler(QObject):
             self.baseRearFrameReady.emit()
         elif camera_type == CameraType.CONFIGURABLE:
             self.configurableFrameReady.emit()
-            
-        # Emit general frame ready signal
+        
         self.frameReady.emit(camera_type.value)
 
+    def _get_stream(self, camera_type: CameraType) -> Optional[CameraStream]:
+        """
+        Thread-safe stream getter.
+        
+        Acquires lock to safely retrieve a stream from the dictionary.
+        """
+        with self._streams_lock:
+            return self.camera_streams.get(camera_type)
+
     def start_all_streams(self):
-        """Start all configured camera streams"""
+        """
+        Start all configured camera streams with thread-safe dictionary access.
+        
+        Creates a snapshot of streams to avoid issues with concurrent modifications.
+        """
+        with self._streams_lock:
+            # Create snapshot to avoid iteration issues during concurrent modifications
+            streams_copy = copy(self.camera_streams)
+        
         success_count = 0
-        for camera_type, stream in self.camera_streams.items():
+        for camera_type, stream in streams_copy.items():
             if stream.start():
                 success_count += 1
                 print(f"Started {self.camera_configs[camera_type].name}")
@@ -243,72 +311,130 @@ class VideoStreamHandler(QObject):
         return success_count
 
     def stop_all_streams(self):
-        """Stop all camera streams"""
-        for camera_type, stream in self.camera_streams.items():
+        """
+        Stop all camera streams with thread-safe dictionary access.
+        
+        Creates a snapshot of streams to avoid issues with concurrent modifications.
+        """
+        with self._streams_lock:
+            # Create snapshot to avoid iteration issues during concurrent modifications
+            streams_copy = copy(self.camera_streams)
+        
+        for camera_type, stream in streams_copy.items():
             if stream.stop():
                 print(f"Stopped {self.camera_configs[camera_type].name}")
 
     def start_stream(self, camera_type: CameraType) -> bool:
-        """Start a specific camera stream"""
-        if camera_type in self.camera_streams:
-            return self.camera_streams[camera_type].start()
+        """
+        Start a specific camera stream with thread-safe access.
+        """
+        stream = self._get_stream(camera_type)
+        if stream:
+            return stream.start()
         return False
 
     def stop_stream(self, camera_type: CameraType) -> bool:
-        """Stop a specific camera stream"""
-        if camera_type in self.camera_streams:
-            return self.camera_streams[camera_type].stop()
+        """
+        Stop a specific camera stream with thread-safe access.
+        """
+        stream = self._get_stream(camera_type)
+        if stream:
+            return stream.stop()
         return False
 
     def get_image_provider(self, camera_type: CameraType) -> Optional[ImageProvider]:
-        """Get image provider for a specific camera"""
-        if camera_type in self.camera_streams:
-            return self.camera_streams[camera_type].image_provider
+        """
+        Get image provider for a specific camera with thread-safe access.
+        """
+        stream = self._get_stream(camera_type)
+        if stream:
+            return stream.image_provider
         return None
 
     def enable_configurable_stream(self, port: int = None):
-        """Enable and configure the configurable camera stream"""
-        if port:
-            self.camera_configs[CameraType.CONFIGURABLE].port = port
+        try:
+            if port:
+                self.camera_configs[CameraType.CONFIGURABLE].port = port
             
-        self.camera_configs[CameraType.CONFIGURABLE].enabled = True
-        
-        # Create stream if it doesn't exist
-        if CameraType.CONFIGURABLE not in self.camera_streams:
-            try:
-                config = self.camera_configs[CameraType.CONFIGURABLE]
-                stream = CameraStream(config)
-                stream.set_sample_callback(self._on_camera_frame)
-                self.camera_streams[CameraType.CONFIGURABLE] = stream
-                print(f"Enabled configurable stream on port {config.port}")
-                return True
-            except Exception as e:
-                print(f"Failed to enable configurable stream: {e}")
-                return False
-        return True
+            self.camera_configs[CameraType.CONFIGURABLE].enabled = True
+            
+            with self._streams_lock:
+                if CameraType.CONFIGURABLE not in self.camera_streams:
+                    config = self.camera_configs[CameraType.CONFIGURABLE]
+                    stream = CameraStream(config)
+                    stream.frameReady.connect(self._on_camera_frame)
+                    self.camera_streams[CameraType.CONFIGURABLE] = stream
+                    print(f"Enabled configurable stream on port {config.port}")
+                    return True
+            return True
+        except Exception as e:
+            print(f"Failed to enable configurable stream: {e}")
+            return False
 
     def disable_configurable_stream(self):
-        """Disable the configurable camera stream"""
-        if CameraType.CONFIGURABLE in self.camera_streams:
-            self.camera_streams[CameraType.CONFIGURABLE].cleanup()
-            del self.camera_streams[CameraType.CONFIGURABLE]
+        """
+        Disable the configurable camera stream with thread-safe access.
+        """
+        try:
+            with self._streams_lock:
+                if CameraType.CONFIGURABLE in self.camera_streams:
+                    self.camera_streams[CameraType.CONFIGURABLE].cleanup()
+                    del self.camera_streams[CameraType.CONFIGURABLE]
             
-        self.camera_configs[CameraType.CONFIGURABLE].enabled = False
-        print("Disabled configurable stream")
+            self.camera_configs[CameraType.CONFIGURABLE].enabled = False
+            print("Disabled configurable stream")
+        except Exception as e:
+            print(f"Error disabling configurable stream: {e}")
 
     def get_stream_status(self) -> Dict[str, bool]:
-        """Get status of all streams"""
+        """
+        Get status of all streams with thread-safe dictionary access.
+        
+        Creates a snapshot of streams to avoid issues with concurrent modifications.
+        """
+        with self._streams_lock:
+            # Create snapshot to avoid iteration issues
+            streams_copy = copy(self.camera_streams)
+        
         status = {}
-        for camera_type, stream in self.camera_streams.items():
+        for camera_type, stream in streams_copy.items():
             status[camera_type.value] = stream.is_running()
         return status
 
     def cleanup(self):
-        """Clean up all streams and resources"""
-        print("Cleaning up video streams...")
-        for stream in self.camera_streams.values():
-            stream.cleanup()
-        self.camera_streams.clear()
+        """
+        Clean up all streams and resources with thread-safe dictionary access.
+        
+        This method properly shuts down all camera streams and releases
+        all GStreamer pipeline resources. Should be called in application
+        shutdown sequence to prevent resource leaks.
+        """
+        try:
+            print("Cleaning up video streams...")
+            
+            with self._streams_lock:
+                # Create snapshot to avoid iteration issues during cleanup
+                streams_copy = copy(self.camera_streams)
+            
+            # Step 1: Stop all streams before cleanup
+            self.stop_all_streams()
+            
+            # Step 2: Call cleanup on each stream
+            for camera_type, stream in streams_copy.items():
+                try:
+                    stream.cleanup()
+                    print(f"Cleaned up {camera_type.value} stream")
+                except Exception as e:
+                    print(f"Error cleaning up {camera_type.value} stream: {e}")
+            
+            # Step 3: Clear the dictionary
+            with self._streams_lock:
+                self.camera_streams.clear()
+            
+            print("Video stream cleanup complete")
+            
+        except Exception as e:
+            print(f"Error during video stream cleanup: {e}")
 
     # Properties for backward compatibility
     @property
