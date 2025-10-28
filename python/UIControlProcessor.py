@@ -19,7 +19,55 @@ class ControlProcessor:
         self.robot = robot_controller
         self.last_command_times = {}
         self.last_message_time = 0
-        self.message_interval = 0.2  \
+        
+        # ===== CONFIGURATION CONSTANTS =====
+        
+        # Display and messaging
+        self.MESSAGE_UPDATE_INTERVAL = 0.2  # seconds, 5Hz display update rate
+        
+        # Track control parameters
+        self.TRACK_MAX_SPEED = 30.0         # Maximum track speed
+        self.TRACK_MIN_SPEED = 10.0         # Minimum speed to overcome friction
+        self.TRACK_DEAD_ZONE = 0.05         # 5% joystick dead zone
+        self.TRACK_FINE_CONTROL_THRESHOLD = 0.6  # 60% of joystick for fine control (10-30 speed)
+        self.TRACK_FINE_CURVE_FACTOR = 2.0  # Exponential curve for fine control range
+        self.TRACK_COARSE_CURVE_FACTOR = 0.8  # Exponential curve for coarse control range
+        
+        # Joystick input constants
+        self.JOYSTICK_MAX_VALUE = 32768.0   # Maximum joystick input value
+        
+        # Control command intervals (Hz rates)
+        self.WINCH_UPDATE_INTERVAL = 0.1    # 10Hz
+        self.TRACK_UPDATE_INTERVAL = 0.1    # 10Hz  
+        self.EF_ARM_UPDATE_INTERVAL = 0.1   # 10Hz
+        self.EF_JOINT_UPDATE_INTERVAL = 0.1 # 10Hz
+        self.EF_TRIGGER_UPDATE_INTERVAL = 0.2  # 5Hz
+        self.EF_RAIL_UPDATE_INTERVAL = 0.1  # 10Hz
+        self.EF_PWM_UPDATE_INTERVAL = 0.1   # 10Hz
+        self.EF_GIMBAL_UPDATE_INTERVAL = 0.2  # 5Hz
+        self.EF_YAW_UPDATE_INTERVAL = 0.1   # 10Hz
+        self.EF_FORCE_UPDATE_INTERVAL = 0.1 # 10Hz
+        
+        # Control scaling factors
+        self.WINCH_SCALE = 55 / self.JOYSTICK_MAX_VALUE
+        self.TRACK_SCALE = self.TRACK_MAX_SPEED / self.JOYSTICK_MAX_VALUE
+        self.EF_ARM_SCALE = 1000 / self.JOYSTICK_MAX_VALUE
+        self.EF_JOINT_SCALE = 60.0 / self.JOYSTICK_MAX_VALUE
+        self.EF_TRIGGER_SCALE = 400 / self.JOYSTICK_MAX_VALUE
+        self.EF_RAIL_SCALE = 1000 / self.JOYSTICK_MAX_VALUE
+        self.EF_PWM_SCALE = 600 / self.JOYSTICK_MAX_VALUE
+        self.EF_GIMBAL_SCALE = 30 / self.JOYSTICK_MAX_VALUE
+        self.EF_YAW_SCALE = 2 / self.JOYSTICK_MAX_VALUE
+        self.EF_FORCE_SCALE = 1.6 / self.JOYSTICK_MAX_VALUE
+        
+        # Control offsets and limits
+        self.EF_TRIGGER_OFFSET = 1000
+        self.EF_TRIGGER_MIN_VALUE = 1000
+        self.EF_PWM_OFFSET = 1000
+        self.EF_PWM_MIN_VALUE = 1000
+        self.EF_YAW_IMU_SCALE = 100.0       # Scale factor for IMU yaw conversion
+        
+        # ===== END CONFIGURATION =====
         
         self.current_values = {
             'left_mode': '',
@@ -31,51 +79,55 @@ class ControlProcessor:
         # Control configurations
         self.controls = {
             "Winch Speed": ControlConfig(
-                scale=55/32768,
-                min_interval=0.1,  # 10Hz
+                scale=self.WINCH_SCALE,
+                min_interval=self.WINCH_UPDATE_INTERVAL,
             ),
-            "Track Control": ControlConfig(
-                scale=100/32768,
-                min_interval=0.1  # 10Hz
+            "Track Control Left": ControlConfig(
+                scale=self.TRACK_SCALE,
+                min_interval=self.TRACK_UPDATE_INTERVAL
+            ),
+            "Track Control Right": ControlConfig(
+                scale=self.TRACK_SCALE,
+                min_interval=self.TRACK_UPDATE_INTERVAL
             ),
             "EF arm": ControlConfig(
-                scale=1000/32768,
-                min_interval=0.1  # 10Hz
+                scale=self.EF_ARM_SCALE,
+                min_interval=self.EF_ARM_UPDATE_INTERVAL
             ),
             "EF prop joint": ControlConfig(
-                scale=60.0/32768.0,
-                min_interval=0.1  # 20Hz
+                scale=self.EF_JOINT_SCALE,
+                min_interval=self.EF_JOINT_UPDATE_INTERVAL
             ),
             "EF spray trigger": ControlConfig(
-                scale=400/32768,
-                min_interval=0.2,  # 5Hz
-                offset=1000,
-                min_value=1000,
+                scale=self.EF_TRIGGER_SCALE,
+                min_interval=self.EF_TRIGGER_UPDATE_INTERVAL,
+                offset=self.EF_TRIGGER_OFFSET,
+                min_value=self.EF_TRIGGER_MIN_VALUE,
                 msg_type=Int32
             ),
             "EF top rail": ControlConfig(
-                scale=1000/32768,
-                min_interval=0.1  # 10Hz
+                scale=self.EF_RAIL_SCALE,
+                min_interval=self.EF_RAIL_UPDATE_INTERVAL
             ),
             "EF prop pwm": ControlConfig(
-                scale=600/32768,
-                min_interval=0.1,  # 10Hz
-                offset=1000,
-                min_value=1000,
+                scale=self.EF_PWM_SCALE,
+                min_interval=self.EF_PWM_UPDATE_INTERVAL,
+                offset=self.EF_PWM_OFFSET,
+                min_value=self.EF_PWM_MIN_VALUE,
                 msg_type=Int32
             ),
             "EF spray gimbal": ControlConfig(
-                scale=30/32768,
-                min_interval=0.2,  # 5Hz
+                scale=self.EF_GIMBAL_SCALE,
+                min_interval=self.EF_GIMBAL_UPDATE_INTERVAL,
                 msg_type=Int32
             ),
             "EF Yaw Angle": ControlConfig(
-                scale=2/32768,
-                min_interval=0.1  # 10Hz
+                scale=self.EF_YAW_SCALE,
+                min_interval=self.EF_YAW_UPDATE_INTERVAL
             ),
             "EF Force": ControlConfig(
-                scale=1.6/32768,  # Maps full joystick range to -1 to 1
-                min_interval=0.1  # 10Hz
+                scale=self.EF_FORCE_SCALE,
+                min_interval=self.EF_FORCE_UPDATE_INTERVAL
             )
         }
 
@@ -91,7 +143,7 @@ class ControlProcessor:
                 # Add LOCKED indicator for Winch Speed when locked
                 if left_mode == "Winch Speed" and self._is_winch_control_locked():
                     left_part = f"{left_mode} {left_value:.2f} (LOCKED)" if left_mode else "None"
-                elif left_mode == "Track Control":
+                elif left_mode in ["Track Control Left", "Track Control Right"]:
                     # Track Control already returns a formatted string
                     left_part = f"{left_mode} {left_value}" if left_mode else "None"
                 elif left_mode == "EF Force":
@@ -112,7 +164,7 @@ class ControlProcessor:
                 # Add LOCKED indicator for Winch Speed when locked
                 if right_mode == "Winch Speed" and self._is_winch_control_locked():
                     right_part = f"{right_mode} {right_value:.2f} (LOCKED)" if right_mode else "None"
-                elif right_mode == "Track Control":
+                elif right_mode in ["Track Control Left", "Track Control Right"]:
                     # Track Control already returns a formatted string
                     right_part = f"{right_mode} {right_value}" if right_mode else "None"
                 elif right_mode == "EF Force":
@@ -130,7 +182,7 @@ class ControlProcessor:
     def _can_send_message(self) -> bool:
         """Check if we should update the display"""
         current_time = time.monotonic()
-        if current_time - self.last_message_time >= self.message_interval:
+        if current_time - self.last_message_time >= self.MESSAGE_UPDATE_INTERVAL:
             self.last_message_time = current_time
             return True
         return False
@@ -146,44 +198,89 @@ class ControlProcessor:
             return True
         return False
 
+    def _apply_nonlinear_curve(self, normalized_input: float) -> float:
+        """Apply non-linear response curve optimized for track control with friction
+        
+        The curve is designed to provide:
+        - Immediate start at min_speed when joystick leaves dead zone
+        - Fine control in min_speed to max_speed range with emphasis on lower speeds
+        
+        Args:
+            normalized_input: Input value normalized to -1.0 to 1.0 range
+        
+        Returns:
+            Non-linear mapped output scaled between min_speed and max_speed
+        """
+        if normalized_input == 0:
+            return 0
+        
+        # Preserve sign
+        sign = 1 if normalized_input > 0 else -1
+        abs_input = abs(normalized_input)
+        
+        # Apply dead zone
+        if abs_input <= self.TRACK_DEAD_ZONE:
+            return 0
+        
+        # Normalize input after dead zone
+        normalized_active = (abs_input - self.TRACK_DEAD_ZONE) / (1.0 - self.TRACK_DEAD_ZONE)
+        
+        # Two-stage curve for fine control in different ranges
+        if normalized_active <= self.TRACK_FINE_CONTROL_THRESHOLD:
+            # First portion for fine control with high precision
+            curve_output = pow(normalized_active / self.TRACK_FINE_CONTROL_THRESHOLD, self.TRACK_FINE_CURVE_FACTOR) * 0.5
+        else:
+            # Last portion for reaching full speed
+            remaining_input = (normalized_active - self.TRACK_FINE_CONTROL_THRESHOLD) / (1.0 - self.TRACK_FINE_CONTROL_THRESHOLD)
+            remaining_output = pow(remaining_input, self.TRACK_COARSE_CURVE_FACTOR) * 0.5
+            curve_output = 0.5 + remaining_output
+        
+        # Scale to actual speed range: min_speed to max_speed
+        speed_range = self.TRACK_MAX_SPEED - self.TRACK_MIN_SPEED
+        speed_output = self.TRACK_MIN_SPEED + (curve_output * speed_range)
+        
+        return sign * speed_output
+
     def _process_track_control(self, input_state: Dict, mode: str, stick: str):
-        """Handle Track Control using single joystick (RC tank style)
-        Y-axis: forward/backward speed
-        X-axis: turning (differential drive)
+        """Handle Track Control using two joysticks (Independent tank drive)
+        "Track Control Left": Controls left track speed
+        "Track Control Right": Controls right track speed
+        
+        Each option independently controls its corresponding track with smooth
+        non-linear response optimized for friction characteristics.
         """
         config = self.controls[mode]
         
-        # Get joystick inputs
-        forward_input = input_state[f'{stick}_stick']['y']  # Y-axis for forward/backward
-        turn_input = input_state[f'{stick}_stick']['x']      # X-axis for turning
+        # Get joystick Y-axis input (raw values from -32768 to 32767)
+        track_input = input_state[f'{stick}_stick']['y']  # Y-axis for track speed
         
-        # Scale inputs to -100 to 100 range
-        forward_speed = forward_input * config.scale
-        turn_speed = turn_input * config.scale
+        # Normalize input to -1.0 to 1.0 range for curve application
+        track_normalized = track_input / self.JOYSTICK_MAX_VALUE
         
-        # Apply differential drive mixing (RC tank style)
-        # left_track = forward - turn, right_track = forward + turn
-        left_track = forward_speed - turn_speed
-        right_track = forward_speed + turn_speed
+        # Apply non-linear curve optimized for friction characteristics
+        track_curved = self._apply_nonlinear_curve(track_normalized)
         
-        # Clamp values to -100 to 100
-        left_track = max(-100, min(100, left_track))
-        right_track = max(-100, min(100, right_track))
+        # Use curved input directly as track speed
+        track_speed = track_curved
         
-        # Update current values for display
-        if stick == 'left':
-            self.current_values['left_mode'] = mode
-            self.current_values['left_value'] = f"L:{left_track:.0f} R:{right_track:.0f}"
-        else:
-            self.current_values['right_mode'] = mode
-            self.current_values['right_value'] = f"L:{left_track:.0f} R:{right_track:.0f}"
+        # Clamp value to configured max speed range
+        track_speed = max(-self.TRACK_MAX_SPEED, min(self.TRACK_MAX_SPEED, track_speed))
         
-        # Command both tracks
+        # Determine which track to control based on mode
+        is_left_track = "Left" in mode
+        
+        # Command the appropriate track
         try:
-            self.robot.wheel_controller.command_left_wheel_speed(left_track)
-            self.robot.wheel_controller.command_right_wheel_speed(right_track)
+            if is_left_track:
+                self.current_values['left_mode'] = mode
+                self.current_values['left_value'] = f"L:{track_speed:.1f}"
+                self.robot.wheel_controller.command_left_wheel_speed(track_speed)
+            else:
+                self.current_values['right_mode'] = mode
+                self.current_values['right_value'] = f"R:{track_speed:.1f}"
+                self.robot.wheel_controller.command_right_wheel_speed(track_speed)
         except Exception as e:
-            print(f"Error commanding track control: {str(e)}")
+            print(f"Error commanding track control ({mode}): {str(e)}")
 
     def _process_joint_control(self, input_state: Dict, mode: str, stick: str):
         """Handle prop joint specific control"""
@@ -312,7 +409,7 @@ class ControlProcessor:
             # Process left joystick
             left_mode = self.robot.overlayController.get_left_selected_option()
             if left_mode in self.controls and self._can_send_command(left_mode):
-                if left_mode == "Track Control":
+                if left_mode in ["Track Control Left", "Track Control Right"]:
                     self._process_track_control(input_state, left_mode, 'left')
                 elif left_mode == "EF prop joint":
                     self._process_joint_control(input_state, left_mode, 'left')
@@ -327,7 +424,7 @@ class ControlProcessor:
             # Process right joystick
             right_mode = self.robot.overlayController.get_right_selected_option()
             if right_mode in self.controls and self._can_send_command(right_mode):
-                if right_mode == "Track Control":
+                if right_mode in ["Track Control Left", "Track Control Right"]:
                     self._process_track_control(input_state, right_mode, 'right')
                 elif right_mode == "EF prop joint":
                     self._process_joint_control(input_state, right_mode, 'right')
@@ -341,7 +438,7 @@ class ControlProcessor:
             if left_mode != "EF Yaw Angle" and right_mode != "EF Yaw Angle":
                 # Get IMU yaw from TeensyController instead of UIDataModel
                 teensy_imu_yaw = self.robot.teensy_controller.get_status_value('imu_yaw') or 0.0
-                self.controls["EF Yaw Angle"].offset = float(teensy_imu_yaw) * 100
+                self.controls["EF Yaw Angle"].offset = float(teensy_imu_yaw) * self.EF_YAW_IMU_SCALE
                 # print("Resetting EF Yaw Angle offset to:", self.controls["EF Yaw Angle"].offset)
 
             # Update display at 5Hz

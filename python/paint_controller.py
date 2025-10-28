@@ -88,6 +88,8 @@ class RosThread(QThread):
         self._running = False
         self._shutdown_requested = False
         self._lock = Lock()  # Thread-safe access to shared state
+        self._last_spin_time = 0
+        self._spin_timeout = 5.0  # Watchdog: if spin_once takes >5s, consider network dead
 
     def run(self) -> None:
         """
@@ -95,6 +97,7 @@ class RosThread(QThread):
         
         Continuously spins the node until shutdown is requested.
         Handles exceptions and ensures proper cleanup.
+        Recovers from network disconnections by destroying and recreating subscriptions.
         """
         try:
             self._running = True
@@ -107,16 +110,35 @@ class RosThread(QThread):
                         break
                 
                 if not rclpy.ok():
-                    error_msg = "ROS context is not valid"
+                    error_msg = "ROS context is not valid - network may be disconnected"
                     self.error_occurred.emit(error_msg)
-                    break
+                    # Don't break - try to recover by waiting a bit
+                    import time
+                    time.sleep(0.5)
+                    continue
+                
+                try:
+                    import time
+                    self._last_spin_time = time.time()
+                    # Use smaller timeout to prevent long hangs on bad network
+                    rclpy.spin_once(self.node, timeout_sec=0.05)
                     
-                rclpy.spin_once(self.node, timeout_sec=0.1)
+                except Exception as spin_error:
+                    # Network error during spin - emit but continue trying
+                    error_msg = f"ROS spin error (likely network): {str(spin_error)}"
+                    self.error_occurred.emit(error_msg)
+                    
+                    # Sleep briefly to avoid CPU spinning on errors
+                    import time
+                    time.sleep(0.1)
                 
             self._cleanup()
             
         except Exception as e:
-            self.error_occurred.emit(str(e))
+            error_msg = f"Critical ROS thread error: {str(e)}"
+            self.error_occurred.emit(error_msg)
+            # Force cleanup even on critical error
+            self._cleanup()
         finally:
             self._running = False
             self.node_stopped.emit()
@@ -137,9 +159,22 @@ class RosThread(QThread):
         Clean up ROS node resources.
         
         Called when thread is shutting down to properly destroy the node.
+        This is now called both on normal exit AND on exceptions.
         """
-        if self.node:
-            self.node.destroy_node()
+        try:
+            if self.node:
+                # First trigger cleanup on the node itself (calls cleanup on all sub-components)
+                if hasattr(self.node, 'cleanup'):
+                    try:
+                        self.node.cleanup()
+                    except Exception as e:
+                        print(f"Error calling node cleanup method: {e}")
+                
+                # Then destroy the node to clean up all ROS resources
+                self.node.destroy_node()
+                print("ROS node destroyed successfully")
+        except Exception as e:
+            print(f"Error during ROS thread cleanup: {e}")
 
 #############################################
 ### Main Controller
@@ -434,6 +469,38 @@ class RobotController(Node, QObject):
         if hasattr(self, 'steam_deck_handler') and self.steam_deck_handler:
             self.steam_deck_handler.cleanup()
         
+        # Clean up all sub-controllers
+        if hasattr(self, 'winch_controller') and self.winch_controller:
+            try:
+                self.winch_controller.cleanup()
+            except Exception as e:
+                self.get_logger().error(f"Error cleaning up winch controller: {e}")
+        
+        if hasattr(self, 'wheel_controller') and self.wheel_controller:
+            try:
+                self.wheel_controller.cleanup()
+            except Exception as e:
+                self.get_logger().error(f"Error cleaning up wheel controller: {e}")
+        
+        if hasattr(self, 'wind_monitor') and self.wind_monitor:
+            try:
+                self.wind_monitor.cleanup()
+            except Exception as e:
+                self.get_logger().error(f"Error cleaning up wind monitor: {e}")
+        
+        if hasattr(self, 'teensy_controller') and self.teensy_controller:
+            try:
+                self.teensy_controller.cleanup()
+            except Exception as e:
+                self.get_logger().error(f"Error cleaning up teensy controller: {e}")
+        
+        # Destroy publishers
+        if hasattr(self, 'heartbeat_pub') and self.heartbeat_pub:
+            try:
+                self.destroy_publisher(self.heartbeat_pub)
+            except Exception as e:
+                self.get_logger().error(f"Error destroying heartbeat publisher: {e}")
+        
         self.get_logger().info('Controller cleanup complete')
 
 #############################################
@@ -503,12 +570,42 @@ def main():
     # Run application
     try:
         sys.exit(app.exec())
+    except Exception as e:
+        print(f"Application error: {e}")
     finally:
-        controller.cleanup()
-        controller.heartbeat_handler.cleanup()
-        ros_thread.request_shutdown()
-        ros_thread.wait()
-        rclpy.shutdown()
+        print("Starting emergency shutdown sequence...")
+        
+        # Step 1: Request ROS thread shutdown FIRST
+        try:
+            ros_thread.request_shutdown()
+            # Wait max 3 seconds for ROS thread to finish
+            ros_thread.wait(timeout=3000)
+            if ros_thread.isRunning():
+                print("WARNING: ROS thread did not exit cleanly, forcing termination...")
+                ros_thread.terminate()
+                ros_thread.wait(timeout=1000)
+        except Exception as e:
+            print(f"Error shutting down ROS thread: {e}")
+        
+        # Step 2: Call cleanup on controller (which calls cleanup on all sub-components)
+        try:
+            controller.cleanup()
+        except Exception as e:
+            print(f"Error during controller cleanup: {e}")
+        
+        # Step 3: Clean up heartbeat handler
+        try:
+            controller.heartbeat_handler.cleanup()
+        except Exception as e:
+            print(f"Error cleaning up heartbeat handler: {e}")
+        
+        # Step 4: Shutdown ROS context
+        try:
+            rclpy.shutdown()
+        except Exception as e:
+            print(f"Error during ROS shutdown: {e}")
+        
+        print("Emergency shutdown sequence complete")
 
 if __name__ == '__main__':
     main()

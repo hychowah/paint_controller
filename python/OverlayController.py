@@ -21,7 +21,8 @@ class OverlayController(QObject):
         self._control_options = [
             "None",
             "Winch Speed",
-            "Track Control",
+            "Track Control Left",
+            "Track Control Right",
             "EF arm",
             "EF top rail",
             "EF prop pwm",
@@ -175,7 +176,15 @@ class OverlayController(QObject):
         
     
     def _can_select_option(self, index):
-        """Check if an option can be selected"""
+        """Check if an option can be selected
+        
+        Note: "Track Control Left" (index 2) and "Track Control Right" (index 3)
+        can each be selected on both menus since they control independent tracks.
+        """
+        # Track Control Left (index 2) and Track Control Right (index 3) can be selected on both sides
+        if index == 2 or index == 3:  # Track Control Left or Right
+            return True
+            
         if self._active_menu == "left":
             return index == 0 or index != self._temp_right_index
         else:
