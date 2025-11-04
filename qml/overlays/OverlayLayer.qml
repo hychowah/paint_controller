@@ -4,6 +4,11 @@ import QtQuick.Controls 2.15
 Item {
     id: overlayLayer
     
+    // Helper function to calculate item Y position considering scroll offset
+    function getItemYPosition(listView, index) {
+        return listView.contentY + (index * 50)
+    }
+    
     // Properties to be bound from parent
     property bool showOverlay: false
     property int leftSelectedIndex: 0
@@ -45,7 +50,7 @@ Item {
     Rectangle {
         id: leftMenuContainer
         width: 400
-        height: parent.height * 0.8
+        height: Math.min(parent.height * 0.8, 150 + 50 * controlOptions.length)
         anchors.centerIn: parent
         color: "#2c2c2c"
         opacity: 0.9
@@ -73,43 +78,58 @@ Item {
             }
         }
 
-        ListView {
-            id: leftOptionsList
+        ScrollView {
+            id: leftScrollView
             width: parent.width - 40
             anchors {
                 top: leftMenuTitle.bottom
                 bottom: parent.bottom
                 topMargin: 20
                 horizontalCenter: parent.horizontalCenter
+                bottomMargin: 20
             }
-            model: controlOptions
-            delegate: Rectangle {
-                width: leftOptionsList.width
-                height: 50
-                color: "transparent"
+            clip: true
 
-                Rectangle {
-                    visible: index === leftSelectedIndex
-                    anchors.fill: parent
-                    color: "#3498db"
-                    opacity: 0.5
-                    radius: 5
-                }
+            ListView {
+                id: leftOptionsList
+                width: leftScrollView.width
+                model: controlOptions
+                delegate: Rectangle {
+                    width: leftOptionsList.width
+                    height: 50
+                    color: "transparent"
 
-                Text {
-                    text: modelData
-                    color: {
-                        if (index === rightSelectedIndex) return "#ff6b6b"
-                        else if (index === leftSelectedIndex) return "white"
-                        else return "#cccccc"
+                    Rectangle {
+                        visible: index === leftSelectedIndex
+                        anchors.fill: parent
+                        color: "#3498db"
+                        opacity: 0.5
+                        radius: 5
                     }
-                    font.pixelSize: 18
-                    anchors {
-                        left: parent.left
-                        leftMargin: 20
-                        verticalCenter: parent.verticalCenter
+
+                    Text {
+                        text: modelData
+                        color: {
+                            if (index === rightSelectedIndex) return "#ff6b6b"
+                            else if (index === leftSelectedIndex) return "white"
+                            else return "#cccccc"
+                        }
+                        font.pixelSize: 18
+                        anchors {
+                            left: parent.left
+                            leftMargin: 20
+                            verticalCenter: parent.verticalCenter
+                        }
                     }
                 }
+            }
+        }
+        
+        // Auto-scroll to keep selected item visible
+        Connections {
+            target: overlayLayer
+            function onLeftSelectedIndexChanged() {
+                leftOptionsList.positionViewAtIndex(overlayLayer.leftSelectedIndex, ListView.Contain)
             }
         }
 
@@ -123,7 +143,7 @@ Item {
                 right: parent.left
                 rightMargin: -4
             }
-            y: leftMenuTitle.height + 20 + (leftSelectedIndex * 50)
+            y: leftMenuTitle.height + 20 + (leftSelectedIndex * 50) - leftOptionsList.contentY
 
             Behavior on y {
                 NumberAnimation {
@@ -139,7 +159,7 @@ Item {
         id: rightMenuContainer
         z: 1001
         width: 400
-        height: parent.height * 0.8
+        height: Math.min(parent.height * 0.8, 150 + 50 * controlOptions.length)
         anchors.centerIn: parent
         color: "#2c2c2c"
         opacity: 0.9
@@ -167,43 +187,58 @@ Item {
             }
         }
 
-        ListView {
-            id: rightOptionsList
+        ScrollView {
+            id: rightScrollView
             width: parent.width - 40
             anchors {
                 top: rightMenuTitle.bottom
                 bottom: parent.bottom
                 topMargin: 20
                 horizontalCenter: parent.horizontalCenter
+                bottomMargin: 20
             }
-            model: controlOptions
-            delegate: Rectangle {
-                width: rightOptionsList.width
-                height: 50
-                color: "transparent"
+            clip: true
 
-                Rectangle {
-                    visible: index === rightSelectedIndex
-                    anchors.fill: parent
-                    color: "#3498db"
-                    opacity: 0.5
-                    radius: 5
-                }
+            ListView {
+                id: rightOptionsList
+                width: rightScrollView.width
+                model: controlOptions
+                delegate: Rectangle {
+                    width: rightOptionsList.width
+                    height: 50
+                    color: "transparent"
 
-                Text {
-                    text: modelData
-                    color: {
-                        if (index === leftSelectedIndex) return "#ff6b6b"
-                        else if (index === rightSelectedIndex) return "white"
-                        else return "#cccccc"
+                    Rectangle {
+                        visible: index === rightSelectedIndex
+                        anchors.fill: parent
+                        color: "#3498db"
+                        opacity: 0.5
+                        radius: 5
                     }
-                    font.pixelSize: 18
-                    anchors {
-                        left: parent.left
-                        leftMargin: 20
-                        verticalCenter: parent.verticalCenter
+
+                    Text {
+                        text: modelData
+                        color: {
+                            if (index === leftSelectedIndex) return "#ff6b6b"
+                            else if (index === rightSelectedIndex) return "white"
+                            else return "#cccccc"
+                        }
+                        font.pixelSize: 18
+                        anchors {
+                            left: parent.left
+                            leftMargin: 20
+                            verticalCenter: parent.verticalCenter
+                        }
                     }
                 }
+            }
+        }
+        
+        // Auto-scroll to keep selected item visible
+        Connections {
+            target: overlayLayer
+            function onRightSelectedIndexChanged() {
+                rightOptionsList.positionViewAtIndex(overlayLayer.rightSelectedIndex, ListView.Contain)
             }
         }
 
@@ -217,7 +252,7 @@ Item {
                 right: parent.left
                 rightMargin: -4
             }
-            y: rightMenuTitle.height + 20 + (rightSelectedIndex * 50)
+            y: rightMenuTitle.height + 20 + (rightSelectedIndex * 50) - rightOptionsList.contentY
 
             Behavior on y {
                 NumberAnimation {

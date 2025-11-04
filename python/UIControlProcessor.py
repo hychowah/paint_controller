@@ -4,6 +4,7 @@ from std_msgs.msg import Float32, Int32
 from geometry_msgs.msg import Twist, Vector3
 import time
 from UIHeartbeatHandler import HeartbeatStatus
+from PySide6.QtCore import QObject, Signal, Property
 
 @dataclass
 class ControlConfig:
@@ -14,11 +15,23 @@ class ControlConfig:
     max_value: float = float('inf')
     msg_type: type = Float32
 
-class ControlProcessor:
+class ControlProcessor(QObject):
+    # Signals for control info changes
+    left_control_mode_changed = Signal(str)
+    left_control_value_changed = Signal(str)
+    right_control_mode_changed = Signal(str)
+    right_control_value_changed = Signal(str)
     def __init__(self, robot_controller):
+        super().__init__()
         self.robot = robot_controller
         self.last_command_times = {}
         self.last_message_time = 0
+        
+        # Initialize control info properties
+        self._left_control_mode = "None"
+        self._left_control_value = ""
+        self._right_control_mode = "None"
+        self._right_control_value = ""
         
         # ===== CONFIGURATION CONSTANTS =====
         
@@ -136,6 +149,8 @@ class ControlProcessor:
         if self._can_send_message():
             if self.robot.overlayController.get_left_selected_option() == "None":
                 left_part = "None"
+                left_mode = "None"
+                left_value = ""
             else:
                 left_mode = self.current_values['left_mode']
                 left_value = self.current_values['left_value']
@@ -157,6 +172,8 @@ class ControlProcessor:
 
             if self.robot.overlayController.get_right_selected_option() == "None":
                 right_part = "None"
+                right_mode = "None"
+                right_value = ""
             else:
                 right_mode = self.current_values['right_mode']
                 right_value = self.current_values['right_value']
@@ -178,6 +195,16 @@ class ControlProcessor:
                     
             message = f"LEFT: {left_part} | RIGHT: {right_part}"
             self.robot.display_message = message
+            
+            # Update control processor properties for overlay display
+            self.left_control_mode = left_mode if left_mode else "None"
+            self.left_control_value = str(left_value) if isinstance(left_value, str) else (
+                f"L:{left_value:.1f}" if isinstance(left_value, (int, float)) else str(left_value)
+            )
+            self.right_control_mode = right_mode if right_mode else "None"
+            self.right_control_value = str(right_value) if isinstance(right_value, str) else (
+                f"R:{right_value:.1f}" if isinstance(right_value, (int, float)) else str(right_value)
+            )
 
     def _can_send_message(self) -> bool:
         """Check if we should update the display"""
@@ -468,3 +495,45 @@ class ControlProcessor:
             return True
             
         return False
+
+    # Properties for left control info
+    @Property(str, notify=left_control_mode_changed)
+    def left_control_mode(self) -> str:
+        return self._left_control_mode
+    
+    @left_control_mode.setter
+    def left_control_mode(self, mode: str) -> None:
+        if self._left_control_mode != mode:
+            self._left_control_mode = mode
+            self.left_control_mode_changed.emit(mode)
+
+    @Property(str, notify=left_control_value_changed)
+    def left_control_value(self) -> str:
+        return self._left_control_value
+    
+    @left_control_value.setter
+    def left_control_value(self, value: str) -> None:
+        if self._left_control_value != value:
+            self._left_control_value = value
+            self.left_control_value_changed.emit(value)
+
+    # Properties for right control info
+    @Property(str, notify=right_control_mode_changed)
+    def right_control_mode(self) -> str:
+        return self._right_control_mode
+    
+    @right_control_mode.setter
+    def right_control_mode(self, mode: str) -> None:
+        if self._right_control_mode != mode:
+            self._right_control_mode = mode
+            self.right_control_mode_changed.emit(mode)
+
+    @Property(str, notify=right_control_value_changed)
+    def right_control_value(self) -> str:
+        return self._right_control_value
+    
+    @right_control_value.setter
+    def right_control_value(self, value: str) -> None:
+        if self._right_control_value != value:
+            self._right_control_value = value
+            self.right_control_value_changed.emit(value)

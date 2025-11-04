@@ -385,7 +385,6 @@ class VideoStreamHandler(QObject):
             msg: String message with camera status (e.g., "STREAMING", "RECORDING", "ERROR")
         """
         status = msg.data
-        self._log(f"Received camera status: {status}")
         self.cameraStatusChanged.emit(status)
     
     def _publish_record_command(self, start_recording: bool):

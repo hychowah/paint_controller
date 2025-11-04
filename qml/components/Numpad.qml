@@ -6,31 +6,64 @@ import "../"
 Popup {
     id: numpad
     width: 320
-    height: 440
+    height: 480
     x: 800
     y: 280
 
     property TextField targetField
-    property int buttonFontSize: 20
-    property color buttonColor: "#dddddd"
-    property color buttonPressedColor: "#bbbbbb"
-    property color buttonBorderColor: "#888888"
-    property int buttonRadius: 60
+    property int buttonFontSize: 18
+    property color buttonColor: "#2A3040"
+    property color buttonPressedColor: "#3A5A8C"
+    property color buttonBorderColor: "#3A5A8C"
+    property color buttonTextColor: "#FFFFFF"
+    property int buttonRadius: 8
 
     background: Rectangle {
         color: "transparent"
+    }
+    
+    function toggleNegative() {
+        if (targetField && targetField.text !== "") {
+            if (targetField.text.startsWith("-")) {
+                targetField.text = targetField.text.substring(1)
+            } else {
+                targetField.text = "-" + targetField.text
+            }
+        } else if (targetField) {
+            targetField.text = "-"
+        }
+    }
+    
+    function addDecimal() {
+        if (targetField && !targetField.text.includes(".")) {
+            if (targetField.text === "" || targetField.text === "-") {
+                targetField.text += "0."
+            } else {
+                targetField.text += "."
+            }
+        }
+    }
+    
+    function backspace() {
+        if (targetField && targetField.text.length > 0) {
+            targetField.text = targetField.text.slice(0, -1)
+        }
     }
 
     Rectangle {
         width: parent.width
         height: parent.height
-        color: "#333333"
+        color: "#252A36"
         radius: 10
+        border.color: "#3A5A8C"
+        border.width: 2
 
         GridLayout {
-            columns: 3
+            columns: 4
             anchors.margins: 10
             anchors.fill: parent
+            rowSpacing: 8
+            columnSpacing: 8
 
             Rectangle {
                 Layout.row: 0

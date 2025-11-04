@@ -189,6 +189,8 @@ class RobotController(Node, QObject):
     display_message_changed = Signal(str)  # For displaying messages in UI
     left_joystick_control_changed = Signal(str)
     right_joystick_control_changed = Signal(str)
+    left_control_info_changed = Signal(str, str)  # mode, value
+    right_control_info_changed = Signal(str, str)  # mode, value
 
     def __init__(self, config: RobotConfig):
         Node.__init__(self, 'robot_controller')
@@ -207,6 +209,10 @@ class RobotController(Node, QObject):
         self._display_message = ""
         self._left_joystick_control = "None"
         self._right_joystick_control = "None"
+        self._left_control_mode = "None"
+        self._left_control_value = ""
+        self._right_control_mode = "None"
+        self._right_control_value = ""
         
         self.winch_controller = WinchController(self)
         self.wheel_controller = WheelController(self)
@@ -333,6 +339,48 @@ class RobotController(Node, QObject):
         if self._right_joystick_control != mode:
             self._right_joystick_control = mode
             self.right_joystick_control_changed.emit(mode)
+
+    # Properties for left control info (mode and value)
+    @Property(str, notify=left_control_info_changed)
+    def left_control_mode(self) -> str:
+        return self._left_control_mode
+    
+    @left_control_mode.setter
+    def left_control_mode(self, mode: str) -> None:
+        if self._left_control_mode != mode:
+            self._left_control_mode = mode
+            self.left_control_info_changed.emit(mode, self._left_control_value)
+
+    @Property(str, notify=left_control_info_changed)
+    def left_control_value(self) -> str:
+        return self._left_control_value
+    
+    @left_control_value.setter
+    def left_control_value(self, value: str) -> None:
+        if self._left_control_value != value:
+            self._left_control_value = value
+            self.left_control_info_changed.emit(self._left_control_mode, value)
+
+    # Properties for right control info (mode and value)
+    @Property(str, notify=right_control_info_changed)
+    def right_control_mode(self) -> str:
+        return self._right_control_mode
+    
+    @right_control_mode.setter
+    def right_control_mode(self, mode: str) -> None:
+        if self._right_control_mode != mode:
+            self._right_control_mode = mode
+            self.right_control_info_changed.emit(mode, self._right_control_value)
+
+    @Property(str, notify=right_control_info_changed)
+    def right_control_value(self) -> str:
+        return self._right_control_value
+    
+    @right_control_value.setter
+    def right_control_value(self, value: str) -> None:
+        if self._right_control_value != value:
+            self._right_control_value = value
+            self.right_control_info_changed.emit(self._right_control_mode, value)
 
     @Slot()
     def toggle_sidebar(self):
@@ -555,6 +603,7 @@ def main():
     engine.rootContext().setContextProperty("teensyController", controller.teensy_controller)
     engine.rootContext().setContextProperty("actionConfig", controller.action_config)
     engine.rootContext().setContextProperty("heartbeatHandler", controller.heartbeat_handler)
+    engine.rootContext().setContextProperty("controlProcessor", controller.controlProcessor)
     engine.rootContext().setContextProperty("sshHandler", controller.ssh_controller)
     engine.rootContext().setContextProperty("videoStreamer", controller.video_stream_handler)
     controller.engine = engine

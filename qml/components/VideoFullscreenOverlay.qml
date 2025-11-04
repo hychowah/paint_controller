@@ -8,6 +8,12 @@ Rectangle {
     property string videoSource: ""
     property bool active: false
     
+    // Control panel shared properties
+    property int panelWidth: 200
+    property int panelHeight: 120
+    property int panelBottomMargin: 20
+    property int panelSideMargin: 120
+    
     visible: active
     anchors.fill: parent
     color: "black"
@@ -168,6 +174,34 @@ Rectangle {
         }
     }
     
+    // Bottom Left Info Panel
+    ControlInfoPanel {
+        id: leftControlPanel
+        position: "left"
+        leftMargin: root.panelSideMargin
+        rightMargin: 20
+        bottomMargin: root.panelBottomMargin
+        width: root.panelWidth
+        height: root.panelHeight
+        controlMode: controlProcessor.left_control_mode
+        controlValue: controlProcessor.left_control_value
+        title: "LEFT CONTROL"
+    }
+
+    // Bottom Right Info Panel
+    ControlInfoPanel {
+        id: rightControlPanel
+        position: "right"
+        leftMargin: 20
+        rightMargin: root.panelSideMargin
+        bottomMargin: root.panelBottomMargin
+        width: root.panelWidth
+        height: root.panelHeight
+        controlMode: controlProcessor.right_control_mode
+        controlValue: controlProcessor.right_control_value
+        title: "RIGHT CONTROL"
+    }
+
     // Exit hint at bottom center
     Rectangle {
         anchors.bottom: parent.bottom

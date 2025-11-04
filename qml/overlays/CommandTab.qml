@@ -262,43 +262,104 @@ Item {
                                         Layout.fillWidth: true
                                         height: 40
                                         color: "#1A1A1A"
-                                        border.color: "#333333"
+                                        border.color: numberInputWrapper.activeFocus ? "#3A5A8C" : "#333333"
                                         border.width: 1
                                         radius: 6
                                         visible: modelData.type === "number"
                                         
-                                        TextInput {
-                                            id: numberInput
+                                        Behavior on border.color {
+                                            ColorAnimation { duration: 150 }
+                                        }
+                                        
+                                        RowLayout {
                                             anchors.fill: parent
-                                            anchors.margins: 10
-                                            text: ""
-                                            color: "#FFFFFF"
-                                            font.pixelSize: 14
-                                            verticalAlignment: TextInput.AlignVCenter
-                                            validator: DoubleValidator { bottom: -999999; top: 999999; decimals: 3 }
+                                            anchors.margins: 0
+                                            spacing: 0
                                             
-                                            onTextChanged: {
-                                                parameterValues[modelData.name] = text
+                                            TextInput {
+                                                id: numberInputWrapper
+                                                Layout.fillWidth: true
+                                                Layout.fillHeight: true
+                                                leftPadding: 10
+                                                rightPadding: 10
+                                                text: ""
+                                                color: "#FFFFFF"
+                                                font.pixelSize: 14
+                                                verticalAlignment: TextInput.AlignVCenter
+                                                
+                                                onTextChanged: {
+                                                    // Allow only numbers, minus sign, and decimal point
+                                                    var filtered = text.replace(/[^0-9.\-]/g, '')
+                                                    
+                                                    // Ensure only one minus at start
+                                                    if (filtered.indexOf('-') !== filtered.lastIndexOf('-')) {
+                                                        filtered = filtered.replace(/-/g, '')
+                                                    }
+                                                    if (filtered.indexOf('-') > 0) {
+                                                        filtered = filtered.replace('-', '')
+                                                    }
+                                                    
+                                                    // Ensure only one decimal point
+                                                    if (filtered.indexOf('.') !== filtered.lastIndexOf('.')) {
+                                                        filtered = filtered.substring(0, filtered.lastIndexOf('.'))
+                                                    }
+                                                    
+                                                    if (text !== filtered) {
+                                                        text = filtered
+                                                        return
+                                                    }
+                                                    
+                                                    parameterValues[modelData.name] = text
+                                                }
+                                                
+                                                onActiveFocusChanged: {
+                                                    if (activeFocus) {
+                                                        numberPad.targetField = numberInputWrapper
+                                                        numberPad.open()
+                                                    }
+                                                }
                                             }
                                             
+                                            // Numpad button in input field
                                             Rectangle {
-                                                anchors.fill: parent
-                                                color: "transparent"
-                                                border.color: parent.activeFocus ? "#3A5A8C" : "transparent"
-                                                border.width: 1
+                                                Layout.preferredWidth: 40
+                                                Layout.fillHeight: true
+                                                color: numpadButtonArea.containsMouse ? "#2A3F60" : "transparent"
                                                 radius: 6
+                                                
+                                                Behavior on color {
+                                                    ColorAnimation { duration: 150 }
+                                                }
+                                                
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: "🔢"
+                                                    font.pixelSize: 16
+                                                    color: "#CCCCCC"
+                                                }
+                                                
+                                                MouseArea {
+                                                    id: numpadButtonArea
+                                                    anchors.fill: parent
+                                                    hoverEnabled: true
+                                                    onClicked: {
+                                                        numberPad.targetField = numberInputWrapper
+                                                        numberPad.open()
+                                                    }
+                                                }
                                             }
                                         }
 
                                         // Placeholder text
                                         Text {
-                                            anchors.fill: numberInput
-                                            anchors.margins: 10
+                                            anchors.fill: numberInputWrapper
+                                            anchors.leftMargin: 10
+                                            anchors.rightMargin: 50
                                             text: modelData.placeholder || ""
                                             color: "#666666"
                                             font.pixelSize: 14
                                             verticalAlignment: Text.AlignVCenter
-                                            visible: numberInput.text === "" && !numberInput.activeFocus
+                                            visible: numberInputWrapper.text === "" && !numberInputWrapper.activeFocus
                                         }
                                     }
                                     
@@ -503,5 +564,10 @@ Item {
     function showCommandFeedback() {
         // You could add a temporary overlay or notification here
         console.log("Command sent successfully!")
+    }
+    
+    // Numpad component for number input
+    NumpadNew {
+        id: numberPad
     }
 }
