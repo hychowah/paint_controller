@@ -1,4 +1,4 @@
-from PySide6.QtCore import QObject, Signal, QMutex, QMutexLocker
+from PySide6.QtCore import QObject, Signal, QMutex, QMutexLocker, Slot, Property
 from PySide6.QtGui import QImage
 from PySide6.QtQuick import QQuickImageProvider
 from typing import Dict, Optional, Callable
@@ -6,11 +6,22 @@ from dataclasses import dataclass
 from enum import Enum, auto
 import threading
 from copy import copy
+import logging
 
 import gi
 gi.require_version('Gst', '1.0')
 gi.require_version('GstApp', '1.0')
 from gi.repository import Gst
+
+# ROS2 imports (optional - gracefully handle if not available)
+try:
+    import rclpy
+    from rclpy.node import Node
+    from std_msgs.msg import Bool, String
+    ROS2_AVAILABLE = True
+except ImportError:
+    ROS2_AVAILABLE = False
+    logging.warning("ROS2 not available - VideoStreamHandler will run in standalone mode")
 
 class CameraType(Enum):
     """Enumeration of supported camera types"""
@@ -205,7 +216,7 @@ class CameraStream(QObject):
             print(f"Error during cleanup for {self.config.name}: {e}")
 
 class VideoStreamHandler(QObject):
-    """Unified video stream handler for multiple cameras"""
+    """Unified video stream handler for multiple cameras with ROS2 integration"""
     
     # Signals for different camera frames
     endEffectorFrameReady = Signal()
@@ -216,11 +227,36 @@ class VideoStreamHandler(QObject):
     # General frame ready signal with camera type
     frameReady = Signal(str)  # Emits camera type as string
     
-    def __init__(self, configurable_port: int = 5000):
+    # ROS2 signals for status and recording
+    recordingStatusChanged = Signal(str)  # Emits recording status ("recording", "stopped", "failed")
+    cameraStatusChanged = Signal(str)    # Emits camera status ("streaming", "idle", "error")
+    
+    def __init__(self, configurable_port: int = 5000, ros_node: Optional[Node] = None):
+        """
+        Initialize VideoStreamHandler with optional ROS2 integration.
+        
+        Args:
+            configurable_port: Port for configurable camera stream
+            ros_node: ROS2 node for publishing/subscribing to recording commands and status
+        """
         super().__init__()
         
         # Initialize GStreamer
         Gst.init(None)
+        
+        # ROS2 integration
+        self._ros_node = ros_node
+        self._ros_initialized = False
+        self._recording_state = False
+        
+        # Setup ROS2 publishers and subscribers if node is provided
+        if ROS2_AVAILABLE and ros_node is not None:
+            try:
+                self._setup_ros_interface()
+                self._ros_initialized = True
+                self._log(f"ROS2 interface initialized for VideoStreamHandler")
+            except Exception as e:
+                self._log(f"Failed to setup ROS2 interface: {e}", level="warning")
         
         # ✅ Thread-safe lock for camera_streams dictionary
         self._streams_lock = threading.RLock()
@@ -256,6 +292,150 @@ class VideoStreamHandler(QObject):
         # Create camera streams
         self.camera_streams: Dict[CameraType, CameraStream] = {}
         self._create_camera_streams()
+    
+    def _setup_ros_interface(self):
+        """Setup ROS2 publishers and subscribers for end effector camera recording control and status."""
+        # Publisher for recording commands to end effector camera
+        self._record_cmd_pub = self._ros_node.create_publisher(
+            Bool,
+            '/ef/camera/record/cmd',
+            10
+        )
+        
+        # Subscriber for status updates from end effector camera node
+        self._status_sub = self._ros_node.create_subscription(
+            String,
+            '/ef/camera/status',
+            self._status_callback,
+            10
+        )
+        
+        self._log("ROS2 interface setup complete: /ef/camera/record/cmd (pub), /ef/camera/status (sub)")
+    
+    def _record_cmd_callback(self, msg: Bool):
+        """
+        ROS2 callback for recording commands from remote camera node.
+        
+        Args:
+            msg: Bool message where True = start recording, False = stop recording
+        """
+        if msg.data:
+            self._log("ROS2 recording command received: START")
+            self.start_recording()
+        else:
+            self._log("ROS2 recording command received: STOP")
+            self.stop_recording()
+    
+    @Slot()
+    def start_recording(self):
+        """
+        Qt Slot to start recording video from end effector camera.
+        Publishes recording command to ROS2.
+        """
+        if self._recording_state:
+            self._log("Already recording", level="warning")
+            return
+        
+        self._recording_state = True
+        self._log("Recording started - publishing command to /ef/camera/record/cmd")
+        self.recordingStatusChanged.emit("recording")
+        
+        if self._ros_initialized:
+            self._publish_record_command(True)
+    
+    @Slot()
+    def stop_recording(self):
+        """
+        Qt Slot to stop recording video.
+        Publishes recording stop command to ROS2.
+        """
+        if not self._recording_state:
+            self._log("Not currently recording", level="warning")
+            return
+        
+        self._recording_state = False
+        self._log("Recording stopped - publishing command to /ef/camera/record/cmd")
+        self.recordingStatusChanged.emit("stopped")
+        
+        if self._ros_initialized:
+            self._publish_record_command(False)
+    
+    @Slot()
+    def toggleRecording(self):
+        """
+        Qt Slot to toggle recording state.
+        Starts recording if not recording, stops if recording.
+        """
+        self._log("Toggling recording state")
+        if self._recording_state:
+            self.stop_recording()
+        else:
+            self.start_recording()
+    
+    @Property(bool, notify=recordingStatusChanged)
+    def is_recording(self) -> bool:
+        """Qt Property to check if currently recording."""
+        return self._recording_state
+    
+    def _status_callback(self, msg: String):
+        """
+        ROS2 callback to receive camera status from remote camera node.
+        
+        Args:
+            msg: String message with camera status (e.g., "STREAMING", "RECORDING", "ERROR")
+        """
+        status = msg.data
+        self._log(f"Received camera status: {status}")
+        self.cameraStatusChanged.emit(status)
+    
+    def _publish_record_command(self, start_recording: bool):
+        """
+        Publish recording command to remote camera node.
+        
+        Args:
+            start_recording: True to start recording, False to stop recording
+        """
+        if not self._ros_initialized or self._record_cmd_pub is None:
+            return
+        
+        try:
+            msg = Bool()
+            msg.data = start_recording
+            self._record_cmd_pub.publish(msg)
+            cmd_str = "START" if start_recording else "STOP"
+            self._log(f"Published recording command: {cmd_str}")
+        except Exception as e:
+            self._log(f"Failed to publish recording command: {e}", level="error")
+    
+    def _publish_status(self, status: str):
+        """
+        Deprecated: Status is now received from remote camera node via subscription.
+        
+        Args:
+            status: Status string (no longer used)
+        """
+        pass
+    
+    def _log(self, message: str, level: str = "info"):
+        """
+        Log message using ROS2 logger if available, otherwise use print.
+        
+        Args:
+            message: Message to log
+            level: Log level ("info", "warning", "error", "debug")
+        """
+        if self._ros_node is not None:
+            logger = self._ros_node.get_logger()
+            if level == "info":
+                logger.info(f"[VideoStreamHandler] {message}")
+            elif level == "warning":
+                logger.warn(f"[VideoStreamHandler] {message}")
+            elif level == "error":
+                logger.error(f"[VideoStreamHandler] {message}")
+            elif level == "debug":
+                logger.debug(f"[VideoStreamHandler] {message}")
+        else:
+            print(f"[VideoStreamHandler] {message}")
 
     def _create_camera_streams(self):
         """Create all configured camera streams"""

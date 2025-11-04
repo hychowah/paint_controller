@@ -158,6 +158,17 @@ Item {
                         width: parent.width
                         spacing: 10
                         
+                        // Camera Recording Control
+                        ControlPanel {
+                            Layout.fillWidth: true
+                            controlName: "Camera Recording"
+                            controlStatus: videoStreamer.is_recording ? "Recording" : "Streaming"
+                            enabledState: videoStreamer.is_recording
+                            iconText: "REC"
+                            
+                            onClicked: videoStreamer.toggleRecording()
+                        }
+
                         // Teensy Relay Control
                         ControlPanel {
                             Layout.fillWidth: true

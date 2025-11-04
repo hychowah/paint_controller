@@ -197,8 +197,8 @@ class RobotController(Node, QObject):
         # Initialize components
         self.warningHandler = WarningHandler()
 
-        # Initialize unified video stream handler
-        self.video_stream_handler = VideoStreamHandler(config.video_port)
+        # Initialize unified video stream handler with ROS2 integration
+        self.video_stream_handler = VideoStreamHandler(config.video_port, ros_node=self)
         
         self.current_status = HeartbeatStatus.IDLE
         self.config = config
@@ -556,6 +556,7 @@ def main():
     engine.rootContext().setContextProperty("actionConfig", controller.action_config)
     engine.rootContext().setContextProperty("heartbeatHandler", controller.heartbeat_handler)
     engine.rootContext().setContextProperty("sshHandler", controller.ssh_controller)
+    engine.rootContext().setContextProperty("videoStreamer", controller.video_stream_handler)
     controller.engine = engine
     
     # Start status update timer
