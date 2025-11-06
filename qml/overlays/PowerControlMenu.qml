@@ -26,14 +26,6 @@ Item {
                 easing.type: Easing.InOutQuad 
             }
         }
-        
-        // Direct access to overlayController methods
-        MouseArea {
-            anchors.fill: parent
-            onClicked: {
-                overlayController.hide_menu()
-            }
-        }
     }
 
     Rectangle {

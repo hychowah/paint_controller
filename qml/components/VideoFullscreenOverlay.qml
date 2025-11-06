@@ -11,8 +11,8 @@ Rectangle {
     // Control panel shared properties
     property int panelWidth: 200
     property int panelHeight: 120
-    property int panelBottomMargin: 20
-    property int panelSideMargin: 120
+    property int panelBottomMargin: 40
+    property int panelSideMargin: 20
     
     visible: active
     anchors.fill: parent
@@ -234,14 +234,6 @@ Rectangle {
         interval: 3000
         running: root.active
         repeat: false
-    }
-    
-    // Full area mouse handler to exit
-    MouseArea {
-        anchors.fill: parent
-        onClicked: {
-            root.active = false
-        }
     }
     
     // Direct connections to video stream updates
