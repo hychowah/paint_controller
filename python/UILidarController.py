@@ -4,12 +4,14 @@ import time
 import struct
 from sensor_msgs.msg import PointCloud2
 from PySide6.QtCore import QObject, Signal, Property, Slot
+import numpy as np
 
 
 class LidarController(QObject):
     # Define Qt signals
     pointcloud_updated = Signal(dict)
     points_ready = Signal(list)  # Signal to send parsed 3D points to QML
+    points_ready_numpy = Signal(np.ndarray)  # Signal for VTK widget (numpy array)
     
     def __init__(self, robot_controller):
         super().__init__()
@@ -19,7 +21,8 @@ class LidarController(QObject):
         self._message_count = 0
         self._point_count = 0
         self._frame_id = ""
-        self._points_3d = []  # Store parsed 3D points
+        self._points_3d = []  # Store parsed 3D points as list of dicts
+        self._points_numpy = None  # Store as numpy array for VTK
         
         # Configure subscribers
         self._setup_subscribers()
@@ -34,9 +37,12 @@ class LidarController(QObject):
         )
         print('LidarController: Subscribed to /unilidar/cloud')
     
-    def _parse_pointcloud2(self, msg: PointCloud2):
-        """Parse PointCloud2 message and extract XYZ points"""
-        points = []
+    def _parse_pointcloud2(self, msg: PointCloud2, max_points=10000):
+        """
+        Parse PointCloud2 message and extract XYZ points
+        Returns both list of dicts (for QML) and numpy array (for VTK)
+        """
+        points_list = []
         
         # PointCloud2 structure: width * height points
         # Each point has fields defined in msg.fields (typically x, y, z, intensity, etc.)
@@ -53,14 +59,19 @@ class LidarController(QObject):
         
         if x_offset is None or y_offset is None or z_offset is None:
             print("Warning: Could not find x, y, z fields in PointCloud2")
-            return points
+            return points_list, None
         
         # Parse binary data
         point_step = msg.point_step
         num_points = msg.width * msg.height
         
-        # Downsample for performance - take every Nth point
-        downsample = max(1, num_points // 5000)  # Max 5000 points for rendering
+        # Downsample for performance - VTK can handle more points
+        downsample = max(1, num_points // max_points)
+        
+        # Pre-allocate numpy array for efficiency
+        estimated_size = min(num_points // downsample, max_points)
+        points_numpy = np.zeros((estimated_size, 3), dtype=np.float32)
+        valid_count = 0
         
         for i in range(0, num_points, downsample):
             offset = i * point_step
@@ -71,10 +82,17 @@ class LidarController(QObject):
             z = struct.unpack_from('f', msg.data, offset + z_offset)[0]
             
             # Filter out invalid points (NaN, Inf)
-            if not (abs(x) > 100 or abs(y) > 100 or abs(z) > 100):
-                points.append({'x': float(x), 'y': float(y), 'z': float(z)})
+            if not (np.isnan(x) or np.isnan(y) or np.isnan(z) or 
+                   abs(x) > 100 or abs(y) > 100 or abs(z) > 100):
+                if valid_count < estimated_size:
+                    points_numpy[valid_count] = [x, y, z]
+                    points_list.append({'x': float(x), 'y': float(y), 'z': float(z)})
+                    valid_count += 1
         
-        return points
+        # Trim numpy array to actual size
+        points_numpy = points_numpy[:valid_count]
+        
+        return points_list, points_numpy
     
     def _pointcloud_callback(self, msg: PointCloud2):
         """Process incoming PointCloud2 messages from ROS"""
@@ -82,11 +100,9 @@ class LidarController(QObject):
         self._point_count = msg.width * msg.height
         self._frame_id = msg.header.frame_id
         
-        print(f"LiDAR message #{self._message_count}: {self._point_count} points, frame_id={self._frame_id}")
         
-        # Parse 3D points
-        self._points_3d = self._parse_pointcloud2(msg)
-        print(f"Parsed {len(self._points_3d)} points for visualization")
+        # Parse 3D points (both formats)
+        self._points_3d, self._points_numpy = self._parse_pointcloud2(msg)
         
         # Emit signal with basic data
         data = {
@@ -97,8 +113,10 @@ class LidarController(QObject):
         }
         self.pointcloud_updated.emit(data)
         
-        # Emit parsed points for 3D rendering
-        self.points_ready.emit(self._points_3d)
+        # Emit parsed points for 3D rendering (both formats)
+        self.points_ready.emit(self._points_3d)  # For QML
+        if self._points_numpy is not None:
+            self.points_ready_numpy.emit(self._points_numpy)  # For VTK
     
     # Qt Properties for QML access
     @Property(int, notify=pointcloud_updated)

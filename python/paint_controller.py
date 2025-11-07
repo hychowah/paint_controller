@@ -9,6 +9,10 @@ from typing import Dict, Optional, List, Any, Callable
 from threading import Lock
 import yaml
 
+# Force Qt to use X11 backend for VTK compatibility (Wayland issues)
+if 'QT_QPA_PLATFORM' not in os.environ:
+    os.environ['QT_QPA_PLATFORM'] = 'xcb'
+
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import UInt8
@@ -28,6 +32,7 @@ from UIWinchController import WinchController
 from UIWindMonitor import WindMonitor
 from UITeensyController import TeensyController
 from UILidarController import LidarController
+from VTKPointCloudWidget import VTKPointCloudWidget
 from ActionConfigPython import ActionConfigPython
 from UIHeartbeatHandler import UIHeartbeatHandler
 from UIEmergencyButtonHandler import EmergencyButtonHandler
@@ -228,6 +233,10 @@ class RobotController(Node, QObject):
         self.input_handler = UIInputHandler(self)
         self.steam_deck_handler.start()
         self.ssh_controller = UISSHController(self)
+        
+        # Create VTK point cloud widget (initially hidden)
+        self.vtk_widget = None  # Will be created after QApplication is initialized
+        
         self.setup_steam_deck_callbacks()
 
         self.status_updated.connect(self._timer_callback)
@@ -438,7 +447,60 @@ class RobotController(Node, QObject):
 
     @Slot()
     def toggle_lidar_overlay(self):
-        """Toggle the LiDAR overlay"""
+        """Toggle the LiDAR overlay - now using VTK widget"""
+        if self.vtk_widget is None:
+            self.get_logger().warning('VTK widget not initialized, falling back to QML overlay')
+            self._toggle_qml_lidar_overlay()
+            return
+        
+        # First, make sure QML overlay is hidden
+        self._hide_qml_lidar_overlay()
+        
+        # Toggle VTK widget visibility
+        if self.vtk_widget.isVisible():
+            # Hide widget and disconnect signal
+            self.vtk_widget.hide()
+            try:
+                self.lidar_controller.points_ready_numpy.disconnect(
+                    self.vtk_widget.update_point_cloud
+                )
+                self.get_logger().debug('LiDAR VTK signal disconnected')
+            except:
+                pass  # Already disconnected
+            self.get_logger().info('LiDAR VTK overlay: deactivated')
+        else:
+            # Connect signal BEFORE showing widget
+            try:
+                self.lidar_controller.points_ready_numpy.connect(
+                    self.vtk_widget.update_point_cloud
+                )
+                self.get_logger().debug('LiDAR VTK signal connected')
+            except:
+                pass  # Already connected
+            
+            # Show widget
+            self.vtk_widget.show()
+            self.vtk_widget.raise_()  # Bring to front
+            self.vtk_widget.activateWindow()
+            self.get_logger().info('LiDAR VTK overlay: activated')
+    
+    def _hide_qml_lidar_overlay(self):
+        """Ensure QML LiDAR overlay is hidden"""
+        root_objects = self.engine.rootObjects()
+        if not root_objects:
+            return
+            
+        root = root_objects[0]
+        lidar_overlay = root.findChild(QObject, "lidarOverlay")
+        
+        if lidar_overlay:
+            is_active = QQmlProperty.read(lidar_overlay, "active")
+            if is_active:
+                QQmlProperty.write(lidar_overlay, "active", False)
+                self.get_logger().debug('QML LiDAR overlay hidden (VTK active)')
+    
+    def _toggle_qml_lidar_overlay(self):
+        """Fallback: Toggle the QML-based LiDAR overlay"""
         root_objects = self.engine.rootObjects()
         if not root_objects:
             self.get_logger().error('No root QML objects found')
@@ -453,7 +515,7 @@ class RobotController(Node, QObject):
             
             # Toggle the state
             QQmlProperty.write(lidar_overlay, "active", not is_active)
-            self.get_logger().info(f'LiDAR overlay: {"activated" if not is_active else "deactivated"}')
+            self.get_logger().info(f'LiDAR QML overlay: {"activated" if not is_active else "deactivated"}')
         else:
             self.get_logger().error('LidarOverlay not found in QML')
 
@@ -572,6 +634,26 @@ class RobotController(Node, QObject):
             except Exception as e:
                 self.get_logger().error(f"Error cleaning up lidar controller: {e}")
         
+        # Clean up VTK widget
+        if hasattr(self, 'vtk_widget') and self.vtk_widget:
+            try:
+                self.get_logger().info('Cleaning up VTK widget...')
+                # Disconnect signal if connected
+                try:
+                    self.lidar_controller.points_ready_numpy.disconnect(
+                        self.vtk_widget.update_point_cloud
+                    )
+                except:
+                    pass
+                # Hide and clean up widget
+                self.vtk_widget.hide()
+                self.vtk_widget.close()
+                self.vtk_widget.deleteLater()
+                self.vtk_widget = None
+                self.get_logger().info('VTK widget cleanup complete')
+            except Exception as e:
+                self.get_logger().error(f"Error cleaning up VTK widget: {e}")
+        
         # Destroy publishers
         if hasattr(self, 'heartbeat_pub') and self.heartbeat_pub:
             try:
@@ -594,16 +676,55 @@ def main():
     
     # Create Qt application
     app = QApplication(sys.argv)
+    
+    # Create robot controller
+    controller = RobotController(config)
 
     def handle_sigint(signum, frame):
-        print("Caught Ctrl+C. Quitting application...")
+        print("\nCaught Ctrl+C. Initiating clean shutdown...")
+        # Close VTK widget first
+        if hasattr(controller, 'vtk_widget') and controller.vtk_widget:
+            try:
+                controller.vtk_widget.close()
+                app.processEvents()
+            except:
+                pass
+        # Quit the application
         app.quit()
 
     signal.signal(signal.SIGINT, handle_sigint)
     
-    # Create robot controller
-    controller = RobotController(config)
+    # Create and setup VTK point cloud widget
+    controller.vtk_widget = VTKPointCloudWidget()
+    controller.vtk_widget.setWindowTitle("LiDAR 3D View (VTK)")
+    controller.vtk_widget.resize(1200, 800)
     
+    # Set window flags to ensure it's a separate top-level window that stays on top
+    from PySide6.QtCore import Qt
+    controller.vtk_widget.setWindowFlags(
+        Qt.Window | 
+        Qt.WindowStaysOnTopHint |
+        Qt.WindowCloseButtonHint |
+        Qt.WindowMinimizeButtonHint |
+        Qt.WindowMaximizeButtonHint
+    )
+    
+    controller.vtk_widget.hide()  # Start hidden
+    
+    # DON'T connect the signal here - it will be connected/disconnected in toggle_lidar_overlay()
+    # This ensures we only process point clouds when the widget is visible
+    
+    # Connect VTK widget close button to hide and disconnect
+    def on_vtk_close():
+        controller.vtk_widget.hide()
+        try:
+            controller.lidar_controller.points_ready_numpy.disconnect(
+                controller.vtk_widget.update_point_cloud
+            )
+        except:
+            pass
+    
+    controller.vtk_widget.closed.connect(on_vtk_close)
     
     # Start ROS thread
     ros_thread = RosThread(controller)
@@ -656,7 +777,17 @@ def main():
     finally:
         print("Starting emergency shutdown sequence...")
         
-        # Step 1: Request ROS thread shutdown FIRST
+        # Step 0: Clean up VTK widget FIRST (before ROS shutdown)
+        try:
+            if hasattr(controller, 'vtk_widget') and controller.vtk_widget:
+                print("Cleaning up VTK widget...")
+                controller.vtk_widget.close()
+                app.processEvents()  # Process close events
+                controller.vtk_widget = None
+        except Exception as e:
+            print(f"Error cleaning up VTK widget: {e}")
+        
+        # Step 1: Request ROS thread shutdown
         try:
             ros_thread.request_shutdown()
             # Wait max 3 seconds for ROS thread to finish

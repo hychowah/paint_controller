@@ -473,7 +473,6 @@ Rectangle {
         target: lidarController
         
         function onPoints_ready(points) {
-            console.log("3D View received", points.length, "points")
             pointsData = points
         }
     }
