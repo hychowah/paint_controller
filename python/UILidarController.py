@@ -85,8 +85,18 @@ class LidarController(QObject):
             if not (np.isnan(x) or np.isnan(y) or np.isnan(z) or 
                    abs(x) > 100 or abs(y) > 100 or abs(z) > 100):
                 if valid_count < estimated_size:
-                    points_numpy[valid_count] = [x, y, z]
-                    points_list.append({'x': float(x), 'y': float(y), 'z': float(z)})
+                    # Apply coordinate transformation like test_vtk_ros.py: [-y, z, -x]
+                    # This converts from LiDAR coords to visualization coords
+                    transformed_x = -y
+                    transformed_y = z
+                    transformed_z = -x
+                    
+                    points_numpy[valid_count] = [transformed_x, transformed_y, transformed_z]
+                    points_list.append({
+                        'x': float(transformed_x), 
+                        'y': float(transformed_y), 
+                        'z': float(transformed_z)
+                    })
                     valid_count += 1
         
         # Trim numpy array to actual size

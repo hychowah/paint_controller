@@ -38,3 +38,8 @@ class WindMonitor(QObject):
 
     windSpeed = Property(float, get_speed, notify=windSpeedChanged)
     windDirection = Property(float, get_direction, notify=windDirectionChanged)
+    
+    def cleanup(self):
+        """Clean up wind monitor resources"""
+        # No specific cleanup needed for this component
+        pass

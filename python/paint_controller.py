@@ -17,7 +17,7 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import UInt8
 
-from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Property, Signal, QThread, QMetaObject
+from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Property, Signal, QThread, QMetaObject, Q_ARG
 from PySide6.QtQml import QQmlApplicationEngine, QQmlProperty
 from PySide6.QtWidgets import QApplication
 
@@ -32,12 +32,52 @@ from UIWinchController import WinchController
 from UIWindMonitor import WindMonitor
 from UITeensyController import TeensyController
 from UILidarController import LidarController
-from VTKPointCloudWidget import VTKPointCloudWidget
 from ActionConfigPython import ActionConfigPython
 from UIHeartbeatHandler import UIHeartbeatHandler
 from UIEmergencyButtonHandler import EmergencyButtonHandler
 from UIInputHandler import UIInputHandler
 from UISSHController import UISSHController
+
+# Global reference for signal handler
+_app_instance = None
+_controller_instance = None
+_ros_thread_instance = None
+
+def signal_handler(signum, frame):
+    """Handle SIGINT (Ctrl+C) gracefully"""
+    print("\n\nReceived interrupt signal (Ctrl+C)...")
+    print("Initiating graceful shutdown...")
+    
+    global _app_instance, _controller_instance, _ros_thread_instance
+    
+    # Stop ROS thread first
+    if _ros_thread_instance is not None:
+        try:
+            print("Stopping ROS thread...")
+            _ros_thread_instance.request_shutdown()
+            _ros_thread_instance.wait(1000)  # Wait 1 second
+        except Exception as e:
+            print(f"Error stopping ROS thread: {e}")
+    
+    # Cleanup controller
+    if _controller_instance is not None:
+        try:
+            print("Cleaning up controller...")
+            _controller_instance.cleanup()
+        except Exception as e:
+            print(f"Error cleaning up controller: {e}")
+    
+    # Quit Qt application
+    if _app_instance is not None:
+        try:
+            print("Quitting Qt application...")
+            _app_instance.quit()
+        except Exception as e:
+            print(f"Error quitting application: {e}")
+    
+    # Force exit if needed
+    print("Shutdown complete.")
+    sys.exit(0)
 
 #############################################
 ### Configuration
@@ -233,9 +273,7 @@ class RobotController(Node, QObject):
         self.input_handler = UIInputHandler(self)
         self.steam_deck_handler.start()
         self.ssh_controller = UISSHController(self)
-        
-        # Create VTK point cloud widget (initially hidden)
-        self.vtk_widget = None  # Will be created after QApplication is initialized
+
         
         self.setup_steam_deck_callbacks()
 
@@ -260,6 +298,9 @@ class RobotController(Node, QObject):
 
         # Connect video stream signals
         self.video_stream_handler.endEffectorFrameReady.connect(self.frame_ready.emit)
+        
+        # Note: LiDAR overlay updates automatically via QML Connections block
+        # No manual signal connection needed in Python
         
         # Start all video streams
         self.video_stream_handler.start_all_streams()
@@ -447,77 +488,36 @@ class RobotController(Node, QObject):
 
     @Slot()
     def toggle_lidar_overlay(self):
-        """Toggle the LiDAR overlay - now using VTK widget"""
-        if self.vtk_widget is None:
-            self.get_logger().warning('VTK widget not initialized, falling back to QML overlay')
-            self._toggle_qml_lidar_overlay()
-            return
-        
-        # First, make sure QML overlay is hidden
-        self._hide_qml_lidar_overlay()
-        
-        # Toggle VTK widget visibility
-        if self.vtk_widget.isVisible():
-            # Hide widget and disconnect signal
-            self.vtk_widget.hide()
-            try:
-                self.lidar_controller.points_ready_numpy.disconnect(
-                    self.vtk_widget.update_point_cloud
-                )
-                self.get_logger().debug('LiDAR VTK signal disconnected')
-            except:
-                pass  # Already disconnected
-            self.get_logger().info('LiDAR VTK overlay: deactivated')
-        else:
-            # Connect signal BEFORE showing widget
-            try:
-                self.lidar_controller.points_ready_numpy.connect(
-                    self.vtk_widget.update_point_cloud
-                )
-                self.get_logger().debug('LiDAR VTK signal connected')
-            except:
-                pass  # Already connected
-            
-            # Show widget
-            self.vtk_widget.show()
-            self.vtk_widget.raise_()  # Bring to front
-            self.vtk_widget.activateWindow()
-            self.get_logger().info('LiDAR VTK overlay: activated')
-    
-    def _hide_qml_lidar_overlay(self):
-        """Ensure QML LiDAR overlay is hidden"""
-        root_objects = self.engine.rootObjects()
-        if not root_objects:
-            return
-            
-        root = root_objects[0]
-        lidar_overlay = root.findChild(QObject, "lidarOverlay")
-        
-        if lidar_overlay:
-            is_active = QQmlProperty.read(lidar_overlay, "active")
-            if is_active:
-                QQmlProperty.write(lidar_overlay, "active", False)
-                self.get_logger().debug('QML LiDAR overlay hidden (VTK active)')
-    
-    def _toggle_qml_lidar_overlay(self):
-        """Fallback: Toggle the QML-based LiDAR overlay"""
+        """Toggle the LiDAR point cloud overlay"""
         root_objects = self.engine.rootObjects()
         if not root_objects:
             self.get_logger().error('No root QML objects found')
             return
             
         root = root_objects[0]
+        # Find the LiDAR overlay by object name (matches QML objectName: "lidarOverlay")
         lidar_overlay = root.findChild(QObject, "lidarOverlay")
         
         if lidar_overlay:
             # Get current active state
             is_active = QQmlProperty.read(lidar_overlay, "active")
             
-            # Toggle the state
-            QQmlProperty.write(lidar_overlay, "active", not is_active)
-            self.get_logger().info(f'LiDAR QML overlay: {"activated" if not is_active else "deactivated"}')
+            if is_active:
+                # Deactivate it
+                QQmlProperty.write(lidar_overlay, "active", False)
+                self.get_logger().info('Deactivated LiDAR overlay')
+            else:
+                # Activate it
+                QQmlProperty.write(lidar_overlay, "active", True)
+                self.get_logger().info('Activated LiDAR overlay')
         else:
             self.get_logger().error('LidarOverlay not found in QML')
+    
+    # Note: The LiDAR overlay automatically updates via QML signal connections
+    # when lidar_controller emits points_ready signal, so no manual update methods needed
+    
+    
+
 
     @Slot()
     def update_fullscreen_video_source(self):
@@ -634,26 +634,7 @@ class RobotController(Node, QObject):
             except Exception as e:
                 self.get_logger().error(f"Error cleaning up lidar controller: {e}")
         
-        # Clean up VTK widget
-        if hasattr(self, 'vtk_widget') and self.vtk_widget:
-            try:
-                self.get_logger().info('Cleaning up VTK widget...')
-                # Disconnect signal if connected
-                try:
-                    self.lidar_controller.points_ready_numpy.disconnect(
-                        self.vtk_widget.update_point_cloud
-                    )
-                except:
-                    pass
-                # Hide and clean up widget
-                self.vtk_widget.hide()
-                self.vtk_widget.close()
-                self.vtk_widget.deleteLater()
-                self.vtk_widget = None
-                self.get_logger().info('VTK widget cleanup complete')
-            except Exception as e:
-                self.get_logger().error(f"Error cleaning up VTK widget: {e}")
-        
+
         # Destroy publishers
         if hasattr(self, 'heartbeat_pub') and self.heartbeat_pub:
             try:
@@ -668,6 +649,12 @@ class RobotController(Node, QObject):
 #############################################
 
 def main():
+    global _app_instance, _controller_instance, _ros_thread_instance
+    
+    # Setup signal handler for graceful shutdown
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
     # Initialize ROS
     rclpy.init()
     
@@ -676,59 +663,23 @@ def main():
     
     # Create Qt application
     app = QApplication(sys.argv)
+    _app_instance = app
     
     # Create robot controller
     controller = RobotController(config)
+    _controller_instance = controller
 
-    def handle_sigint(signum, frame):
-        print("\nCaught Ctrl+C. Initiating clean shutdown...")
-        # Close VTK widget first
-        if hasattr(controller, 'vtk_widget') and controller.vtk_widget:
-            try:
-                controller.vtk_widget.close()
-                app.processEvents()
-            except:
-                pass
-        # Quit the application
-        app.quit()
-
-    signal.signal(signal.SIGINT, handle_sigint)
-    
-    # Create and setup VTK point cloud widget
-    controller.vtk_widget = VTKPointCloudWidget()
-    controller.vtk_widget.setWindowTitle("LiDAR 3D View (VTK)")
-    controller.vtk_widget.resize(1200, 800)
-    
-    # Set window flags to ensure it's a separate top-level window that stays on top
-    from PySide6.QtCore import Qt
-    controller.vtk_widget.setWindowFlags(
-        Qt.Window | 
-        Qt.WindowStaysOnTopHint |
-        Qt.WindowCloseButtonHint |
-        Qt.WindowMinimizeButtonHint |
-        Qt.WindowMaximizeButtonHint
-    )
-    
-    controller.vtk_widget.hide()  # Start hidden
-    
-    # DON'T connect the signal here - it will be connected/disconnected in toggle_lidar_overlay()
-    # This ensures we only process point clouds when the widget is visible
-    
-    # Connect VTK widget close button to hide and disconnect
-    def on_vtk_close():
-        controller.vtk_widget.hide()
-        try:
-            controller.lidar_controller.points_ready_numpy.disconnect(
-                controller.vtk_widget.update_point_cloud
-            )
-        except:
-            pass
-    
-    controller.vtk_widget.closed.connect(on_vtk_close)
     
     # Start ROS thread
     ros_thread = RosThread(controller)
+    _ros_thread_instance = ros_thread
     ros_thread.start()
+    
+    # Setup timer to process Python signals in Qt event loop
+    # This allows Ctrl+C to work properly with Qt
+    timer = QTimer()
+    timer.start(500)  # Check for signals every 500ms
+    timer.timeout.connect(lambda: None)  # Just process events
     
     # Setup QML engine
     engine = QQmlApplicationEngine()
@@ -776,16 +727,6 @@ def main():
         print(f"Application error: {e}")
     finally:
         print("Starting emergency shutdown sequence...")
-        
-        # Step 0: Clean up VTK widget FIRST (before ROS shutdown)
-        try:
-            if hasattr(controller, 'vtk_widget') and controller.vtk_widget:
-                print("Cleaning up VTK widget...")
-                controller.vtk_widget.close()
-                app.processEvents()  # Process close events
-                controller.vtk_widget = None
-        except Exception as e:
-            print(f"Error cleaning up VTK widget: {e}")
         
         # Step 1: Request ROS thread shutdown
         try:
