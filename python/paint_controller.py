@@ -27,6 +27,7 @@ from UIWheelController import WheelController
 from UIWinchController import WinchController
 from UIWindMonitor import WindMonitor
 from UITeensyController import TeensyController
+from UILidarController import LidarController
 from ActionConfigPython import ActionConfigPython
 from UIHeartbeatHandler import UIHeartbeatHandler
 from UIEmergencyButtonHandler import EmergencyButtonHandler
@@ -218,6 +219,7 @@ class RobotController(Node, QObject):
         self.wheel_controller = WheelController(self)
         self.overlayController = OverlayController(self)
         self.teensy_controller = TeensyController(self)
+        self.lidar_controller = LidarController(self)
         self.wind_monitor = WindMonitor(self)    
         self.controlProcessor = ControlProcessor(self)
         self.action_config = ActionConfigPython(self)
@@ -295,6 +297,7 @@ class RobotController(Node, QObject):
         self.steam_deck_handler.register_button_callback('l5', ih.on_l5_pressed)
         self.steam_deck_handler.register_button_callback('r5', ih.on_r5_pressed)
         self.steam_deck_handler.register_button_callback('dot', self.toggle_fullscreen)
+        self.steam_deck_handler.register_button_callback('a', self.toggle_lidar_overlay)
 
 
     # Add property for control_mode
@@ -434,6 +437,27 @@ class RobotController(Node, QObject):
             self.get_logger().error('VideoFullscreenOverlay not found in QML')
 
     @Slot()
+    def toggle_lidar_overlay(self):
+        """Toggle the LiDAR overlay"""
+        root_objects = self.engine.rootObjects()
+        if not root_objects:
+            self.get_logger().error('No root QML objects found')
+            return
+            
+        root = root_objects[0]
+        lidar_overlay = root.findChild(QObject, "lidarOverlay")
+        
+        if lidar_overlay:
+            # Get current active state
+            is_active = QQmlProperty.read(lidar_overlay, "active")
+            
+            # Toggle the state
+            QQmlProperty.write(lidar_overlay, "active", not is_active)
+            self.get_logger().info(f'LiDAR overlay: {"activated" if not is_active else "deactivated"}')
+        else:
+            self.get_logger().error('LidarOverlay not found in QML')
+
+    @Slot()
     def update_fullscreen_video_source(self):
         """Update the fullscreen overlay video source based on control mode (if active)"""
         root_objects = self.engine.rootObjects()
@@ -542,6 +566,12 @@ class RobotController(Node, QObject):
             except Exception as e:
                 self.get_logger().error(f"Error cleaning up teensy controller: {e}")
         
+        if hasattr(self, 'lidar_controller') and self.lidar_controller:
+            try:
+                self.lidar_controller.cleanup()
+            except Exception as e:
+                self.get_logger().error(f"Error cleaning up lidar controller: {e}")
+        
         # Destroy publishers
         if hasattr(self, 'heartbeat_pub') and self.heartbeat_pub:
             try:
@@ -601,6 +631,7 @@ def main():
     engine.rootContext().setContextProperty("steamDeckHandler", controller.steam_deck_handler)
     engine.rootContext().setContextProperty("windMonitor", controller.wind_monitor)
     engine.rootContext().setContextProperty("teensyController", controller.teensy_controller)
+    engine.rootContext().setContextProperty("lidarController", controller.lidar_controller)
     engine.rootContext().setContextProperty("actionConfig", controller.action_config)
     engine.rootContext().setContextProperty("heartbeatHandler", controller.heartbeat_handler)
     engine.rootContext().setContextProperty("controlProcessor", controller.controlProcessor)
