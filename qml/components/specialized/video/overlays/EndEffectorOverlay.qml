@@ -15,6 +15,12 @@ Rectangle {
     
     VideoOverlayStyle { id: style }
     
+    // Top bar
+    VideoOverlayTopBar {
+        id: topBar
+        z: 100
+    }
+    
     // LEFT SIDE - Teensy Data (Extension & Gimbal Angle)
     Rectangle {
         id: leftDataPanel

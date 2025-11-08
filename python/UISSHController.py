@@ -3,8 +3,9 @@ import os
 import json
 import paramiko
 import threading
-import socket
+import subprocess
 import time
+import platform
 
 class SSHLauncher:
     def __init__(self, hostname, username, password=None, key_path=None, port=22):
@@ -47,29 +48,42 @@ class SSHLauncher:
         threading.Thread(target=_execute).start()
 
 class AvailabilityCheckRunnable(QRunnable):
-    def __init__(self, device_name, hostname, port, timeout, callback):
+    def __init__(self, device_name, hostname, timeout, callback):
         super().__init__()
         self.device_name = device_name
         self.hostname = hostname
-        self.port = port
         self.timeout = timeout
         self.callback = callback
 
     def run(self):
         try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(self.timeout)
-            start_time = time.time()
-            result = sock.connect_ex((self.hostname, self.port))
-            sock.close()
-
-            is_available = result == 0
-            elapsed = time.time() - start_time
+            # Determine ping command based on OS
+            param = "-n" if platform.system().lower() == "windows" else "-c"
+            
+            # Run ping command with timeout
+            cmd = ["ping", param, "1", "-W", str(int(self.timeout * 1000)), self.hostname]
+            result = subprocess.run(cmd, capture_output=True, timeout=self.timeout + 1)
+            
+            is_available = result.returncode == 0
+            
+            # Extract ping time from output
+            ping_time = None
+            if is_available:
+                output = result.stdout.decode()
+                # Try to extract ping time (format varies by OS, looking for "time=X.XXms" or "time < X.XXms")
+                import re
+                match = re.search(r'time[<=\s]+([0-9.]+)\s*ms', output, re.IGNORECASE)
+                if match:
+                    try:
+                        ping_time = float(match.group(1))
+                    except ValueError:
+                        ping_time = None
+            
             message = f"Device {self.device_name} checked at {time.strftime('%H:%M:%S')}: {'Available' if is_available else 'Unavailable'}"
-            if not is_available:
-                message += f" (errno: {result})"
+            if is_available and ping_time is not None:
+                message += f" ({ping_time:.2f}ms)"
 
-            self.callback(self.device_name, is_available, message, elapsed)
+            self.callback(self.device_name, is_available, message, ping_time if ping_time is not None else 0)
 
         except Exception as e:
             self.callback(self.device_name, False, f"{self.device_name} check failed: {str(e)}", 0)
@@ -78,6 +92,7 @@ class UISSHController(QObject):
     # Signals for QML
     configUpdated = Signal(str, str)  # Signal when config is updated
     deviceAvailable = Signal(str, bool, str)  # device_name, is_available, message
+    devicePingTime = Signal(str, float)  # device_name, ping_time_ms
     deviceAvailabilityChanged = Signal()
 
     def __init__(self, robot_controller, parent=None):
@@ -85,6 +100,7 @@ class UISSHController(QObject):
         self.robot_controller = robot_controller
         self.thread_pool = QThreadPool.globalInstance()
         self._deviceAvailability = {}  # Backing store for device_availability property: {device_name: bool}
+        self._devicePingTimes = {}  # Backing store for ping times: {device_name: float}
 
         # Store config paths
         config_dir = os.path.join(os.getcwd(), "config")
@@ -125,15 +141,17 @@ class UISSHController(QObject):
         }
 
     def _check_device_availability(self, device_name: str, hostname: str, port: int = 22, timeout: float = 0.5):
-        def handle_result(name, is_available, message, elapsed):
+        def handle_result(name, is_available, message, ping_time):
             previous = self._deviceAvailability.get(name)
             self._deviceAvailability[name] = is_available
-            if previous != is_available:
-                self.deviceAvailabilityChanged.emit()
+            self._devicePingTimes[name] = ping_time  # Store ping time
+            # Always emit to notify property changes
+            self.deviceAvailabilityChanged.emit()
             self.deviceAvailable.emit(name, is_available, message)
-            # print(f"[UISSHController] {message} (check took {elapsed:.3f}s)")
+            self.devicePingTime.emit(name, ping_time)
+            # print(f"[UISSHController] {message}")
 
-        runnable = AvailabilityCheckRunnable(device_name, hostname, port, timeout, handle_result)
+        runnable = AvailabilityCheckRunnable(device_name, hostname, timeout, handle_result)
         self.thread_pool.start(runnable)
 
     def _start_all_availability_checks(self):
@@ -146,14 +164,13 @@ class UISSHController(QObject):
                 continue
             
             hostname = device_config["hostname"]
-            port = int(device_config.get("port", 22))
             
             if device_name in self.availability_timers:
                 print(f"[UISSHController] Availability check already running for {device_name}")
                 continue
             
             timer = QTimer(self)
-            timer.timeout.connect(lambda name=device_name, host=hostname, p=port: self._check_device_availability(name, host, p))
+            timer.timeout.connect(lambda name=device_name, host=hostname: self._check_device_availability(name, host))
             timer.start(1000 + index * 200)  # Stagger checks by 200ms per device
             self.availability_timers[device_name] = timer
 
@@ -169,6 +186,11 @@ class UISSHController(QObject):
         return self._deviceAvailability
 
     deviceAvailability = Property('QVariantMap', _get_deviceAvailability, notify=deviceAvailabilityChanged)
+
+    def _get_devicePingTimes(self):
+        return self._devicePingTimes
+
+    devicePingTimes = Property('QVariantMap', _get_devicePingTimes, notify=deviceAvailabilityChanged)
 
     @Slot(str, result=str)
     def get_device_config(self, device_name: str):
@@ -228,11 +250,10 @@ class UISSHController(QObject):
 
                 # Read updated config
                 hostname = ip
-                port_num = int(port) if port else 22
 
                 # Restart timer with updated config
                 timer = QTimer(self)
-                timer.timeout.connect(lambda name=device_name, host=hostname, p=port_num: self._check_device_availability(name, host, p))
+                timer.timeout.connect(lambda name=device_name, host=hostname: self._check_device_availability(name, host))
                 timer.start(1000)  # Optional: make interval configurable
                 self.availability_timers[device_name] = timer
                 return True

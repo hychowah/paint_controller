@@ -14,6 +14,12 @@ Rectangle {
     
     VideoOverlayStyle { id: style }
     
+    // Top bar
+    VideoOverlayTopBar {
+        id: topBar
+        z: 100
+    }
+    
     // TOP-LEFT: Speed and Heading (wheel status)
     Rectangle {
         id: topLeftPanel
