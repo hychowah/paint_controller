@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "../../panels"
+import "overlays"
 
 Rectangle {
     id: root
@@ -29,102 +30,11 @@ Rectangle {
         source: root.videoSource
     }
     
-    // Top telemetry bar - placeholder for future telemetry data
-    Rectangle {
-        id: topBar
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        height: 60
-        color: "#80000000"  // Semi-transparent black
-        visible: false  // Hidden for now, enable when adding telemetry
-        
-        RowLayout {
-            anchors.fill: parent
-            anchors.margins: 10
-            spacing: 20
-            
-            // Placeholder for battery indicator
-            Label {
-                text: "Battery: 95%"
-                color: "white"
-                font.pixelSize: 16
-            }
-            
-            Item { Layout.fillWidth: true } // Spacer
-            
-            // Placeholder for signal strength
-            Label {
-                text: "Signal: Strong"
-                color: "white"
-                font.pixelSize: 16
-            }
-        }
-    }
     
-    // Bottom status bar - placeholder for future status data
-    Rectangle {
-        id: bottomBar
-        anchors.bottom: parent.bottom
-        anchors.left: parent.left
-        anchors.right: parent.right
-        height: 80
-        color: "#80000000"  // Semi-transparent black
-        visible: false  // Hidden for now, enable when adding status
-        
-        RowLayout {
-            anchors.fill: parent
-            anchors.margins: 15
-            spacing: 30
-            
-            // Placeholder for speed
-            Column {
-                Label {
-                    text: "SPEED"
-                    color: "#AAAAAA"
-                    font.pixelSize: 12
-                }
-                Label {
-                    text: "0.0 m/s"
-                    color: "white"
-                    font.pixelSize: 18
-                    font.bold: true
-                }
-            }
-            
-            // Placeholder for altitude
-            Column {
-                Label {
-                    text: "ALTITUDE"
-                    color: "#AAAAAA"
-                    font.pixelSize: 12
-                }
-                Label {
-                    text: "0.0 m"
-                    color: "white"
-                    font.pixelSize: 18
-                    font.bold: true
-                }
-            }
-            
-            Item { Layout.fillWidth: true } // Spacer
-            
-            // Placeholder for distance
-            Column {
-                Label {
-                    text: "DISTANCE"
-                    color: "#AAAAAA"
-                    font.pixelSize: 12
-                }
-                Label {
-                    text: "0.0 m"
-                    color: "white"
-                    font.pixelSize: 18
-                    font.bold: true
-                }
-            }
-        }
-    }
+    // Top telemetry bar - removed, now using overlay system
+    
+    // Bottom status bar - removed, now using overlay system
+    
     
     // Center crosshair or reticle - optional
     Rectangle {
@@ -175,6 +85,32 @@ Rectangle {
         }
     }
     
+    // Dynamic Overlay Loader - switches based on video source
+    Loader {
+        id: overlayLoader
+        anchors.fill: parent
+        enabled: root.active
+        
+        sourceComponent: {
+            if (root.videoSource.indexOf("ef_live") >= 0) {
+                return endEffectorOverlayComponent
+            } else if (root.videoSource.indexOf("base_front_live") >= 0) {
+                return baseFrontOverlayComponent
+            }
+            return null
+        }
+    }
+    
+    Component {
+        id: endEffectorOverlayComponent
+        EndEffectorOverlay { }
+    }
+    
+    Component {
+        id: baseFrontOverlayComponent
+        BaseFrontOverlay { }
+    }
+
     // Bottom Left Info Panel
     ControlInfoPanel {
         id: leftControlPanel
