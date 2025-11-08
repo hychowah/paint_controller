@@ -466,8 +466,8 @@ int main(int argc, char** argv) {
     QString qml_path;
     
     // Try to find QML file in installed location first
-    QString install_qml_path = "/home/c3spray_deck/ros2_ws/install/paint_controller_ros2/share/paint_controller_ros2/qml/MainWindow.qml";
-    QString source_qml_path = "/home/c3spray_deck/ros2_ws/src/paint_controller_ros2/paint_controller/qml/MainWindow.qml";
+    QString install_qml_path = "/home/c3spray_deck/ros2_ws/install/paint_controller_ros2/share/paint_controller_ros2/qml/core/MainWindow.qml";
+    QString source_qml_path = "/home/c3spray_deck/ros2_ws/src/paint_controller_ros2/paint_controller/qml/core/MainWindow.qml";
     
     if (QFile::exists(install_qml_path)) {
         qml_path = install_qml_path;
@@ -475,8 +475,8 @@ int main(int argc, char** argv) {
         qml_path = source_qml_path;
     } else {
         // Fallback to relative paths
-        QString rel_path1 = QDir::currentPath() + "/paint_controller/qml/MainWindow.qml";
-        QString rel_path2 = "../../src/paint_controller_ros2/paint_controller/qml/MainWindow.qml";
+        QString rel_path1 = QDir::currentPath() + "/paint_controller/qml/core/MainWindow.qml";
+        QString rel_path2 = "../../src/paint_controller_ros2/paint_controller/qml/core/MainWindow.qml";
         
         if (QFile::exists(rel_path1)) {
             qml_path = rel_path1;
