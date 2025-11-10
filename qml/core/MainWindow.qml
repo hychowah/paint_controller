@@ -17,11 +17,11 @@ import "../components/inputs"
 import "../components/displays"
 import "../components/panels"
 import "../components/popups"
-import "../components/specialized/lidar"
 import "../components/specialized/pointcloud"
 import "../overlays"
 import "../overlays/powercontrol"
 import "../overlays/video"
+import "../overlays/lidar"
 
 ApplicationWindow {
     id: mainWindow

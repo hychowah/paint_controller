@@ -20,8 +20,8 @@ QtObject {
     readonly property real borderOpacity: 0.8
     
     // Dimensions
-    readonly property int panelWidth: 180
-    readonly property int panelHeight: 110
+    readonly property int panelWidth: 160
+    readonly property int panelHeight: 90
     readonly property int smallPanelWidth: 140
     readonly property int smallPanelHeight: 80
     readonly property int sideMargin: 20

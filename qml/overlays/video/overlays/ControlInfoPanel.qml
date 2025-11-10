@@ -20,7 +20,7 @@ Rectangle {
     property int bottomMargin: 20
 
     // UI Design properties
-    property color backgroundColor: "#00000000" // Fully transparent background
+    property color backgroundColor: "#AA000000" // Semi-transparent dark background for readability
     property color borderColor: "#AAAAAA" // Border is removed, but keeping property for flexibility
     property color titleColor: "#CCCCCC" // Lighter for secondary text
     property color modeColor: "#00FF00" // Green for mode (as in image's "Descending")

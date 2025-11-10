@@ -17,8 +17,7 @@ Rectangle {
     }
     
     // LEFT SIDE - Teensy Data (Extension & Gimbal Angle)
-    // --- CHANGE: Replaced Rectangle with Item for no visual container ---
-    Item { 
+    Rectangle { 
         id: leftDataPanel
         // Width and Height are still necessary for layout calculation
         width: style.panelWidth 
@@ -29,7 +28,9 @@ Rectangle {
         anchors.left: parent.left
         anchors.leftMargin: style.controlPanelSideMargin + style.controlPanelWidth + 10
         
-        // --- REMOVED: All background, border, and gradient code ---
+        color: "#AA000000" // Semi-transparent dark background for readability
+        radius: 6
+        border.width: 0
 
         Column {
             anchors.fill: parent
@@ -97,8 +98,7 @@ Rectangle {
     }
     
     // RIGHT SIDE - Winch Data (Torque & Cable Length)
-    // --- CHANGE: Replaced Rectangle with Item for no visual container ---
-    Item {
+    Rectangle {
         id: rightDataPanel
         width: style.panelWidth
         height: style.panelHeight
@@ -108,7 +108,9 @@ Rectangle {
         anchors.right: parent.right
         anchors.rightMargin: style.controlPanelSideMargin + style.controlPanelWidth + 10
         
-        // --- REMOVED: All background, border, and gradient code ---
+        color: "#AA000000" // Semi-transparent dark background for readability
+        radius: 6
+        border.width: 0
         
         Column {
             anchors.fill: parent
