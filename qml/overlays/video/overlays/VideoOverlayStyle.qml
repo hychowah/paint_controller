@@ -10,7 +10,7 @@ QtObject {
     readonly property color panelBorderEnabled: "#00FF00"
     readonly property color panelBorderDisabled: "#FF3333"
     readonly property color panelBorderWarning: "#FFAA00"
-    readonly property color labelColor: "#888888"
+    readonly property color labelColor: "#FFFFFF"
     readonly property color valueColor: "#FFFFFF"
     readonly property color dividerColor: "#333333"
     readonly property color backgroundColor: "#000000"
@@ -33,7 +33,7 @@ QtObject {
     
     // Font sizes
     readonly property int labelFontSize: 10
-    readonly property int valueFontSize: 15
+    readonly property int valueFontSize: 20
     readonly property int titleFontSize: 20
     
     // Font properties

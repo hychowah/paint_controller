@@ -1,7 +1,7 @@
 {
     "BASE": {
-        "hostname": "192.168.31.18",
-        "username": "c3-pc01",
+        "hostname": "192.168.1.110",
+        "username": "c3spraypi2",
         "port": 22,
         "password": "312213"
     },

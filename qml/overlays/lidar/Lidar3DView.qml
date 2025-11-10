@@ -19,6 +19,7 @@ Rectangle {
     View3D {
         id: view3d
         anchors.fill: parent
+        visible: root.active  // Only render when active
         
         environment: SceneEnvironment {
             backgroundMode: SceneEnvironment.Color
@@ -135,13 +136,14 @@ Rectangle {
             }
         }
         
-                // Point cloud model
+                // Node for point cloud model
         Node {
             id: pointCloud
             
             // Use Repeater to create individual point spheres
+            // Only render when active to save GPU resources
             Repeater3D {
-                model: Math.min(pointsData.length, 2000)  // Limit for performance
+                model: root.active ? Math.min(pointsData.length, 2000) : 0  // 0 when inactive
                 
                 Model {
                     property var point: pointsData[index] || {x: 0, y: 0, z: 0}
@@ -468,12 +470,22 @@ Rectangle {
         }
     }
     
-    // Update point cloud when data changes
+    // Update point cloud when data changes - only when active
     Connections {
         target: lidarController
+        enabled: root.active  // Only listen when overlay is active
         
         function onPoints_ready(points) {
-            pointsData = points
+            if (root.active) {
+                pointsData = points
+            }
+        }
+    }
+    
+    // Clear point data when deactivated to free memory
+    onActiveChanged: {
+        if (!active) {
+            pointsData = []
         }
     }
     
