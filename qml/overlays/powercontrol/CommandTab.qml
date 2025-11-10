@@ -1,8 +1,9 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import "../buttons"
-import "../inputs"
+import "../../components/buttons"
+import "../../components/panels"
+import "../../components/inputs"
 
 Item {
     id: commandTab
@@ -261,7 +262,7 @@ Item {
                                     // Number input
                                     Rectangle {
                                         Layout.fillWidth: true
-                                        height: 40
+                                        height: 50
                                         color: "#1A1A1A"
                                         border.color: numberInputWrapper.activeFocus ? "#3A5A8C" : "#333333"
                                         border.width: 1

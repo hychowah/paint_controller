@@ -687,8 +687,12 @@ def main():
     engine.addImageProvider("base_front_live", controller.video_stream_handler.front_image_provider)
     engine.addImageProvider("base_rear_live", controller.video_stream_handler.rear_image_provider)
     
+    # Add QML import path for relative imports to resolve
+    qml_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'qml')
+    engine.addImportPath(qml_dir)
+    
     # Load QML interface
-    qml_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'qml', 'core', 'MainWindow.qml')
+    qml_path = os.path.join(qml_dir, 'core', 'MainWindow.qml')
     engine.load(QUrl.fromLocalFile(qml_path))
     
     # Set context properties

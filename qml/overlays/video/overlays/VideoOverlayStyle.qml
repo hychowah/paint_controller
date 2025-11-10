@@ -1,9 +1,5 @@
 import QtQuick 2.15
 
-/**
- * VideoOverlayStyle - Centralized styling for all video overlays
- * Provides consistent modern DJI-like design across overlays
- */
 
 QtObject {
     id: style

@@ -2,11 +2,6 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import "."
 
-/**
- * BaseFrontOverlay - Modern DJI-style telemetry overlay for base front camera
- * Displays: Speed/Heading (top-left) and Distance/Status (top-right)
- */
-
 Rectangle {
     id: overlay
     anchors.fill: parent
@@ -20,53 +15,38 @@ Rectangle {
         z: 100
     }
     
-    // TOP-LEFT: Speed and Heading (wheel status)
-    Rectangle {
-        id: topLeftPanel
-        width: style.panelWidth
-        height: style.panelHeight
-        radius: style.panelRadius
-        color: style.panelBackground
+    // LEFT SIDE - Wheel Data (Speed & Heading)
+    // --- CHANGE: Replaced Rectangle with Item for no visual container ---
+    Item { 
+        id: leftDataPanel
+        // Width and Height are still necessary for layout calculation
+        width: style.panelWidth 
+        height: style.panelHeight 
         
-        anchors.top: parent.top
-        anchors.topMargin: style.sideMargin
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: style.controlPanelBottomMargin
         anchors.left: parent.left
-        anchors.leftMargin: style.sideMargin
+        anchors.leftMargin: style.controlPanelSideMargin + style.controlPanelWidth + 10
         
-        // Modern gradient background
-        Rectangle {
-            anchors.fill: parent
-            radius: parent.radius
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: style.panelBackgroundLight }
-                GradientStop { position: 1.0; color: style.panelBackground }
-            }
-            z: -1
-        }
-        
-        border.width: style.borderWidth
-        border.color: wheelController.enabled ? style.panelBorderEnabled : style.panelBorderDisabled
-        
-        Behavior on border.color {
-            ColorAnimation { duration: style.colorAnimationDuration }
-        }
-        
+        // --- REMOVED: All background, border, and gradient code ---
+
         Column {
             anchors.fill: parent
             anchors.margins: style.panelMargins
-            anchors.topMargin: 8
-            spacing: style.contentSpacing
+            anchors.topMargin: 0 // Reduced margin for pure text look
+            spacing: style.contentSpacing * 1.5 // Increased spacing between data pairs
             
             // Speed Row
             Row {
                 width: parent.width
-                height: (style.panelHeight - style.panelMargins * 2 - style.panelMargins / 2 - style.contentSpacing - style.dividerHeight) / 2
+                // Simplified height calculation as divider is gone
+                height: (parent.height - style.contentSpacing * 1.5) / 2 
                 
                 Text {
                     text: "SPEED"
-                    color: style.labelColor
+                    color: style.labelColor // Softer color for secondary text
                     font.pixelSize: style.labelFontSize
-                    font.bold: true
+                    font.bold: false // Less emphasis
                     font.letterSpacing: style.labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
@@ -74,9 +54,9 @@ Rectangle {
                 
                 Text {
                     text: wheelController.wheel_speed ? wheelController.wheel_speed.toFixed(1) + " m/s" : "0.0 m/s"
-                    color: style.valueColor
+                    color: style.valueColor // Bright/White for primary value
                     font.pixelSize: style.valueFontSize
-                    font.bold: true
+                    font.bold: true // Strong emphasis
                     font.family: "Courier New"
                     font.letterSpacing: style.valueLetterSpacing
                     anchors.right: parent.right
@@ -84,24 +64,18 @@ Rectangle {
                 }
             }
             
-            // Divider line (centered)
-            Rectangle {
-                width: parent.width
-                height: style.dividerHeight
-                color: style.dividerColor
-                anchors.horizontalCenter: parent.horizontalCenter
-            }
+            // --- REMOVED: Divider line ---
             
             // Heading Row
             Row {
                 width: parent.width
-                height: (style.panelHeight - style.panelMargins * 2 - style.panelMargins / 2 - style.contentSpacing - style.dividerHeight) / 2
+                height: (parent.height - style.contentSpacing * 1.5) / 2
                 
                 Text {
-                    text: "HEAD"
+                    text: "HEADING"
                     color: style.labelColor
                     font.pixelSize: style.labelFontSize
-                    font.bold: true
+                    font.bold: false // Less emphasis
                     font.letterSpacing: style.labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
@@ -111,7 +85,7 @@ Rectangle {
                     text: "0.0°"
                     color: style.valueColor
                     font.pixelSize: style.valueFontSize
-                    font.bold: true
+                    font.bold: true // Strong emphasis
                     font.family: "Courier New"
                     font.letterSpacing: style.valueLetterSpacing
                     anchors.right: parent.right
@@ -121,53 +95,36 @@ Rectangle {
         }
     }
     
-    // TOP-RIGHT: Distance and Status (LiDAR status)
-    Rectangle {
-        id: topRightPanel
+    // RIGHT SIDE - LiDAR Data (Distance & Status)
+    // --- CHANGE: Replaced Rectangle with Item for no visual container ---
+    Item {
+        id: rightDataPanel
         width: style.panelWidth
         height: style.panelHeight
-        radius: style.panelRadius
-        color: style.panelBackground
         
-        anchors.top: parent.top
-        anchors.topMargin: style.sideMargin
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: style.controlPanelBottomMargin
         anchors.right: parent.right
-        anchors.rightMargin: style.sideMargin
+        anchors.rightMargin: style.controlPanelSideMargin + style.controlPanelWidth + 10
         
-        // Modern gradient background
-        Rectangle {
-            anchors.fill: parent
-            radius: parent.radius
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: style.panelBackgroundLight }
-                GradientStop { position: 1.0; color: style.panelBackground }
-            }
-            z: -1
-        }
-        
-        border.width: style.borderWidth
-        border.color: lidarController.enabled ? style.panelBorderEnabled : style.panelBorderDisabled
-        
-        Behavior on border.color {
-            ColorAnimation { duration: style.colorAnimationDuration }
-        }
+        // --- REMOVED: All background, border, and gradient code ---
         
         Column {
             anchors.fill: parent
             anchors.margins: style.panelMargins
-            anchors.topMargin: 8
-            spacing: style.contentSpacing
+            anchors.topMargin: 0 // Reduced margin
+            spacing: style.contentSpacing * 1.5 // Increased spacing between data pairs
             
             // Distance Row
             Row {
                 width: parent.width
-                height: (style.panelHeight - style.panelMargins * 2 - style.panelMargins / 2 - style.contentSpacing - style.dividerHeight) / 2
+                height: (parent.height - style.contentSpacing * 1.5) / 2
                 
                 Text {
-                    text: "DIST"
+                    text: "DISTANCE"
                     color: style.labelColor
                     font.pixelSize: style.labelFontSize
-                    font.bold: true
+                    font.bold: false // Less emphasis
                     font.letterSpacing: style.labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
@@ -177,7 +134,7 @@ Rectangle {
                     text: "0.0 m"
                     color: style.valueColor
                     font.pixelSize: style.valueFontSize
-                    font.bold: true
+                    font.bold: true // Strong emphasis
                     font.family: "Courier New"
                     font.letterSpacing: style.valueLetterSpacing
                     anchors.right: parent.right
@@ -185,24 +142,18 @@ Rectangle {
                 }
             }
             
-            // Divider line (centered)
-            Rectangle {
-                width: parent.width
-                height: style.dividerHeight
-                color: style.dividerColor
-                anchors.horizontalCenter: parent.horizontalCenter
-            }
+            // --- REMOVED: Divider line ---
             
             // Status Row
             Row {
                 width: parent.width
-                height: (style.panelHeight - style.panelMargins * 2 - style.panelMargins / 2 - style.contentSpacing - style.dividerHeight) / 2
+                height: (parent.height - style.contentSpacing * 1.5) / 2
                 
                 Text {
                     text: "STATUS"
                     color: style.labelColor
                     font.pixelSize: style.labelFontSize
-                    font.bold: true
+                    font.bold: false // Less emphasis
                     font.letterSpacing: style.labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
@@ -212,7 +163,7 @@ Rectangle {
                     text: "OK"
                     color: style.panelBorderEnabled
                     font.pixelSize: style.valueFontSize
-                    font.bold: true
+                    font.bold: true // Strong emphasis
                     font.family: "Courier New"
                     font.letterSpacing: style.valueLetterSpacing
                     anchors.right: parent.right

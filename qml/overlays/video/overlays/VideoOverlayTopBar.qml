@@ -2,10 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import "."
 
-/**
- * VideoOverlayTopBar - Modern DJI-style top bar for video overlays
- * Displays: Left side (EF battery + network), Right side (Base battery + network)
- */
+
 
 Rectangle {
     id: topBar
