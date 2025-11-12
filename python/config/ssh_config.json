@@ -1,12 +1,12 @@
 {
     "BASE": {
-        "hostname": "192.168.1.110",
+        "hostname": "192.168.10.100",
         "username": "c3spraypi2",
         "port": 22,
         "password": "312213"
     },
     "END_EFFECTOR": {
-        "hostname": "192.168.1.129",
+        "hostname": "192.168.10.191",
         "username": "sparyrobot",
         "port": 22,
         "password": "C3robotics"

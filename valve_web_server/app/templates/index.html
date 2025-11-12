@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Valve Control">
+    <title>Valve Control</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>Valve Control</h1>
+            <div class="status-indicator" id="statusIndicator">
+                <span class="status-dot"></span>
+                <span class="status-text">Connecting...</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Valve Control Section -->
+            <div class="control-section">
+                <div class="control-card">
+                    <!-- Display Value -->
+                    <div class="display-area">
+                        <div class="value-display">
+                            <span class="value-number" id="valueDisplay">0</span>
+                            <span class="value-unit">%</span>
+                        </div>
+                        <p class="value-label">Valve Opening</p>
+                    </div>
+
+                    <!-- Scroll Wheel Control -->
+                    <div class="wheel-container">
+                        <div class="wheel-wrapper">
+                            <div class="wheel" id="valveWheel">
+                                <div class="wheel-track">
+                                    <div class="wheel-indicator"></div>
+                                </div>
+                                <div class="wheel-center"></div>
+                            </div>
+                            <div class="wheel-labels">
+                                <span class="label-min">0%</span>
+                                <span class="label-max">100%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Touch Slider (Alternative) -->
+                    <div class="slider-container">
+                        <input 
+                            type="range" 
+                            id="valveSlider" 
+                            min="0" 
+                            max="100" 
+                            value="0" 
+                            class="slider"
+                        >
+                        <div class="slider-track" id="sliderTrack"></div>
+                    </div>
+
+                    <!-- Control Button -->
+                    <div class="button-group">
+                        <button class="btn btn-control" id="controlBtn">
+                            <span class="btn-text">PRESS & HOLD TO CONTROL</span>
+                            <span class="btn-icon">◉</span>
+                        </button>
+                    </div>
+
+                    <!-- Status Messages -->
+                    <div class="status-messages" id="statusMessages"></div>
+                </div>
+            </div>
+
+            <!-- Quick Controls -->
+            <div class="quick-controls">
+                <button class="quick-btn" data-value="25">25%</button>
+                <button class="quick-btn" data-value="50">50%</button>
+                <button class="quick-btn" data-value="75">75%</button>
+                <button class="quick-btn" data-value="100">100%</button>
+            </div>
+
+            <!-- Footer Info -->
+            <footer class="footer">
+                <p class="footer-text">Connected to Valve Control System</p>
+                <p class="footer-time" id="lastUpdateTime">Last update: Never</p>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <p>Initializing...</p>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
