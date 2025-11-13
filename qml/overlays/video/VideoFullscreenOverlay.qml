@@ -94,8 +94,8 @@ Rectangle {
         sourceComponent: {
             if (root.videoSource.indexOf("ef_live") >= 0) {
                 return endEffectorOverlayComponent
-            // } else if (root.videoSource.indexOf("base_front_live") >= 0) {
-            //     return baseFrontOverlayComponent
+            } else if (root.videoSource.indexOf("base_front_live") >= 0) {
+                return baseFrontOverlayComponent
             }
             return null
         }
