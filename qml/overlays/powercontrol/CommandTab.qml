@@ -39,9 +39,8 @@ Item {
         "Winch Control": {
             description: "Control winch movement",
             parameters: [
-                { name: "Direction", type: "dropdown", options: ["Up", "Down", "Stop"], placeholder: "Select direction" },
-                { name: "Speed", type: "number", placeholder: "0.5", unit: "m/s" },
-                { name: "Distance", type: "number", placeholder: "1.0", unit: "m" }
+                { name: "Distance", type: "number", placeholder: "0", unit: "mm" },
+                { name: "Speed", type: "number", placeholder: "500", unit: "mm/s" }
             ]
         },
         "Frequency Tap": {
@@ -552,7 +551,9 @@ Item {
             case "Tap Stop":
                 teensyController.tapStop(1)
                 break
-            
+            case "Winch Control":
+                winchController.moveIncrement(parseInt(parameterValues["Distance"]), parseInt(parameterValues["Speed"]))
+                break
 
             default:
                 console.log("Unknown command:", selectedCommand)

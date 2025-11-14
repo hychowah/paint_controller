@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import "."
+import "../../../components/displays"
 
 
 
@@ -41,11 +42,34 @@ Rectangle {
     }
     
     /**
-     * Calculate battery percentage from voltage
+     * Calculate battery percentage from voltage using Li-ion discharge curve
+     * Uses a piecewise approximation of the actual Li-ion voltage curve
+     * for more accurate remaining capacity estimation
      */
     function calculateBatteryPercent(voltage, minVolt, maxVolt) {
         const clamped = Math.max(minVolt, Math.min(maxVolt, voltage))
-        return Math.round(((clamped - minVolt) / (maxVolt - minVolt)) * 100)
+        const normalized = (clamped - minVolt) / (maxVolt - minVolt)
+        
+        // Li-ion discharge curve approximation
+        // Battery capacity doesn't decrease linearly with voltage
+        // Using a piecewise cubic approximation for realistic curve
+        let percent
+        
+        if (normalized < 0.1) {
+            // Below 10% - rapid drop-off (exponential decline)
+            percent = normalized * 100 / 0.1 * 0.2  // 0-10% voltage maps to 0-2% capacity
+        } else if (normalized < 0.5) {
+            // 10-50% voltage - steeper decline
+            percent = 2 + (normalized - 0.1) * 100 / 0.4 * 0.3  // Maps to 2-32% capacity
+        } else if (normalized < 0.8) {
+            // 50-80% voltage - moderate decline (most capacity here)
+            percent = 32 + (normalized - 0.5) * 100 / 0.3 * 0.48  // Maps to 32-80% capacity
+        } else {
+            // 80-100% voltage - slower decline at top
+            percent = 80 + (normalized - 0.8) * 100 / 0.2 * 0.2  // Maps to 80-100% capacity
+        }
+        
+        return Math.round(Math.max(0, Math.min(100, percent)))
     }
     
     /**
@@ -107,47 +131,11 @@ Rectangle {
             }
             
             // EF Battery Info
-            Item {
+            BatteryDisplay {
                 width: 100
                 height: parent.height
-                
-                Row {
-                    anchors.centerIn: parent
-                    spacing: 8
-                    
-                    // Battery icon background
-                    Rectangle {
-                        width: 28
-                        height: 14
-                        radius: 2
-                        color: "transparent"
-                        border.color: style.dividerColor
-                        border.width: 1
-                        
-                        anchors.verticalCenter: parent.verticalCenter
-                        
-                        // Battery fill
-                        Rectangle {
-                            width: parent.width * (calculateBatteryPercent(teensyController.all_status.voltage, efBatteryMin, efBatteryMax) / 100)
-                            height: parent.height - 2
-                            color: getBatteryColor(calculateBatteryPercent(teensyController.all_status.voltage, efBatteryMin, efBatteryMax))
-                            radius: 1
-                            anchors.left: parent.left
-                            anchors.leftMargin: 1
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                    }
-                    
-                    // EF Battery percentage
-                    Text {
-                        text: calculateBatteryPercent(teensyController.all_status.voltage, efBatteryMin, efBatteryMax) + "%"
-                        color: getBatteryColor(calculateBatteryPercent(teensyController.all_status.voltage, efBatteryMin, efBatteryMax))
-                        font.pixelSize: 11
-                        font.bold: true
-                        font.family: "Courier New"
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-                }
+                batteryPercent: calculateBatteryPercent(teensyController.all_status.voltage, efBatteryMin, efBatteryMax)
+                borderColor: style.dividerColor
             }
             
             // Divider
@@ -208,17 +196,92 @@ Rectangle {
             }
         }
     }
-
-    // empty rectangle to fill width
+    
+    // CENTER - System Monitor Info (Battery, Temp, Time)
+    // NEW APPROACH: This container fills the space between the side panels
     Rectangle {
-        id: centerFiller
-        width: parent.width - leftPanel.width - rightPanel.width - 40  // 40 = 10px margins on each side
+        id: topCenterPanel
         height: parent.height
         color: "transparent"
-        anchors.horizontalCenter: parent.horizontalCenter
-    }
-    
-    // RIGHT SIDE - Base Info (Battery left, Network right)
+        
+        // Anchors now define the space, they don't fight for position
+        anchors.left: leftPanel.right
+        anchors.right: rightPanel.left
+        anchors.leftMargin: 10   // Give it 10px breathing room from the left panel
+        anchors.rightMargin: 10  // Give it 10px breathing room from the right panel
+
+        // This single Row holds all the content
+        Row {
+            anchors.centerIn: parent // Center this Row inside the new centerPanel
+            spacing: 20
+            
+            // System Battery Info
+            BatteryDisplay {
+                anchors.verticalCenter: parent.verticalCenter
+                batteryPercent: systemMonitor.battery_level
+                borderColor: style.dividerColor
+            }
+            
+            // Divider
+            Rectangle {
+                width: 1
+                height: parent.height * 0.6
+                color: style.dividerColor
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            
+            // CPU Temperature Info (No 'Item' wrapper needed)
+            Row {
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 6
+                
+                Text {
+                    text: "🌡"
+                    font.pixelSize: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                
+                Text {
+                    text: systemMonitor.cpu_temperature.toFixed(1) + "°C"
+                    color: systemMonitor.cpu_temperature > 80 ? "#FF3333" : 
+                           systemMonitor.cpu_temperature > 60 ? "#FFAA00" : "#00FF00"
+                    font.pixelSize: 11
+                    font.bold: true
+                    font.family: "Courier New"
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+            
+            // Divider
+            Rectangle {
+                width: 1
+                height: parent.height * 0.6
+                color: style.dividerColor
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            
+            // Remaining Time Info (No 'Item' wrapper needed)
+            Row {
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 6
+                
+                Text {
+                    text: "⏱"
+                    font.pixelSize: 11
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                
+                Text {
+                    text: systemMonitor.battery_remaining_time !== "N/A" ? systemMonitor.battery_remaining_time : "---"
+                    color: "#AAAAFF"
+                    font.pixelSize: 11
+                    font.bold: true
+                    font.family: "Courier New"
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+        }
+    }    // RIGHT SIDE - Base Info (Battery left, Network right)
     Rectangle {
         id: rightPanel
         width: 300
@@ -236,50 +299,14 @@ Rectangle {
             spacing: 8
             
             // Base Battery Info
-            Item {
+            BatteryDisplay {
                 width: 100
                 height: parent.height
                 anchors.right: dividerRight.left
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
-                
-                Row {
-                    anchors.centerIn: parent
-                    spacing: 8
-                    
-                    // Base Battery percentage
-                    Text {
-                        text: calculateBatteryPercent(winchController.motor_voltage, baseBatteryMin, baseBatteryMax) + "%"
-                        color: getBatteryColor(calculateBatteryPercent(winchController.motor_voltage, baseBatteryMin, baseBatteryMax))
-                        font.pixelSize: 11
-                        font.bold: true
-                        font.family: "Courier New"
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-                    
-                    // Battery icon background
-                    Rectangle {
-                        width: 28
-                        height: 14
-                        radius: 2
-                        color: "transparent"
-                        border.color: style.dividerColor
-                        border.width: 1
-                        
-                        anchors.verticalCenter: parent.verticalCenter
-                        
-                        // Battery fill
-                        Rectangle {
-                            width: parent.width * (calculateBatteryPercent(winchController.motor_voltage, baseBatteryMin, baseBatteryMax) / 100)
-                            height: parent.height - 2
-                            color: getBatteryColor(calculateBatteryPercent(winchController.motor_voltage, baseBatteryMin, baseBatteryMax))
-                            radius: 1
-                            anchors.left: parent.left
-                            anchors.leftMargin: 1
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                    }
-                }
+                batteryPercent: calculateBatteryPercent(winchController.motor_voltage, baseBatteryMin, baseBatteryMax)
+                borderColor: style.dividerColor
             }
             
             // Divider

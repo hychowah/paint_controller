@@ -37,6 +37,7 @@ from UIHeartbeatHandler import UIHeartbeatHandler
 from UIEmergencyButtonHandler import EmergencyButtonHandler
 from UIInputHandler import UIInputHandler
 from UISSHController import UISSHController
+from UISystemMonitor import SystemMonitor
 
 # Global reference for signal handler
 _app_instance = None
@@ -242,6 +243,10 @@ class RobotController(Node, QObject):
         Node.__init__(self, 'robot_controller')
         QObject.__init__(self)
         
+        # Cleanup guard to prevent multiple cleanup calls
+        self._cleanup_in_progress = False
+        self._cleanup_complete = False
+        
         # Initialize components
         self.warningHandler = WarningHandler()
 
@@ -273,6 +278,7 @@ class RobotController(Node, QObject):
         self.input_handler = UIInputHandler(self)
         self.steam_deck_handler.start()
         self.ssh_controller = UISSHController(self)
+        self.system_monitor = SystemMonitor()
 
         
         self.setup_steam_deck_callbacks()
@@ -591,58 +597,90 @@ class RobotController(Node, QObject):
 
     def cleanup(self):
         """Cleanup all controller resources"""
-        self.get_logger().info('Starting controller cleanup...')
+        # Prevent multiple cleanup attempts
+        if self._cleanup_in_progress or self._cleanup_complete:
+            return
         
-        # Clean up video streams
-        self.video_stream_handler.cleanup()
+        self._cleanup_in_progress = True
         
-        # Clean up emergency handler
-        self.emergency_handler.reset_state()
-        
-        # Clean up Steam Deck handler
-        if hasattr(self, 'steam_deck_handler') and self.steam_deck_handler:
-            self.steam_deck_handler.cleanup()
-        
-        # Clean up all sub-controllers
-        if hasattr(self, 'winch_controller') and self.winch_controller:
-            try:
-                self.winch_controller.cleanup()
-            except Exception as e:
-                self.get_logger().error(f"Error cleaning up winch controller: {e}")
-        
-        if hasattr(self, 'wheel_controller') and self.wheel_controller:
-            try:
-                self.wheel_controller.cleanup()
-            except Exception as e:
-                self.get_logger().error(f"Error cleaning up wheel controller: {e}")
-        
-        if hasattr(self, 'wind_monitor') and self.wind_monitor:
-            try:
-                self.wind_monitor.cleanup()
-            except Exception as e:
-                self.get_logger().error(f"Error cleaning up wind monitor: {e}")
-        
-        if hasattr(self, 'teensy_controller') and self.teensy_controller:
-            try:
-                self.teensy_controller.cleanup()
-            except Exception as e:
-                self.get_logger().error(f"Error cleaning up teensy controller: {e}")
-        
-        if hasattr(self, 'lidar_controller') and self.lidar_controller:
-            try:
-                self.lidar_controller.cleanup()
-            except Exception as e:
-                self.get_logger().error(f"Error cleaning up lidar controller: {e}")
-        
+        try:
+            self.get_logger().info('Starting controller cleanup...')
+            
+            # Clean up video streams
+            if hasattr(self, 'video_stream_handler') and self.video_stream_handler:
+                try:
+                    self.video_stream_handler.cleanup()
+                except Exception as e:
+                    self.get_logger().error(f"Error cleaning up video stream handler: {e}")
+            
+            # Clean up emergency handler
+            if hasattr(self, 'emergency_handler') and self.emergency_handler:
+                try:
+                    self.emergency_handler.reset_state()
+                except Exception as e:
+                    self.get_logger().error(f"Error cleaning up emergency handler: {e}")
+            
+            # Clean up Steam Deck handler
+            if hasattr(self, 'steam_deck_handler') and self.steam_deck_handler:
+                try:
+                    self.steam_deck_handler.cleanup()
+                except Exception as e:
+                    self.get_logger().error(f"Error cleaning up steam deck handler: {e}")
+            
+            # Clean up all sub-controllers
+            if hasattr(self, 'winch_controller') and self.winch_controller:
+                try:
+                    self.winch_controller.cleanup()
+                except Exception as e:
+                    self.get_logger().error(f"Error cleaning up winch controller: {e}")
+            
+            if hasattr(self, 'wheel_controller') and self.wheel_controller:
+                try:
+                    self.wheel_controller.cleanup()
+                except Exception as e:
+                    self.get_logger().error(f"Error cleaning up wheel controller: {e}")
+            
+            if hasattr(self, 'wind_monitor') and self.wind_monitor:
+                try:
+                    self.wind_monitor.cleanup()
+                except Exception as e:
+                    self.get_logger().error(f"Error cleaning up wind monitor: {e}")
+            
+            if hasattr(self, 'teensy_controller') and self.teensy_controller:
+                try:
+                    self.teensy_controller.cleanup()
+                except Exception as e:
+                    self.get_logger().error(f"Error cleaning up teensy controller: {e}")
+            
+            if hasattr(self, 'lidar_controller') and self.lidar_controller:
+                try:
+                    self.lidar_controller.cleanup()
+                except Exception as e:
+                    self.get_logger().error(f"Error cleaning up lidar controller: {e}")
+            
+            if hasattr(self, 'ssh_controller') and self.ssh_controller:
+                try:
+                    self.ssh_controller.cleanup()
+                except Exception as e:
+                    self.get_logger().error(f"Error cleaning up ssh controller: {e}")
+            
+            if hasattr(self, 'system_monitor') and self.system_monitor:
+                try:
+                    self.system_monitor.cleanup()
+                except Exception as e:
+                    self.get_logger().error(f"Error cleaning up system monitor: {e}")
 
-        # Destroy publishers
-        if hasattr(self, 'heartbeat_pub') and self.heartbeat_pub:
-            try:
-                self.destroy_publisher(self.heartbeat_pub)
-            except Exception as e:
-                self.get_logger().error(f"Error destroying heartbeat publisher: {e}")
-        
-        self.get_logger().info('Controller cleanup complete')
+            # Destroy publishers
+            if hasattr(self, 'heartbeat_pub') and self.heartbeat_pub:
+                try:
+                    self.destroy_publisher(self.heartbeat_pub)
+                except Exception as e:
+                    self.get_logger().error(f"Error destroying heartbeat publisher: {e}")
+            
+            self.get_logger().info('Controller cleanup complete')
+        finally:
+            self._cleanup_in_progress = False
+            self._cleanup_complete = True
 
 #############################################
 ### Main Application
@@ -713,6 +751,7 @@ def main():
     engine.rootContext().setContextProperty("controlProcessor", controller.controlProcessor)
     engine.rootContext().setContextProperty("sshHandler", controller.ssh_controller)
     engine.rootContext().setContextProperty("videoStreamer", controller.video_stream_handler)
+    engine.rootContext().setContextProperty("systemMonitor", controller.system_monitor)
     controller.engine = engine
     
     # Start status update timer
@@ -724,6 +763,9 @@ def main():
     heartbeat_timer.timeout.connect(controller._publish_heartbeat)
     heartbeat_timer.start(500)  # 500 milliseconds = 0.5 seconds
     
+    # Start system monitoring (every 1 second)
+    controller.system_monitor.start_monitoring(interval_ms=1000)
+    
     # Run application
     try:
         sys.exit(app.exec())
@@ -732,31 +774,39 @@ def main():
     finally:
         print("Starting emergency shutdown sequence...")
         
-        # Step 1: Request ROS thread shutdown
+        # Step 1: Stop timers BEFORE cleaning up anything else (must happen from main thread)
+        try:
+            status_timer.stop()
+            heartbeat_timer.stop()
+            timer.stop()
+        except Exception as e:
+            print(f"Error stopping timers: {e}")
+        
+        # Step 2: Request ROS thread shutdown and wait for it
         try:
             ros_thread.request_shutdown()
             # Wait max 3 seconds for ROS thread to finish
-            ros_thread.wait(timeout=3000)
+            ros_thread.wait(3000)
             if ros_thread.isRunning():
                 print("WARNING: ROS thread did not exit cleanly, forcing termination...")
                 ros_thread.terminate()
-                ros_thread.wait(timeout=1000)
+                ros_thread.wait(1000)
         except Exception as e:
             print(f"Error shutting down ROS thread: {e}")
         
-        # Step 2: Call cleanup on controller (which calls cleanup on all sub-components)
+        # Step 3: Call cleanup on controller (which calls cleanup on all sub-components)
         try:
             controller.cleanup()
         except Exception as e:
             print(f"Error during controller cleanup: {e}")
         
-        # Step 3: Clean up heartbeat handler
+        # Step 4: Clean up heartbeat handler
         try:
             controller.heartbeat_handler.cleanup()
         except Exception as e:
             print(f"Error cleaning up heartbeat handler: {e}")
         
-        # Step 4: Shutdown ROS context
+        # Step 5: Shutdown ROS context
         try:
             rclpy.shutdown()
         except Exception as e:

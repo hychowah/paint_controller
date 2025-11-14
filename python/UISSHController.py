@@ -101,6 +101,7 @@ class UISSHController(QObject):
         self.thread_pool = QThreadPool.globalInstance()
         self._deviceAvailability = {}  # Backing store for device_availability property: {device_name: bool}
         self._devicePingTimes = {}  # Backing store for ping times: {device_name: float}
+        self._is_cleaning_up = False  # Flag to prevent signal emission during cleanup
 
         # Store config paths
         config_dir = os.path.join(os.getcwd(), "config")
@@ -142,14 +143,25 @@ class UISSHController(QObject):
 
     def _check_device_availability(self, device_name: str, hostname: str, port: int = 22, timeout: float = 0.5):
         def handle_result(name, is_available, message, ping_time):
-            previous = self._deviceAvailability.get(name)
-            self._deviceAvailability[name] = is_available
-            self._devicePingTimes[name] = ping_time  # Store ping time
-            # Always emit to notify property changes
-            self.deviceAvailabilityChanged.emit()
-            self.deviceAvailable.emit(name, is_available, message)
-            self.devicePingTime.emit(name, ping_time)
-            # print(f"[UISSHController] {message}")
+            # Skip if cleanup is in progress - object may be deleted
+            if self._is_cleaning_up:
+                return
+            
+            try:
+                previous = self._deviceAvailability.get(name)
+                self._deviceAvailability[name] = is_available
+                self._devicePingTimes[name] = ping_time  # Store ping time
+                # Always emit to notify property changes
+                self.deviceAvailabilityChanged.emit()
+                self.deviceAvailable.emit(name, is_available, message)
+                self.devicePingTime.emit(name, ping_time)
+                # print(f"[UISSHController] {message}")
+            except RuntimeError as e:
+                # Catch "Internal C++ object already deleted" errors
+                if "already deleted" in str(e):
+                    print(f"[UISSHController] Object being destroyed, skipping signal emission for {name}")
+                else:
+                    raise
 
         runnable = AvailabilityCheckRunnable(device_name, hostname, timeout, handle_result)
         self.thread_pool.start(runnable)
@@ -312,3 +324,9 @@ class UISSHController(QObject):
                 print(f"[{device_name}] STDOUT:\n{stdout.strip() or 'Done.'}")
 
         launcher.run_script(command, callback)
+
+    def cleanup(self):
+        """Cleanup SSH controller resources"""
+        self._is_cleaning_up = True
+        self._stop_all_availability_checks()
+        print("[UISSHController] Cleanup complete")
