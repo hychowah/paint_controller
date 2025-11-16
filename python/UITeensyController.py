@@ -5,7 +5,7 @@ from typing import Dict, Optional, Any, Union
 import time
 
 from rclpy.node import Node
-from std_msgs.msg import Bool, Float32, Int32, Int32MultiArray
+from std_msgs.msg import Bool, Float32, Float32MultiArray, Int32, Int32MultiArray
 from geometry_msgs.msg import Twist, Vector3
 from paint_interfaces.msg import TeensyStatus, TeensyYaw, MoveWinchLength
 
@@ -108,7 +108,7 @@ class TeensyController(QObject):
         self.prop_right_joint_pub = self._robot_controller.create_publisher(Float32, 'teensy/prop/right/joint/cmd', 1)
         self.ef_spray_trigger_pub = self._robot_controller.create_publisher(Int32, 'teensy/spray_gun/trigger/cmd', 1)
         self.ef_spray_gimbal_speed_pub = self._robot_controller.create_publisher(Int32, 'teensy/spray_gun/gimbal/speed/cmd', 1)
-        self.ef_spray_gimbal_pub = self._robot_controller.create_publisher(MoveWinchLength, 'teensy/spray_gun/gimbal/angle/cmd', 1)
+        self.ef_spray_gimbal_pub = self._robot_controller.create_publisher(Float32MultiArray, 'teensy/spray_gun/gimbal/angle/cmd', 1)
         self.ef_spray_led_pub = self._robot_controller.create_publisher(Bool, 'teensy/spray_gun/led/cmd', 1)
         self.ef_yaw_enable_pub = self._robot_controller.create_publisher(Bool, 'teensy/yaw_control/enable/cmd', 1)
         self.ef_yaw_angle_pub = self._robot_controller.create_publisher(Float32, 'teensy/yaw_control/angle/cmd', 1)
@@ -366,9 +366,8 @@ class TeensyController(QObject):
     def setSprayGunGimbalAngle(self, angle: float, speed: float):
         """Set the spray gun gimbal angle and speed"""
         self._robot_controller.get_logger().info(f'Setting spray gun gimbal angle to {angle} with speed {speed}')
-        msg = MoveWinchLength()
-        msg.length_mm = int(angle)
-        msg.speed_mm_s = int(speed)
+        msg = Float32MultiArray()
+        msg.data = [float(angle), float(speed)]
         self.ef_spray_gimbal_pub.publish(msg)
 
     @Slot(float, float, float, float, float)

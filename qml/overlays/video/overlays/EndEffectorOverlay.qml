@@ -10,6 +10,11 @@ Rectangle {
     
     VideoOverlayStyle { id: style }
     
+    // Wall Detection Overlay - Bottom Center
+    WallDetectionOverlay {
+        id: wallDetectionOverlay
+    }
+    
     // Top bar
     VideoOverlayTopBar {
         id: topBar
