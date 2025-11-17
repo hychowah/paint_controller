@@ -129,7 +129,7 @@ Rectangle {
                 height: (parent.height - style.contentSpacing * 1.5) / 2
                 
                 Text {
-                    text: "TORQUE"
+                    text: "CURRENT"
                     color: style.labelColor
                     font.pixelSize: style.labelFontSize
                     font.bold: false // Less emphasis
@@ -139,7 +139,7 @@ Rectangle {
                 }
                 
                 Text {
-                    text: winchController.winch_torque.toFixed(1) + " Nm"
+                    text: (winchController.winch_torque / 100).toFixed(2) + " A"
                     color: style.valueColor
                     font.pixelSize: style.valueFontSize
                     font.bold: true // Strong emphasis
@@ -168,7 +168,7 @@ Rectangle {
                 }
                 
                 Text {
-                    text: winchController.cable_length.toFixed(2) + " m"
+                    text: (winchController.cable_length).toFixed(0) + " mm"
                     color: style.valueColor
                     font.pixelSize: style.valueFontSize
                     font.bold: true // Strong emphasis

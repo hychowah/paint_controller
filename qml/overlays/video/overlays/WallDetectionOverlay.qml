@@ -12,14 +12,44 @@ Rectangle {
     // This scaleFactor drives all internal sizing
     property real scaleFactor: height / 160.0 
     
+    // Background opacity as percentage (0-100)
+    property real backgroundOpacity: 40
+    
+    // Track last LIDAR message timestamp
+    property var lastLidarUpdateTime: new Date()
+    property real messageTimeoutMs: 1000  // 1 second timeout
+    property bool isLidarActive: false
+    
+    // Update timestamp when distance changes
+    Connections {
+        target: lidarController
+        onDistanceChanged: {
+            overlay.lastLidarUpdateTime = new Date()
+            overlay.isLidarActive = true
+        }
+    }
+    
+    // Timer to check if message timeout has occurred
+    Timer {
+        id: lidarTimeoutTimer
+        interval: 500  // Check every 500ms
+        running: true
+        repeat: true
+        
+        onTriggered: {
+            var now = new Date()
+            overlay.isLidarActive = (now.getTime() - overlay.lastLidarUpdateTime.getTime()) < overlay.messageTimeoutMs
+        }
+    }
+    
     anchors.bottom: parent.bottom
-    anchors.bottomMargin: 50
+    anchors.bottomMargin: 5
     anchors.horizontalCenter: parent.horizontalCenter
     
-    color: "#CC000000"
+    color: Qt.rgba(0, 0, 0, backgroundOpacity / 100)
     radius: 8 * scaleFactor
-    border.width: 2
-    border.color: "#00FF00"
+    // border.width: 2
+    // border.color: "#00FF00"
     
     VideoOverlayStyle { id: style }
     
@@ -223,12 +253,12 @@ Rectangle {
                     width: 8 * scaleFactor // Scaled
                     height: 8 * scaleFactor // Scaled
                     radius: 4 * scaleFactor // Scaled
-                    color: lidarController.distance > 0 ? "#00FF00" : "#FF3333"
+                    color: overlay.isLidarActive ? "#00FF00" : "#FF3333"
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                     
                     NumberAnimation on opacity {
-                        running: lidarController.distance > 0
+                        running: overlay.isLidarActive
                         from: 1.0
                         to: 0.4
                         duration: 600
@@ -237,8 +267,8 @@ Rectangle {
                 }
                 
                 Text {
-                    text: lidarController.distance > 0 ? "ACTIVE" : "NO SIGNAL"
-                    color: lidarController.distance > 0 ? "#00FF00" : "#FF3333"
+                    text: overlay.isLidarActive ? "ACTIVE" : "NO SIGNAL"
+                    color: overlay.isLidarActive ? "#00FF00" : "#FF3333"
                     font.pixelSize: 10 * scaleFactor // Scaled
                     font.bold: true
                     anchors.left: parent.left
