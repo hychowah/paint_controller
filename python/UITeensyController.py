@@ -198,13 +198,13 @@ class TeensyController(QObject):
                 'spray_gun_motor_temp': msg.spray_gun_motor_temp,
                 'spray_gun_trigger': msg.spray_gun_trigger,
                 'yaw_enabled': msg.yaw_enabled,
-                'yaw_command': msg.yaw_command / 100.0,
+                'yaw_command': msg.yaw_command,
                 'yaw_pid_p': msg.yaw_pid_p,
                 'yaw_pid_i': msg.yaw_pid_i,
                 'yaw_pid_d': msg.yaw_pid_d,
                 'yaw_pwm': msg.yaw_pwm,
                 # Add member state variables for QML access
-                'target_yaw': self._target_yaw
+                'target_yaw': msg.yaw_command
             }
 
             current_time = time.time()

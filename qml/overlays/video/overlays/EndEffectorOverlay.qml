@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import "../../../components/displays"
 import "."
 
 
@@ -9,6 +10,18 @@ Rectangle {
     color: "transparent"
     
     VideoOverlayStyle { id: style }
+    
+    // Top Center - Yaw Indicator Dial
+    YawIndicatorDial {
+        id: yawIndicator
+        anchors.top: parent.top
+        anchors.topMargin: 50
+        anchors.horizontalCenter: parent.horizontalCenter
+        
+        currentYaw: teensyController.all_status.imu_yaw
+        targetYaw: teensyController.all_status.target_yaw
+        z: 50
+    }
     
     // Wall Detection Overlay - Bottom Center
     WallDetectionOverlay {
