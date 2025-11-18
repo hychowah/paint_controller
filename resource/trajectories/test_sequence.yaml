@@ -1,0 +1,50 @@
+# Simple test trajectory
+# Minimal trajectory for testing core functionality
+
+name: "test_sequence"
+description: "Simple test sequence for basic functionality validation"
+
+actions:
+  - name: "gimbal_test"
+    type: "teensy_gimbal"
+    description: "Test gimbal movement"
+    params:
+      angle: 45
+      speed: 10
+    wait_after: 3000
+
+  - name: "arm_extend_test"
+    type: "teensy_arm_extend"
+    description: "Test arm extension"
+    params:
+      distance: 200
+    wait_after: 2000
+
+  - name: "spray_trigger_test"
+    type: "teensy_spray_trigger"
+    description: "Test spray trigger"
+    params:
+      trigger_value: 75
+    wait_after: 2000
+
+  - name: "spray_trigger_off"
+    type: "teensy_spray_trigger"
+    description: "Turn off spray trigger"
+    params:
+      trigger_value: 0
+    wait_after: 1000
+
+  - name: "arm_retract_test"
+    type: "teensy_arm_extend"
+    description: "Test arm retraction"
+    params:
+      distance: 0
+    wait_after: 2000
+
+  - name: "gimbal_neutral"
+    type: "teensy_gimbal"
+    description: "Return gimbal to neutral"
+    params:
+      angle: 0
+      speed: 10
+    wait_after: 2000

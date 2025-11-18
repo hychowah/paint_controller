@@ -24,7 +24,7 @@ from PySide6.QtWidgets import QApplication
 from OverlayController import OverlayController
 from UIControlProcessor import ControlProcessor
 from UISteamDeckHandler import SteamDeckHandler
-from TrajectoryHandler import TrajectoryHandler
+from TrajectoryHandler import TrajectoryHandler  # Keep for backwards compatibility
 from WarningHandler import WarningHandler
 from VideoStreamHandler import VideoStreamHandler
 from UIWheelController import WheelController
@@ -38,6 +38,7 @@ from UIEmergencyButtonHandler import EmergencyButtonHandler
 from UIInputHandler import UIInputHandler
 from UISSHController import UISSHController
 from UISystemMonitor import SystemMonitor
+from trajectory.trajectory_runner import TrajectoryRunner
 
 # Global reference for signal handler
 _app_instance = None
@@ -300,6 +301,10 @@ class RobotController(Node, QObject):
         self._setup_subscribers()
         self.heartbeat_pub = self.create_publisher(UInt8, '/controller/heartbeat', 10)
 
+        # Initialize trajectory runner (new system - replaces old TrajectoryHandler)
+        self.trajectory_runner = TrajectoryRunner(self)
+        
+        # Keep old handler for backwards compatibility (can be removed later)
         self.trajectoryHandler = TrajectoryHandler(self)
 
         # Connect video stream signals
@@ -670,6 +675,12 @@ class RobotController(Node, QObject):
                     self.system_monitor.cleanup()
                 except Exception as e:
                     self.get_logger().error(f"Error cleaning up system monitor: {e}")
+            
+            if hasattr(self, 'trajectory_runner') and self.trajectory_runner:
+                try:
+                    self.trajectory_runner.cleanup()
+                except Exception as e:
+                    self.get_logger().error(f"Error cleaning up trajectory runner: {e}")
 
             # Destroy publishers
             if hasattr(self, 'heartbeat_pub') and self.heartbeat_pub:
@@ -739,6 +750,7 @@ def main():
     engine.rootContext().setContextProperty("baseStreamer", controller)
     engine.rootContext().setContextProperty("overlayController", controller.overlayController)
     engine.rootContext().setContextProperty("trajectoryHandler", controller.trajectoryHandler)
+    engine.rootContext().setContextProperty("trajectoryRunner", controller.trajectory_runner)
     engine.rootContext().setContextProperty("warningHandler", controller.warningHandler)
     engine.rootContext().setContextProperty("baseStreamHandler", controller.video_stream_handler)
     engine.rootContext().setContextProperty("wheelController", controller.wheel_controller)

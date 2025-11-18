@@ -1,0 +1,109 @@
+# Paint workflow trajectory
+# Standard paint workflow: engage, spray, disengage with synchronized valve control
+
+name: "paint_workflow"
+description: "Standard paint workflow: engage spray system, move winch, close valve before arrival, disengage"
+
+actions:
+  - name: "engage"
+    type: "teensy_relay"
+    description: "Engage the paint system"
+    params:
+      relay_id: 1
+      enabled: true
+    wait_after: 1000  # ms
+
+  - name: "set_gimbal_start"
+    type: "teensy_gimbal"
+    description: "Set gimbal to start angle"
+    params:
+      angle: 55  # degrees
+      speed: 10  # degrees/s
+    wait_after: 3000
+
+  - name: "extend_arm_start"
+    type: "teensy_arm_extend"
+    description: "Extend arm to painting position"
+    params:
+      distance: 350  # mm
+    wait_after: 2000
+
+  - name: "propeller_on"
+    type: "teensy_propeller"
+    description: "Turn on propeller"
+    params:
+      left_pwm: 200
+      right_pwm: 200
+    wait_after: 1000
+
+  - name: "needle_valve_open"
+    type: "teensy_spray_trigger"
+    description: "Open needle valve 5 seconds before winch starts"
+    params:
+      trigger_value: 50  # 0-100%
+    delay_before: -5000  # Start 5 seconds BEFORE previous action completes
+    wait_after: 500
+
+  - name: "winch_to_position_1"
+    type: "winch_move_absolute"
+    description: "Move winch to first painting position"
+    params:
+      distance: 12841  # mm
+      speed: 350  # mm/s
+    wait_after: 40000  # Calculated: 12841 / 350 = ~37s, add 3s buffer
+
+  - name: "gimbal_during_spray"
+    type: "teensy_gimbal"
+    description: "Adjust gimbal angle during spray"
+    params:
+      angle: 55
+      speed: 10
+    delay_before: 5000  # Start 5s after winch begins
+    wait_after: 2000
+
+  - name: "needle_valve_close"
+    type: "teensy_spray_trigger"
+    description: "Close needle valve 3 seconds before winch reaches target"
+    params:
+      trigger_value: 0
+    delay_before: -3000  # Start 3 seconds BEFORE winch arrival
+    wait_after: 500
+
+  - name: "winch_return"
+    type: "winch_move_absolute"
+    description: "Return winch to home position"
+    params:
+      distance: 0  # mm
+      speed: 350
+    wait_after: 40000
+
+  - name: "propeller_off"
+    type: "teensy_propeller"
+    description: "Turn off propeller"
+    params:
+      left_pwm: 0
+      right_pwm: 0
+    wait_after: 500
+
+  - name: "retract_arm"
+    type: "teensy_arm_extend"
+    description: "Retract arm to safe position"
+    params:
+      distance: 0  # mm
+    wait_after: 2000
+
+  - name: "gimbal_neutral"
+    type: "teensy_gimbal"
+    description: "Return gimbal to neutral position"
+    params:
+      angle: 0
+      speed: 10
+    wait_after: 2000
+
+  - name: "disengage"
+    type: "teensy_relay"
+    description: "Disengage the paint system"
+    params:
+      relay_id: 1
+      enabled: false
+    wait_after: 1000
