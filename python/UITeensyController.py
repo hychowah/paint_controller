@@ -38,7 +38,7 @@ class TeensyController(QObject):
             'arm_rail_current': 0.0,
             'arm_extension_dist': 0.0,
             'arm_sensor_dist': 0.0,
-            'voltage': 21.3,
+            'voltage': 20,
             'temperature': 0.0,
             'current': 0.0,
             'run_time': 0,

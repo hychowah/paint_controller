@@ -1,0 +1,62 @@
+# Simple paint workflow trajectory - Refactored Version
+# Uses improved timing model with clearer semantics
+
+name: "simple_paint_workflow_refactored"
+description: "Simplified paint workflow with improved timing and action references"
+
+actions:
+  # Step 1: Extend arm to painting position
+  - id: "extend_arm"
+    name: "extend_arm"
+    type: "arm_extend"
+    description: "Extend arm to painting position"
+    params:
+      distance: 800  # mm
+    estimated_duration: 2000  # ms
+    wait_for_completion: true
+
+  # Step 2: Set end effector force
+  - id: "set_ef_force"
+    name: "set_ef_force"
+    type: "ef_force"
+    description: "Set end effector force for spray control"
+    params:
+      fx: 0.0
+      fy: -1.2  # Apply upward force
+    estimated_duration: 1500  # ms
+    wait_for_completion: true
+
+  # Step 3: Open valve to start painting
+  - id: "open_valve"
+    name: "open_valve"
+    type: "valve_turn"
+    description: "Open valve to start painting"
+    params:
+      turn_value: 4.8  # 0-100 scale
+    estimated_duration: 500  # ms
+    wait_for_completion: true
+
+  # Step 4: Move winch to painting position
+  - id: "main_winch_descent"
+    name: "winch_move"
+    type: "winch_absolute"
+    description: "Move winch to painting position"
+    params:
+      length: 1000  # mm (target position)
+      speed: 100    # mm/s
+    wait_for_completion: true
+    # Duration auto-calculated: 1000mm / 100mm/s = 10 seconds
+
+  # Step 5: Close valve before winch completes
+  - id: "close_valve"
+    name: "close_valve"
+    type: "valve_turn"
+    description: "Close valve 3 seconds before winch arrives"
+    params:
+      turn_value: 0.0
+    trigger:
+      reference_action: "main_winch_descent"  # Reference by ID
+      timing_mode: "before_complete"          # Execute before reference completes
+      offset_ms: 3000                         # 3 seconds before completion
+    estimated_duration: 500  # ms
+    wait_for_completion: true

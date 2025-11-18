@@ -1,17 +1,26 @@
 #!/usr/bin/env python3
 """
-Trajectory executor module for paint controller.
+Refactored trajectory executor with clean architecture.
 
-Handles YAML trajectory loading and sequential action execution with time-based scheduling.
+Key improvements:
+- Separated scheduling logic
+- Hardware abstraction layer
+- Pluggable action handlers
+- Cleaner state management
+- Minimal logging
 """
 
 import time
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Any, Callable
-from enum import Enum
 import yaml
+from typing import Dict, List, Optional, Any
+from enum import Enum
+from datetime import datetime
 
 from PySide6.QtCore import QThread, Signal
+
+from .scheduler import ActionScheduler, ScheduledAction
+from .hardware import HardwareControllers
+from .actions import ActionRegistry
 
 
 class ExecutionState(Enum):
@@ -24,55 +33,44 @@ class ExecutionState(Enum):
 
 
 class TrajectoryExecutionThread(QThread):
-    """QThread for executing trajectory actions."""
+    """Thread for executing trajectory actions."""
     
     execution_finished = Signal()
     execution_error = Signal(str)
     
-    def __init__(self, executor, actions):
-        """Initialize execution thread."""
+    def __init__(self, executor, scheduled_actions: List[ScheduledAction]):
         super().__init__()
         self.executor = executor
-        self.actions = actions
+        self.scheduled_actions = scheduled_actions
         self._stop_requested = False
     
     def run(self):
         """Run trajectory execution."""
         try:
-            self.executor._execute_actions(self.actions)
-            self.execution_finished.emit()
+            self.executor._execute_scheduled_actions(self.scheduled_actions)
+            if not self._stop_requested:
+                self.execution_finished.emit()
         except Exception as e:
-            error_msg = f"Execution error: {str(e)}"
-            self.execution_error.emit(error_msg)
+            self.execution_error.emit(str(e))
     
     def request_stop(self):
         """Request thread to stop."""
         self._stop_requested = True
     
-    def is_stop_requested(self):
+    def is_stop_requested(self) -> bool:
         """Check if stop was requested."""
         return self._stop_requested
 
 
-@dataclass
-class ScheduledAction:
-    """Action scheduled for execution with timing information."""
-    action_index: int
-    action_config: Dict[str, Any]
-    scheduled_time: float  # Absolute time when action should execute
-    reference_action_index: Optional[int] = None  # Index of action this timing references
-    reference_arrival_time: Optional[float] = None  # Estimated arrival time of reference action
-
-
 class TrajectoryExecutor:
     """
-    Executes trajectories from YAML files with time-based sequencing.
+    Executes trajectories with improved architecture.
     
-    Handles:
-    - Sequential action execution
-    - Time-based delays (wait_after, delay_before)
-    - Winch feedback-based timing (for needle valve relative timing)
-    - Publisher-based ROS2 topic communication
+    Features:
+    - Clean separation of concerns (scheduling, execution, hardware)
+    - Pluggable action handlers
+    - Support for parallel and sequential actions
+    - Proper error handling and state management
     """
 
     def __init__(self, ros_node, logger=None):
@@ -80,41 +78,23 @@ class TrajectoryExecutor:
         Initialize trajectory executor.
 
         Args:
-            ros_node: ROS2 node instance (RobotController) with access to controllers
-            logger: Optional logger instance (uses ros_node.get_logger() if None)
+            ros_node: ROS2 node instance with access to controllers
+            logger: Optional logger instance
         """
         self.ros_node = ros_node
-        self._robot_controller = ros_node  # Store robot controller reference
         self.logger = logger or ros_node.get_logger()
 
+        # Initialize subsystems
+        self.hardware = HardwareControllers.from_robot_controller(ros_node)
+        self.action_registry = ActionRegistry(self.hardware, self.logger, ros_node)
+        self.scheduler = ActionScheduler(self.logger, self.hardware)
+
+        # State management
         self.current_trajectory: Optional[Dict[str, Any]] = None
         self.current_state = ExecutionState.IDLE
-        self.current_action_index = -1  # Track currently executing action
+        self.current_action_index = -1
         self.execution_thread: Optional[TrajectoryExecutionThread] = None
         self._stop_requested = False
-
-        # Callback map for action execution
-        self.action_handlers: Dict[str, Callable] = {
-            "winch_increment": self._handle_winch_increment,
-            "winch_absolute": self._handle_winch_absolute,
-            "valve_turn": self._handle_valve_turn,
-            "spray_gimbal": self._handle_spray_gimbal,
-            "arm_extend": self._handle_arm_extend,
-            "ef_force": self._handle_ef_force,
-            # Legacy type names for backward compatibility
-            "teensy_relay": self._handle_winch_increment,  # Map to dummy handler
-            "teensy_gimbal": self._handle_spray_gimbal,
-            "teensy_arm_extend": self._handle_arm_extend,
-            "teensy_propeller": self._handle_winch_increment,  # Map to dummy handler
-            "teensy_spray_trigger": self._handle_winch_increment,  # Map to dummy handler
-            "winch_move_absolute": self._handle_winch_absolute,
-        }
-
-        # Winch state tracking for arrival time estimation
-        self.winch_current_position = 0.0
-        self.winch_target_position = 0.0
-        self.winch_speed = 0.0
-        self.winch_move_start_time = None
 
     def load_trajectory(self, yaml_path: str) -> bool:
         """
@@ -124,15 +104,18 @@ class TrajectoryExecutor:
             yaml_path: Path to trajectory YAML file
 
         Returns:
-            True if loaded successfully, False otherwise
+            True if loaded successfully
         """
         try:
             with open(yaml_path, 'r') as f:
                 self.current_trajectory = yaml.safe_load(f)
-            self.logger.info(f"Loaded trajectory: {self.current_trajectory.get('name', 'unknown')}")
+            
+            name = self.current_trajectory.get('name', 'unknown')
+            self.logger.info(f"Loaded trajectory: {name}")
             return True
+            
         except Exception as e:
-            self.logger.error(f"Failed to load trajectory from {yaml_path}: {e}")
+            self.logger.error(f"Failed to load trajectory: {e}")
             return False
 
     def play(self) -> bool:
@@ -140,7 +123,7 @@ class TrajectoryExecutor:
         Start executing the current trajectory.
 
         Returns:
-            True if execution started, False if already running or no trajectory loaded
+            True if execution started successfully
         """
         if self.current_state == ExecutionState.RUNNING:
             self.logger.warn("Trajectory already running")
@@ -150,23 +133,38 @@ class TrajectoryExecutor:
             self.logger.error("No trajectory loaded")
             return False
 
-        self.current_state = ExecutionState.RUNNING
-        self._stop_requested = False
-
-        # Start execution in QThread
         actions = self.current_trajectory.get("actions", [])
-        self.execution_thread = TrajectoryExecutionThread(self, actions)
-        self.execution_thread.execution_finished.connect(self._on_execution_finished)
-        self.execution_thread.execution_error.connect(self._on_execution_error)
-        self.execution_thread.start()
+        if not actions:
+            self.logger.warn("Trajectory has no actions")
+            return False
 
-        return True
+        try:
+            # Build schedule
+            scheduled_actions = self.scheduler.build_schedule(actions)
+            
+            # Start execution thread
+            self.current_state = ExecutionState.RUNNING
+            self._stop_requested = False
+            
+            self.execution_thread = TrajectoryExecutionThread(self, scheduled_actions)
+            self.execution_thread.execution_finished.connect(self._on_execution_finished)
+            self.execution_thread.execution_error.connect(self._on_execution_error)
+            self.execution_thread.start()
+            
+            self.logger.info(f"Started trajectory with {len(scheduled_actions)} actions")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Failed to start trajectory: {e}")
+            self.current_state = ExecutionState.ERROR
+            return False
 
     def pause(self) -> bool:
         """Pause trajectory execution."""
         if self.current_state != ExecutionState.RUNNING:
             return False
         self.current_state = ExecutionState.PAUSED
+        self.logger.info("Trajectory paused")
         return True
 
     def resume(self) -> bool:
@@ -174,58 +172,44 @@ class TrajectoryExecutor:
         if self.current_state != ExecutionState.PAUSED:
             return False
         self.current_state = ExecutionState.RUNNING
+        self.logger.info("Trajectory resumed")
         return True
 
     def stop(self) -> bool:
         """Stop trajectory execution."""
         if self.current_state == ExecutionState.IDLE:
             return False
+        
         self._stop_requested = True
         if self.execution_thread:
             self.execution_thread.request_stop()
             self.execution_thread.wait(5000)  # Wait max 5 seconds
+        
         self.current_state = ExecutionState.IDLE
+        self.current_action_index = -1
+        self.logger.info("Trajectory stopped")
         return True
 
     def _on_execution_finished(self) -> None:
         """Handle execution completion."""
         self.current_state = ExecutionState.COMPLETED
-        self.logger.info("Trajectory execution completed")
+        self.current_action_index = -1
+        self.logger.info("Trajectory completed successfully")
+        # Note: State change will be detected by runner's state monitoring
 
     def _on_execution_error(self, error_msg: str) -> None:
         """Handle execution error."""
         self.current_state = ExecutionState.ERROR
-        self.logger.error(error_msg)
+        self.current_action_index = -1
+        self.logger.error(f"Trajectory execution error: {error_msg}")
 
-    def _execute(self) -> None:
-        """Execute the trajectory (runs in QThread)."""
-        try:
-            if not self.current_trajectory:
-                return
-
-            actions = self.current_trajectory.get("actions", [])
-            if not actions:
-                self.logger.warn("Trajectory has no actions")
-                self.current_state = ExecutionState.COMPLETED
-                return
-
-            self._execute_actions(actions)
-
-            if not self._stop_requested:
-                self.current_state = ExecutionState.COMPLETED
-                self.logger.info("Trajectory execution completed")
-            else:
-                self.logger.info("Trajectory execution stopped")
-
-        except Exception as e:
-            self.logger.error(f"Fatal error during trajectory execution: {e}")
-            self.current_state = ExecutionState.ERROR
-
-    def _execute_actions(self, actions: List[Dict[str, Any]]) -> None:
-        """Execute actions from trajectory."""
-        # Build scheduled action queue
-        scheduled_actions = self._build_schedule(actions)
-
+    def _execute_scheduled_actions(self, scheduled_actions: List[ScheduledAction]) -> None:
+        """
+        Execute scheduled actions in time order.
+        
+        Args:
+            scheduled_actions: List of scheduled actions sorted by time
+        """
         start_time = time.time()
         action_index = 0
 
@@ -243,176 +227,117 @@ class TrajectoryExecutor:
             # Wait until scheduled time
             wait_time = scheduled.scheduled_time - current_time
             if wait_time > 0:
-                time.sleep(min(wait_time, 0.1))  # Sleep in 100ms chunks for responsiveness
+                time.sleep(min(wait_time, 0.1))
                 continue
 
-            # Update current action index
-            self.current_action_index = action_index
-
             # Execute action
-            action_name = scheduled.action_config.get("name", f"action_{action_index}")
-            action_type = scheduled.action_config.get("type")
+            self.current_action_index = action_index
+            self._execute_action(scheduled)
 
-            try:
-                self.logger.info(f"Executing: {action_name} (type: {action_type})")
-                handler = self.action_handlers.get(action_type)
-
-                if handler:
-                    handler(scheduled.action_config)
-                else:
-                    self.logger.warn(f"No handler for action type: {action_type}")
-
-            except Exception as e:
-                self.logger.error(f"Error executing action {action_name}: {e}")
-                self.current_state = ExecutionState.ERROR
-                raise
+            # Determine wait time until next action or completion
+            wait_until = self._calculate_wait_until(
+                scheduled, 
+                action_index, 
+                scheduled_actions,
+                start_time
+            )
+            
+            # Wait
+            self._wait_with_pause(wait_until, start_time)
 
             action_index += 1
 
-        # Reset action index when done
+        # Reset state
         self.current_action_index = -1
 
-    def _build_schedule(self, actions: List[Dict[str, Any]]) -> List[ScheduledAction]:
+    def _execute_action(self, scheduled: ScheduledAction) -> None:
         """
-        Build execution schedule from actions list.
-
-        Handles:
-        - Sequential execution (default)
-        - delay_before: positive = after previous, negative = before previous completion
-        - wait_after: duration to assume action takes
-
+        Execute a single scheduled action.
+        
         Args:
-            actions: List of action configurations from YAML
-
-        Returns:
-            List of ScheduledAction with absolute execution times
+            scheduled: Scheduled action to execute
         """
-        scheduled = []
-        current_time = 0.0
-
-        for idx, action in enumerate(actions):
-            action_name = action.get("name", f"action_{idx}")
-            wait_after = action.get("wait_after", 1000)  # Default 1 second
-            delay_before = action.get("delay_before", 0)
-
-            # Calculate action execution time
-            if delay_before > 0:
-                # Positive delay: execute N ms after previous action completes
-                scheduled_time = current_time + delay_before
-            elif delay_before < 0:
-                # Negative delay: execute N ms before previous action completes
-                # This is relative to the previous action's arrival/completion
-                if idx > 0:
-                    prev_action = scheduled[-1]
-                    # If previous is winch move, estimate arrival time
-                    if prev_action.action_config.get("type") == "winch_move_absolute":
-                        prev_params = prev_action.action_config.get("params", {})
-                        distance = prev_params.get("distance", 0)
-                        speed = prev_params.get("speed", 1)  # mm/s
-                        arrival_time = (distance / speed) * 1000 if speed > 0 else 0
-                        scheduled_time = prev_action.scheduled_time + arrival_time + delay_before
-                    else:
-                        # For non-winch actions, delay relative to their completion
-                        scheduled_time = current_time + delay_before
-                else:
-                    # No previous action, use from start
-                    scheduled_time = delay_before if delay_before < 0 else current_time
-            else:
-                # No delay specified, execute at current time
-                scheduled_time = current_time
-
-            # Ensure scheduled time is never before start
-            scheduled_time = max(0, scheduled_time)
-
-            scheduled.append(
-                ScheduledAction(
-                    action_index=idx,
-                    action_config=action,
-                    scheduled_time=scheduled_time,
-                )
-            )
-
-            # Update current time for next action
-            current_time = scheduled_time + (wait_after / 1000.0)  # Convert ms to seconds
-
-        return scheduled
-
-    # Action handlers - use controller methods instead of raw ROS2 publishing
-    def _handle_winch_increment(self, action: Dict[str, Any]) -> None:
-        """Handle winch incremental movement."""
-        params = action.get("params", {})
-        length = params.get("length", 0)
-        speed = params.get("speed", 1)
+        action_name = scheduled.action_config.get("name", f"action_{scheduled.action_index}")
+        action_type = scheduled.action_config.get("type")
+        params = scheduled.action_config.get("params", {})
 
         try:
-            self._robot_controller.winch_controller.moveIncrement(int(length), int(speed))
-            self.logger.debug(f"Winch moved increment of {length}mm at {speed}mm/s")
+            timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+            self.logger.info(f"[{timestamp}] Executing: {action_name}")
+
+            handler = self.action_registry.get_handler(action_type)
+            if not handler:
+                self.logger.warn(f"No handler for action type: {action_type}")
+                return
+
+            handler.execute(params)
+
         except Exception as e:
-            self.logger.error(f"Error moving winch increment: {e}")
+            self.logger.error(f"Error executing {action_name}: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
+            self.current_state = ExecutionState.ERROR
+            raise
 
-    def _handle_winch_absolute(self, action: Dict[str, Any]) -> None:
-        """Handle winch absolute position movement."""
-        params = action.get("params", {})
-        length = params.get("length", 0)
-        speed = params.get("speed", 1)
+    def _calculate_wait_until(
+        self,
+        current_scheduled: ScheduledAction,
+        current_index: int,
+        scheduled_actions: List[ScheduledAction],
+        start_time: float
+    ) -> float:
+        """
+        Calculate absolute time to wait until (either next action or current completion).
+        
+        Returns:
+            Absolute time to wait until (relative to start_time)
+        """
+        # Default: wait for current action to complete
+        wait_until = current_scheduled.scheduled_time + current_scheduled.estimated_duration
 
-        try:
-            self._robot_controller.winch_controller.moveAbsolute(int(length), int(speed))
-            self.logger.debug(f"Winch moving to {length}mm at {speed}mm/s")
+        # Check if next action should execute sooner
+        if current_index + 1 < len(scheduled_actions):
+            next_action = scheduled_actions[current_index + 1]
+            if next_action.scheduled_time < wait_until:
+                wait_until = next_action.scheduled_time
 
-            # Track winch state for arrival time estimation
-            self.winch_target_position = length
-            self.winch_speed = speed
-            self.winch_move_start_time = time.time()
-        except Exception as e:
-            self.logger.error(f"Error moving winch absolute: {e}")
+        return wait_until
 
-    def _handle_valve_turn(self, action: Dict[str, Any]) -> None:
-        """Handle valve turn control."""
-        params = action.get("params", {})
-        turn_value = params.get("turn_value", 0.0)
-
-        try:
-            self._robot_controller.teensy_controller.setValveTurn(float(turn_value))
-            self.logger.debug(f"Valve turn set to {turn_value}")
-        except Exception as e:
-            self.logger.error(f"Error setting valve turn: {e}")
-
-    def _handle_spray_gimbal(self, action: Dict[str, Any]) -> None:
-        """Handle spray gun gimbal angle control."""
-        params = action.get("params", {})
-        angle = params.get("angle", 0)
-        speed = params.get("speed", 10)
-
-        try:
-            self._robot_controller.teensy_controller.setSprayGunGimbalAngle(float(angle), float(speed))
-            self.logger.debug(f"Spray gimbal set to angle={angle}° speed={speed}°/s")
-        except Exception as e:
-            self.logger.error(f"Error setting spray gimbal angle: {e}")
-
-    def _handle_arm_extend(self, action: Dict[str, Any]) -> None:
-        """Handle arm extension control."""
-        params = action.get("params", {})
-        distance = params.get("distance", 0)
-
-        try:
-            self._robot_controller.teensy_controller.extendArm(int(distance))
-            self.logger.debug(f"Arm extended to {distance}mm")
-        except Exception as e:
-            self.logger.error(f"Error extending arm: {e}")
-
-    def _handle_ef_force(self, action: Dict[str, Any]) -> None:
-        """Handle end effector force control."""
-        params = action.get("params", {})
-        fx = params.get("fx", 0.0)
-        fy = params.get("fy", 0.0)
-
-        try:
-            self._robot_controller.teensy_controller.set_ef_force(float(fx), float(fy))
-            self.logger.debug(f"EF force set to Fx={fx}, Fy={fy}")
-        except Exception as e:
-            self.logger.error(f"Error setting EF force: {e}")
+    def _wait_with_pause(self, wait_until: float, start_time: float) -> None:
+        """
+        Wait until specified time, handling pause state.
+        
+        Args:
+            wait_until: Absolute time to wait until (relative to start_time)
+            start_time: Execution start time
+        """
+        while time.time() - start_time < wait_until and not self._stop_requested:
+            # Handle pause
+            while self.current_state == ExecutionState.PAUSED and not self._stop_requested:
+                time.sleep(0.1)
+            
+            if self._stop_requested:
+                break
+                
+            time.sleep(0.05)  # Small sleep for responsiveness
 
     def cleanup(self) -> None:
         """Clean up executor resources."""
         self.stop()
+
+    # Legacy compatibility methods
+    def set_controllers(self, teensy_controller, winch_controller) -> None:
+        """
+        Set controller references (legacy compatibility).
+        
+        Args:
+            teensy_controller: Teensy controller instance
+            winch_controller: Winch controller instance
+        """
+        # Update hardware controllers
+        from .hardware import TeensyControllerAdapter, WinchControllerAdapter
+        
+        if teensy_controller:
+            self.hardware.teensy = TeensyControllerAdapter(teensy_controller)
+        if winch_controller:
+            self.hardware.winch = WinchControllerAdapter(winch_controller)

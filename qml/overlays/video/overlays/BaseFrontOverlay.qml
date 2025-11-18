@@ -9,10 +9,16 @@ Rectangle {
     
     VideoOverlayStyle { id: style }
     
+    // Trajectory Status Overlay - Full screen with blinking border
+    TrajectoryStatusOverlay {
+        id: trajectoryStatusOverlay
+        z: 150  // Above other overlays but below top bar
+    }
+    
     // Top bar
     VideoOverlayTopBar {
         id: topBar
-        z: 100
+        z: 200  // Highest z-index
     }
     
     // LEFT SIDE - Wheel Data (Speed & Heading)

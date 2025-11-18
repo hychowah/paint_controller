@@ -39,8 +39,8 @@ class ControlProcessor(QObject):
         self.MESSAGE_UPDATE_INTERVAL = 0.2  # seconds, 5Hz display update rate
         
         # Track control parameters
-        self.TRACK_MAX_SPEED = 30.0         # Maximum track speed
-        self.TRACK_MIN_SPEED = 10.0         # Minimum speed to overcome friction
+        self.TRACK_MAX_SPEED = 25.0         # Maximum track speed
+        self.TRACK_MIN_SPEED = 15.0         # Minimum speed to overcome friction
         self.TRACK_DEAD_ZONE = 0.05         # 5% joystick dead zone
         self.TRACK_FINE_CONTROL_THRESHOLD = 0.6  # 60% of joystick for fine control (10-30 speed)
         self.TRACK_FINE_CURVE_FACTOR = 2.0  # Exponential curve for fine control range
@@ -65,7 +65,7 @@ class ControlProcessor(QObject):
         # Control scaling factors
         self.WINCH_SCALE = 55 / self.JOYSTICK_MAX_VALUE
         self.TRACK_SCALE = self.TRACK_MAX_SPEED / self.JOYSTICK_MAX_VALUE
-        self.EF_ARM_SCALE = 1000 / self.JOYSTICK_MAX_VALUE
+        self.EF_ARM_SCALE = 300 / self.JOYSTICK_MAX_VALUE
         self.EF_JOINT_SCALE = 60.0 / self.JOYSTICK_MAX_VALUE
         self.EF_TRIGGER_SCALE = 400 / self.JOYSTICK_MAX_VALUE
         self.EF_RAIL_SCALE = 1000 / self.JOYSTICK_MAX_VALUE

@@ -1,0 +1,238 @@
+#!/usr/bin/env python3
+"""
+Action scheduler for trajectory execution.
+
+Handles timing calculations and action scheduling with clean separation from execution logic.
+"""
+
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Any
+from enum import Enum
+
+
+class TimingMode(Enum):
+    """Timing modes for action scheduling."""
+    AFTER_START = "after_start"
+    BEFORE_COMPLETE = "before_complete"
+    ON_COMPLETE = "on_complete"
+
+
+@dataclass
+class ScheduledAction:
+    """Action scheduled for execution with timing information."""
+    action_index: int
+    action_id: str
+    action_config: Dict[str, Any]
+    scheduled_time: float  # Absolute time in seconds when action should execute
+    estimated_duration: float  # Estimated duration in seconds
+
+
+class ActionScheduler:
+    """
+    Schedules actions with support for sequential and relative timing.
+    
+    All timing internally uses seconds for consistency.
+    """
+
+    def __init__(self, logger=None, hardware=None):
+        """
+        Initialize scheduler.
+        
+        Args:
+            logger: Optional logger for diagnostic messages
+            hardware: Optional HardwareControllers instance for reading current state
+        """
+        self.logger = logger
+        self.hardware = hardware
+
+    def build_schedule(self, actions: List[Dict[str, Any]]) -> List[ScheduledAction]:
+        """
+        Build execution schedule from action configurations.
+        
+        Args:
+            actions: List of action configurations from YAML
+            
+        Returns:
+            List of ScheduledAction sorted by execution time
+        """
+        scheduled = []
+        action_map = {}  # id -> ScheduledAction
+        current_time = 0.0
+
+        for idx, action in enumerate(actions):
+            action_id = action.get("id", f"action_{idx}")
+            action_name = action.get("name", action_id)
+            
+            # Calculate duration
+            duration = self._calculate_duration(action)
+            
+            # Calculate scheduled time
+            trigger = action.get("trigger")
+            if trigger:
+                scheduled_time = self._calculate_trigger_time(trigger, action_map)
+            else:
+                # Sequential: check for delay_before (legacy support)
+                delay_before = action.get("delay_before", 0)
+                if delay_before != 0:
+                    scheduled_time = self._calculate_legacy_timing(
+                        delay_before, idx, scheduled, current_time
+                    )
+                else:
+                    scheduled_time = current_time
+
+            # Ensure non-negative time
+            scheduled_time = max(0.0, scheduled_time)
+
+            sched = ScheduledAction(
+                action_index=idx,
+                action_id=action_id,
+                action_config=action,
+                scheduled_time=scheduled_time,
+                estimated_duration=duration
+            )
+
+            scheduled.append(sched)
+            action_map[action_id] = sched
+
+            # Update current time for next sequential action
+            wait_for_completion = action.get("wait_for_completion", True)
+            if wait_for_completion:
+                current_time = scheduled_time + duration
+
+            if self.logger:
+                self.logger.debug(
+                    f"Scheduled '{action_name}' (id={action_id}): "
+                    f"time={scheduled_time:.2f}s, duration={duration:.2f}s"
+                )
+
+        # Sort by scheduled time (important for triggered actions)
+        scheduled.sort(key=lambda x: x.scheduled_time)
+
+        if self.logger:
+            self.logger.info(f"Built schedule with {len(scheduled)} actions")
+
+        return scheduled
+
+    def _calculate_duration(self, action: Dict[str, Any]) -> float:
+        """
+        Calculate estimated duration for an action in seconds.
+        
+        Args:
+            action: Action configuration
+            
+        Returns:
+            Duration in seconds
+        """
+        action_type = action.get("type")
+        
+        # Check for explicit duration
+        if "estimated_duration" in action:
+            return action["estimated_duration"] / 1000.0  # Convert ms to seconds
+        
+        if "wait_after" in action:
+            return action["wait_after"] / 1000.0  # Convert ms to seconds
+
+        # Auto-calculate for winch movements
+        if action_type in ("winch_absolute", "winch_move_absolute"):
+            params = action.get("params", {})
+            target_length = params.get("length", 0)
+            distance = params.get("distance", 0)
+            speed = params.get("speed", 1)
+            
+            # If distance is explicitly provided, use it
+            if distance > 0:
+                actual_distance = distance
+            else:
+                # Calculate distance from current position to target
+                actual_distance = target_length
+                if self.hardware and self.hardware.winch:
+                    try:
+                        current_length = self.hardware.winch.get_cable_length()
+                        actual_distance = abs(target_length - current_length)
+                        if self.logger:
+                            self.logger.debug(
+                                f"Winch duration calculation: target={target_length}mm, "
+                                f"current={current_length}mm, distance={actual_distance}mm"
+                            )
+                    except Exception as e:
+                        if self.logger:
+                            self.logger.warn(f"Could not get current cable length: {e}, using target as distance")
+            
+            if speed > 0:
+                return actual_distance / speed  # Returns seconds
+        
+        # Default duration
+        return 1.0  # 1 second default
+
+    def _calculate_trigger_time(
+        self, 
+        trigger: Dict[str, Any], 
+        action_map: Dict[str, ScheduledAction]
+    ) -> float:
+        """
+        Calculate scheduled time based on trigger configuration.
+        
+        Args:
+            trigger: Trigger configuration with reference_action, timing_mode, offset_ms
+            action_map: Map of action_id to ScheduledAction
+            
+        Returns:
+            Scheduled time in seconds
+        """
+        ref_id = trigger.get("reference_action")
+        if not ref_id or ref_id not in action_map:
+            raise ValueError(f"Referenced action '{ref_id}' not found or not yet scheduled")
+        
+        ref_action = action_map[ref_id]
+        timing_mode = TimingMode(trigger.get("timing_mode", "after_start"))
+        offset_seconds = trigger.get("offset_ms", 0) / 1000.0
+
+        if timing_mode == TimingMode.AFTER_START:
+            return ref_action.scheduled_time + offset_seconds
+        elif timing_mode == TimingMode.BEFORE_COMPLETE:
+            completion_time = ref_action.scheduled_time + ref_action.estimated_duration
+            return completion_time - offset_seconds
+        elif timing_mode == TimingMode.ON_COMPLETE:
+            completion_time = ref_action.scheduled_time + ref_action.estimated_duration
+            return completion_time + offset_seconds
+        else:
+            raise ValueError(f"Unknown timing mode: {timing_mode}")
+
+    def _calculate_legacy_timing(
+        self,
+        delay_before: int,
+        idx: int,
+        scheduled: List[ScheduledAction],
+        current_time: float
+    ) -> float:
+        """
+        Calculate timing using legacy delay_before format.
+        
+        Args:
+            delay_before: Delay in milliseconds (positive=after, negative=before)
+            idx: Current action index
+            scheduled: List of already scheduled actions
+            current_time: Current sequential time
+            
+        Returns:
+            Scheduled time in seconds
+        """
+        delay_seconds = delay_before / 1000.0
+
+        if delay_before > 0:
+            # Positive: after previous completes
+            return current_time + delay_seconds
+        elif delay_before < 0 and idx > 0:
+            # Negative: before previous completes
+            prev_action = scheduled[-1]
+            prev_type = prev_action.action_config.get("type")
+            
+            if prev_type in ("winch_absolute", "winch_move_absolute"):
+                # Use the already calculated duration from prev_action
+                # which now includes actual current position
+                completion_time = prev_action.scheduled_time + prev_action.estimated_duration
+                return completion_time + delay_seconds  # delay_seconds is negative
+            else:
+                return current_time + delay_seconds
+        else:
+            return current_time
