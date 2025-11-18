@@ -5,21 +5,21 @@ import "../../components/panels"
 import "../../navigation"
 
 Item {
-    id: powerControlMenu
+    id: systemControlMenu
 
     // These properties can now be directly bound to the overlayController
     property bool showOverlay: overlayController.show_overlay
     property string activeMenu: overlayController.active_menu
-    property bool showPowerMenu: showOverlay && activeMenu === "power"
+    property bool showSystemMenu: showOverlay && activeMenu === "system"
 
     // Ensure the menu is visible
     visible: true
 
     Rectangle {
-        id: powerOverlayBackground
+        id: systemOverlayBackground
         anchors.fill: parent
         color: "#000000"
-        opacity: showPowerMenu ? 0.5 : 0
+        opacity: showSystemMenu ? 0.5 : 0
         visible: opacity > 0
         
         Behavior on opacity {
@@ -31,12 +31,12 @@ Item {
     }
 
     Rectangle {
-        id: powerMenuContainer
+        id: systemMenuContainer
         width: 800 // Slightly wider to accommodate tabs
         height: 700 // Increased height for tab bar
         radius: 12
         color: "#1A1A1A"  // Darker background for modern look
-        opacity: showPowerMenu ? 1 : 0
+        opacity: showSystemMenu ? 1 : 0
         visible: opacity > 0
         
         // Modern subtle border
@@ -47,7 +47,7 @@ Item {
         anchors {
             horizontalCenter: parent.horizontalCenter
             verticalCenter: parent.verticalCenter
-            verticalCenterOffset: showPowerMenu ? 0 : -parent.height
+            verticalCenterOffset: showSystemMenu ? 0 : -parent.height
         }
 
         Behavior on anchors.verticalCenterOffset {
@@ -121,12 +121,12 @@ Item {
                     anchors.fill: parent
                     spacing: 2
 
-                    // Power Control Tab
+                    // Device Control Tab
                     TabButton {
-                        id: powerTab
+                        id: deviceTab
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        text: "Power Control"
+                        text: "Devices"
                         checked: tabView.currentIndex === 0
                         onClicked: tabView.currentIndex = 0
                     }
@@ -160,9 +160,9 @@ Item {
                 Layout.fillHeight: true
                 currentIndex: 0
 
-                // Power Control Tab Content
-                PowerControlTab {
-                    id: powerControlTabContent
+                // Device Control Tab Content
+                DeviceControlTab {
+                    id: deviceControlTabContent
                 }
 
                 // Command Tab Content

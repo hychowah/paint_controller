@@ -5,7 +5,7 @@ import "../../components/buttons"
 import "../../components/panels"
 
 Item {
-    id: powerControlTab
+    id: deviceControlTab
 
     ColumnLayout {
         anchors.fill: parent
@@ -201,6 +201,17 @@ Item {
                             iconText: "Y"
                             
                             onClicked: teensyController.setYawEnabled(!teensyController.all_status.yaw_enabled)
+                        }
+
+                        // Auto Correction Control
+                        ControlPanel {
+                            Layout.fillWidth: true
+                            controlName: "Auto Correction"
+                            controlStatus: teensyController.auto_correction_enabled ? "Active" : "Inactive"
+                            enabledState: teensyController.auto_correction_enabled
+                            iconText: "AC"
+                            
+                            onClicked: teensyController.setAutoCorrectonEnabled(!teensyController.auto_correction_enabled)
                         }
 
                         // SprayGun Levelling

@@ -19,7 +19,7 @@ import "../components/panels"
 import "../components/popups"
 import "../components/specialized/pointcloud"
 import "../overlays"
-import "../overlays/powercontrol"
+import "../overlays/systemcontrol"
 import "../overlays/video"
 import "../overlays/lidar"
 
@@ -192,9 +192,9 @@ ApplicationWindow {
         PageSettings {}
     }
 
-    PowerControlMenu {
+    SystemControlMenu {
         anchors.fill: parent
-        id: powerControlMenu
+        id: systemControlMenu
         z: 1001
         showOverlay: overlayController.show_overlay
         activeMenu: overlayController.active_menu

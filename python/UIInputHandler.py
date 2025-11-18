@@ -80,8 +80,8 @@ class UIInputHandler(QObject):
 
     @Slot()
     def on_menu_pressed(self):
-        self.controller.overlayController.set_active_menu("power")
-        self.controller.overlayController.toggle_power_menu()
+        self.controller.overlayController.set_active_menu("system")
+        self.controller.overlayController.toggle_system_menu()
 
     @Slot()
     def on_l1_pressed(self):
