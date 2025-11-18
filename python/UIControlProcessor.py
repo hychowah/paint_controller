@@ -60,6 +60,7 @@ class ControlProcessor(QObject):
         self.EF_GIMBAL_UPDATE_INTERVAL = 0.2  # 5Hz
         self.EF_YAW_UPDATE_INTERVAL = 0.1   # 10Hz
         self.EF_FORCE_UPDATE_INTERVAL = 0.1 # 10Hz
+        self.VALVE_TURN_UPDATE_INTERVAL = 0.3  # 10Hz
         
         # Control scaling factors
         self.WINCH_SCALE = 55 / self.JOYSTICK_MAX_VALUE
@@ -72,6 +73,7 @@ class ControlProcessor(QObject):
         self.EF_GIMBAL_SCALE = 30 / self.JOYSTICK_MAX_VALUE
         self.EF_YAW_SCALE = 2 / self.JOYSTICK_MAX_VALUE
         self.EF_FORCE_SCALE = 1.6 / self.JOYSTICK_MAX_VALUE
+        self.VALVE_TURN_SCALE = 6.0 / self.JOYSTICK_MAX_VALUE  # Maps 0-32768 to 0-6.0
         
         # Control offsets and limits
         self.EF_TRIGGER_OFFSET = 1000
@@ -141,6 +143,10 @@ class ControlProcessor(QObject):
             "EF Force": ControlConfig(
                 scale=self.EF_FORCE_SCALE,
                 min_interval=self.EF_FORCE_UPDATE_INTERVAL
+            ),
+            "Valve Turn": ControlConfig(
+                scale=self.VALVE_TURN_SCALE,
+                min_interval=self.VALVE_TURN_UPDATE_INTERVAL
             )
         }
 
@@ -374,6 +380,27 @@ class ControlProcessor(QObject):
         msg = config.msg_type(data=value)
         publisher.publish(msg)
 
+    def _process_valve_turn(self, input_state: Dict):
+        """Handle valve turn control using right analog trigger
+        
+        Maps the right trigger (0-32767) to valve turn range (0.0-6.0)
+        """
+        # Get right trigger value (0-32767)
+        right_trigger = input_state.get('triggers', {}).get('right', 0)
+        
+        # Map trigger value to valve turn range (0.0-6.0)
+        valve_turn_value = right_trigger * self.VALVE_TURN_SCALE
+        
+        # Clamp to the valid range [0.0, 6.0]
+        valve_turn_value = max(0.0, min(6.0, valve_turn_value))
+        
+        # Send the valve turn command
+        try:
+            self.robot.teensy_controller.setValveTurn(valve_turn_value)
+            # print(f"Commanding valve turn: {valve_turn_value}")
+        except Exception as e:
+            print(f"Error commanding valve turn: {str(e)}")
+
     def _process_standard_control(self, input_state: Dict, mode: str, stick: str):
         """Handle standard control modes"""
         config = self.controls[mode]
@@ -461,6 +488,11 @@ class ControlProcessor(QObject):
                     self._process_ef_force_control(input_state, right_mode, 'right')
                 else:
                     self._process_standard_control(input_state, right_mode, 'right')
+            
+            # Process right trigger for valve turn command (continuous mapping)
+            if self._can_send_command("Valve Turn"):
+                self._process_valve_turn(input_state)
+                
 
             if left_mode != "EF Yaw Angle" and right_mode != "EF Yaw Angle":
                 # Get IMU yaw from TeensyController instead of UIDataModel

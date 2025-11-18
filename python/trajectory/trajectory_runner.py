@@ -9,7 +9,7 @@ import os
 from typing import List, Optional
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Signal, Slot, Property
+from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer
 
 from .trajectory_executor import TrajectoryExecutor, ExecutionState
 
@@ -28,6 +28,7 @@ class TrajectoryRunner(QObject):
     trajectory_list_changed = Signal()
     execution_state_changed = Signal(int)  # ExecutionState enum value
     current_trajectory_changed = Signal(str)  # Trajectory name
+    current_action_index_changed = Signal(int)  # Current action index during execution
     error_occurred = Signal(str)  # Error message
 
     def __init__(self, ros_node, logger=None):
@@ -35,7 +36,7 @@ class TrajectoryRunner(QObject):
         Initialize trajectory runner.
 
         Args:
-            ros_node: ROS2 node instance
+            ros_node: ROS2 node instance (RobotController)
             logger: Optional logger (uses ros_node.get_logger() if None)
         """
         super().__init__()
@@ -45,10 +46,33 @@ class TrajectoryRunner(QObject):
         self.executor = TrajectoryExecutor(ros_node, self.logger)
         self._trajectory_list: List[str] = []
         self._current_trajectory_name = ""
+        self._current_action_index = -1
         self._trajectories_dir = self._find_trajectories_dir()
+
+        # Initialize executor with controller references
+        self._setup_controllers()
 
         # Load available trajectories
         self._refresh_trajectory_list()
+
+        # Timer to monitor current action index during execution
+        self._action_index_timer = QTimer()
+        self._action_index_timer.timeout.connect(self._update_action_index)
+        self._action_index_timer.start(100)  # Update every 100ms
+
+    def _setup_controllers(self) -> None:
+        """Set up controller references for the executor."""
+        try:
+            if hasattr(self.ros_node, 'teensy_controller') and hasattr(self.ros_node, 'winch_controller'):
+                self.executor.set_controllers(
+                    self.ros_node.teensy_controller,
+                    self.ros_node.winch_controller
+                )
+                self.logger.info("Trajectory executor controllers initialized")
+            else:
+                self.logger.warn("Controllers not available in ros_node")
+        except Exception as e:
+            self.logger.error(f"Error setting up controllers: {e}")
 
     def _find_trajectories_dir(self) -> str:
         """Find trajectories directory relative to package."""
@@ -103,6 +127,11 @@ class TrajectoryRunner(QObject):
         """Get current execution state (ExecutionState enum value)."""
         return self.executor.current_state.value
 
+    @Property(int, notify=current_action_index_changed)
+    def current_action_index(self) -> int:
+        """Get index of currently executing action (-1 if not running)."""
+        return self.executor.current_action_index if self.executor.current_state.value == 1 else -1
+
     @Slot(str)
     def load_trajectory(self, trajectory_name: str) -> bool:
         """
@@ -139,6 +168,29 @@ class TrajectoryRunner(QObject):
             self.current_trajectory_changed.emit(trajectory_name)
 
         return success
+
+    @Slot(result=list)
+    def get_current_trajectory_actions(self) -> List[dict]:
+        """
+        Get list of actions from currently loaded trajectory.
+        
+        Returns:
+            List of action dictionaries with name, type, and description
+        """
+        if not self.executor.current_trajectory:
+            return []
+        
+        actions = self.executor.current_trajectory.get("actions", [])
+        result = []
+        
+        for action in actions:
+            result.append({
+                "name": action.get("name", "Unknown"),
+                "type": action.get("type", "Unknown"),
+                "desc": action.get("description", "")
+            })
+        
+        return result
 
     @Slot()
     def play(self) -> bool:
@@ -186,6 +238,19 @@ class TrajectoryRunner(QObject):
 
         return success
 
+    @Property(int, notify=current_action_index_changed)
+    def current_action_index(self) -> int:
+        """Get index of currently executing action (-1 if not running)."""
+        return self._current_action_index
+
+    def _update_action_index(self) -> None:
+        """Update current action index from executor."""
+        new_index = self.executor.current_action_index
+        if new_index != self._current_action_index:
+            self._current_action_index = new_index
+            self.current_action_index_changed.emit(new_index)
+
     def cleanup(self) -> None:
         """Clean up runner resources."""
+        self._action_index_timer.stop()
         self.executor.cleanup()

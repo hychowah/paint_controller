@@ -13,9 +13,6 @@ import yaml
 
 from PySide6.QtCore import QThread, Signal
 
-# ROS2 message imports (from research)
-from std_msgs.msg import Float32, UInt16
-
 
 class ExecutionState(Enum):
     """Trajectory execution state."""
@@ -83,38 +80,34 @@ class TrajectoryExecutor:
         Initialize trajectory executor.
 
         Args:
-            ros_node: ROS2 node instance for creating publishers
+            ros_node: ROS2 node instance (RobotController) with access to controllers
             logger: Optional logger instance (uses ros_node.get_logger() if None)
         """
         self.ros_node = ros_node
+        self._robot_controller = ros_node  # Store robot controller reference
         self.logger = logger or ros_node.get_logger()
 
         self.current_trajectory: Optional[Dict[str, Any]] = None
         self.current_state = ExecutionState.IDLE
+        self.current_action_index = -1  # Track currently executing action
         self.execution_thread: Optional[TrajectoryExecutionThread] = None
         self._stop_requested = False
 
-        # Publisher cache: topic -> publisher
-        self.publishers: Dict[str, Any] = {}
-
-        # Action type to topic mapping
-        self.action_type_map = {
-            "teensy_relay": ("teensy/relay/cmd", "std_msgs/UInt16"),
-            "teensy_gimbal": ("teensy/spray_gun/gimbal/angle/cmd", "std_msgs/Float32MultiArray"),
-            "teensy_arm_extend": ("teensy/arm/extend/cmd", "std_msgs/Float32"),
-            "teensy_propeller": ("teensy/prop/left/pwm/cmd", "std_msgs/UInt16"),  # Simplified
-            "teensy_spray_trigger": ("teensy/spray_gun/trigger/cmd", "std_msgs/UInt16"),
-            "winch_move_absolute": ("winch/move/absolute/cmd", "paint_interfaces/WinchMovement"),
-        }
-
         # Callback map for action execution
         self.action_handlers: Dict[str, Callable] = {
-            "teensy_relay": self._handle_teensy_relay,
-            "teensy_gimbal": self._handle_teensy_gimbal,
-            "teensy_arm_extend": self._handle_teensy_arm_extend,
-            "teensy_propeller": self._handle_teensy_propeller,
-            "teensy_spray_trigger": self._handle_teensy_spray_trigger,
-            "winch_move_absolute": self._handle_winch_move_absolute,
+            "winch_increment": self._handle_winch_increment,
+            "winch_absolute": self._handle_winch_absolute,
+            "valve_turn": self._handle_valve_turn,
+            "spray_gimbal": self._handle_spray_gimbal,
+            "arm_extend": self._handle_arm_extend,
+            "ef_force": self._handle_ef_force,
+            # Legacy type names for backward compatibility
+            "teensy_relay": self._handle_winch_increment,  # Map to dummy handler
+            "teensy_gimbal": self._handle_spray_gimbal,
+            "teensy_arm_extend": self._handle_arm_extend,
+            "teensy_propeller": self._handle_winch_increment,  # Map to dummy handler
+            "teensy_spray_trigger": self._handle_winch_increment,  # Map to dummy handler
+            "winch_move_absolute": self._handle_winch_absolute,
         }
 
         # Winch state tracking for arrival time estimation
@@ -253,6 +246,9 @@ class TrajectoryExecutor:
                 time.sleep(min(wait_time, 0.1))  # Sleep in 100ms chunks for responsiveness
                 continue
 
+            # Update current action index
+            self.current_action_index = action_index
+
             # Execute action
             action_name = scheduled.action_config.get("name", f"action_{action_index}")
             action_type = scheduled.action_config.get("type")
@@ -272,6 +268,9 @@ class TrajectoryExecutor:
                 raise
 
             action_index += 1
+
+        # Reset action index when done
+        self.current_action_index = -1
 
     def _build_schedule(self, actions: List[Dict[str, Any]]) -> List[ScheduledAction]:
         """
@@ -338,126 +337,82 @@ class TrajectoryExecutor:
 
         return scheduled
 
-    # Action handlers
-    def _handle_teensy_relay(self, action: Dict[str, Any]) -> None:
-        """Handle teensy relay control."""
+    # Action handlers - use controller methods instead of raw ROS2 publishing
+    def _handle_winch_increment(self, action: Dict[str, Any]) -> None:
+        """Handle winch incremental movement."""
         params = action.get("params", {})
-        relay_id = params.get("relay_id", 1)
-        enabled = params.get("enabled", True)
+        length = params.get("length", 0)
+        speed = params.get("speed", 1)
 
-        # Create publisher if needed
-        topic = "teensy/relay/cmd"
-        if topic not in self.publishers:
-            self.publishers[topic] = self.ros_node.create_publisher(UInt16, topic, 10)
+        try:
+            self._robot_controller.winch_controller.moveIncrement(int(length), int(speed))
+            self.logger.debug(f"Winch moved increment of {length}mm at {speed}mm/s")
+        except Exception as e:
+            self.logger.error(f"Error moving winch increment: {e}")
 
-        # Publish command (simplified: 1 for on, 0 for off)
-        msg = UInt16()
-        msg.data = 1 if enabled else 0
-        self.publishers[topic].publish(msg)
+    def _handle_winch_absolute(self, action: Dict[str, Any]) -> None:
+        """Handle winch absolute position movement."""
+        params = action.get("params", {})
+        length = params.get("length", 0)
+        speed = params.get("speed", 1)
 
-    def _handle_teensy_gimbal(self, action: Dict[str, Any]) -> None:
-        """Handle gimbal angle control."""
+        try:
+            self._robot_controller.winch_controller.moveAbsolute(int(length), int(speed))
+            self.logger.debug(f"Winch moving to {length}mm at {speed}mm/s")
+
+            # Track winch state for arrival time estimation
+            self.winch_target_position = length
+            self.winch_speed = speed
+            self.winch_move_start_time = time.time()
+        except Exception as e:
+            self.logger.error(f"Error moving winch absolute: {e}")
+
+    def _handle_valve_turn(self, action: Dict[str, Any]) -> None:
+        """Handle valve turn control."""
+        params = action.get("params", {})
+        turn_value = params.get("turn_value", 0.0)
+
+        try:
+            self._robot_controller.teensy_controller.setValveTurn(float(turn_value))
+            self.logger.debug(f"Valve turn set to {turn_value}")
+        except Exception as e:
+            self.logger.error(f"Error setting valve turn: {e}")
+
+    def _handle_spray_gimbal(self, action: Dict[str, Any]) -> None:
+        """Handle spray gun gimbal angle control."""
         params = action.get("params", {})
         angle = params.get("angle", 0)
         speed = params.get("speed", 10)
 
-        # Create publisher if needed
-        topic = "teensy/spray_gun/gimbal/angle/cmd"
-        if topic not in self.publishers:
-            from std_msgs.msg import Float32MultiArray
+        try:
+            self._robot_controller.teensy_controller.setSprayGunGimbalAngle(float(angle), float(speed))
+            self.logger.debug(f"Spray gimbal set to angle={angle}° speed={speed}°/s")
+        except Exception as e:
+            self.logger.error(f"Error setting spray gimbal angle: {e}")
 
-            self.publishers[topic] = self.ros_node.create_publisher(
-                Float32MultiArray, topic, 10
-            )
-
-        # Publish [angle, speed]
-        msg = Float32MultiArray()
-        msg.data = [float(angle), float(speed)]
-        self.publishers[topic].publish(msg)
-
-    def _handle_teensy_arm_extend(self, action: Dict[str, Any]) -> None:
+    def _handle_arm_extend(self, action: Dict[str, Any]) -> None:
         """Handle arm extension control."""
         params = action.get("params", {})
         distance = params.get("distance", 0)
 
-        topic = "teensy/arm/extend/cmd"
-        if topic not in self.publishers:
-            self.publishers[topic] = self.ros_node.create_publisher(Float32, topic, 10)
+        try:
+            self._robot_controller.teensy_controller.extendArm(int(distance))
+            self.logger.debug(f"Arm extended to {distance}mm")
+        except Exception as e:
+            self.logger.error(f"Error extending arm: {e}")
 
-        msg = Float32()
-        msg.data = float(distance)
-        self.publishers[topic].publish(msg)
-
-    def _handle_teensy_propeller(self, action: Dict[str, Any]) -> None:
-        """Handle propeller control."""
+    def _handle_ef_force(self, action: Dict[str, Any]) -> None:
+        """Handle end effector force control."""
         params = action.get("params", {})
-        left_pwm = params.get("left_pwm", 0)
-        right_pwm = params.get("right_pwm", 0)
+        fx = params.get("fx", 0.0)
+        fy = params.get("fy", 0.0)
 
-        # Publish left propeller
-        left_topic = "teensy/prop/left/pwm/cmd"
-        if left_topic not in self.publishers:
-            self.publishers[left_topic] = self.ros_node.create_publisher(UInt16, left_topic, 10)
-
-        left_msg = UInt16()
-        left_msg.data = int(left_pwm)
-        self.publishers[left_topic].publish(left_msg)
-
-        # Publish right propeller
-        right_topic = "teensy/prop/right/pwm/cmd"
-        if right_topic not in self.publishers:
-            self.publishers[right_topic] = self.ros_node.create_publisher(
-                UInt16, right_topic, 10
-            )
-
-        right_msg = UInt16()
-        right_msg.data = int(right_pwm)
-        self.publishers[right_topic].publish(right_msg)
-
-    def _handle_teensy_spray_trigger(self, action: Dict[str, Any]) -> None:
-        """Handle spray trigger (needle valve) control."""
-        params = action.get("params", {})
-        trigger_value = params.get("trigger_value", 0)
-
-        topic = "teensy/spray_gun/trigger/cmd"
-        if topic not in self.publishers:
-            self.publishers[topic] = self.ros_node.create_publisher(UInt16, topic, 10)
-
-        msg = UInt16()
-        msg.data = int(trigger_value)
-        self.publishers[topic].publish(msg)
-
-    def _handle_winch_move_absolute(self, action: Dict[str, Any]) -> None:
-        """Handle winch absolute position movement."""
-        params = action.get("params", {})
-        distance = params.get("distance", 0)
-        speed = params.get("speed", 1)
-
-        topic = "winch/move/absolute/cmd"
-        if topic not in self.publishers:
-            # Assuming paint_interfaces/WinchMovement exists
-            # For now, publish as generic message with two Float32 values
-            from std_msgs.msg import Float32MultiArray
-
-            self.publishers[topic] = self.ros_node.create_publisher(
-                Float32MultiArray, topic, 10
-            )
-
-        msg = Float32MultiArray()
-        msg.data = [float(distance), float(speed)]
-        self.publishers[topic].publish(msg)
-
-        # Track winch state for arrival time estimation
-        self.winch_target_position = distance
-        self.winch_speed = speed
-        self.winch_move_start_time = time.time()
+        try:
+            self._robot_controller.teensy_controller.set_ef_force(float(fx), float(fy))
+            self.logger.debug(f"EF force set to Fx={fx}, Fy={fy}")
+        except Exception as e:
+            self.logger.error(f"Error setting EF force: {e}")
 
     def cleanup(self) -> None:
         """Clean up executor resources."""
         self.stop()
-        for publisher in self.publishers.values():
-            try:
-                self.ros_node.destroy_publisher(publisher)
-            except Exception as e:
-                self.logger.warn(f"Error destroying publisher: {e}")
-        self.publishers.clear()

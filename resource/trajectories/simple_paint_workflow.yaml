@@ -1,0 +1,52 @@
+# Simple paint workflow trajectory
+# Core painting sequence: gimbal -> arm -> force -> valve -> winch -> close valve
+
+name: "simple_paint_workflow"
+description: "Simplified paint workflow using core 6 functions"
+
+actions:
+  - name: "set_gimbal_angle"
+    type: "spray_gimbal"
+    description: "Set gimbal to start angle"
+    params:
+      angle: -45  # degrees
+      speed: 10  # degrees/s
+    wait_after: 2000  # t1: wait for gimbal to reach position
+
+  - name: "extend_arm"
+    type: "arm_extend"
+    description: "Extend arm to painting position"
+    params:
+      distance: 400  # mm
+    wait_after: 2000  # t2: wait for arm extension
+
+  - name: "set_ef_force"
+    type: "ef_force"
+    description: "Set end effector force for spray control"
+    params:
+      fx: 0.0
+      fy: 0.5  # Apply upward force
+    wait_after: 1000  # t3: wait for force to apply
+
+  - name: "open_valve"
+    type: "valve_turn"
+    description: "Open valve to start painting"
+    params:
+      turn_value: 50.0  # 0-100 scale
+    wait_after: 1000  # t4: wait before winch movement
+
+  - name: "winch_move"
+    type: "winch_absolute"
+    description: "Move winch to painting position"
+    params:
+      length: 5000  # mm (target position)
+      speed: 350    # mm/s
+    wait_after: 15000  # Buffer time (will be recalculated by executor)
+
+  - name: "close_valve"
+    type: "valve_turn"
+    description: "Close valve at end of paint"
+    params:
+      turn_value: 0.0
+    delay_before: -2000  # Close 2 seconds before winch arrival (offset)
+    wait_after: 500

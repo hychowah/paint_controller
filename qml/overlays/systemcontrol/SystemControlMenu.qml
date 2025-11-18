@@ -150,6 +150,16 @@ Item {
                         checked: tabView.currentIndex === 2
                         onClicked: tabView.currentIndex = 2
                     }
+
+                    // Trajectory Tab
+                    TabButton {
+                        id: trajectoryTab
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        text: "Trajectory"
+                        checked: tabView.currentIndex === 3
+                        onClicked: tabView.currentIndex = 3
+                    }
                 }
             }
 
@@ -173,6 +183,11 @@ Item {
                 // Settings Tab Content
                 SettingsTab {
                     id: settingsTabContent
+                }
+
+                // Trajectory Tab Content
+                TrajectoryTab {
+                    id: trajectoryTabContent
                 }
             }
         }
