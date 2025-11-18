@@ -37,14 +37,11 @@ class UIInputHandler(QObject):
     def on_switch_pressed(self):
         if self.controller.control_mode == "base":
             self.controller.control_mode = "ef"
-            self.controller.overlayController.set_joystick_controls("EF Yaw Angle", "Winch Speed")
+            # self.controller.overlayController.set_joystick_controls("EF Yaw Angle", "Winch Speed")
             self.controller.show_popup("Control Mode", "Switched to EF control mode", "info")
         else:
             self.controller.control_mode = "base"
-            self.controller.overlayController.set_joystick_controls("Track Control", "None")
-            for _ in range(3):
-                self.controller.wheel_controller.resetWheelPosition()
-                time.sleep(0.1)
+            # self.controller.overlayController.set_joystick_controls("Track Control", "None")
             self.controller.show_popup("Control Mode", "Switched to Base control mode (Track Control)", "info")
 
     @Slot()
@@ -85,3 +82,12 @@ class UIInputHandler(QObject):
     def on_menu_pressed(self):
         self.controller.overlayController.set_active_menu("power")
         self.controller.overlayController.toggle_power_menu()
+
+    @Slot()
+    def on_l1_pressed(self):
+        """Toggle thrust force on/off"""
+        current_enabled = self.controller.teensy_controller.thrust_force_enabled
+        new_enabled = not current_enabled
+        self.controller.teensy_controller.set_thrust_force_enabled(new_enabled)
+        status = "enabled" if new_enabled else "disabled"
+        self.controller.show_popup("Thrust Force", f"Thrust force {status}", "info")

@@ -140,6 +140,16 @@ Item {
                         checked: tabView.currentIndex === 1
                         onClicked: tabView.currentIndex = 1
                     }
+
+                    // Settings Tab
+                    TabButton {
+                        id: settingsTab
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        text: "Settings"
+                        checked: tabView.currentIndex === 2
+                        onClicked: tabView.currentIndex = 2
+                    }
                 }
             }
 
@@ -158,6 +168,11 @@ Item {
                 // Command Tab Content
                 CommandTab {
                     id: commandTabContent
+                }
+
+                // Settings Tab Content
+                SettingsTab {
+                    id: settingsTabContent
                 }
             }
         }

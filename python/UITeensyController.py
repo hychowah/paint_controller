@@ -18,6 +18,8 @@ class TeensyController(QObject):
     connection_changed = Signal(bool)
     spray_gun_leveling_changed = Signal(bool)
     spray_gun_led_changed = Signal(bool)
+    thrust_force_changed = Signal(float)
+    thrust_force_enabled_changed = Signal(bool)
     
     def __init__(self, robot_controller):
         super().__init__()
@@ -83,6 +85,8 @@ class TeensyController(QObject):
         self._spray_gun_leveling_enabled = False
         self._spray_gun_led_on = False
         self._target_yaw = 0.0
+        self._thrust_force = 0.0
+        self._thrust_force_enabled = False
         
         # Configure publishers and subscribers
         self._setup_publishers()
@@ -489,6 +493,40 @@ class TeensyController(QObject):
     all_status = Property(dict, get_all_status, notify=status_changed)
     spray_gun_leveling_enabled = Property(bool, lambda self: self._spray_gun_leveling_enabled, notify=spray_gun_leveling_changed)
     spray_gun_led_on = Property(bool, lambda self: self._spray_gun_led_on, notify=spray_gun_led_changed)
+    
+    def get_thrust_force(self) -> float:
+        """Get current thrust force value"""
+        return self._thrust_force
+    
+    def set_thrust_force(self, value: float) -> None:
+        """Set thrust force value with range constraint [-1.0, 1.0]"""
+        # Clamp value to [-1.0, 1.0]
+        clamped_value = max(-1.0, min(1.0, value))
+        
+        if self._thrust_force != clamped_value:
+            self._thrust_force = clamped_value
+            self.thrust_force_changed.emit(self._thrust_force)
+            self._robot_controller.get_logger().info(f'Thrust force set to {self._thrust_force:.2f}')
+    
+    def get_thrust_force_enabled(self) -> bool:
+        """Get current thrust force enabled state"""
+        return self._thrust_force_enabled
+    
+    def set_thrust_force_enabled(self, enabled: bool) -> None:
+        """Toggle thrust force on/off"""
+        if self._thrust_force_enabled != enabled:
+            self._thrust_force_enabled = enabled
+            self.thrust_force_enabled_changed.emit(self._thrust_force_enabled)
+            # If enabled, apply the current thrust force; if disabled, zero it out
+            if enabled:
+                self.set_ef_force(0.0, self._thrust_force)
+                self._robot_controller.get_logger().info(f'Thrust force enabled: {self._thrust_force:.2f}')
+            else:
+                self.set_ef_force(0.0, 0.0)
+                self._robot_controller.get_logger().info('Thrust force disabled')
+    
+    thrust_force = Property(float, get_thrust_force, set_thrust_force, notify=thrust_force_changed)
+    thrust_force_enabled = Property(bool, get_thrust_force_enabled, set_thrust_force_enabled, notify=thrust_force_enabled_changed)
     
     def cleanup(self):
         """Clean up resources when shutting down"""

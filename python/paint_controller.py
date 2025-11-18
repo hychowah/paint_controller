@@ -354,6 +354,7 @@ class RobotController(Node, QObject):
         self.steam_deck_handler.register_button_callback('r5', ih.on_r5_pressed)
         self.steam_deck_handler.register_button_callback('dot', self.toggle_fullscreen)
         self.steam_deck_handler.register_button_callback('a', self.toggle_lidar_overlay)
+        self.steam_deck_handler.register_button_callback('l1', ih.on_l1_pressed)
 
 
     # Add property for control_mode

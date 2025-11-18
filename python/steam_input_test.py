@@ -10,7 +10,8 @@ def print_byte_bits(byte_num, data):
 
 def print_all_bytes(data):
     """Print all 64 bytes of data"""
-    print(f"Raw data ({len(data)} bytes):", data)
+    byte_str = " ".join(f"{byte:03d}" for byte in data)
+    print(f"Raw data ({len(data)} bytes): {byte_str}")
 
 def main():
 
