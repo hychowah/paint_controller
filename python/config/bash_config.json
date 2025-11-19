@@ -11,15 +11,15 @@
   },
   "END_EFFECTOR": {
     "Camera": {
-      "start": "bash -c 'source ~/ros2_ws/src/paint_end_effector/bash/start_cam.bash'",
+      "start": "bash -c 'sudo systemctl restart paint-ef-camera'",
       "stop": "pkill -f gst-launch-1.0 && echo 'GStreamer process killed.'"
     },
     "Teensy": {
-      "start": "bash -c 'source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash && export ROS_DOMAIN_ID=2 && cd ~/ros2_ws/src/paint_end_effector/paint_end_effector/ && python3 teensy_node.py'",
+      "start": "bash -c 'sudo systemctl restart paint-ef-teensy'",
       "stop": "pkill -f teensy_node.py && echo 'Teensy stopped.'"
     },
     "Lidar": {
-      "start": "bash -c 'source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash && export ROS_DOMAIN_ID=2 && ros2 launch unitree_lidar_ros2 launch.py'",
+      "start": "bash -c 'sudo systemctl restart paint-ef-lidar'",
       "stop": "bash -c 'source ~/ros2_ws/src/paint_end_effector/bash/stop_lidar.bash'"
     }
   }

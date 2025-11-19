@@ -28,7 +28,7 @@ Rectangle {
 
             Rectangle {
                 Layout.fillWidth: true
-                height: 40
+                height: 60
                 color: "#2A2A2A"
                 border.color: "#3A5A8C"
                 border.width: 1
@@ -50,6 +50,7 @@ Rectangle {
 
                     delegate: ItemDelegate {
                         width: parent.width
+                        height: 60
                         text: modelData
                         highlighted: ListView.isCurrentItem
                         background: Rectangle {
@@ -60,6 +61,7 @@ Rectangle {
                             color: highlighted ? "#FFFFFF" : "#CCCCCC"
                             font.family: "Helvetica"
                             font.pixelSize: 14
+                            verticalAlignment: Text.AlignVCenter
                         }
                     }
 

@@ -33,6 +33,11 @@ class ControlProcessor(QObject):
         self._right_control_mode = "None"
         self._right_control_value = ""
         
+        # Valve turn deadzone tracking
+        self.valve_turn_in_deadzone = False
+        self.valve_turn_deadzone_start_time = 0
+        self.valve_turn_should_send = True
+        
         # ===== CONFIGURATION CONSTANTS =====
         
         # Display and messaging
@@ -74,6 +79,8 @@ class ControlProcessor(QObject):
         self.EF_YAW_SCALE = 2 / self.JOYSTICK_MAX_VALUE
         self.EF_FORCE_SCALE = 1.6 / self.JOYSTICK_MAX_VALUE
         self.VALVE_TURN_SCALE = 6.0 / self.JOYSTICK_MAX_VALUE  # Maps 0-32768 to 0-6.0
+        self.VALVE_TURN_DEADZONE = 0.05  # 5% deadzone threshold
+        self.VALVE_TURN_DEADZONE_TIMEOUT = 2.0  # seconds
         
         # Control offsets and limits
         self.EF_TRIGGER_OFFSET = 1000
@@ -384,6 +391,7 @@ class ControlProcessor(QObject):
         """Handle valve turn control using right analog trigger
         
         Maps the right trigger (0-32767) to valve turn range (0.0-6.0)
+        Stops sending commands after 2 seconds in deadzone until trigger moves beyond deadzone
         """
         # Get right trigger value (0-32767)
         right_trigger = input_state.get('triggers', {}).get('right', 0)
@@ -394,12 +402,34 @@ class ControlProcessor(QObject):
         # Clamp to the valid range [0.0, 6.0]
         valve_turn_value = max(0.0, min(6.0, valve_turn_value))
         
-        # Send the valve turn command
-        try:
-            self.robot.teensy_controller.setValveTurn(valve_turn_value)
-            # print(f"Commanding valve turn: {valve_turn_value}")
-        except Exception as e:
-            print(f"Error commanding valve turn: {str(e)}")
+        # Normalize to 0-1 range for deadzone check
+        normalized_value = valve_turn_value / 6.0
+        
+        current_time = time.monotonic()
+        
+        # Check if we're in deadzone
+        if normalized_value <= self.VALVE_TURN_DEADZONE:
+            if not self.valve_turn_in_deadzone:
+                # Just entered deadzone
+                self.valve_turn_in_deadzone = True
+                self.valve_turn_deadzone_start_time = current_time
+                self.valve_turn_should_send = True
+            else:
+                # Already in deadzone - check if timeout has elapsed
+                if current_time - self.valve_turn_deadzone_start_time >= self.VALVE_TURN_DEADZONE_TIMEOUT:
+                    self.valve_turn_should_send = False
+        else:
+            # Outside deadzone - reset and allow sending
+            self.valve_turn_in_deadzone = False
+            self.valve_turn_should_send = True
+        
+        # Only send command if we should send
+        if self.valve_turn_should_send:
+            try:
+                self.robot.teensy_controller.setValveTurn(valve_turn_value)
+                # print(f"Commanding valve turn: {valve_turn_value}")
+            except Exception as e:
+                print(f"Error commanding valve turn: {str(e)}")
 
     def _process_standard_control(self, input_state: Dict, mode: str, stick: str):
         """Handle standard control modes"""

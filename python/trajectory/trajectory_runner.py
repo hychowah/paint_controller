@@ -203,51 +203,102 @@ class TrajectoryRunner(QObject):
             action: Full action config (for additional fields)
             
         Returns:
-            Formatted description string
+            Formatted description string with timing information
         """
         # Use explicit description if provided
-        if action.get("description"):
-            return action["description"]
+        base_desc = action.get("description", "")
         
-        # Generate description based on action type
-        if action_type in ("winch_absolute", "winch_move_absolute"):
-            length = params.get("length", 0)
-            speed = params.get("speed", 1)
-            return f"Move to {length}mm at {speed}mm/s"
-        
-        elif action_type == "winch_increment":
-            length = params.get("length", 0)
-            speed = params.get("speed", 1)
-            direction = "up" if length < 0 else "down"
-            return f"Move {abs(length)}mm {direction} at {speed}mm/s"
-        
-        elif action_type == "valve_turn":
-            turn_value = params.get("turn_value", 0.0)
-            if turn_value == 0.0:
-                return "Close valve"
+        if not base_desc:
+            # Generate description based on action type
+            if action_type in ("winch_absolute", "winch_move_absolute"):
+                length = params.get("length", 0)
+                speed = params.get("speed", 1)
+                base_desc = f"Move to {length}mm at {speed}mm/s"
+            
+            elif action_type == "winch_increment":
+                length = params.get("length", 0)
+                speed = params.get("speed", 1)
+                direction = "up" if length < 0 else "down"
+                base_desc = f"Move {abs(length)}mm {direction} at {speed}mm/s"
+            
+            elif action_type == "valve_turn":
+                turn_value = params.get("turn_value", 0.0)
+                if turn_value == 0.0:
+                    base_desc = "Close valve"
+                else:
+                    base_desc = f"Open valve to {turn_value:.1f}"
+            
+            elif action_type in ("spray_gimbal", "teensy_gimbal"):
+                angle = params.get("angle", 0)
+                speed = params.get("speed", 10)
+                base_desc = f"Gimbal to {angle}° at {speed}°/s"
+            
+            elif action_type in ("arm_extend", "teensy_arm_extend"):
+                distance = params.get("distance", 0)
+                base_desc = f"Extend arm to {distance}mm"
+            
+            elif action_type == "ef_force":
+                fx = params.get("fx", 0.0)
+                fy = params.get("fy", 0.0)
+                base_desc = f"Set force Fx={fx:.1f}, Fy={fy:.1f}"
+            
+            # Default: show all parameters
+            elif params:
+                param_str = ", ".join([f"{k}={v}" for k, v in params.items()])
+                base_desc = param_str
             else:
-                return f"Open valve to {turn_value:.1f}"
+                base_desc = "No parameters"
         
-        elif action_type in ("spray_gimbal", "teensy_gimbal"):
-            angle = params.get("angle", 0)
-            speed = params.get("speed", 10)
-            return f"Gimbal to {angle}° at {speed}°/s"
+        # Add timing information
+        timing_parts = []
         
-        elif action_type in ("arm_extend", "teensy_arm_extend"):
-            distance = params.get("distance", 0)
-            return f"Extend arm to {distance}mm"
+        # Add estimated duration if present
+        estimated_duration = action.get("estimated_duration")
+        if estimated_duration is not None:
+            duration_sec = estimated_duration / 1000.0
+            if duration_sec < 1:
+                timing_parts.append(f"~{estimated_duration}ms")
+            else:
+                timing_parts.append(f"~{duration_sec:.1f}s")
         
-        elif action_type == "ef_force":
-            fx = params.get("fx", 0.0)
-            fy = params.get("fy", 0.0)
-            return f"Set force Fx={fx:.1f}, Fy={fy:.1f}"
+        # Add trigger/offset information if present
+        trigger = action.get("trigger")
+        if trigger:
+            ref_action = trigger.get("reference_action", "?")
+            timing_mode = trigger.get("timing_mode", "after_start")
+            offset_ms = trigger.get("offset_ms", 0)
+            
+            # Build timing description
+            if timing_mode == "before_complete":
+                offset_sec = offset_ms / 1000.0
+                if offset_sec < 1:
+                    timing_parts.append(f"{offset_ms}ms before '{ref_action}' completes")
+                else:
+                    timing_parts.append(f"{offset_sec:.1f}s before '{ref_action}' completes")
+            elif timing_mode == "after_complete":
+                if offset_ms > 0:
+                    offset_sec = offset_ms / 1000.0
+                    if offset_sec < 1:
+                        timing_parts.append(f"{offset_ms}ms after '{ref_action}' completes")
+                    else:
+                        timing_parts.append(f"{offset_sec:.1f}s after '{ref_action}' completes")
+                else:
+                    timing_parts.append(f"after '{ref_action}' completes")
+            elif timing_mode == "after_start":
+                if offset_ms > 0:
+                    offset_sec = offset_ms / 1000.0
+                    if offset_sec < 1:
+                        timing_parts.append(f"{offset_ms}ms after '{ref_action}' starts")
+                    else:
+                        timing_parts.append(f"{offset_sec:.1f}s after '{ref_action}' starts")
+                else:
+                    timing_parts.append(f"with '{ref_action}'")
         
-        # Default: show all parameters
-        if params:
-            param_str = ", ".join([f"{k}={v}" for k, v in params.items()])
-            return param_str
+        # Combine base description with timing information
+        if timing_parts:
+            return f"{base_desc} ({', '.join(timing_parts)})"
         
-        return "No parameters"
+        return base_desc
 
     @Slot()
     def play(self) -> bool:
