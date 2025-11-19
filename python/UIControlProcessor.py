@@ -38,6 +38,11 @@ class ControlProcessor(QObject):
         self.valve_turn_deadzone_start_time = 0
         self.valve_turn_should_send = True
         
+        # Arm rail speed deadzone tracking
+        self.arm_rail_speed_in_deadzone = False
+        self.arm_rail_speed_deadzone_start_time = 0
+        self.arm_rail_speed_should_send = True
+        
         # ===== CONFIGURATION CONSTANTS =====
         
         # Display and messaging
@@ -81,6 +86,9 @@ class ControlProcessor(QObject):
         self.VALVE_TURN_SCALE = 6.0 / self.JOYSTICK_MAX_VALUE  # Maps 0-32768 to 0-6.0
         self.VALVE_TURN_DEADZONE = 0.05  # 5% deadzone threshold
         self.VALVE_TURN_DEADZONE_TIMEOUT = 2.0  # seconds
+        self.ARM_RAIL_SPEED_SCALE = 50.0 / self.JOYSTICK_MAX_VALUE  # Maps 0-32768 to 0-50.0
+        self.ARM_RAIL_SPEED_DEADZONE = 0.05  # 5% deadzone threshold
+        self.ARM_RAIL_SPEED_DEADZONE_TIMEOUT = 2.0  # seconds
         
         # Control offsets and limits
         self.EF_TRIGGER_OFFSET = 1000
@@ -154,6 +162,10 @@ class ControlProcessor(QObject):
             "Valve Turn": ControlConfig(
                 scale=self.VALVE_TURN_SCALE,
                 min_interval=self.VALVE_TURN_UPDATE_INTERVAL
+            ),
+            "Arm Rail Speed": ControlConfig(
+                scale=self.ARM_RAIL_SPEED_SCALE,
+                min_interval=self.EF_RAIL_UPDATE_INTERVAL
             )
         }
 
@@ -430,6 +442,50 @@ class ControlProcessor(QObject):
                 # print(f"Commanding valve turn: {valve_turn_value}")
             except Exception as e:
                 print(f"Error commanding valve turn: {str(e)}")
+    
+    def _process_arm_rail_speed(self, input_state: Dict):
+        """Handle arm rail speed control using left analog trigger
+        
+        Maps the left trigger (0-32767) to arm rail speed range (0.0-50.0)
+        Stops sending commands after 2 seconds in deadzone until trigger moves beyond deadzone
+        """
+        # Get left trigger value (0-32767)
+        left_trigger = input_state.get('triggers', {}).get('left', 0)
+        
+        # Map trigger value to arm rail speed range (0.0-50.0)
+        arm_rail_speed_value = left_trigger * self.ARM_RAIL_SPEED_SCALE
+        
+        # Clamp to the valid range [0.0, 50.0]
+        arm_rail_speed_value = max(0.0, min(50.0, arm_rail_speed_value))
+        
+        # Normalize to 0-1 range for deadzone check
+        normalized_value = arm_rail_speed_value / 50.0
+        
+        current_time = time.monotonic()
+        
+        # Check if we're in deadzone
+        if normalized_value <= self.ARM_RAIL_SPEED_DEADZONE:
+            if not self.arm_rail_speed_in_deadzone:
+                # Just entered deadzone
+                self.arm_rail_speed_in_deadzone = True
+                self.arm_rail_speed_deadzone_start_time = current_time
+                self.arm_rail_speed_should_send = True
+            else:
+                # Already in deadzone - check if timeout has elapsed
+                if current_time - self.arm_rail_speed_deadzone_start_time >= self.ARM_RAIL_SPEED_DEADZONE_TIMEOUT:
+                    self.arm_rail_speed_should_send = False
+        else:
+            # Outside deadzone - reset and allow sending
+            self.arm_rail_speed_in_deadzone = False
+            self.arm_rail_speed_should_send = True
+        
+        # Only send command if we should send
+        if self.arm_rail_speed_should_send:
+            try:
+                self.robot.teensy_controller.setArmRailSpeed(arm_rail_speed_value)
+                # print(f"Commanding arm rail speed: {arm_rail_speed_value}")
+            except Exception as e:
+                print(f"Error commanding arm rail speed: {str(e)}")
 
     def _process_standard_control(self, input_state: Dict, mode: str, stick: str):
         """Handle standard control modes"""
@@ -522,7 +578,10 @@ class ControlProcessor(QObject):
             # Process right trigger for valve turn command (continuous mapping)
             if self._can_send_command("Valve Turn"):
                 self._process_valve_turn(input_state)
-                
+            
+            # Process left trigger for arm rail speed command (continuous mapping)
+            if self._can_send_command("Arm Rail Speed"):
+                self._process_arm_rail_speed(input_state)
 
             if left_mode != "EF Yaw Angle" and right_mode != "EF Yaw Angle":
                 # Get IMU yaw from TeensyController instead of UIDataModel
