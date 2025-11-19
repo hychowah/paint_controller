@@ -41,6 +41,7 @@ mv "$QML_DIR/CommonStyle.qml" "$QML_DIR/core/" 2>/dev/null || echo "CommonStyle.
 
 # Pages - Home
 mv "$QML_DIR/pages/PageHome.qml" "$QML_DIR/pages/home/" 2>/dev/null || echo "PageHome.qml already moved"
+mv "$QML_DIR/pages/PageLauncher.qml" "$QML_DIR/pages/home/" 2>/dev/null || echo "PageLauncher.qml already moved"
 
 # Pages - Spray
 mv "$QML_DIR/pages/PageSpray.qml" "$QML_DIR/pages/spray/" 2>/dev/null || echo "PageSpray.qml already moved"

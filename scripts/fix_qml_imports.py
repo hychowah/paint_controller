@@ -24,6 +24,10 @@ IMPORT_FIXES = {
         r'import "\.\./?"': 'import "../../core"',
         r'import "\.\./components"': 'import "../../components/buttons"\nimport "../../components/inputs"\nimport "../../components/displays"\nimport "../../components/panels"',
     },
+    "pages/home/PageLauncher.qml": {
+        r'import "\.\./?"': 'import "../../core"',
+        r'import "\.\./components"': 'import "../../components/buttons"\nimport "../../components/inputs"\nimport "../../components/displays"\nimport "../../components/panels"',
+    },
     "pages/spray/PageSpray.qml": {
         r'import "\.\./?"': 'import "../../core"',
         r'import "\.\./components"': 'import "../../components/buttons"\nimport "../../components/inputs"\nimport "../../components/displays"\nimport "../../components/panels"',

@@ -2,592 +2,582 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "../../core"
-import "../../components/buttons"
-import "../../components/inputs"
-import "../../components/displays"
-import "../../components/panels"
 
 Rectangle {
     id: pageHomeRect
     width: parent.width
     height: parent.height
-    color: "#5E5C64"
+    color: "#1E1E1E"
 
-    property color availableColor: "#7ED957"  // Softer green
-    property color unavailableColor: "#FF5E3A"  // Softer red
+    property color availableColor: "#7ED957"
+    property color unavailableColor: "#FF5E3A"
+    property real ledSize: 24
 
-    property real ledSize: 30
-    
-    // Function to show message popup
-    function showMessage(message, type) {
-        if (typeof messagePopup !== 'undefined') {
-            messagePopup.messageTitle = "Button Action"
-            messagePopup.messageText = message
-            messagePopup.messageType = type
-            messagePopup.open()
-        }
+    // Auto-start video streams on page load
+    Component.onCompleted: {
+        console.log("PageHome loaded - starting video streams")
+        baseStreamHandler.start_all_streams()
     }
-    
-    // Reusable Input Field Component (top-level)
-    component InputField: ColumnLayout {
-        property string label: ""
-        property string placeholder: ""
-        property alias text: textField.text
-        
-        Layout.fillWidth: true
-        spacing: 5
-        
-        Text {
-            text: label
-            color: "#ffffff"
-            font.pixelSize: 14
-        }
-        
-        TextField {
-            id: textField
-            Layout.fillWidth: true
-            placeholderText: placeholder
-            color: "#ffffff"
-            
-            background: Rectangle {
-                color: "#5E5C64"
-                border.color: "#6A6A74"
-                border.width: 1
-                radius: 5
-            }
-        }
-    }
-    
-    // Reusable Settings Popup
-    component SettingsPopup: Popup {
-        property string popupTitle: ""
-        property string deviceName: ""
-        
-        // Individual properties for each field
-        property string ipAddress: ""
-        property string port: "22"
-        property string username: ""
-        property string keyPath: ""
-        
-        signal applied(var data)
-        
-        id: popup
-        anchors.centerIn: parent
-        width: 400
-        height: 400
-        modal: true
-        focus: true
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-        
-        // Function to load existing configuration
-        function loadConfig() {
-            if (deviceName !== "") {
-                var configJson = sshHandler.get_device_config(deviceName)
-                try {
-                    var config = JSON.parse(configJson)
-                    ipAddress = config.ip || ""
-                    port = config.port || "22"
-                    username = config.username || ""
-                    keyPath = config.key_path || ""
-                } catch (e) {
-                    console.log("Error loading config:", e)
-                }
-            }
-        }
-        
-        onOpened: loadConfig()
-        
-        background: Rectangle {
-            color: "#4A4A54"
-            radius: 10
-            border.color: "#6A6A74"
-            border.width: 1
-        }
-        
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 20
-            spacing: 15
-            
-            Text {
-                text: popup.popupTitle
-                font.pixelSize: 18
-                font.weight: Font.Medium
-                color: "#ffffff"
-                Layout.alignment: Qt.AlignHCenter
-            }
-            
-            Rectangle {
-                Layout.preferredWidth: parent.width * 0.8
-                Layout.preferredHeight: 2
-                radius: 1
-                color: "#64B5F6"
-                Layout.alignment: Qt.AlignHCenter
-            }
-            
-            ScrollView {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                
-                ColumnLayout {
-                    width: parent.parent.width
-                    spacing: 12
-                    
-                    InputField {
-                        label: "IP Address:"
-                        placeholder: "192.168.1.100"
-                        text: popup.ipAddress
-                        onTextChanged: popup.ipAddress = text
-                    }
-                    
-                    InputField {
-                        label: "Port:"
-                        placeholder: "22"
-                        text: popup.port
-                        onTextChanged: popup.port = text
-                    }
-                    
-                    InputField {
-                        label: "Username:"
-                        placeholder: "pi"
-                        text: popup.username
-                        onTextChanged: popup.username = text
-                    }
-                    
-                    InputField {
-                        label: "SSH Key Path (optional):"
-                        placeholder: "~/.ssh/id_rsa"
-                        text: popup.keyPath
-                        onTextChanged: popup.keyPath = text
-                    }
-                }
-            }
-            
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 10
-                
-                Button {
-                    text: "Cancel"
-                    Layout.fillWidth: true
-                    
-                    background: Rectangle {
-                        color: parent.pressed ? "#E53E3E" : (parent.hovered ? "#F56565" : "#FC8181")
-                        radius: 5
-                        border.color: "#E53E3E"
-                        border.width: 1
-                    }
-                    
-                    contentItem: Text {
-                        text: parent.text
-                        color: "#ffffff"
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    
-                    onClicked: popup.close()
-                }
-                
-                Button {
-                    text: "Apply"
-                    Layout.fillWidth: true
-                    
-                    background: Rectangle {
-                        color: parent.pressed ? "#4CAF50" : (parent.hovered ? "#5CBF60" : "#66BB6A")
-                        radius: 5
-                        border.color: "#4CAF50"
-                        border.width: 1
-                    }
-                    
-                    contentItem: Text {
-                        text: parent.text
-                        color: "#ffffff"
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    
-                    onClicked: {
-                        var data = {
-                            ip: popup.ipAddress,
-                            port: popup.port,
-                            username: popup.username,
-                            key_path: popup.keyPath
-                        }
-                        popup.applied(data)
-                        popup.close()
-                    }
-                }
-            }
-        }
-    }
-    
-    // Base Settings Popup
-    SettingsPopup {
-        id: baseSettingsPopup
-        popupTitle: "BASE SETTINGS"
-        deviceName: "BASE"
-        
-        onApplied: function(data) {
-            sshHandler.update_device_config("BASE", data.ip, data.port, data.username, data.key_path)
-        }
-    }
-    
-    // End Effector Settings Popup
-    SettingsPopup {
-        id: endEffectorPopup
-        popupTitle: "END EFFECTOR SETTINGS"
-        deviceName: "END_EFFECTOR"
-        
-        onApplied: function(data) {
-            sshHandler.update_device_config("END_EFFECTOR", data.ip, data.port, data.username, data.key_path)
-        }
-    }
-    
-    // Reusable Control Card Component
-    component ControlCard: Rectangle {
-        property string deviceHost: ""
-        property string deviceName: ""
-        property string startButtonText: "START"
-        property string stopButtonText: "STOP"
-        property color startButtonColor: "#66BB6A"
-        property color startButtonHoverColor: "#5CBF60"
-        property color startButtonPressedColor: "#4CAF50"
-        property color stopButtonColor: "#FC8181"
-        property color stopButtonHoverColor: "#F56565"
-        property color stopButtonPressedColor: "#E53E3E"
-        
-        // Size properties for easy customization
-        property real cardHeight: 85
-        property real buttonWidth: 120
-        property real buttonHeight: 36
-        property real titleFontSize: 18
-        property real buttonFontSize: 12
-        property real cardRadius: 10
-        property real buttonRadius: 6
-        property real cardMargins: 12
-        property real titleButtonSpacing: 8
-        property real buttonSpacing: 12
-        
-        Layout.fillWidth: true
-        Layout.preferredHeight: cardHeight
-        radius: cardRadius
-        color: "#4A4A54"
-        border.color: "#6A6A74"
-        border.width: 1
-        
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: cardMargins
-            spacing: titleButtonSpacing
-            
-            Text {
-                text: deviceName
-                font.pixelSize: titleFontSize
-                font.bold: true
-                font.weight: Font.Medium
-                color: "#ffffff"
-                Layout.alignment: Qt.AlignLeft
-                Layout.fillWidth: true
-            }
-            
-            RowLayout {
-                spacing: buttonSpacing
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                
-                Button {
-                    text: startButtonText
-                    Layout.preferredWidth: buttonWidth
-                    Layout.preferredHeight: buttonHeight
-                    Layout.maximumHeight: buttonHeight
-                    
-                    background: Rectangle {
-                        radius: buttonRadius
-                        color: parent.pressed ? startButtonPressedColor : (parent.hovered ? startButtonHoverColor : startButtonColor)
-                        border.color: startButtonPressedColor
-                        border.width: 1
-                    }
-                    
-                    contentItem: Text {
-                        text: parent.text
-                        color: "#ffffff"
-                        font.weight: Font.Medium
-                        font.pixelSize: buttonFontSize
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    
-                    onClicked: {
-                        sshHandler.handle_device_command(deviceHost, deviceName, "start")
-                    }
-                }
-                
-                Button {
-                    text: stopButtonText
-                    Layout.preferredWidth: buttonWidth
-                    Layout.preferredHeight: buttonHeight
-                    Layout.maximumHeight: buttonHeight
-                    
-                    background: Rectangle {
-                        radius: buttonRadius
-                        color: parent.pressed ? stopButtonPressedColor : (parent.hovered ? stopButtonHoverColor : stopButtonColor)
-                        border.color: stopButtonPressedColor
-                        border.width: 1
-                    }
-                    
-                    contentItem: Text {
-                        text: parent.text
-                        color: "#ffffff"
-                        font.weight: Font.Medium
-                        font.pixelSize: buttonFontSize
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    
-                    onClicked: {
-                        sshHandler.handle_device_command(deviceHost, deviceName, "stop")
-                    }
-                }
-                
-                // Spacer to push buttons to the left
-                Item {
-                    Layout.fillWidth: true
-                }
-            }
-        }
-    }
-    
+
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 16
-        spacing: 20
-        
-        // Title Section
+        anchors.margins: 0
+        spacing: 0
+
+        // Modern Header
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 60
-            color: "transparent"
+            Layout.preferredHeight: 100
+            color: "#2D2D30"
             
             ColumnLayout {
                 anchors.centerIn: parent
                 spacing: 12
-                
+
                 Text {
-                    text: "PROGRAM LAUNCHER"
-                    font.pixelSize: 32
+                    text: "SYSTEM OVERVIEW"
+                    font.pixelSize: 36
                     font.weight: Font.Light
-                    color: "#ffffff"
+                    font.letterSpacing: 2
+                    color: "#FFFFFF"
                     horizontalAlignment: Text.AlignHCenter
                     Layout.alignment: Qt.AlignHCenter
                 }
-                
+
                 Rectangle {
-                    Layout.preferredWidth: 80
-                    Layout.preferredHeight: 2
-                    radius: 1
+                    Layout.preferredWidth: 120
+                    Layout.preferredHeight: 3
+                    radius: 1.5
                     color: "#64B5F6"
                     Layout.alignment: Qt.AlignHCenter
                 }
             }
         }
-        
-        // Main Content - Two Columns
-        RowLayout {
+
+        // Main Content - Video Streams with Status
+        Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 40
-        
-            // Left Column - Base Settings
-            Rectangle {
-                Layout.fillHeight: true
-                Layout.fillWidth: true
-                color: "transparent"
-                
-                ColumnLayout {
-                    anchors.fill: parent
-                    spacing: 12
-                    
-                    // Clickable Header
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 80
-                        radius: 8
-                        color: "#4A4A54"
-                        border.color: "#6A6A74"
-                        border.width: 1
+            color: "#1E1E1E"
 
-                        // BASE SETTINGS text on the left
-                        Text {
-                            text: "BASE SETTINGS"
-                            font.pixelSize: 25
-                            font.bold: true
-                            font.weight: Font.Medium
-                            color: "#ffffff"
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.left: parent.left
-                            anchors.leftMargin: 30
-                        }
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 24
+                spacing: 24
 
-                        // LED aligned to the right
+                // Left Panel - BASE FRONT Camera
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    color: "#252526"
+                    radius: 12
+                    border.color: "#3E3E42"
+                    border.width: 2
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 16
+                        spacing: 16
+
+                        // Header with Status LED
                         Rectangle {
-                            id: ledIndicator
-                            width: ledSize
-                            height: ledSize
-                            radius: ledSize / 2 // Circular LED
-                            color: sshHandler.deviceAvailability.BASE ? availableColor : unavailableColor
-                            border.color: "#ffffff"
-                            border.width: 1
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.right: parent.right
-                            anchors.rightMargin: 30
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 60
+                            color: "#2D2D30"
+                            radius: 8
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 16
+                                spacing: 16
+
+                                // Device Icon/Label
+                                Rectangle {
+                                    Layout.preferredWidth: 50
+                                    Layout.preferredHeight: 50
+                                    radius: 25
+                                    color: "#3E3E42"
+                                    border.color: sshHandler.deviceAvailability.BASE ? availableColor : unavailableColor
+                                    border.width: 3
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "B"
+                                        font.pixelSize: 24
+                                        font.weight: Font.Bold
+                                        color: "#FFFFFF"
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 4
+
+                                    Text {
+                                        text: "BASE STATION"
+                                        font.pixelSize: 20
+                                        font.weight: Font.Medium
+                                        color: "#FFFFFF"
+                                    }
+
+                                    RowLayout {
+                                        spacing: 8
+
+                                        Rectangle {
+                                            width: ledSize
+                                            height: ledSize
+                                            radius: ledSize / 2
+                                            color: sshHandler.deviceAvailability.BASE ? availableColor : unavailableColor
+                                            border.color: "#FFFFFF"
+                                            border.width: 2
+
+                                            // Pulsing animation when available
+                                            SequentialAnimation on opacity {
+                                                running: sshHandler.deviceAvailability.BASE
+                                                loops: Animation.Infinite
+                                                NumberAnimation { from: 1.0; to: 0.5; duration: 1000; easing.type: Easing.InOutQuad }
+                                                NumberAnimation { from: 0.5; to: 1.0; duration: 1000; easing.type: Easing.InOutQuad }
+                                            }
+                                        }
+
+                                        Text {
+                                            text: sshHandler.deviceAvailability.BASE ? "ONLINE" : "OFFLINE"
+                                            font.pixelSize: 14
+                                            font.weight: Font.Medium
+                                            color: sshHandler.deviceAvailability.BASE ? availableColor : unavailableColor
+                                        }
+                                    }
+                                }
+
+                                // Heartbeat indicator
+                                Rectangle {
+                                    Layout.preferredWidth: 16
+                                    Layout.preferredHeight: 16
+                                    radius: 8
+                                    color: heartbeatHandler.base_online ? "#4CD964" : "#8E8E93"
+                                    
+                                    // Heartbeat pulse
+                                    SequentialAnimation on scale {
+                                        running: heartbeatHandler.base_online
+                                        loops: Animation.Infinite
+                                        NumberAnimation { from: 1.0; to: 1.3; duration: 300; easing.type: Easing.InOutQuad }
+                                        NumberAnimation { from: 1.3; to: 1.0; duration: 300; easing.type: Easing.InOutQuad }
+                                        PauseAnimation { duration: 800 }
+                                    }
+                                }
+                            }
                         }
 
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: baseSettingsPopup.open()
-                            cursorShape: Qt.PointingHandCursor
+                        // Video Display
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            color: "#1E1E1E"
+                            radius: 8
+                            border.color: "#3E3E42"
+                            border.width: 1
+                            clip: true
+
+                            Image {
+                                id: baseFrontVideo
+                                anchors.fill: parent
+                                anchors.margins: 2
+                                source: "image://base_front_live/latest"
+                                fillMode: Image.PreserveAspectFit
+                                cache: false
+                                asynchronous: true
+
+                                // Status overlay when no video
+                                Rectangle {
+                                    anchors.fill: parent
+                                    color: "#2D2D30"
+                                    visible: baseFrontVideo.status !== Image.Ready
+
+                                    ColumnLayout {
+                                        anchors.centerIn: parent
+                                        spacing: 16
+
+                                        Text {
+                                            text: "📹"
+                                            font.pixelSize: 64
+                                            color: "#666666"
+                                            Layout.alignment: Qt.AlignHCenter
+                                        }
+
+                                        Text {
+                                            text: "NO VIDEO SIGNAL"
+                                            font.pixelSize: 18
+                                            font.weight: Font.Medium
+                                            color: "#999999"
+                                            Layout.alignment: Qt.AlignHCenter
+                                        }
+
+                                        Text {
+                                            text: "Waiting for BASE FRONT stream..."
+                                            font.pixelSize: 12
+                                            color: "#666666"
+                                            Layout.alignment: Qt.AlignHCenter
+                                        }
+                                    }
+                                }
+
+                                // Video active indicator overlay (top-right corner)
+                                Rectangle {
+                                    anchors.top: parent.top
+                                    anchors.right: parent.right
+                                    anchors.margins: 12
+                                    width: 80
+                                    height: 30
+                                    radius: 15
+                                    color: "#000000"
+                                    opacity: 0.7
+                                    visible: baseFrontVideo.status === Image.Ready
+
+                                    RowLayout {
+                                        anchors.centerIn: parent
+                                        spacing: 6
+
+                                        Rectangle {
+                                            width: 10
+                                            height: 10
+                                            radius: 5
+                                            color: "#FF4444"
+
+                                            SequentialAnimation on opacity {
+                                                loops: Animation.Infinite
+                                                NumberAnimation { from: 1.0; to: 0.3; duration: 800 }
+                                                NumberAnimation { from: 0.3; to: 1.0; duration: 800 }
+                                            }
+                                        }
+
+                                        Text {
+                                            text: "LIVE"
+                                            font.pixelSize: 12
+                                            font.weight: Font.Bold
+                                            color: "#FFFFFF"
+                                        }
+                                    }
+                                }
+                            }
+
+                            Connections {
+                                target: baseStreamHandler
+                                function onBaseFrontFrameReady() {
+                                    baseFrontVideo.source = ""
+                                    baseFrontVideo.source = "image://base_front_live/latest"
+                                }
+                            }
+                        }
+
+                        // Camera Info Footer
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 40
+                            color: "#2D2D30"
+                            radius: 8
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 12
+                                spacing: 16
+
+                                Text {
+                                    text: "📍 Front Camera"
+                                    font.pixelSize: 12
+                                    color: "#CCCCCC"
+                                }
+
+                                Item { Layout.fillWidth: true }
+
+                                Text {
+                                    text: "Port: 5002"
+                                    font.pixelSize: 10
+                                    font.family: "monospace"
+                                    color: "#888888"
+                                }
+                            }
                         }
                     }
-                    
-                    // Scrollable Control Cards
-                    ScrollView {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        contentWidth: -1
-                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                        ScrollBar.vertical.policy: ScrollBar.AsNeeded
-                        
-                        ColumnLayout {
-                            width: parent.width
-                            spacing: 12
-                            
-                            ControlCard {
-                                deviceHost: "BASE"
-                                deviceName: "Winch"
+                }
+
+                // Right Panel - END EFFECTOR Camera
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    color: "#252526"
+                    radius: 12
+                    border.color: "#3E3E42"
+                    border.width: 2
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 16
+                        spacing: 16
+
+                        // Header with Status LED
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 60
+                            color: "#2D2D30"
+                            radius: 8
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 16
+                                spacing: 16
+
+                                // Device Icon/Label
+                                Rectangle {
+                                    Layout.preferredWidth: 50
+                                    Layout.preferredHeight: 50
+                                    radius: 25
+                                    color: "#3E3E42"
+                                    border.color: sshHandler.deviceAvailability.END_EFFECTOR ? availableColor : unavailableColor
+                                    border.width: 3
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "E"
+                                        font.pixelSize: 24
+                                        font.weight: Font.Bold
+                                        color: "#FFFFFF"
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 4
+
+                                    Text {
+                                        text: "END EFFECTOR"
+                                        font.pixelSize: 20
+                                        font.weight: Font.Medium
+                                        color: "#FFFFFF"
+                                    }
+
+                                    RowLayout {
+                                        spacing: 8
+
+                                        Rectangle {
+                                            width: ledSize
+                                            height: ledSize
+                                            radius: ledSize / 2
+                                            color: sshHandler.deviceAvailability.END_EFFECTOR ? availableColor : unavailableColor
+                                            border.color: "#FFFFFF"
+                                            border.width: 2
+
+                                            // Pulsing animation when available
+                                            SequentialAnimation on opacity {
+                                                running: sshHandler.deviceAvailability.END_EFFECTOR
+                                                loops: Animation.Infinite
+                                                NumberAnimation { from: 1.0; to: 0.5; duration: 1000; easing.type: Easing.InOutQuad }
+                                                NumberAnimation { from: 0.5; to: 1.0; duration: 1000; easing.type: Easing.InOutQuad }
+                                            }
+                                        }
+
+                                        Text {
+                                            text: sshHandler.deviceAvailability.END_EFFECTOR ? "ONLINE" : "OFFLINE"
+                                            font.pixelSize: 14
+                                            font.weight: Font.Medium
+                                            color: sshHandler.deviceAvailability.END_EFFECTOR ? availableColor : unavailableColor
+                                        }
+                                    }
+                                }
+
+                                // Heartbeat indicator
+                                Rectangle {
+                                    Layout.preferredWidth: 16
+                                    Layout.preferredHeight: 16
+                                    radius: 8
+                                    color: heartbeatHandler.ef_online ? "#4CD964" : "#8E8E93"
+                                    
+                                    // Heartbeat pulse
+                                    SequentialAnimation on scale {
+                                        running: heartbeatHandler.ef_online
+                                        loops: Animation.Infinite
+                                        NumberAnimation { from: 1.0; to: 1.3; duration: 300; easing.type: Easing.InOutQuad }
+                                        NumberAnimation { from: 1.3; to: 1.0; duration: 300; easing.type: Easing.InOutQuad }
+                                        PauseAnimation { duration: 800 }
+                                    }
+                                }
                             }
-                            
-                            ControlCard {
-                                deviceHost: "BASE"
-                                deviceName: "Wheel"
+                        }
+
+                        // Video Display
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            color: "#1E1E1E"
+                            radius: 8
+                            border.color: "#3E3E42"
+                            border.width: 1
+                            clip: true
+
+                            Image {
+                                id: endEffectorVideo
+                                anchors.fill: parent
+                                anchors.margins: 2
+                                source: "image://ef_live/latest"
+                                fillMode: Image.PreserveAspectFit
+                                cache: false
+                                asynchronous: true
+
+                                // Status overlay when no video
+                                Rectangle {
+                                    anchors.fill: parent
+                                    color: "#2D2D30"
+                                    visible: endEffectorVideo.status !== Image.Ready
+
+                                    ColumnLayout {
+                                        anchors.centerIn: parent
+                                        spacing: 16
+
+                                        Text {
+                                            text: "📹"
+                                            font.pixelSize: 64
+                                            color: "#666666"
+                                            Layout.alignment: Qt.AlignHCenter
+                                        }
+
+                                        Text {
+                                            text: "NO VIDEO SIGNAL"
+                                            font.pixelSize: 18
+                                            font.weight: Font.Medium
+                                            color: "#999999"
+                                            Layout.alignment: Qt.AlignHCenter
+                                        }
+
+                                        Text {
+                                            text: "Waiting for END EFFECTOR stream..."
+                                            font.pixelSize: 12
+                                            color: "#666666"
+                                            Layout.alignment: Qt.AlignHCenter
+                                        }
+                                    }
+                                }
+
+                                // Video active indicator overlay (top-right corner)
+                                Rectangle {
+                                    anchors.top: parent.top
+                                    anchors.right: parent.right
+                                    anchors.margins: 12
+                                    width: 80
+                                    height: 30
+                                    radius: 15
+                                    color: "#000000"
+                                    opacity: 0.7
+                                    visible: endEffectorVideo.status === Image.Ready
+
+                                    RowLayout {
+                                        anchors.centerIn: parent
+                                        spacing: 6
+
+                                        Rectangle {
+                                            width: 10
+                                            height: 10
+                                            radius: 5
+                                            color: "#FF4444"
+
+                                            SequentialAnimation on opacity {
+                                                loops: Animation.Infinite
+                                                NumberAnimation { from: 1.0; to: 0.3; duration: 800 }
+                                                NumberAnimation { from: 0.3; to: 1.0; duration: 800 }
+                                            }
+                                        }
+
+                                        Text {
+                                            text: "LIVE"
+                                            font.pixelSize: 12
+                                            font.weight: Font.Bold
+                                            color: "#FFFFFF"
+                                        }
+                                    }
+                                }
                             }
-                            
-                            ControlCard {
-                                deviceHost: "BASE"
-                                deviceName: "Camera"
-                                startButtonText: "STREAM"
-                                startButtonColor: "#64B5F6"
-                                startButtonHoverColor: "#42A5F5"
-                                startButtonPressedColor: "#2196F3"
+
+                            Connections {
+                                target: baseStreamHandler
+                                function onEndEffectorFrameReady() {
+                                    endEffectorVideo.source = ""
+                                    endEffectorVideo.source = "image://ef_live/latest"
+                                }
                             }
-                            
-                            // Spacer at the bottom to ensure proper spacing
-                            Item {
-                                Layout.fillHeight: true
-                                Layout.minimumHeight: 10
+                        }
+
+                        // Camera Info Footer
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 40
+                            color: "#2D2D30"
+                            radius: 8
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 12
+                                spacing: 16
+
+                                Text {
+                                    text: "📍 End Effector Camera"
+                                    font.pixelSize: 12
+                                    color: "#CCCCCC"
+                                }
+
+                                Item { Layout.fillWidth: true }
+
+                                Text {
+                                    text: "Port: 5001"
+                                    font.pixelSize: 10
+                                    font.family: "monospace"
+                                    color: "#888888"
+                                }
                             }
                         }
                     }
                 }
             }
-            
-            // Right Column - End Effector
-            Rectangle {
-                Layout.fillHeight: true
-                Layout.fillWidth: true
-                color: "transparent"
-                
-                ColumnLayout {
-                    anchors.fill: parent
-                    spacing: 12
-                    
-                    // Clickable Header
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 80
-                        radius: 8
-                        color: "#4A4A54"
-                        border.color: "#6A6A74"
-                        border.width: 1
+        }
 
-                        // Manual layouting instead of RowLayout
-                        Text {
-                            text: "END EFFECTOR"
-                            font.pixelSize: 25
-                            font.bold: true
-                            font.weight: Font.Medium
-                            color: "#ffffff"
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.left: parent.left
-                            anchors.leftMargin: 30
-                        }
+        // Bottom Status Bar
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 50
+            color: "#2D2D30"
 
-                        Rectangle {
-                            id: endEffectorLedIndicator
-                            width: ledSize
-                            height: ledSize
-                            radius: ledSize / 2
-                            color: sshHandler.deviceAvailability.END_EFFECTOR ? availableColor : unavailableColor
-                            border.color: "#ffffff"
-                            border.width: 1
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.right: parent.right
-                            anchors.rightMargin: 30
-                        }
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 16
+                spacing: 24
 
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: endEffectorPopup.open()
-                            cursorShape: Qt.PointingHandCursor
-                        }
-                    }
-                    
-                    // Control Cards
-                    ScrollView {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        contentWidth: -1
-                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                        ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                Text {
+                    text: "🌐 Network Status"
+                    font.pixelSize: 12
+                    color: "#CCCCCC"
+                }
 
-                        ColumnLayout {
-                            width: parent.width
-                            spacing: 12
-                            
-                            ControlCard {
-                                deviceHost: "END_EFFECTOR"
-                                deviceName: "Teensy"
-                            }
-                            
-                            ControlCard {
-                                deviceHost: "END_EFFECTOR"
-                                deviceName: "Wind Sensor"
-                            }
-                            
-                            ControlCard {
-                                deviceHost: "END_EFFECTOR"
-                                deviceName: "Lidar"
-                            }
-                            
-                            ControlCard {
-                                deviceHost: "END_EFFECTOR"
-                                deviceName: "Camera"
-                                startButtonText: "STREAM"
-                                startButtonColor: "#64B5F6"
-                                startButtonHoverColor: "#42A5F5"
-                                startButtonPressedColor: "#2196F3"
-                            }
+                Rectangle {
+                    width: 1
+                    height: 20
+                    color: "#3E3E42"
+                }
 
-                            // Spacer at the bottom to ensure proper spacing
-                            Item {
-                                Layout.fillHeight: true
-                                Layout.minimumHeight: 10
-                            }
-                        }
-                    }
-                    
-                    Item {
-                        Layout.fillHeight: true
-                    }
+                Text {
+                    text: "BASE: " + (heartbeatHandler.base_online ? "Connected" : "Disconnected")
+                    font.pixelSize: 11
+                    color: heartbeatHandler.base_online ? availableColor : unavailableColor
+                }
+
+                Text {
+                    text: "EF: " + (heartbeatHandler.ef_online ? "Connected" : "Disconnected")
+                    font.pixelSize: 11
+                    color: heartbeatHandler.ef_online ? availableColor : unavailableColor
+                }
+
+                Item { Layout.fillWidth: true }
+
+                Text {
+                    text: "📊 Video Streams Active"
+                    font.pixelSize: 11
+                    color: "#888888"
                 }
             }
         }

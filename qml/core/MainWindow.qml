@@ -183,6 +183,11 @@ ApplicationWindow {
     }
 
     Component {
+        id: page5Component
+        PageLauncher {}
+    }
+
+    Component {
         id: page7Component
         PageWorkFlow {}
     }

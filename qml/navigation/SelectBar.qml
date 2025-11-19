@@ -262,6 +262,17 @@ Rectangle {
                 isSelected: selectBar.selectedButton === "buttonPage4"
             }
 
+            // Page 5 Button - Launcher
+            NavigationButton {
+                id: buttonPage5
+                buttonId: "buttonPage5"
+                buttonText: "Launcher"
+                iconSource: "../../resource/launcher.svg"
+                pageIndex: 5
+                isSelected: selectBar.selectedButton === "buttonPage5"
+                iconScale: 0.7
+            }
+
             // Page 7 Button - Spray
             NavigationButton {
                 id: buttonPage7
