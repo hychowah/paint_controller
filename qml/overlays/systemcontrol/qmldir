@@ -1,0 +1,7 @@
+module systemcontrol
+DeviceControlTab 1.0 DeviceControlTab.qml
+CommandTab 1.0 CommandTab.qml
+SettingsTab 1.0 SettingsTab.qml
+WorkFlowTab 1.0 WorkFlowTab.qml
+EditWorkFlowTab 1.0 EditWorkFlowTab.qml
+SystemControlMenu 1.0 SystemControlMenu.qml

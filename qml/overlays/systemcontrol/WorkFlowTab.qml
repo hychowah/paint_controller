@@ -142,31 +142,175 @@ Rectangle {
             }
         }
 
-        // Control Buttons
-        ColumnLayout {
+        // Two-column layout for Actions and Control Buttons
+        RowLayout {
             Layout.fillWidth: true
-            spacing: 10
+            Layout.fillHeight: true
+            spacing: 15
 
-            // Play / Pause / Resume Row
-            RowLayout {
+            // Left Column - Actions List
+            ColumnLayout {
                 Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.preferredWidth: parent.width * 0.6
+                spacing: 8
+
+                Text {
+                    text: "Actions"
+                    color: "#FFFFFF"
+                    font.family: "Helvetica"
+                    font.pixelSize: 14
+                    font.bold: true
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    color: "#2A2A2A"
+                    border.color: "#333333"
+                    border.width: 1
+                    radius: 6
+
+                    ScrollView {
+                        anchors {
+                            fill: parent
+                            margins: 8
+                        }
+                        clip: true
+                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
+                        ColumnLayout {
+                            width: parent.parent.width - 16
+                            spacing: 4
+
+                            // Instructions if no workflow loaded
+                            Text {
+                                visible: !workFlowRunner || !workFlowRunner.current_workflow
+                                text: "Load a workflow to see actions"
+                                color: "#888888"
+                                font.family: "Helvetica"
+                                font.pixelSize: 12
+                                font.italic: true
+                                Layout.fillWidth: true
+                            }
+
+                            // Action items (loaded from YAML)
+                            Repeater {
+                                model: {
+                                    // Dynamically load actions from current workflow
+                                    if (!workFlowRunner || !workFlowRunner.current_workflow) {
+                                        return []
+                                    }
+                                    
+                                    return workFlowRunner.get_current_workflow_actions()
+                                }
+
+                                delegate: Rectangle {
+                                    Layout.fillWidth: true
+                                    height: 50
+                                    color: (workFlowRunner && workFlowRunner.current_action_index === index) 
+                                           ? "#3A5A8C"  // Highlight current action
+                                           : "#1A1A1A"
+                                    border.color: (workFlowRunner && workFlowRunner.current_action_index === index)
+                                                  ? "#00FF00"  // Green border for current
+                                                  : "#333333"
+                                    border.width: 1
+                                    radius: 4
+
+                                    Behavior on color {
+                                        ColorAnimation { duration: 200 }
+                                    }
+
+                                    ColumnLayout {
+                                        anchors {
+                                            fill: parent
+                                            margins: 8
+                                        }
+                                        spacing: 2
+
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 10
+
+                                            Text {
+                                                text: (index + 1) + "."
+                                                color: "#3A5A8C"
+                                                font.family: "Helvetica"
+                                                font.pixelSize: 12
+                                                font.bold: true
+                                            }
+
+                                            Text {
+                                                text: modelData.name
+                                                color: "#FFFFFF"
+                                                font.family: "Helvetica"
+                                                font.pixelSize: 12
+                                                font.bold: true
+                                                Layout.fillWidth: true
+                                            }
+
+                                            Rectangle {
+                                                width: 60
+                                                height: 20
+                                                color: "#2A3040"
+                                                radius: 3
+                                                border.color: "#3A5A8C"
+                                                border.width: 1
+
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: modelData.type.replace("teensy_", "").replace("winch_", "")
+                                                    color: "#AAAAAA"
+                                                    font.family: "Helvetica"
+                                                    font.pixelSize: 10
+                                                }
+                                            }
+                                        }
+
+                                        Text {
+                                            text: modelData.desc
+                                            color: "#888888"
+                                            font.family: "Helvetica"
+                                            font.pixelSize: 10
+                                            Layout.fillWidth: true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Right Column - Control Buttons
+            ColumnLayout {
+                Layout.fillHeight: true
+                Layout.preferredWidth: parent.width * 0.35
                 spacing: 10
+
+                Text {
+                    text: "Controls"
+                    color: "#FFFFFF"
+                    font.family: "Helvetica"
+                    font.pixelSize: 14
+                    font.bold: true
+                }
 
                 // Play Button
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 45
-                    color: playMouseArea.containsMouse ? "#3A5A8C" : "#2A3040"
-                    border.color: "#3A5A8C"
-                    border.width: 1
-                    radius: 6
+                    height: 70
+                    color: playMouseArea.containsMouse ? "#2E7D32" : "#1B5E20"
+                    border.color: "#66BB6A"
+                    border.width: 2
+                    radius: 8
 
                     Text {
                         anchors.centerIn: parent
-                        text: "Play"
+                        text: "▶ Play"
                         color: "#FFFFFF"
                         font.family: "Helvetica"
-                        font.pixelSize: 16
+                        font.pixelSize: 20
                         font.bold: true
                     }
 
@@ -174,235 +318,57 @@ Rectangle {
                         id: playMouseArea
                         anchors.fill: parent
                         hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             if (workFlowRunner && workFlowRunner.current_workflow) {
                                 workFlowRunner.play()
                             }
                         }
                     }
+
+                    Behavior on color {
+                        ColorAnimation { duration: 150 }
+                    }
                 }
 
-                // Pause Button
+                // Stop Button
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 45
-                    color: pauseMouseArea.containsMouse ? "#3A5A8C" : "#2A3040"
-                    border.color: "#3A5A8C"
-                    border.width: 1
-                    radius: 6
+                    height: 70
+                    color: stopMouseArea.containsMouse ? "#D32F2F" : "#B71C1C"
+                    border.color: "#EF5350"
+                    border.width: 2
+                    radius: 8
 
                     Text {
                         anchors.centerIn: parent
-                        text: "Pause"
+                        text: "⏹ Stop"
                         color: "#FFFFFF"
                         font.family: "Helvetica"
-                        font.pixelSize: 16
+                        font.pixelSize: 20
                         font.bold: true
                     }
 
                     MouseArea {
-                        id: pauseMouseArea
+                        id: stopMouseArea
                         anchors.fill: parent
                         hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             if (workFlowRunner) {
-                                workFlowRunner.pause()
+                                workFlowRunner.stop()
                             }
                         }
                     }
-                }
 
-                // Resume Button
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 45
-                    color: resumeMouseArea.containsMouse ? "#3A5A8C" : "#2A3040"
-                    border.color: "#3A5A8C"
-                    border.width: 1
-                    radius: 6
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Resume"
-                        color: "#FFFFFF"
-                        font.family: "Helvetica"
-                        font.pixelSize: 16
-                        font.bold: true
-                    }
-
-                    MouseArea {
-                        id: resumeMouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onClicked: {
-                            if (workFlowRunner) {
-                                workFlowRunner.resume()
-                            }
-                        }
+                    Behavior on color {
+                        ColorAnimation { duration: 150 }
                     }
                 }
-            }
 
-            // Stop Button (full width)
-            Rectangle {
-                Layout.fillWidth: true
-                height: 45
-                color: stopMouseArea.containsMouse ? "#CC4444" : "#992222"
-                border.color: "#FF6666"
-                border.width: 1
-                radius: 6
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "Stop"
-                    color: "#FFFFFF"
-                    font.family: "Helvetica"
-                    font.pixelSize: 16
-                    font.bold: true
-                }
-
-                MouseArea {
-                    id: stopMouseArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    onClicked: {
-                        if (workFlowRunner) {
-                            workFlowRunner.stop()
-                        }
-                    }
-                }
-            }
-        }
-
-        // Actions List
-        ColumnLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            spacing: 8
-
-            Text {
-                text: "Actions"
-                color: "#FFFFFF"
-                font.family: "Helvetica"
-                font.pixelSize: 14
-                font.bold: true
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                color: "#2A2A2A"
-                border.color: "#333333"
-                border.width: 1
-                radius: 6
-
-                ScrollView {
-                    anchors {
-                        fill: parent
-                        margins: 8
-                    }
-                    clip: true
-
-                    ColumnLayout {
-                        width: 350
-                        height: 150
-                        spacing: 4
-
-                        // Instructions if no workflow loaded
-                        Text {
-                            visible: !workFlowRunner || !workFlowRunner.current_workflow
-                            text: "Load a workflow to see actions"
-                            color: "#888888"
-                            font.family: "Helvetica"
-                            font.pixelSize: 12
-                            font.italic: true
-                            Layout.fillWidth: true
-                        }
-
-                        // Action items (loaded from YAML)
-                        Repeater {
-                            model: {
-                                // Dynamically load actions from current workflow
-                                if (!workFlowRunner || !workFlowRunner.current_workflow) {
-                                    return []
-                                }
-                                
-                                return workFlowRunner.get_current_workflow_actions()
-                            }
-
-                            delegate: Rectangle {
-                                width: parent.width
-                                height: 50
-                                color: (workFlowRunner && workFlowRunner.current_action_index === index) 
-                                       ? "#3A5A8C"  // Highlight current action
-                                       : "#1A1A1A"
-                                border.color: (workFlowRunner && workFlowRunner.current_action_index === index)
-                                              ? "#00FF00"  // Green border for current
-                                              : "#333333"
-                                border.width: 1
-                                radius: 4
-
-                                Behavior on color {
-                                    ColorAnimation { duration: 200 }
-                                }
-
-                                ColumnLayout {
-                                    anchors {
-                                        fill: parent
-                                        margins: 8
-                                    }
-                                    spacing: 2
-
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 10
-
-                                        Text {
-                                            text: (index + 1) + "."
-                                            color: "#3A5A8C"
-                                            font.family: "Helvetica"
-                                            font.pixelSize: 12
-                                            font.bold: true
-                                        }
-
-                                        Text {
-                                            text: modelData.name
-                                            color: "#FFFFFF"
-                                            font.family: "Helvetica"
-                                            font.pixelSize: 12
-                                            font.bold: true
-                                            Layout.fillWidth: true
-                                        }
-
-                                        Rectangle {
-                                            width: 60
-                                            height: 20
-                                            color: "#2A3040"
-                                            radius: 3
-                                            border.color: "#3A5A8C"
-                                            border.width: 1
-
-                                            Text {
-                                                anchors.centerIn: parent
-                                                text: modelData.type.replace("teensy_", "").replace("winch_", "")
-                                                color: "#AAAAAA"
-                                                font.family: "Helvetica"
-                                                font.pixelSize: 10
-                                            }
-                                        }
-                                    }
-
-                                    Text {
-                                        text: modelData.desc
-                                        color: "#888888"
-                                        font.family: "Helvetica"
-                                        font.pixelSize: 10
-                                        Layout.fillWidth: true
-                                    }
-                                }
-                            }
-                        }
-                    }
+                // Spacer to push buttons to top
+                Item {
+                    Layout.fillHeight: true
                 }
             }
         }

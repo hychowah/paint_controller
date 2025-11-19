@@ -6,6 +6,8 @@ Provides QML-accessible interface for workflow management (play, pause, stop, li
 """
 
 import os
+import yaml
+import json
 from typing import List, Optional
 from pathlib import Path
 
@@ -395,6 +397,120 @@ class WorkFlowRunner(QObject):
     def refresh_workflow_list(self) -> None:
         """Manually refresh workflow list (callable from QML)."""
         self._refresh_workflow_list()
+
+    @Slot(str, result=str)
+    def get_workflow_data(self, workflow_name: str) -> str:
+        """
+        Get full workflow data as JSON string.
+        
+        Args:
+            workflow_name: Name of workflow (without .yaml extension)
+            
+        Returns:
+            JSON string of workflow data or empty string on error
+        """
+        if workflow_name not in self._workflow_list:
+            self.logger.error(f"WorkFlow not found: {workflow_name}")
+            return ""
+        
+        workflow_path = os.path.join(self._workflows_dir, f"{workflow_name}.yaml")
+        if not os.path.exists(workflow_path):
+            workflow_path = os.path.join(self._workflows_dir, f"{workflow_name}.yml")
+        
+        if not os.path.exists(workflow_path):
+            self.logger.error(f"WorkFlow file not found: {workflow_path}")
+            return ""
+        
+        try:
+            with open(workflow_path, 'r') as f:
+                workflow_data = yaml.safe_load(f)
+            return json.dumps(workflow_data)
+        except Exception as e:
+            self.logger.error(f"Error loading workflow data: {e}")
+            return ""
+
+    @Slot(str, str, result=bool)
+    def save_workflow_data(self, workflow_name: str, workflow_json: str) -> bool:
+        """
+        Save workflow data from JSON string to YAML file.
+        
+        Args:
+            workflow_name: Name for the workflow file (without extension)
+            workflow_json: JSON string containing workflow data
+            
+        Returns:
+            True if saved successfully
+        """
+        try:
+            # Parse JSON to Python dict
+            workflow_data = json.loads(workflow_json)
+            
+            # Ensure name matches
+            workflow_data["name"] = workflow_name
+            
+            # Build file path
+            workflow_path = os.path.join(self._workflows_dir, f"{workflow_name}.yaml")
+            
+            # Save to YAML with better formatting
+            with open(workflow_path, 'w') as f:
+                yaml.dump(workflow_data, f, 
+                         default_flow_style=False, 
+                         sort_keys=False,
+                         allow_unicode=True,
+                         indent=2,
+                         width=120)
+            
+            self.logger.info(f"Saved workflow: {workflow_path}")
+            
+            # Refresh list
+            self._refresh_workflow_list()
+            
+            return True
+            
+        except Exception as e:
+            error_msg = f"Error saving workflow: {e}"
+            self.logger.error(error_msg)
+            self.error_occurred.emit(error_msg)
+            return False
+
+    @Slot(str, result=bool)
+    def delete_workflow(self, workflow_name: str) -> bool:
+        """
+        Delete a workflow file.
+        
+        Args:
+            workflow_name: Name of workflow to delete (without extension)
+            
+        Returns:
+            True if deleted successfully
+        """
+        if workflow_name not in self._workflow_list:
+            error_msg = f"WorkFlow not found: {workflow_name}"
+            self.logger.error(error_msg)
+            self.error_occurred.emit(error_msg)
+            return False
+        
+        try:
+            workflow_path = os.path.join(self._workflows_dir, f"{workflow_name}.yaml")
+            if not os.path.exists(workflow_path):
+                workflow_path = os.path.join(self._workflows_dir, f"{workflow_name}.yml")
+            
+            if os.path.exists(workflow_path):
+                os.remove(workflow_path)
+                self.logger.info(f"Deleted workflow: {workflow_path}")
+                self._refresh_workflow_list()
+                return True
+            else:
+                error_msg = f"WorkFlow file not found: {workflow_name}"
+                self.logger.error(error_msg)
+                self.error_occurred.emit(error_msg)
+                return False
+                
+        except Exception as e:
+            error_msg = f"Error deleting workflow: {e}"
+            self.logger.error(error_msg)
+            self.error_occurred.emit(error_msg)
+            return False
 
     def cleanup(self) -> None:
         """Clean up runner resources."""

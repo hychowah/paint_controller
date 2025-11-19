@@ -9,7 +9,7 @@ import "../../components/displays"
 import "../../components/panels"
 import "../../widgets/actions"
 import "../status"
-import "."  // Import current directory to make WorkFlowControl available
+import "."  
 
 Rectangle {
     id: pageTrajRect

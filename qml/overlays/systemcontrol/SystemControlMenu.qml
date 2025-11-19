@@ -110,55 +110,44 @@ Item {
                 }
             }
 
-            // Tab Bar
+            // Tab Bar - Horizontally Scrollable
             Rectangle {
                 Layout.fillWidth: true
                 height: 50
                 color: "transparent"
                 Layout.bottomMargin: 10
 
-                RowLayout {
+                ListView {
+                    id: tabBar
                     anchors.fill: parent
+                    orientation: ListView.Horizontal
                     spacing: 2
-
-                    // Device Control Tab
-                    TabButton {
-                        id: deviceTab
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        text: "Devices"
-                        checked: tabView.currentIndex === 0
-                        onClicked: tabView.currentIndex = 0
+                    clip: true
+                    
+                    // Enable smooth scrolling
+                    flickableDirection: Flickable.HorizontalFlick
+                    boundsBehavior: Flickable.StopAtBounds
+                    
+                    // Show scrollbar when content overflows
+                    ScrollBar.horizontal: ScrollBar {
+                        policy: ScrollBar.AsNeeded
+                        visible: tabBar.contentWidth > tabBar.width
                     }
 
-                    // Command Tab
-                    TabButton {
-                        id: commandTab
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        text: "Command"
-                        checked: tabView.currentIndex === 1
-                        onClicked: tabView.currentIndex = 1
+                    model: ListModel {
+                        ListElement { tabText: "Devices"; tabIndex: 0 }
+                        ListElement { tabText: "Command"; tabIndex: 1 }
+                        ListElement { tabText: "Settings"; tabIndex: 2 }
+                        ListElement { tabText: "WorkFlow"; tabIndex: 3 }
+                        ListElement { tabText: "Edit WorkFlow"; tabIndex: 4 }
                     }
 
-                    // Settings Tab
-                    TabButton {
-                        id: settingsTab
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        text: "Settings"
-                        checked: tabView.currentIndex === 2
-                        onClicked: tabView.currentIndex = 2
-                    }
-
-                    // WorkFlow Tab
-                    TabButton {
-                        id: workFlowTab
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        text: "WorkFlow"
-                        checked: tabView.currentIndex === 3
-                        onClicked: tabView.currentIndex = 3
+                    delegate: TabButton {
+                        width: 150  // Fixed width for each tab
+                        height: tabBar.height
+                        text: tabText
+                        checked: tabView.currentIndex === tabIndex
+                        onClicked: tabView.currentIndex = tabIndex
                     }
                 }
             }
@@ -188,6 +177,11 @@ Item {
                 // WorkFlow Tab Content
                 WorkFlowTab {
                     id: workFlowTabContent
+                }
+
+                // Edit WorkFlow Tab Content
+                EditWorkFlowTab {
+                    id: editWorkFlowTabContent
                 }
             }
         }
