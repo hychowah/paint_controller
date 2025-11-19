@@ -9,6 +9,7 @@ import "../../components/displays"
 import "../../components/panels"
 import "../../widgets/actions"
 import "../status"
+import "."  // Import current directory to make WorkFlowControl available
 
 Rectangle {
     id: pageTrajRect
@@ -22,8 +23,8 @@ Rectangle {
 
     // Initialize the current page explicitly when the component is created
     Component.onCompleted: {
-        var currentPage = trajectoryHandler.currentPage;
-        console.log("PageTrajectory completed, handler page:", currentPage);
+        var currentPage = workFlowHandler.currentPage;
+        console.log("PageWorkFlow completed, handler page:", currentPage);
         
         // Only update if we have a valid value
         if (currentPage !== undefined && currentPage !== null) {
@@ -31,16 +32,16 @@ Rectangle {
             lastKnownPageIndex = currentPage;
         } else {
             // Otherwise, directly query the handler for the latest state
-            console.log("Requesting current page from trajectoryHandler...");
-            trajectoryHandler.requestCurrentPage();
+            console.log("Requesting current page from workFlowHandler...");
+            workFlowHandler.requestCurrentPage();
         }
     }
 
     // Also ensure the correct page is shown when this component becomes visible again
     onVisibleChanged: {
         if (visible) {
-            var currentPage = trajectoryHandler.currentPage;
-            console.log("PageTrajectory visible again, handler page:", currentPage);
+            var currentPage = workFlowHandler.currentPage;
+            console.log("PageWorkFlow visible again, handler page:", currentPage);
             
             // Use the valid value or fall back to last known state
             if (currentPage !== undefined && currentPage !== null) {
@@ -50,7 +51,7 @@ Rectangle {
                 // Request current page again, but use lastKnownPageIndex as fallback
                 stackLayout.currentIndex = lastKnownPageIndex;
                 console.log("Using last known page index:", lastKnownPageIndex);
-                trajectoryHandler.requestCurrentPage();
+                workFlowHandler.requestCurrentPage();
             }
         }
     }
@@ -60,7 +61,7 @@ Rectangle {
         anchors.fill: parent
         
         // Keep the binding to the property for ongoing updates
-        currentIndex: trajectoryHandler.currentPage
+        currentIndex: workFlowHandler.currentPage
         
         // Debug log for index changes
         onCurrentIndexChanged: {
@@ -210,8 +211,8 @@ Rectangle {
                                     seqString = seqString.slice(0, -1);
                                 }
                                 
-                                console.log("Saving trajectory:", seqString);
-                                trajectoryHandler.saveTrajectory(currentSeq.seqName, seqString);
+                                console.log("Saving workflow:", seqString);
+                                workFlowHandler.saveWorkFlow(currentSeq.seqName, seqString);
                             }
                         }
 
@@ -333,7 +334,7 @@ Rectangle {
                     }
 
                     // action item
-                    TrajectoryControl {
+                    WorkFlowControl {
                         Layout.preferredWidth: parent.width / 4
                         Layout.fillHeight: true
                     }
@@ -374,7 +375,7 @@ Rectangle {
 
     // Connect to the pageChanged signal
     Connections {
-        target: trajectoryHandler
+        target: workFlowHandler
         function onPageChanged(page) {
             console.log("Page change signal received: " + page);
             stackLayout.currentIndex = page;

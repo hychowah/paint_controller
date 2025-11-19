@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Action handler registry for trajectory execution.
+Action handler registry for workflow execution.
 
 Provides pluggable action handlers with clean interface and error handling.
 """

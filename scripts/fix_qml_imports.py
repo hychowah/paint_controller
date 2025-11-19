@@ -13,7 +13,7 @@ QML_ROOT = Path("/home/c3spray_deck/ros2_ws/src/paint_controller_ros2/qml")
 IMPORT_FIXES = {
     # MainWindow.qml in core/
     "core/MainWindow.qml": {
-        r'import "pages"': 'import "../pages/home"\nimport "../pages/spray"\nimport "../pages/trajectory"\nimport "../pages/wheel"\nimport "../pages/winch"\nimport "../pages/tuning"\nimport "../pages/settings"\nimport "../pages/status"\nimport "../pages/misc"',
+        r'import "pages"': 'import "../pages/home"\nimport "../pages/spray"\nimport "../pages/workflow"\nimport "../pages/wheel"\nimport "../pages/winch"\nimport "../pages/tuning"\nimport "../pages/settings"\nimport "../pages/status"\nimport "../pages/misc"',
         r'import "bar"': 'import "../navigation"',
         r'import "components"': 'import "../components/buttons"\nimport "../components/inputs"\nimport "../components/displays"\nimport "../components/panels"\nimport "../components/popups"\nimport "../components/specialized/lidar"\nimport "../components/specialized/video"\nimport "../components/specialized/pointcloud"',
         r'import "overlays"': 'import "../overlays"',
@@ -28,7 +28,7 @@ IMPORT_FIXES = {
         r'import "\.\./?"': 'import "../../core"',
         r'import "\.\./components"': 'import "../../components/buttons"\nimport "../../components/inputs"\nimport "../../components/displays"\nimport "../../components/panels"',
     },
-    "pages/trajectory/PageTrajectory.qml": {
+    "pages/workflow/PageWorkFlow.qml": {
         r'import "\.\./?"': 'import "../../core"',
         r'import "\.\./components"': 'import "../../components/buttons"\nimport "../../components/inputs"\nimport "../../components/displays"\nimport "../../components/panels"',
     },

@@ -6,8 +6,8 @@ Item {
     id: root
     anchors.fill: parent
     
-    // Only visible when trajectory is running
-    visible: trajectoryRunner && trajectoryRunner.execution_state === 1
+    // Only visible when workflow is running
+    visible: workFlowRunner && workFlowRunner.execution_state === 1
     
     // Blinking border animation
     Rectangle {
@@ -88,7 +88,7 @@ Item {
                 }
                 
                 Text {
-                    text: "TRAJECTORY RUNNING"
+                    text: "WORKFLOW RUNNING"
                     color: "#00FF00"
                     font.family: "Helvetica"
                     font.pixelSize: 18
@@ -96,14 +96,14 @@ Item {
                 }
             }
             
-            // Trajectory name
+            // WorkFlow name
             Text {
                 Layout.alignment: Qt.AlignHCenter
-                text: trajectoryRunner ? trajectoryRunner.current_trajectory : ""
+                text: workFlowRunner ? workFlowRunner.current_workflow : ""
                 color: "#FFFFFF"
                 font.family: "Helvetica"
                 font.pixelSize: 14
-                visible: trajectoryRunner && trajectoryRunner.current_trajectory !== ""
+                visible: workFlowRunner && workFlowRunner.current_workflow !== ""
             }
             
             // Separator
@@ -134,10 +134,10 @@ Item {
                     id: currentActionText
                     Layout.alignment: Qt.AlignHCenter
                     text: {
-                        if (!trajectoryRunner) return ""
+                        if (!workFlowRunner) return ""
                         
-                        var actions = trajectoryRunner.get_current_trajectory_actions()
-                        var currentIndex = trajectoryRunner.current_action_index
+                        var actions = workFlowRunner.get_current_workflow_actions()
+                        var currentIndex = workFlowRunner.current_action_index
                         
                         if (currentIndex >= 0 && currentIndex < actions.length) {
                             var action = actions[currentIndex]
@@ -155,10 +155,10 @@ Item {
                 Text {
                     Layout.alignment: Qt.AlignHCenter
                     text: {
-                        if (!trajectoryRunner) return ""
+                        if (!workFlowRunner) return ""
                         
-                        var actions = trajectoryRunner.get_current_trajectory_actions()
-                        var currentIndex = trajectoryRunner.current_action_index
+                        var actions = workFlowRunner.get_current_workflow_actions()
+                        var currentIndex = workFlowRunner.current_action_index
                         
                         if (currentIndex >= 0 && currentIndex < actions.length) {
                             return actions[currentIndex].desc
@@ -177,7 +177,7 @@ Item {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: 4
                 spacing: 8
-                visible: trajectoryRunner && trajectoryRunner.current_action_index >= 0
+                visible: workFlowRunner && workFlowRunner.current_action_index >= 0
                 
                 Text {
                     text: "Progress:"
@@ -188,10 +188,10 @@ Item {
                 
                 Text {
                     text: {
-                        if (!trajectoryRunner) return ""
+                        if (!workFlowRunner) return ""
                         
-                        var actions = trajectoryRunner.get_current_trajectory_actions()
-                        var current = trajectoryRunner.current_action_index + 1
+                        var actions = workFlowRunner.get_current_workflow_actions()
+                        var current = workFlowRunner.current_action_index + 1
                         var total = actions.length
                         
                         return current + " / " + total

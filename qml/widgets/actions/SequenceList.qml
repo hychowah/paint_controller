@@ -51,7 +51,7 @@ Rectangle {
                     width: parent.width
                     height: parent.height
                     spacing: 8
-                    model: trajectoryHandler.trajectory
+                    model: workFlowHandler.workflow
                     
                     delegate: Rectangle {
                         id: itemRect
@@ -189,7 +189,7 @@ Rectangle {
                 cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                 onClicked: {
                     if (enabled) {
-                        trajectoryHandler.deleteTrajectory(currentSeq.seqIndex)
+                        workFlowHandler.deleteWorkFlow(currentSeq.seqIndex)
                         currentSeq.seqIndex = -1
                         currentSeq.seqName = ""
                     }

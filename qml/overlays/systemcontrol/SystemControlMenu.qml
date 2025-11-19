@@ -151,12 +151,12 @@ Item {
                         onClicked: tabView.currentIndex = 2
                     }
 
-                    // Trajectory Tab
+                    // WorkFlow Tab
                     TabButton {
-                        id: trajectoryTab
+                        id: workFlowTab
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        text: "Trajectory"
+                        text: "WorkFlow"
                         checked: tabView.currentIndex === 3
                         onClicked: tabView.currentIndex = 3
                     }
@@ -185,9 +185,9 @@ Item {
                     id: settingsTabContent
                 }
 
-                // Trajectory Tab Content
-                TrajectoryTab {
-                    id: trajectoryTabContent
+                // WorkFlow Tab Content
+                WorkFlowTab {
+                    id: workFlowTabContent
                 }
             }
         }

@@ -406,10 +406,10 @@ class ActionWorker(QObject):
             # Always emit finished signal
             self.finished.emit()
 
-class TrajectoryHandler(QObject):
-    """Handles trajectory management and execution"""
+class WorkFlowHandler(QObject):
+    """Handles workflow management and execution"""
 
-    trajectoryChanged = Signal()
+    workFlowChanged = Signal()
     actionConfigChanged = Signal()
     showMessage = Signal(str, bool) 
     executingChanged = Signal(bool) 
@@ -419,7 +419,7 @@ class TrajectoryHandler(QObject):
 
     def __init__(self, robot_controller):
         super().__init__()
-        self._trajectory = []
+        self._workflow = []
         self._robot_controller = robot_controller
         self._currentTrajDescription = []
         self._currentTrajCmd = []
@@ -431,7 +431,7 @@ class TrajectoryHandler(QObject):
         self._thread = None
         self._worker = None
 
-        self.filePath = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'resource', 'trajectory.json')      
+        self.filePath = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'resource', 'workflow.json')      
         # Create action config instance
         self._action_config = ActionConfigPython(self._robot_controller)
         
@@ -446,7 +446,7 @@ class TrajectoryHandler(QObject):
             'gimbalSpray': self._handle_gimbal_spray,
         }
         
-        self.readTrajectoryFromJSONFile()
+        self.readWorkFlowFromJSONFile()
 
     @Property(bool, notify=executingChanged)
     def isExecuting(self):
@@ -460,23 +460,23 @@ class TrajectoryHandler(QObject):
             self._isExecuting = executing
             self.executingChanged.emit(executing)
 
-    def readTrajectoryFromJSONFile(self):
+    def readWorkFlowFromJSONFile(self):
         # check if file exists
         # if not, create it
         # if it does, read it
         if os.path.exists(self.filePath):
             with open(self.filePath, 'r') as file:
-                self._trajectory = json.load(file)
+                self._workflow = json.load(file)
         else:
-            self._trajectory = []
-            self._saveTrajectory()
+            self._workflow = []
+            self._saveWorkFlow()
 
-        self.trajectoryChanged.emit()
+        self.workFlowChanged.emit()
 
-    def _saveTrajectory(self):
+    def _saveWorkFlow(self):
         """Internal method to save data"""
         with open(self.filePath, 'w') as file:
-            json.dump(self._trajectory, file, indent=2)
+            json.dump(self._workflow, file, indent=2)
 
     # Action handler methods
     def _handle_move_winch_to(self, params):
@@ -536,42 +536,42 @@ class TrajectoryHandler(QObject):
         command = ["resetYaw"]
         return description, command
 
-    @Property(list, notify=trajectoryChanged)
-    def trajectory(self):
-        return self._trajectory
+    @Property(list, notify=workFlowChanged)
+    def workflow(self):
+        return self._workflow
 
     @Slot(int)
-    def deleteTrajectory(self, index):
-        if 0 <= index < len(self._trajectory):
-            del self._trajectory[index]
-            self._saveTrajectory()
-            self.trajectoryChanged.emit()
+    def deleteWorkFlow(self, index):
+        if 0 <= index < len(self._workflow):
+            del self._workflow[index]
+            self._saveWorkFlow()
+            self.workFlowChanged.emit()
 
     @Slot(str, str)
-    def saveTrajectory(self, name, sequence):
+    def saveWorkFlow(self, name, sequence):
         added = True
-        for item in self._trajectory:
+        for item in self._workflow:
             if item["name"] == name:
                 item["sequence"] = sequence
                 added = False
                 break
         if added:
-            self._trajectory.append({"name": name, "sequence": sequence})
+            self._workflow.append({"name": name, "sequence": sequence})
 
-        self._saveTrajectory()
-        self.trajectoryChanged.emit()
+        self._saveWorkFlow()
+        self.workFlowChanged.emit()
 
         # Emit the sequence saved signal with the name
         self.sequenceSaved.emit(name)
 
     @Slot(int)
-    def selectTrajectory(self, index):
-        if 0 <= index < len(self._trajectory):
-            # Reset current trajectory
+    def selectWorkFlow(self, index):
+        if 0 <= index < len(self._workflow):
+            # Reset current workflow
             self._currentTrajCmd = []
             self._currentTrajDescription = []
 
-            trajStr = self._trajectory[index]["sequence"]
+            trajStr = self._workflow[index]["sequence"]
             actions = trajStr.split(',')
             
             for action in actions:

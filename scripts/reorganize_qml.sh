@@ -15,7 +15,7 @@ echo "Creating new directory structure..."
 mkdir -p "$QML_DIR/core"
 mkdir -p "$QML_DIR/pages/home"
 mkdir -p "$QML_DIR/pages/spray"
-mkdir -p "$QML_DIR/pages/trajectory"
+mkdir -p "$QML_DIR/pages/workflow"
 mkdir -p "$QML_DIR/pages/wheel"
 mkdir -p "$QML_DIR/pages/winch"
 mkdir -p "$QML_DIR/pages/tuning"
@@ -45,9 +45,9 @@ mv "$QML_DIR/pages/PageHome.qml" "$QML_DIR/pages/home/" 2>/dev/null || echo "Pag
 # Pages - Spray
 mv "$QML_DIR/pages/PageSpray.qml" "$QML_DIR/pages/spray/" 2>/dev/null || echo "PageSpray.qml already moved"
 
-# Pages - Trajectory
-mv "$QML_DIR/pages/PageTrajectory.qml" "$QML_DIR/pages/trajectory/" 2>/dev/null || echo "PageTrajectory.qml already moved"
-mv "$QML_DIR/TrajectoryControl.qml" "$QML_DIR/pages/trajectory/" 2>/dev/null || echo "TrajectoryControl.qml already moved"
+# Pages - WorkFlow
+mv "$QML_DIR/pages/PageWorkFlow.qml" "$QML_DIR/pages/workflow/" 2>/dev/null || echo "PageWorkFlow.qml already moved"
+mv "$QML_DIR/WorkFlowControl.qml" "$QML_DIR/pages/workflow/" 2>/dev/null || echo "WorkFlowControl.qml already moved"
 
 # Pages - Wheel
 mv "$QML_DIR/pages/PageWheel.qml" "$QML_DIR/pages/wheel/" 2>/dev/null || echo "PageWheel.qml already moved"

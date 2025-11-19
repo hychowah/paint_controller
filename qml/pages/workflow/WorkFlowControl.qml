@@ -1,4 +1,4 @@
-// TrajectoryControl.qml
+// WorkFlowControl.qml
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
@@ -15,11 +15,11 @@ Rectangle {
     property int currentActionIndex: -1
     
     // Use a bound property to stay in sync with Python's execution state
-    property bool isExecuting: trajectoryHandler.isExecuting
+    property bool isExecuting: workFlowHandler.isExecuting
     
     // Connect to the Python signals
     Connections {
-        target: trajectoryHandler
+        target: workFlowHandler
         
         // Handle the showMessage signal from Python
         function onShowMessage(message, isSuccess) {
@@ -45,11 +45,11 @@ Rectangle {
             // If this is the currently selected sequence, reload its actions
             if (control.selected) {
                 // Find the index of the sequence
-                for (let i = 0; i < trajectoryHandler.trajectory.length; i++) {
-                    if (trajectoryHandler.trajectory[i].name === sequenceName) {
+                for (let i = 0; i < workFlowHandler.workflow.length; i++) {
+                    if (workFlowHandler.workflow[i].name === sequenceName) {
                         // Reload the current sequence data
-                        trajectoryHandler.selectTrajectory(i)
-                        control.currentActions = trajectoryHandler.getSelectedActions()
+                        workFlowHandler.selectTrajectory(i)
+                        control.currentActions = workFlowHandler.getSelectedActions()
                         break
                     }
                 }
@@ -195,7 +195,7 @@ Rectangle {
                 
                 ListView {
                     anchors.fill: parent
-                    model: trajectoryHandler.trajectory
+                    model: workFlowHandler.workflow
                     spacing: 1
                     
                     delegate: Rectangle {
@@ -252,8 +252,8 @@ Rectangle {
                             MouseArea {
                                 anchors.fill: parent
                                 onClicked: {
-                                    trajectoryHandler.selectTrajectory(index)
-                                    control.currentActions = trajectoryHandler.getSelectedActions()
+                                    workFlowHandler.selectWorkFlow(index)
+                                    control.currentActions = workFlowHandler.getSelectedActions()
                                     control.selected = true
                                     control.currentActionIndex = 0
                                 }
@@ -511,7 +511,7 @@ Rectangle {
                         anchors.fill: parent
                         onClicked: {
                             // overlayController.avoidAutoRunOverwrite()
-                            trajectoryHandler.startExecution(control.currentActionIndex)
+                            workFlowHandler.startExecution(control.currentActionIndex)
 
                         }
                         

@@ -9,9 +9,9 @@ Rectangle {
     
     VideoOverlayStyle { id: style }
     
-    // Trajectory Status Overlay - Full screen with blinking border
-    TrajectoryStatusOverlay {
-        id: trajectoryStatusOverlay
+    // WorkFlow Status Overlay - Full screen with blinking border
+    WorkFlowStatusOverlay {
+        id: workFlowStatusOverlay
         z: 150  // Above other overlays but below top bar
     }
     

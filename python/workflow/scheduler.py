@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Action scheduler for trajectory execution.
+Action scheduler for workflow execution.
 
 Handles timing calculations and action scheduling with clean separation from execution logic.
 """

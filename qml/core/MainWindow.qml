@@ -4,7 +4,7 @@ import QtQuick.Layouts 1.15
 import QtQuick.Window 2.15
 import "../pages/home"
 import "../pages/spray"
-import "../pages/trajectory"
+import "../pages/workflow"
 import "../pages/wheel"
 import "../pages/winch"
 import "../pages/tuning"
@@ -184,7 +184,7 @@ ApplicationWindow {
 
     Component {
         id: page7Component
-        PageTrajectory {}
+        PageWorkFlow {}
     }
 
     Component {

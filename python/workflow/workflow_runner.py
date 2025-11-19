@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Trajectory Runner Node for paint controller.
+WorkFlow Runner Node for paint controller.
 
-Provides QML-accessible interface for trajectory management (play, pause, stop, list).
+Provides QML-accessible interface for workflow management (play, pause, stop, list).
 """
 
 import os
@@ -11,29 +11,29 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer, QFileSystemWatcher
 
-from .trajectory_executor import TrajectoryExecutor, ExecutionState
+from .workflow_executor import WorkFlowExecutor, ExecutionState
 
 
-class TrajectoryRunner(QObject):
+class WorkFlowRunner(QObject):
     """
-    QML-accessible trajectory management interface.
+    QML-accessible workflow management interface.
 
     Signals:
-        trajectory_list_changed: Emitted when available trajectories change
+        workflow_list_changed: Emitted when available workflows change
         execution_state_changed: Emitted when execution state changes
-        current_trajectory_changed: Emitted when current trajectory changes
+        current_workflow_changed: Emitted when current workflow changes
         error_occurred: Emitted when an error occurs
     """
 
-    trajectory_list_changed = Signal()
+    workflow_list_changed = Signal()
     execution_state_changed = Signal(int)  # ExecutionState enum value
-    current_trajectory_changed = Signal(str)  # Trajectory name
+    current_workflow_changed = Signal(str)  # WorkFlow name
     current_action_index_changed = Signal(int)  # Current action index during execution
     error_occurred = Signal(str)  # Error message
 
     def __init__(self, ros_node, logger=None):
         """
-        Initialize trajectory runner.
+        Initialize workflow runner.
 
         Args:
             ros_node: ROS2 node instance (RobotController)
@@ -43,20 +43,20 @@ class TrajectoryRunner(QObject):
         self.ros_node = ros_node
         self.logger = logger or ros_node.get_logger()
 
-        self.executor = TrajectoryExecutor(ros_node, self.logger)
-        self._trajectory_list: List[str] = []
-        self._current_trajectory_name = ""
+        self.executor = WorkFlowExecutor(ros_node, self.logger)
+        self._workflow_list: List[str] = []
+        self._current_workflow_name = ""
         self._current_action_index = -1
         self._last_execution_state = -1  # Track last emitted state
-        self._trajectories_dir = self._find_trajectories_dir()
+        self._workflows_dir = self._find_workflows_dir()
 
-        # Set up file system watcher to monitor trajectory directory
+        # Set up file system watcher to monitor workflow directory
         self._file_watcher = QFileSystemWatcher()
-        self._file_watcher.addPath(self._trajectories_dir)
+        self._file_watcher.addPath(self._workflows_dir)
         self._file_watcher.directoryChanged.connect(self._on_directory_changed)
         
-        # Load available trajectories
-        self._refresh_trajectory_list()
+        # Load available workflows
+        self._refresh_workflow_list()
 
         # Timer to monitor execution state and action index
         self._monitor_timer = QTimer()
@@ -65,62 +65,62 @@ class TrajectoryRunner(QObject):
 
 
 
-    def _find_trajectories_dir(self) -> str:
-        """Find trajectories directory relative to package."""
+    def _find_workflows_dir(self) -> str:
+        """Find workflows directory relative to package."""
         # Try common paths
         possible_paths = [
-            os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "resource", "trajectories"),
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "resource", "workflows"),
             os.path.join(
-                os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "resource", "trajectories"
+                os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "resource", "workflows"
             ),
-            "./trajectories",
+            "./workflows",
         ]
 
         for path in possible_paths:
             if os.path.isdir(path):
-                self.logger.info(f"Found trajectories directory: {path}")
+                self.logger.info(f"Found workflows directory: {path}")
                 return path
 
         # Create default if not found
         default_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "..", "resource", "trajectories"
+            os.path.dirname(os.path.dirname(__file__)), "..", "resource", "workflows"
         )
         os.makedirs(default_path, exist_ok=True)
-        self.logger.warn(f"Created trajectories directory: {default_path}")
+        self.logger.warn(f"Created workflows directory: {default_path}")
         return default_path
 
     def _on_directory_changed(self, path: str) -> None:
         """Handle directory changes (file added/removed/modified)."""
-        self.logger.info(f"Trajectory directory changed: {path}")
-        self._refresh_trajectory_list()
+        self.logger.info(f"WorkFlow directory changed: {path}")
+        self._refresh_workflow_list()
 
-    def _refresh_trajectory_list(self) -> None:
+    def _refresh_workflow_list(self) -> None:
         """Refresh list of available trajectories from disk."""
         try:
             new_list = [
                 Path(f).stem
-                for f in os.listdir(self._trajectories_dir)
+                for f in os.listdir(self._workflows_dir)
                 if f.endswith(".yaml") or f.endswith(".yml")
             ]
             
             # Only update and emit if list actually changed
-            if new_list != self._trajectory_list:
-                self._trajectory_list = new_list
-                self.logger.info(f"Trajectory list updated: {len(self._trajectory_list)} trajectories found")
-                self.trajectory_list_changed.emit()
+            if new_list != self._workflow_list:
+                self._workflow_list = new_list
+                self.logger.info(f"WorkFlow list updated: {len(self._workflow_list)} workflows found")
+                self.workflow_list_changed.emit()
         except Exception as e:
-            self.logger.error(f"Error refreshing trajectory list: {e}")
-            self._trajectory_list = []
+            self.logger.error(f"Error refreshing workflow list: {e}")
+            self._workflow_list = []
 
-    @Property(list, notify=trajectory_list_changed)
-    def trajectory_list(self) -> List[str]:
-        """Get list of available trajectory names."""
-        return self._trajectory_list
+    @Property(list, notify=workflow_list_changed)
+    def workflow_list(self) -> List[str]:
+        """Get list of available workflow names."""
+        return self._workflow_list
 
-    @Property(str, notify=current_trajectory_changed)
-    def current_trajectory(self) -> str:
-        """Get name of currently loaded trajectory."""
-        return self._current_trajectory_name
+    @Property(str, notify=current_workflow_changed)
+    def current_workflow(self) -> str:
+        """Get name of currently loaded workflow."""
+        return self._current_workflow_name
 
     @Property(int, notify=execution_state_changed)
     def execution_state(self) -> int:
@@ -128,54 +128,54 @@ class TrajectoryRunner(QObject):
         return self.executor.current_state.value
 
     @Slot(str)
-    def load_trajectory(self, trajectory_name: str) -> bool:
+    def load_workflow(self, workflow_name: str) -> bool:
         """
-        Load a trajectory by name.
+        Load a workflow by name.
 
         Args:
-            trajectory_name: Name of trajectory (without .yaml extension)
+            workflow_name: Name of workflow (without .yaml extension)
 
         Returns:
             True if loaded successfully, False otherwise
         """
-        if trajectory_name not in self._trajectory_list:
-            error_msg = f"Trajectory not found: {trajectory_name}"
+        if workflow_name not in self._workflow_list:
+            error_msg = f"WorkFlow not found: {workflow_name}"
             self.logger.error(error_msg)
             self.error_occurred.emit(error_msg)
             return False
 
-        trajectory_path = os.path.join(self._trajectories_dir, f"{trajectory_name}.yaml")
+        workflow_path = os.path.join(self._workflows_dir, f"{workflow_name}.yaml")
 
-        if not os.path.exists(trajectory_path):
+        if not os.path.exists(workflow_path):
             # Try .yml extension
-            trajectory_path = os.path.join(self._trajectories_dir, f"{trajectory_name}.yml")
+            workflow_path = os.path.join(self._workflows_dir, f"{workflow_name}.yml")
 
-        if not os.path.exists(trajectory_path):
-            error_msg = f"Trajectory file not found: {trajectory_path}"
+        if not os.path.exists(workflow_path):
+            error_msg = f"WorkFlow file not found: {workflow_path}"
             self.logger.error(error_msg)
             self.error_occurred.emit(error_msg)
             return False
 
-        success = self.executor.load_trajectory(trajectory_path)
+        success = self.executor.load_workflow(workflow_path)
 
         if success:
-            self._current_trajectory_name = trajectory_name
-            self.current_trajectory_changed.emit(trajectory_name)
+            self._current_workflow_name = workflow_name
+            self.current_workflow_changed.emit(workflow_name)
 
         return success
 
     @Slot(result=list)
-    def get_current_trajectory_actions(self) -> List[dict]:
+    def get_current_workflow_actions(self) -> List[dict]:
         """
-        Get list of actions from currently loaded trajectory.
+        Get list of actions from currently loaded workflow.
         
         Returns:
             List of action dictionaries with name, type, and description with params
         """
-        if not self.executor.current_trajectory:
+        if not self.executor.current_workflow:
             return []
         
-        actions = self.executor.current_trajectory.get("actions", [])
+        actions = self.executor.current_workflow.get("actions", [])
         result = []
         
         for action in actions:
@@ -302,9 +302,9 @@ class TrajectoryRunner(QObject):
 
     @Slot()
     def play(self) -> bool:
-        """Start trajectory execution."""
-        if not self._current_trajectory_name:
-            error_msg = "No trajectory loaded"
+        """Start workflow execution."""
+        if not self._current_workflow_name:
+            error_msg = "No workflow loaded"
             self.logger.error(error_msg)
             self.error_occurred.emit(error_msg)
             return False
@@ -314,14 +314,14 @@ class TrajectoryRunner(QObject):
         if success:
             self.execution_state_changed.emit(self.executor.current_state.value)
         else:
-            error_msg = "Failed to start trajectory execution"
+            error_msg = "Failed to start workflow execution"
             self.error_occurred.emit(error_msg)
 
         return success
 
     @Slot()
     def pause(self) -> bool:
-        """Pause trajectory execution."""
+        """Pause workflow execution."""
         success = self.executor.pause()
 
         if success:
@@ -331,7 +331,7 @@ class TrajectoryRunner(QObject):
 
     @Slot()
     def resume(self) -> bool:
-        """Resume paused trajectory execution."""
+        """Resume paused workflow execution."""
         success = self.executor.resume()
 
         if success:
@@ -341,7 +341,7 @@ class TrajectoryRunner(QObject):
 
     @Slot()
     def stop(self) -> bool:
-        """Stop trajectory execution and perform emergency shutdown."""
+        """Stop workflow execution and perform emergency shutdown."""
         success = self.executor.stop()
 
         if success:
@@ -392,9 +392,9 @@ class TrajectoryRunner(QObject):
             self.logger.info(f"Execution state changed to: {state_name}")
 
     @Slot()
-    def refresh_trajectory_list(self) -> None:
-        """Manually refresh trajectory list (callable from QML)."""
-        self._refresh_trajectory_list()
+    def refresh_workflow_list(self) -> None:
+        """Manually refresh workflow list (callable from QML)."""
+        self._refresh_workflow_list()
 
     def cleanup(self) -> None:
         """Clean up runner resources."""

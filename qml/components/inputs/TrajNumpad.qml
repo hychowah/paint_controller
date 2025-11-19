@@ -5,7 +5,7 @@ import QtQuick.Layouts 1.15
 import "../buttons"
 
 Rectangle {
-    id: trajectoryNumpads
+    id: workFlowNumpads
     color: "#F5F7FA"
     radius: 10
     border.color: "#E0E0E0" 
@@ -85,7 +85,7 @@ Rectangle {
             updateValue(selectedInputField.itemInx, inputField, currentValue + buttonValue);
         }
         
-        trajectoryNumpads.lastClickedButton = buttonValue;
+        workFlowNumpads.lastClickedButton = buttonValue;
     }
 
     // Create a button with consistent styling
@@ -100,8 +100,8 @@ Rectangle {
         background: Rectangle {
             color: parent.down ? "#E4F0FE" : "#FFFFFF"
             radius: 5
-            border.width: trajectoryNumpads.lastClickedButton === numValue ? 2 : 1
-            border.color: trajectoryNumpads.lastClickedButton === numValue ? "#007BFF" : "#E0E0E0"
+            border.width: workFlowNumpads.lastClickedButton === numValue ? 2 : 1
+            border.color: workFlowNumpads.lastClickedButton === numValue ? "#007BFF" : "#E0E0E0"
         }
         
         contentItem: Text {
@@ -154,8 +154,8 @@ Rectangle {
             background: Rectangle {
                 color: parent.down ? "#E4F0FE" : "#FFFFFF"
                 radius: 5
-                border.width: trajectoryNumpads.lastClickedButton === "del" ? 2 : 1
-                border.color: trajectoryNumpads.lastClickedButton === "del" ? "#007BFF" : "#E0E0E0"
+                border.width: workFlowNumpads.lastClickedButton === "del" ? 2 : 1
+                border.color: workFlowNumpads.lastClickedButton === "del" ? "#007BFF" : "#E0E0E0"
             }
             
             contentItem: Text {

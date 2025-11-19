@@ -3,7 +3,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
 Rectangle {
-    id: trajectoryTab
+    id: workFlowTab
     color: "transparent"
 
     ColumnLayout {
@@ -39,12 +39,12 @@ Rectangle {
                         fill: parent
                         margins: 6
                     }
-                    model: trajectoryRunner ? trajectoryRunner.trajectory_list : []
+                    model: workFlowRunner ? workFlowRunner.workflow_list : []
                     currentIndex: -1
                     
                     onCurrentIndexChanged: {
-                        if (currentIndex >= 0 && trajectoryRunner) {
-                            trajectoryRunner.load_trajectory(model[currentIndex])
+                        if (currentIndex >= 0 && workFlowRunner) {
+                            workFlowRunner.load_workflow(model[currentIndex])
                         }
                     }
 
@@ -66,8 +66,8 @@ Rectangle {
                     }
 
                     contentItem: Text {
-                        text: trajectoryRunner && trajectoryRunner.current_trajectory 
-                              ? trajectoryRunner.current_trajectory 
+                        text: workFlowRunner && workFlowRunner.current_workflow 
+                              ? workFlowRunner.current_workflow 
                               : "Select workflow..."
                         color: "#FFFFFF"
                         font.family: "Helvetica"
@@ -113,8 +113,8 @@ Rectangle {
                         margins: 10
                     }
                     text: {
-                        if (!trajectoryRunner) return "No runner"
-                        switch (trajectoryRunner.execution_state) {
+                        if (!workFlowRunner) return "No runner"
+                        switch (workFlowRunner.execution_state) {
                             case 0: return "Idle"
                             case 1: return "Running"
                             case 2: return "Paused"
@@ -124,8 +124,8 @@ Rectangle {
                         }
                     }
                     color: {
-                        if (!trajectoryRunner) return "#CCCCCC"
-                        switch (trajectoryRunner.execution_state) {
+                        if (!workFlowRunner) return "#CCCCCC"
+                        switch (workFlowRunner.execution_state) {
                             case 0: return "#CCCCCC"  // Idle - gray
                             case 1: return "#00FF00"  // Running - green
                             case 2: return "#FFFF00"  // Paused - yellow
@@ -175,8 +175,8 @@ Rectangle {
                         anchors.fill: parent
                         hoverEnabled: true
                         onClicked: {
-                            if (trajectoryRunner && trajectoryRunner.current_trajectory) {
-                                trajectoryRunner.play()
+                            if (workFlowRunner && workFlowRunner.current_workflow) {
+                                workFlowRunner.play()
                             }
                         }
                     }
@@ -205,8 +205,8 @@ Rectangle {
                         anchors.fill: parent
                         hoverEnabled: true
                         onClicked: {
-                            if (trajectoryRunner) {
-                                trajectoryRunner.pause()
+                            if (workFlowRunner) {
+                                workFlowRunner.pause()
                             }
                         }
                     }
@@ -235,8 +235,8 @@ Rectangle {
                         anchors.fill: parent
                         hoverEnabled: true
                         onClicked: {
-                            if (trajectoryRunner) {
-                                trajectoryRunner.resume()
+                            if (workFlowRunner) {
+                                workFlowRunner.resume()
                             }
                         }
                     }
@@ -266,8 +266,8 @@ Rectangle {
                     anchors.fill: parent
                     hoverEnabled: true
                     onClicked: {
-                        if (trajectoryRunner) {
-                            trajectoryRunner.stop()
+                        if (workFlowRunner) {
+                            workFlowRunner.stop()
                         }
                     }
                 }
@@ -310,7 +310,7 @@ Rectangle {
 
                         // Instructions if no workflow loaded
                         Text {
-                            visible: !trajectoryRunner || !trajectoryRunner.current_trajectory
+                            visible: !workFlowRunner || !workFlowRunner.current_workflow
                             text: "Load a workflow to see actions"
                             color: "#888888"
                             font.family: "Helvetica"
@@ -323,20 +323,20 @@ Rectangle {
                         Repeater {
                             model: {
                                 // Dynamically load actions from current workflow
-                                if (!trajectoryRunner || !trajectoryRunner.current_trajectory) {
+                                if (!workFlowRunner || !workFlowRunner.current_workflow) {
                                     return []
                                 }
                                 
-                                return trajectoryRunner.get_current_trajectory_actions()
+                                return workFlowRunner.get_current_workflow_actions()
                             }
 
                             delegate: Rectangle {
                                 width: parent.width
                                 height: 50
-                                color: (trajectoryRunner && trajectoryRunner.current_action_index === index) 
+                                color: (workFlowRunner && workFlowRunner.current_action_index === index) 
                                        ? "#3A5A8C"  // Highlight current action
                                        : "#1A1A1A"
-                                border.color: (trajectoryRunner && trajectoryRunner.current_action_index === index)
+                                border.color: (workFlowRunner && workFlowRunner.current_action_index === index)
                                               ? "#00FF00"  // Green border for current
                                               : "#333333"
                                 border.width: 1

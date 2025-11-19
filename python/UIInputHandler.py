@@ -59,14 +59,14 @@ class UIInputHandler(QObject):
         if self.controller.overlayController.is_showing_menu():
             self.controller.overlayController.move_to_first()
         else:
-            self.controller.trajectoryHandler.switch_to_page(0)
+            self.controller.workFlowHandler.switch_to_page(0)
 
     @Slot()
     def on_right_pressed(self):
         if self.controller.overlayController.is_showing_menu():
             self.controller.overlayController.move_to_last()
         else:
-            self.controller.trajectoryHandler.switch_to_page(1)
+            self.controller.workFlowHandler.switch_to_page(1)
 
     @Slot()
     def on_r4_pressed(self):

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Refactored trajectory executor with clean architecture.
+Refactored workflow executor with clean architecture.
 
 Key improvements:
 - Separated scheduling logic
@@ -24,7 +24,7 @@ from .actions import ActionRegistry
 
 
 class ExecutionState(Enum):
-    """Trajectory execution state."""
+    """WorkFlow execution state."""
     IDLE = 0
     RUNNING = 1
     PAUSED = 2
@@ -32,8 +32,8 @@ class ExecutionState(Enum):
     ERROR = 4
 
 
-class TrajectoryExecutionThread(QThread):
-    """Thread for executing trajectory actions."""
+class WorkFlowExecutionThread(QThread):
+    """Thread for executing workflow actions."""
     
     execution_finished = Signal()
     execution_error = Signal(str)
@@ -45,7 +45,7 @@ class TrajectoryExecutionThread(QThread):
         self._stop_requested = False
     
     def run(self):
-        """Run trajectory execution."""
+        """Run workflow execution."""
         try:
             self.executor._execute_scheduled_actions(self.scheduled_actions)
             if not self._stop_requested:
@@ -62,9 +62,9 @@ class TrajectoryExecutionThread(QThread):
         return self._stop_requested
 
 
-class TrajectoryExecutor:
+class WorkFlowExecutor:
     """
-    Executes trajectories with improved architecture.
+    Executes workflows with improved architecture.
     
     Features:
     - Clean separation of concerns (scheduling, execution, hardware)
@@ -75,7 +75,7 @@ class TrajectoryExecutor:
 
     def __init__(self, ros_node, logger=None):
         """
-        Initialize trajectory executor.
+        Initialize workflow executor.
 
         Args:
             ros_node: ROS2 node instance with access to controllers
@@ -90,52 +90,52 @@ class TrajectoryExecutor:
         self.scheduler = ActionScheduler(self.logger, self.hardware)
 
         # State management
-        self.current_trajectory: Optional[Dict[str, Any]] = None
+        self.current_workflow: Optional[Dict[str, Any]] = None
         self.current_state = ExecutionState.IDLE
         self.current_action_index = -1
-        self.execution_thread: Optional[TrajectoryExecutionThread] = None
+        self.execution_thread: Optional[WorkFlowExecutionThread] = None
         self._stop_requested = False
 
-    def load_trajectory(self, yaml_path: str) -> bool:
+    def load_workflow(self, yaml_path: str) -> bool:
         """
-        Load trajectory from YAML file.
+        Load workflow from YAML file.
 
         Args:
-            yaml_path: Path to trajectory YAML file
+            yaml_path: Path to workflow YAML file
 
         Returns:
             True if loaded successfully
         """
         try:
             with open(yaml_path, 'r') as f:
-                self.current_trajectory = yaml.safe_load(f)
+                self.current_workflow = yaml.safe_load(f)
             
-            name = self.current_trajectory.get('name', 'unknown')
-            self.logger.info(f"Loaded trajectory: {name}")
+            name = self.current_workflow.get('name', 'unknown')
+            self.logger.info(f"Loaded workflow: {name}")
             return True
             
         except Exception as e:
-            self.logger.error(f"Failed to load trajectory: {e}")
+            self.logger.error(f"Failed to load workflow: {e}")
             return False
 
     def play(self) -> bool:
         """
-        Start executing the current trajectory.
+        Start executing the current workflow.
 
         Returns:
             True if execution started successfully
         """
         if self.current_state == ExecutionState.RUNNING:
-            self.logger.warn("Trajectory already running")
+            self.logger.warn("WorkFlow already running")
             return False
 
-        if not self.current_trajectory:
-            self.logger.error("No trajectory loaded")
+        if not self.current_workflow:
+            self.logger.error("No workflow loaded")
             return False
 
-        actions = self.current_trajectory.get("actions", [])
+        actions = self.current_workflow.get("actions", [])
         if not actions:
-            self.logger.warn("Trajectory has no actions")
+            self.logger.warn("WorkFlow has no actions")
             return False
 
         try:
@@ -146,37 +146,37 @@ class TrajectoryExecutor:
             self.current_state = ExecutionState.RUNNING
             self._stop_requested = False
             
-            self.execution_thread = TrajectoryExecutionThread(self, scheduled_actions)
+            self.execution_thread = WorkFlowExecutionThread(self, scheduled_actions)
             self.execution_thread.execution_finished.connect(self._on_execution_finished)
             self.execution_thread.execution_error.connect(self._on_execution_error)
             self.execution_thread.start()
             
-            self.logger.info(f"Started trajectory with {len(scheduled_actions)} actions")
+            self.logger.info(f"Started workflow with {len(scheduled_actions)} actions")
             return True
             
         except Exception as e:
-            self.logger.error(f"Failed to start trajectory: {e}")
+            self.logger.error(f"Failed to start workflow: {e}")
             self.current_state = ExecutionState.ERROR
             return False
 
     def pause(self) -> bool:
-        """Pause trajectory execution."""
+        """Pause workflow execution."""
         if self.current_state != ExecutionState.RUNNING:
             return False
         self.current_state = ExecutionState.PAUSED
-        self.logger.info("Trajectory paused")
+        self.logger.info("WorkFlow paused")
         return True
 
     def resume(self) -> bool:
-        """Resume paused trajectory execution."""
+        """Resume paused workflow execution."""
         if self.current_state != ExecutionState.PAUSED:
             return False
         self.current_state = ExecutionState.RUNNING
-        self.logger.info("Trajectory resumed")
+        self.logger.info("WorkFlow resumed")
         return True
 
     def stop(self) -> bool:
-        """Stop trajectory execution."""
+        """Stop workflow execution."""
         if self.current_state == ExecutionState.IDLE:
             return False
         
@@ -187,21 +187,21 @@ class TrajectoryExecutor:
         
         self.current_state = ExecutionState.IDLE
         self.current_action_index = -1
-        self.logger.info("Trajectory stopped")
+        self.logger.info("WorkFlow stopped")
         return True
 
     def _on_execution_finished(self) -> None:
         """Handle execution completion."""
         self.current_state = ExecutionState.COMPLETED
         self.current_action_index = -1
-        self.logger.info("Trajectory completed successfully")
+        self.logger.info("WorkFlow completed successfully")
         # Note: State change will be detected by runner's state monitoring
 
     def _on_execution_error(self, error_msg: str) -> None:
         """Handle execution error."""
         self.current_state = ExecutionState.ERROR
         self.current_action_index = -1
-        self.logger.error(f"Trajectory execution error: {error_msg}")
+        self.logger.error(f"WorkFlow execution error: {error_msg}")
 
     def _execute_scheduled_actions(self, scheduled_actions: List[ScheduledAction]) -> None:
         """
