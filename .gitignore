@@ -1,5 +1,56 @@
-paint_controller/__pycache__/
-.vscode/
-.github/
-*.pyc
+# Python
 __pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+*.egg
+paint_controller/__pycache__/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+log/
+python/log/
+python/debug.txt
+
+# Qt
+*.qmlc
+*.jsc
+
+# ROS
+install/
+build/
+log/
+devel/
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Temporary
+*.tmp
+*.bak
+.DS_Store
+
+# Configuration (if contains secrets)
+robot_config.yaml
+config/*.local.yaml
+
+# GitHub workflows (keep for CI/CD)
+!.github/
