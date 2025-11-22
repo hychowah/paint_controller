@@ -1,0 +1,11 @@
+# Development Dependencies
+-r requirements.txt
+
+# Code Quality
+pylint>=2.15.0
+flake8>=5.0.0
+black>=22.0.0
+mypy>=0.990
+
+# Type Stubs
+types-PyYAML>=6.0.0

@@ -580,15 +580,15 @@ class RobotController(Node, QObject):
     @Slot(str)
     def setLeftJoystickControl(self, control: str):
         """Set left joystick control mode"""
-        self.ui_data_model.left_joystick_control = control
+        self.left_joystick_control = control
         self.get_logger().info(f'Left joystick control set to: {control}')
 
     @Slot(str)
     def setRightJoystickControl(self, control: str):
         """Set right joystick control mode"""
-        self.ui_data_model.right_joystick_control = control
+        self.right_joystick_control = control
         self.get_logger().info(f'Right joystick control set to: {control}')
-        self.display_message(f'Right joystick control set to: {control}')
+        self.display_message = f'Right joystick control set to: {control}'
 
     @Slot()
     def terminateNodes(self):
