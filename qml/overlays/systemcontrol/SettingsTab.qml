@@ -8,10 +8,15 @@ import "../../components/popups"
 
 Item {
     id: settingsTab
+    
+    // Helper function to create setting input field
+    function createSettingRow(key, label, currentValue, minVal, maxVal, isFloat) {
+        // This is handled inline in the repeater below
+    }
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 20
+        spacing: 15
         
         // Header
         Item {
@@ -36,211 +41,112 @@ Item {
             }
         }
         
-        // Settings content
-        Rectangle {
+        // Scrollable settings content
+        ScrollView {
+            id: settingsScrollView
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: "#252A36"
-            border.color: "#3A5A8C"
-            border.width: 1
-            radius: 10
+            clip: true
+            
+            ScrollBar.vertical.policy: ScrollBar.AsNeeded
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
             
             ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 20
-                spacing: 20
+                width: settingsScrollView.width - 20
+                spacing: 15
                 
-                // Thrust Force Control Section
-                ColumnLayout {
+                // ==========================================
+                // Winch Settings Section
+                // ==========================================
+                SettingsSection {
                     Layout.fillWidth: true
-                    spacing: 15
+                    title: "Winch Settings"
+                    description: "Configure winch motor parameters"
+                    expanded: true
                     
-                    // Title
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Thrust Force Control"
-                        color: "#FFFFFF"
-                        font.pixelSize: 16
-                        font.bold: true
-                    }
-                    
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Configure the thrust force for vertical movement"
-                        color: "#AAAAAA"
-                        font.pixelSize: 12
-                    }
-                    
-                    // Force value input
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 10
-                        
-                        Text {
-                            text: "Force Value (Range: -1.0 to +1.0)"
-                            color: "#FFFFFF"
-                            font.pixelSize: 14
-                            font.bold: true
-                        }
-                        
-                        // Input field with numpad button
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 50
-                            color: "#1A1A1A"
-                            border.color: thrustValueInput.activeFocus ? "#3A5A8C" : "#333333"
-                            border.width: 1
-                            radius: 6
+                    contentItem: Component {
+                        ColumnLayout {
+                            spacing: 15
+                            width: parent ? parent.width : 300
+                            // Explicit implicit height for proper sizing
+                            implicitHeight: childrenRect.height
                             
-                            Behavior on border.color {
-                                ColorAnimation { duration: 150 }
-                            }
-                            
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.margins: 0
-                                spacing: 0
-                                
-                                TextInput {
-                                    id: thrustValueInput
-                                    Layout.fillWidth: true
-                                    Layout.fillHeight: true
-                                    leftPadding: 15
-                                    rightPadding: 10
-                                    text: teensyController.thrust_force.toFixed(2)
-                                    color: "#FFFFFF"
-                                    font.pixelSize: 14
-                                    verticalAlignment: TextInput.AlignVCenter
-                                    horizontalAlignment: TextInput.AlignRight
-                                    selectByMouse: true
-                                    
-                                    onTextChanged: {
-                                        // Allow only numbers, minus sign, and decimal point
-                                        var filtered = text.replace(/[^0-9.\-]/g, '')
-                                        
-                                        // Ensure only one minus at start
-                                        if (filtered.indexOf('-') !== filtered.lastIndexOf('-')) {
-                                            filtered = filtered.replace(/-/g, '')
-                                        }
-                                        if (filtered.indexOf('-') > 0) {
-                                            filtered = filtered.replace('-', '')
-                                        }
-                                        
-                                        // Ensure only one decimal point
-                                        if (filtered.indexOf('.') !== filtered.lastIndexOf('.')) {
-                                            filtered = filtered.substring(0, filtered.lastIndexOf('.'))
-                                        }
-                                        
-                                        if (text !== filtered) {
-                                            text = filtered
-                                            return
-                                        }
-                                        
-                                        // Update backend when text changes
-                                        var num = parseFloat(text)
-                                        if (!isNaN(num) && text !== "") {
-                                            teensyController.thrust_force = num
-                                        }
-                                    }
-                                    
-                                    onActiveFocusChanged: {
-                                        if (activeFocus) {
-                                            numberPad.targetField = thrustValueInput
-                                            numberPad.open()
-                                        }
-                                    }
-                                }
-                                
-                                // Numpad button in input field
-                                Rectangle {
-                                    Layout.preferredWidth: 45
-                                    Layout.fillHeight: true
-                                    color: numpadButtonArea.containsMouse ? "#2A3F60" : "transparent"
-                                    radius: 6
-                                    
-                                    Behavior on color {
-                                        ColorAnimation { duration: 150 }
-                                    }
-                                    
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "🔢"
-                                        font.pixelSize: 16
-                                        color: "#CCCCCC"
-                                    }
-                                    
-                                    MouseArea {
-                                        id: numpadButtonArea
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            numberPad.targetField = thrustValueInput
-                                            numberPad.open()
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // Quick preset buttons
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 10
-                            
-                            Item {
+                            // Winch Max Speed
+                            ColumnLayout {
                                 Layout.fillWidth: true
-                            }
-                            
-                            // Set button
-                            Rectangle {
-                                width: 100
-                                height: 45
-                                radius: 6
-                                color: setButtonArea.containsMouse ? "#4CAF50" : "#3A8F3A"
-                                border.color: "#4CAF50"
-                                border.width: 1
+                                spacing: 8
                                 
-                                Behavior on color {
-                                    ColorAnimation { duration: 150 }
-                                }
-                                
-                                MouseArea {
-                                    id: setButtonArea
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        var num = parseFloat(thrustValueInput.text)
-                                        if (!isNaN(num)) {
-                                            teensyController.thrust_force = num
-                                            console.log("Thrust force set to:", num)
-                                            
-                                            // Show confirmation popup
-                                            confirmationPopup.messageTitle = "Success"
-                                            confirmationPopup.messageText = "Thrust force set to " + num.toFixed(2)
-                                            confirmationPopup.messageType = "info"
-                                            confirmationPopup.open()
-                                        }
-                                    }
+                                Text {
+                                    text: "Max Speed (Range: 0 - 100 RPM)"
+                                    color: "#FFFFFF"
+                                    font.pixelSize: 13
+                                    font.bold: true
                                 }
                                 
                                 RowLayout {
-                                    anchors.centerIn: parent
-                                    spacing: 8
+                                    Layout.fillWidth: true
+                                    spacing: 10
                                     
-                                    Text {
-                                        text: "✓"
-                                        color: "#FFFFFF"
-                                        font.pixelSize: 14
-                                        font.bold: true
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        height: 45
+                                        color: "#1A1A1A"
+                                        border.color: winchMaxSpeedInput.activeFocus ? "#3A5A8C" : "#333333"
+                                        border.width: 1
+                                        radius: 6
+                                        
+                                        TextInput {
+                                            id: winchMaxSpeedInput
+                                            anchors.fill: parent
+                                            anchors.margins: 10
+                                            text: settingsManager ? settingsManager.winch_max_speed.toFixed(1) : "60.0"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 14
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            horizontalAlignment: TextInput.AlignRight
+                                            selectByMouse: true
+                                            
+                                            onActiveFocusChanged: {
+                                                if (activeFocus) {
+                                                    numberPad.targetField = winchMaxSpeedInput
+                                                    numberPad.open()
+                                                }
+                                            }
+                                        }
                                     }
                                     
-                                    Text {
-                                        text: "Set"
-                                        color: "#FFFFFF"
-                                        font.pixelSize: 12
-                                        font.bold: true
+                                    Rectangle {
+                                        width: 70
+                                        height: 45
+                                        radius: 6
+                                        color: winchMaxSpeedSaveArea.containsMouse ? "#4CAF50" : "#3A8F3A"
+                                        
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "Save"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 12
+                                            font.bold: true
+                                        }
+                                        
+                                        MouseArea {
+                                            id: winchMaxSpeedSaveArea
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                var num = parseFloat(winchMaxSpeedInput.text)
+                                                if (!isNaN(num) && settingsManager) {
+                                                    settingsManager.winch_max_speed = num
+                                                    if (settingsManager.saveSetting("winch_max_speed")) {
+                                                        confirmationPopup.messageTitle = "Saved"
+                                                        confirmationPopup.messageText = "Winch max speed set to " + num.toFixed(1)
+                                                        confirmationPopup.messageType = "info"
+                                                        confirmationPopup.open()
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -248,9 +154,548 @@ Item {
                     }
                 }
                 
-                // Spacer
+                // ==========================================
+                // Track Control Settings Section
+                // ==========================================
+                SettingsSection {
+                    Layout.fillWidth: true
+                    title: "Track Control"
+                    description: "Configure track/wheel speed parameters"
+                    expanded: true
+                    
+                    contentItem: Component {
+                        ColumnLayout {
+                            spacing: 15
+                            width: parent ? parent.width : 300
+                            implicitHeight: childrenRect.height
+                            
+                            // Track Max Speed
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+                                
+                                Text {
+                                    text: "Max Speed (Range: 5 - 50)"
+                                    color: "#FFFFFF"
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                }
+                                
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
+                                    
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        height: 45
+                                        color: "#1A1A1A"
+                                        border.color: trackMaxSpeedInput.activeFocus ? "#3A5A8C" : "#333333"
+                                        border.width: 1
+                                        radius: 6
+                                        
+                                        TextInput {
+                                            id: trackMaxSpeedInput
+                                            anchors.fill: parent
+                                            anchors.margins: 10
+                                            text: settingsManager ? settingsManager.track_max_speed.toFixed(1) : "25.0"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 14
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            horizontalAlignment: TextInput.AlignRight
+                                            selectByMouse: true
+                                            
+                                            onActiveFocusChanged: {
+                                                if (activeFocus) {
+                                                    numberPad.targetField = trackMaxSpeedInput
+                                                    numberPad.open()
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    Rectangle {
+                                        width: 70
+                                        height: 45
+                                        radius: 6
+                                        color: trackMaxSpeedSaveArea.containsMouse ? "#4CAF50" : "#3A8F3A"
+                                        
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "Save"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 12
+                                            font.bold: true
+                                        }
+                                        
+                                        MouseArea {
+                                            id: trackMaxSpeedSaveArea
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                var num = parseFloat(trackMaxSpeedInput.text)
+                                                if (!isNaN(num) && settingsManager) {
+                                                    settingsManager.track_max_speed = num
+                                                    if (settingsManager.saveSetting("track_max_speed")) {
+                                                        confirmationPopup.messageTitle = "Saved"
+                                                        confirmationPopup.messageText = "Track max speed set to " + num.toFixed(1)
+                                                        confirmationPopup.messageType = "info"
+                                                        confirmationPopup.open()
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Track Min Speed
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+                                
+                                Text {
+                                    text: "Min Speed (Range: 0 - 30)"
+                                    color: "#FFFFFF"
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                }
+                                
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
+                                    
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        height: 45
+                                        color: "#1A1A1A"
+                                        border.color: trackMinSpeedInput.activeFocus ? "#3A5A8C" : "#333333"
+                                        border.width: 1
+                                        radius: 6
+                                        
+                                        TextInput {
+                                            id: trackMinSpeedInput
+                                            anchors.fill: parent
+                                            anchors.margins: 10
+                                            text: settingsManager ? settingsManager.track_min_speed.toFixed(1) : "15.0"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 14
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            horizontalAlignment: TextInput.AlignRight
+                                            selectByMouse: true
+                                            
+                                            onActiveFocusChanged: {
+                                                if (activeFocus) {
+                                                    numberPad.targetField = trackMinSpeedInput
+                                                    numberPad.open()
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    Rectangle {
+                                        width: 70
+                                        height: 45
+                                        radius: 6
+                                        color: trackMinSpeedSaveArea.containsMouse ? "#4CAF50" : "#3A8F3A"
+                                        
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "Save"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 12
+                                            font.bold: true
+                                        }
+                                        
+                                        MouseArea {
+                                            id: trackMinSpeedSaveArea
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                var num = parseFloat(trackMinSpeedInput.text)
+                                                if (!isNaN(num) && settingsManager) {
+                                                    settingsManager.track_min_speed = num
+                                                    if (settingsManager.saveSetting("track_min_speed")) {
+                                                        confirmationPopup.messageTitle = "Saved"
+                                                        confirmationPopup.messageText = "Track min speed set to " + num.toFixed(1)
+                                                        confirmationPopup.messageType = "info"
+                                                        confirmationPopup.open()
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // ==========================================
+                // End Effector Settings Section
+                // ==========================================
+                SettingsSection {
+                    Layout.fillWidth: true
+                    title: "End Effector"
+                    description: "Configure thrust force and valve parameters"
+                    expanded: true
+                    
+                    contentItem: Component {
+                        ColumnLayout {
+                            spacing: 15
+                            width: parent ? parent.width : 300
+                            implicitHeight: childrenRect.height
+                            
+                            // Thrust Force
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+                                
+                                Text {
+                                    text: "Thrust Force (Range: -1.0 to +1.0)"
+                                    color: "#FFFFFF"
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                }
+                                
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
+                                    
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        height: 45
+                                        color: "#1A1A1A"
+                                        border.color: thrustForceInput.activeFocus ? "#3A5A8C" : "#333333"
+                                        border.width: 1
+                                        radius: 6
+                                        
+                                        TextInput {
+                                            id: thrustForceInput
+                                            anchors.fill: parent
+                                            anchors.margins: 10
+                                            text: settingsManager ? settingsManager.thrust_force.toFixed(2) : "-1.00"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 14
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            horizontalAlignment: TextInput.AlignRight
+                                            selectByMouse: true
+                                            
+                                            onActiveFocusChanged: {
+                                                if (activeFocus) {
+                                                    numberPad.targetField = thrustForceInput
+                                                    numberPad.open()
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    Rectangle {
+                                        width: 70
+                                        height: 45
+                                        radius: 6
+                                        color: thrustForceSaveArea.containsMouse ? "#4CAF50" : "#3A8F3A"
+                                        
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "Save"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 12
+                                            font.bold: true
+                                        }
+                                        
+                                        MouseArea {
+                                            id: thrustForceSaveArea
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                var num = parseFloat(thrustForceInput.text)
+                                                if (!isNaN(num) && settingsManager) {
+                                                    settingsManager.thrust_force = num
+                                                    // Also update teensyController for immediate effect
+                                                    if (teensyController) {
+                                                        teensyController.thrust_force = num
+                                                    }
+                                                    if (settingsManager.saveSetting("thrust_force")) {
+                                                        confirmationPopup.messageTitle = "Saved"
+                                                        confirmationPopup.messageText = "Thrust force set to " + num.toFixed(2)
+                                                        confirmationPopup.messageType = "info"
+                                                        confirmationPopup.open()
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Valve Turn Max
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+                                
+                                Text {
+                                    text: "Valve Turn Max (Range: 0 - 10)"
+                                    color: "#FFFFFF"
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                }
+                                
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
+                                    
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        height: 45
+                                        color: "#1A1A1A"
+                                        border.color: valveTurnMaxInput.activeFocus ? "#3A5A8C" : "#333333"
+                                        border.width: 1
+                                        radius: 6
+                                        
+                                        TextInput {
+                                            id: valveTurnMaxInput
+                                            anchors.fill: parent
+                                            anchors.margins: 10
+                                            text: settingsManager ? settingsManager.valve_turn_max.toFixed(1) : "6.0"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 14
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            horizontalAlignment: TextInput.AlignRight
+                                            selectByMouse: true
+                                            
+                                            onActiveFocusChanged: {
+                                                if (activeFocus) {
+                                                    numberPad.targetField = valveTurnMaxInput
+                                                    numberPad.open()
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    Rectangle {
+                                        width: 70
+                                        height: 45
+                                        radius: 6
+                                        color: valveTurnMaxSaveArea.containsMouse ? "#4CAF50" : "#3A8F3A"
+                                        
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "Save"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 12
+                                            font.bold: true
+                                        }
+                                        
+                                        MouseArea {
+                                            id: valveTurnMaxSaveArea
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                var num = parseFloat(valveTurnMaxInput.text)
+                                                if (!isNaN(num) && settingsManager) {
+                                                    settingsManager.valve_turn_max = num
+                                                    if (settingsManager.saveSetting("valve_turn_max")) {
+                                                        confirmationPopup.messageTitle = "Saved"
+                                                        confirmationPopup.messageText = "Valve turn max set to " + num.toFixed(1)
+                                                        confirmationPopup.messageType = "info"
+                                                        confirmationPopup.open()
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // ==========================================
+                // Arm Extension Settings Section
+                // ==========================================
+                SettingsSection {
+                    Layout.fillWidth: true
+                    title: "Arm Extension Presets"
+                    description: "Configure arm retract/extend positions"
+                    expanded: true
+                    
+                    contentItem: Component {
+                        ColumnLayout {
+                            spacing: 15
+                            width: parent ? parent.width : 300
+                            implicitHeight: childrenRect.height
+                            
+                            // Arm Retract Length
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+                                
+                                Text {
+                                    text: "Retract Position (Range: 0 - 1000)"
+                                    color: "#FFFFFF"
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                }
+                                
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
+                                    
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        height: 45
+                                        color: "#1A1A1A"
+                                        border.color: armRetractInput.activeFocus ? "#3A5A8C" : "#333333"
+                                        border.width: 1
+                                        radius: 6
+                                        
+                                        TextInput {
+                                            id: armRetractInput
+                                            anchors.fill: parent
+                                            anchors.margins: 10
+                                            text: settingsManager ? settingsManager.arm_retract_length.toString() : "250"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 14
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            horizontalAlignment: TextInput.AlignRight
+                                            selectByMouse: true
+                                            
+                                            onActiveFocusChanged: {
+                                                if (activeFocus) {
+                                                    numberPad.targetField = armRetractInput
+                                                    numberPad.open()
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    Rectangle {
+                                        width: 70
+                                        height: 45
+                                        radius: 6
+                                        color: armRetractSaveArea.containsMouse ? "#4CAF50" : "#3A8F3A"
+                                        
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "Save"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 12
+                                            font.bold: true
+                                        }
+                                        
+                                        MouseArea {
+                                            id: armRetractSaveArea
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                var num = parseInt(armRetractInput.text)
+                                                if (!isNaN(num) && settingsManager) {
+                                                    settingsManager.arm_retract_length = num
+                                                    if (settingsManager.saveSetting("arm_retract_length")) {
+                                                        confirmationPopup.messageTitle = "Saved"
+                                                        confirmationPopup.messageText = "Arm retract position set to " + num
+                                                        confirmationPopup.messageType = "info"
+                                                        confirmationPopup.open()
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Arm Extend Length
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+                                
+                                Text {
+                                    text: "Extend Position (Range: 0 - 1500)"
+                                    color: "#FFFFFF"
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                }
+                                
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
+                                    
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        height: 45
+                                        color: "#1A1A1A"
+                                        border.color: armExtendInput.activeFocus ? "#3A5A8C" : "#333333"
+                                        border.width: 1
+                                        radius: 6
+                                        
+                                        TextInput {
+                                            id: armExtendInput
+                                            anchors.fill: parent
+                                            anchors.margins: 10
+                                            text: settingsManager ? settingsManager.arm_extend_length.toString() : "800"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 14
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            horizontalAlignment: TextInput.AlignRight
+                                            selectByMouse: true
+                                            
+                                            onActiveFocusChanged: {
+                                                if (activeFocus) {
+                                                    numberPad.targetField = armExtendInput
+                                                    numberPad.open()
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    Rectangle {
+                                        width: 70
+                                        height: 45
+                                        radius: 6
+                                        color: armExtendSaveArea.containsMouse ? "#4CAF50" : "#3A8F3A"
+                                        
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "Save"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 12
+                                            font.bold: true
+                                        }
+                                        
+                                        MouseArea {
+                                            id: armExtendSaveArea
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                var num = parseInt(armExtendInput.text)
+                                                if (!isNaN(num) && settingsManager) {
+                                                    settingsManager.arm_extend_length = num
+                                                    if (settingsManager.saveSetting("arm_extend_length")) {
+                                                        confirmationPopup.messageTitle = "Saved"
+                                                        confirmationPopup.messageText = "Arm extend position set to " + num
+                                                        confirmationPopup.messageType = "info"
+                                                        confirmationPopup.open()
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Bottom spacer
                 Item {
-                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                    height: 20
                 }
             }
         }

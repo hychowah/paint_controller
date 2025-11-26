@@ -39,6 +39,7 @@ from UIInputHandler import UIInputHandler
 from UISSHController import UISSHController
 from UISystemMonitor import SystemMonitor
 from workflow.workflow_runner import WorkFlowRunner
+from SettingsManager import SettingsManager
 
 # Global reference for signal handler
 _app_instance = None
@@ -247,6 +248,9 @@ class RobotController(Node, QObject):
         # Cleanup guard to prevent multiple cleanup calls
         self._cleanup_in_progress = False
         self._cleanup_complete = False
+        
+        # Initialize settings manager first (before sub-controllers)
+        self.settings_manager = SettingsManager(self)
         
         # Initialize components
         self.warningHandler = WarningHandler()
@@ -765,6 +769,7 @@ def main():
     engine.rootContext().setContextProperty("sshHandler", controller.ssh_controller)
     engine.rootContext().setContextProperty("videoStreamer", controller.video_stream_handler)
     engine.rootContext().setContextProperty("systemMonitor", controller.system_monitor)
+    engine.rootContext().setContextProperty("settingsManager", controller.settings_manager)
     controller.engine = engine
     
     # Start status update timer

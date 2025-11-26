@@ -48,9 +48,22 @@ class ControlProcessor(QObject):
         # Display and messaging
         self.MESSAGE_UPDATE_INTERVAL = 0.2  # seconds, 5Hz display update rate
         
-        # Track control parameters
-        self.TRACK_MAX_SPEED = 25.0         # Maximum track speed
-        self.TRACK_MIN_SPEED = 15.0         # Minimum speed to overcome friction
+        # Track control parameters - get from settings_manager if available
+        if hasattr(robot_controller, 'settings_manager'):
+            self.TRACK_MAX_SPEED = robot_controller.settings_manager.get('track_max_speed') or 25.0
+            self.TRACK_MIN_SPEED = robot_controller.settings_manager.get('track_min_speed') or 15.0
+            self._valve_turn_max = robot_controller.settings_manager.get('valve_turn_max') or 6.0
+            self._winch_max_speed = robot_controller.settings_manager.get('winch_max_speed') or 60.0
+            # Subscribe to settings changes
+            robot_controller.settings_manager.track_max_speed_changed.connect(self._on_track_max_speed_changed)
+            robot_controller.settings_manager.track_min_speed_changed.connect(self._on_track_min_speed_changed)
+            robot_controller.settings_manager.valve_turn_max_changed.connect(self._on_valve_turn_max_changed)
+            robot_controller.settings_manager.winch_max_speed_changed.connect(self._on_winch_max_speed_changed)
+        else:
+            self.TRACK_MAX_SPEED = 25.0         # Maximum track speed
+            self.TRACK_MIN_SPEED = 15.0         # Minimum speed to overcome friction
+            self._valve_turn_max = 6.0          # Maximum valve turn value
+            self._winch_max_speed = 60.0        # Maximum winch speed
         self.TRACK_DEAD_ZONE = 0.05         # 5% joystick dead zone
         self.TRACK_FINE_CONTROL_THRESHOLD = 0.6  # 60% of joystick for fine control (10-30 speed)
         self.TRACK_FINE_CURVE_FACTOR = 2.0  # Exponential curve for fine control range
@@ -73,7 +86,7 @@ class ControlProcessor(QObject):
         self.VALVE_TURN_UPDATE_INTERVAL = 0.3  # 10Hz
         
         # Control scaling factors
-        self.WINCH_SCALE = 55 / self.JOYSTICK_MAX_VALUE
+        self.WINCH_SCALE = self._winch_max_speed / self.JOYSTICK_MAX_VALUE
         self.TRACK_SCALE = self.TRACK_MAX_SPEED / self.JOYSTICK_MAX_VALUE
         self.EF_ARM_SCALE = 300 / self.JOYSTICK_MAX_VALUE
         self.EF_JOINT_SCALE = 60.0 / self.JOYSTICK_MAX_VALUE
@@ -83,7 +96,7 @@ class ControlProcessor(QObject):
         self.EF_GIMBAL_SCALE = 30 / self.JOYSTICK_MAX_VALUE
         self.EF_YAW_SCALE = 2 / self.JOYSTICK_MAX_VALUE
         self.EF_FORCE_SCALE = 1.6 / self.JOYSTICK_MAX_VALUE
-        self.VALVE_TURN_SCALE = 6.0 / self.JOYSTICK_MAX_VALUE  # Maps 0-32768 to 0-6.0
+        self.VALVE_TURN_SCALE = self._valve_turn_max / self.JOYSTICK_MAX_VALUE  # Maps 0-32768 to 0-valve_turn_max
         self.VALVE_TURN_DEADZONE = 0.05  # 5% deadzone threshold
         self.VALVE_TURN_DEADZONE_TIMEOUT = 2.0  # seconds
         self.ARM_RAIL_SPEED_SCALE = 50.0 / self.JOYSTICK_MAX_VALUE  # Maps 0-32768 to 0-50.0
@@ -408,14 +421,14 @@ class ControlProcessor(QObject):
         # Get right trigger value (0-32767)
         right_trigger = input_state.get('triggers', {}).get('right', 0)
         
-        # Map trigger value to valve turn range (0.0-6.0)
+        # Map trigger value to valve turn range (0.0-valve_turn_max)
         valve_turn_value = right_trigger * self.VALVE_TURN_SCALE
         
-        # Clamp to the valid range [0.0, 6.0]
-        valve_turn_value = max(0.0, min(6.0, valve_turn_value))
+        # Clamp to the valid range [0.0, valve_turn_max]
+        valve_turn_value = max(0.0, min(self._valve_turn_max, valve_turn_value))
         
         # Normalize to 0-1 range for deadzone check
-        normalized_value = valve_turn_value / 6.0
+        normalized_value = valve_turn_value / self._valve_turn_max if self._valve_turn_max > 0 else 0
         
         current_time = time.monotonic()
         
@@ -616,6 +629,35 @@ class ControlProcessor(QObject):
             return True
             
         return False
+    
+    # Settings change callbacks
+    def _on_track_max_speed_changed(self, new_value: float):
+        """Handle track_max_speed change from SettingsManager"""
+        self.TRACK_MAX_SPEED = new_value
+        self.TRACK_SCALE = self.TRACK_MAX_SPEED / self.JOYSTICK_MAX_VALUE
+        # Update control config
+        self.controls["Track Control Left"].scale = self.TRACK_SCALE
+        self.controls["Track Control Right"].scale = self.TRACK_SCALE
+        print(f"[ControlProcessor] Track max speed updated to: {new_value}")
+    
+    def _on_track_min_speed_changed(self, new_value: float):
+        """Handle track_min_speed change from SettingsManager"""
+        self.TRACK_MIN_SPEED = new_value
+        print(f"[ControlProcessor] Track min speed updated to: {new_value}")
+    
+    def _on_valve_turn_max_changed(self, new_value: float):
+        """Handle valve_turn_max change from SettingsManager"""
+        self._valve_turn_max = new_value
+        self.VALVE_TURN_SCALE = self._valve_turn_max / self.JOYSTICK_MAX_VALUE
+        print(f"[ControlProcessor] Valve turn max updated to: {new_value}")
+    
+    def _on_winch_max_speed_changed(self, new_value: float):
+        """Handle winch_max_speed change from SettingsManager"""
+        self._winch_max_speed = new_value
+        self.WINCH_SCALE = self._winch_max_speed / self.JOYSTICK_MAX_VALUE
+        # Update control config
+        self.controls["Winch Speed"].scale = self.WINCH_SCALE
+        print(f"[ControlProcessor] Winch max speed updated to: {new_value}")
 
     # Properties for left control info
     @Property(str, notify=left_control_mode_changed)

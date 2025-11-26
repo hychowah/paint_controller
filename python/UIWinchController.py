@@ -24,7 +24,13 @@ class WinchController(QObject):
         self._node = node
         
         # Initialize property values
-        self._max_speed = 60.0 # output rpm
+        # Get max_speed from settings_manager if available, otherwise use default
+        if hasattr(node, 'settings_manager'):
+            self._max_speed = node.settings_manager.get('winch_max_speed') or 60.0
+            # Subscribe to settings changes
+            node.settings_manager.winch_max_speed_changed.connect(self._on_max_speed_changed)
+        else:
+            self._max_speed = 60.0  # default output rpm
 
         self._cable_length = 0.0
         self._cable_speed = 0.0
@@ -190,6 +196,11 @@ class WinchController(QObject):
     def _apply_safety_limits(self, speed: float) -> float:
         """Apply safety limits to winch speed"""
         return max(min(speed, self._max_speed), -self._max_speed)
+    
+    def _on_max_speed_changed(self, new_value: float):
+        """Handle max_speed change from SettingsManager"""
+        self._max_speed = new_value
+        print(f"[WinchController] Max speed updated to: {new_value}")
     
     @property
     def is_enabled(self) -> bool:

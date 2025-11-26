@@ -8,8 +8,28 @@ class UIInputHandler(QObject):
         self.controller = controller
         self._r1_last_press_time = 0.0
         self._l1_last_press_time = 0.0
-        self._arm_extension_presets = [800]
+        
+        # Get arm extension presets from settings_manager if available
+        if hasattr(controller, 'settings_manager'):
+            self._arm_retract_length = controller.settings_manager.get('arm_retract_length') or 250
+            self._arm_extend_length = controller.settings_manager.get('arm_extend_length') or 800
+            # Subscribe to settings changes
+            controller.settings_manager.arm_retract_length_changed.connect(self._on_arm_retract_length_changed)
+            controller.settings_manager.arm_extend_length_changed.connect(self._on_arm_extend_length_changed)
+        else:
+            self._arm_retract_length = 250
+            self._arm_extend_length = 800
         self._arm_preset_index = 0
+    
+    def _on_arm_retract_length_changed(self, new_value: int):
+        """Handle arm_retract_length change from SettingsManager"""
+        self._arm_retract_length = new_value
+        print(f"[UIInputHandler] Arm retract length updated to: {new_value}")
+    
+    def _on_arm_extend_length_changed(self, new_value: int):
+        """Handle arm_extend_length change from SettingsManager"""
+        self._arm_extend_length = new_value
+        print(f"[UIInputHandler] Arm extend length updated to: {new_value}")
 
     @Slot()
     def on_l5_pressed(self):
@@ -19,7 +39,7 @@ class UIInputHandler(QObject):
 
         self.controller.show_popup("Extending Arm", "Press again to retract the arm", "info")
         if time_since_last_press <= 1:
-            self.controller.teensy_controller.extendArm(250)
+            self.controller.teensy_controller.extendArm(self._arm_retract_length)
 
     @Slot()
     def on_r5_pressed(self):
@@ -29,9 +49,7 @@ class UIInputHandler(QObject):
 
         self.controller.show_popup("Extending Arm", "Press again to extend the arm", "info")
         if time_since_last_press <= 1:
-            preset_value = self._arm_extension_presets[self._arm_preset_index]
-            self.controller.teensy_controller.extendArm(preset_value)
-            self._arm_preset_index = (self._arm_preset_index + 1) % len(self._arm_extension_presets)
+            self.controller.teensy_controller.extendArm(self._arm_extend_length)
 
     @Slot()
     def on_switch_pressed(self):

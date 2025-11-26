@@ -90,7 +90,13 @@ class TeensyController(QObject):
         self._auto_correction_enabled = False
         self._spray_gun_led_on = False
         self._target_yaw = 0.0
-        self._thrust_force = -1.0
+        # Get thrust_force from settings_manager if available, otherwise use default
+        if hasattr(robot_controller, 'settings_manager'):
+            self._thrust_force = robot_controller.settings_manager.get('thrust_force') or -1.0
+            # Subscribe to settings changes
+            robot_controller.settings_manager.thrust_force_changed.connect(self._on_thrust_force_setting_changed)
+        else:
+            self._thrust_force = -1.0
         self._thrust_force_enabled = False
         self._valve_turn = 0.0
         
@@ -579,6 +585,15 @@ class TeensyController(QObject):
     
     thrust_force = Property(float, get_thrust_force, set_thrust_force, notify=thrust_force_changed)
     thrust_force_enabled = Property(bool, get_thrust_force_enabled, set_thrust_force_enabled, notify=thrust_force_enabled_changed)
+    
+    def _on_thrust_force_setting_changed(self, new_value: float):
+        """Handle thrust_force change from SettingsManager"""
+        # Update internal value without re-triggering setting save
+        clamped_value = max(-1.0, min(1.0, new_value))
+        if self._thrust_force != clamped_value:
+            self._thrust_force = clamped_value
+            self.thrust_force_changed.emit(self._thrust_force)
+            print(f"[TeensyController] Thrust force updated from settings: {clamped_value}")
     
     def get_valve_turn(self) -> float:
         """Get current valve turn value"""
