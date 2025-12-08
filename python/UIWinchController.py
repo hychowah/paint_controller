@@ -159,7 +159,7 @@ class WinchController(QObject):
         return True
     
     def move_increment(self, length_mm: int, speed_mm_s: int) -> bool:
-        """Move winch by an increment"""
+        """Move winch by an increment (uses default acceleration of 30 RPM/s)"""
         if not self._available:
             print("Cannot move increment: Winch not available")
             return False
@@ -168,15 +168,34 @@ class WinchController(QObject):
             msg = MoveWinchLength()
             msg.length_mm = int(length_mm)
             msg.speed_mm_s = int(speed_mm_s)
+            # acceleration_rpm_s will use message default (30 RPM/s)
             self._move_increment_pub.publish(msg)
             print(f'Moving winch by: {length_mm} mm at {speed_mm_s} mm/s')
             return True
         except Exception as e:
             print(f'Error moving winch: {e}')
             return False
+    
+    def move_increment_with_accel(self, length_mm: int, speed_mm_s: int, acceleration_rpm_s: int) -> bool:
+        """Move winch by an increment with custom acceleration"""
+        if not self._available:
+            print("Cannot move increment: Winch not available")
+            return False
+            
+        try:
+            msg = MoveWinchLength()
+            msg.length_mm = int(length_mm)
+            msg.speed_mm_s = int(speed_mm_s)
+            msg.acceleration_rpm_s = int(acceleration_rpm_s)
+            self._move_increment_pub.publish(msg)
+            print(f'Moving winch by: {length_mm} mm at {speed_mm_s} mm/s with acceleration {acceleration_rpm_s} RPM/s')
+            return True
+        except Exception as e:
+            print(f'Error moving winch: {e}')
+            return False
         
     def move_absolute(self, length_mm: int, speed_mm_s: int) -> bool:
-        """Move winch to an absolute position"""
+        """Move winch to an absolute position (uses default acceleration of 30 RPM/s)"""
         if not self._available:
             print("Cannot move absolute: Winch not available")
             return False
@@ -185,12 +204,31 @@ class WinchController(QObject):
             msg = MoveWinchLength()
             msg.length_mm = int(length_mm)
             msg.speed_mm_s = int(speed_mm_s)
+            # acceleration_rpm_s will use message default (30 RPM/s)
             self._move_absolute_pub.publish(msg)
             print(f'Moving winch to: {length_mm} mm at {speed_mm_s} mm/s')
             return True
         except Exception as e:
             print(f'Error moving winch: {e}')
-            return
+            return False
+    
+    def move_absolute_with_accel(self, length_mm: int, speed_mm_s: int, acceleration_rpm_s: int) -> bool:
+        """Move winch to an absolute position with custom acceleration"""
+        if not self._available:
+            print("Cannot move absolute: Winch not available")
+            return False
+            
+        try:
+            msg = MoveWinchLength()
+            msg.length_mm = int(length_mm)
+            msg.speed_mm_s = int(speed_mm_s)
+            msg.acceleration_rpm_s = int(acceleration_rpm_s)
+            self._move_absolute_pub.publish(msg)
+            print(f'Moving winch to: {length_mm} mm at {speed_mm_s} mm/s with acceleration {acceleration_rpm_s} RPM/s')
+            return True
+        except Exception as e:
+            print(f'Error moving winch: {e}')
+            return False
         
     def set_load_detection_mode(self, enable: bool):
         if not self.available:
@@ -335,6 +373,16 @@ class WinchController(QObject):
     def moveAbsolute(self, length_mm: int, speed_mm_s: int):
         """Move winch to absolute position from QML"""
         return self.move_absolute(length_mm, speed_mm_s)
+    
+    @Slot(int, int, int)
+    def moveIncrementWithAccel(self, length_mm: int, speed_mm_s: int, acceleration_rpm_s: int):
+        """Move winch by increment with custom acceleration from QML"""
+        return self.move_increment_with_accel(length_mm, speed_mm_s, acceleration_rpm_s)
+    
+    @Slot(int, int, int)
+    def moveAbsoluteWithAccel(self, length_mm: int, speed_mm_s: int, acceleration_rpm_s: int):
+        """Move winch to absolute position with custom acceleration from QML"""
+        return self.move_absolute_with_accel(length_mm, speed_mm_s, acceleration_rpm_s)
     
     @Slot(bool)
     def setEnabled(self, enabled: bool):

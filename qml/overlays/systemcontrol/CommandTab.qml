@@ -40,7 +40,8 @@ Item {
             description: "Control winch movement",
             parameters: [
                 { name: "Distance", type: "number", placeholder: "0", unit: "mm" },
-                { name: "Speed", type: "number", placeholder: "500", unit: "mm/s" }
+                { name: "Speed", type: "number", placeholder: "500", unit: "mm/s" },
+                { name: "Acceleration", type: "number", placeholder: "30", unit: "RPM/s" }
             ]
         },
         "Frequency Tap": {
@@ -552,7 +553,11 @@ Item {
                 teensyController.tapStop(1)
                 break
             case "Winch Control":
-                winchController.moveIncrement(parseInt(parameterValues["Distance"]), parseInt(parameterValues["Speed"]))
+                winchController.moveIncrementWithAccel(
+                    parseInt(parameterValues["Distance"]), 
+                    parseInt(parameterValues["Speed"]),
+                    parseInt(parameterValues["Acceleration"] || "30")
+                )
                 break
 
             default:

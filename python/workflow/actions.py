@@ -47,13 +47,14 @@ class WinchIncrementHandler(ActionHandler):
     def execute(self, params: Dict[str, Any]) -> None:
         length = params.get("length", 0)
         speed = params.get("speed", 1)
+        acceleration = params.get("acceleration", 30)  # Default 30 RPM/s
         
         if not self.hardware.winch:
             raise ControllerNotAvailable("Winch controller not available")
         
-        self.hardware.winch.move_increment(int(length), int(speed))
+        self.hardware.winch.move_increment_with_accel(int(length), int(speed), int(acceleration))
         if self.logger:
-            self.logger.debug(f"Winch moved increment: {length}mm at {speed}mm/s")
+            self.logger.debug(f"Winch moved increment: {length}mm at {speed}mm/s with acceleration {acceleration} RPM/s")
 
     def estimate_duration(self, params: Dict[str, Any]) -> float:
         length = abs(params.get("length", 0))
@@ -72,6 +73,7 @@ class WinchAbsoluteHandler(ActionHandler):
     def execute(self, params: Dict[str, Any]) -> None:
         length = params.get("length", 0)
         speed = params.get("speed", 1)
+        acceleration = params.get("acceleration", 30)  # Default 30 RPM/s
         
         if not self.hardware.winch:
             raise ControllerNotAvailable("Winch controller not available")
@@ -79,14 +81,14 @@ class WinchAbsoluteHandler(ActionHandler):
         current_length = self.hardware.winch.get_cable_length()
         distance = abs(length - current_length)
         
-        self.hardware.winch.move_absolute(int(length), int(speed))
+        self.hardware.winch.move_absolute_with_accel(int(length), int(speed), int(acceleration))
         
         # Store estimated time for later use
         self._last_estimated_time = (distance / speed) if speed > 0 else 0.0
         
         if self.logger:
             self.logger.info(
-                f"Winch moving to {length}mm at {speed}mm/s "
+                f"Winch moving to {length}mm at {speed}mm/s with acceleration {acceleration} RPM/s "
                 f"(distance={distance:.0f}mm, est={self._last_estimated_time:.1f}s)"
             )
 
