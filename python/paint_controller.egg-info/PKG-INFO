@@ -1,0 +1,12 @@
+Metadata-Version: 2.1
+Name: paint-controller
+Version: 0.1.0
+Summary: A ROS 2 package for the paint controller node with a PySide6 UI
+Home-page: UNKNOWN
+Maintainer: c3spray_deck
+Maintainer-email: hychowah@gmail.com
+License: Apache License 2.0
+Platform: UNKNOWN
+
+UNKNOWN
+

@@ -47,7 +47,7 @@ from .handlers.input import UIInputHandler
 from .handlers.warnings import WarningHandler
 from .handlers.steam_deck import SteamDeckHandler as UISteamDeckHandler
 from .handlers.control_processor import ControlProcessor as UIControlProcessor
-from .handlers.control_processor import JoystickState
+from .handlers.control_processor import ControlConfig
 
 # Services
 from .services.video_stream import VideoStreamHandler, CameraStream, ImageProvider
@@ -105,7 +105,7 @@ __all__ = [
     'WarningHandler',
     'UISteamDeckHandler',
     'UIControlProcessor',
-    'JoystickState',
+    'ControlConfig',
     
     # Services
     'VideoStreamHandler',

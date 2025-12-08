@@ -99,12 +99,12 @@ install(PROGRAMS
 
 # Install directories
 install(DIRECTORY
-  paint_controller/qml/
+  qml/
   DESTINATION share/${PROJECT_NAME}/qml
 )
 
 install(DIRECTORY
-  paint_controller/resource/
+  resource/
   DESTINATION share/${PROJECT_NAME}/resource
 )
 
