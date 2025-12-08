@@ -5,15 +5,15 @@ actions:
   name: open_valve
   type: valve_turn
   params:
-    turn_value: 4
-  estimated_duration: 3000
+    turn_value: 5.5
+  estimated_duration: 2000
   wait_for_completion: true
 - id: main_winch_descent
   name: winch_move
   type: winch_absolute
   params:
-    length: 1500
-    speed: 250
+    length: 2000
+    speed: 100
   wait_for_completion: true
 - id: close_valve
   name: close_valve
@@ -23,6 +23,6 @@ actions:
   trigger:
     reference_action: main_winch_descent
     timing_mode: before_complete
-    offset_ms: 5000
+    offset_ms: 8000
   estimated_duration: 1000
   wait_for_completion: true

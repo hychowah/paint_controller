@@ -13,6 +13,10 @@ Rectangle {
     property color unavailableColor: "#FF5E3A"
     property real ledSize: 24
 
+    // Track video stream availability (persists across source changes)
+    property bool baseFrontVideoActive: false
+    property bool endEffectorVideoActive: false
+
     // Auto-start video streams on page load
     Component.onCompleted: {
         console.log("PageHome loaded - starting video streams")
@@ -185,13 +189,13 @@ Rectangle {
                                 source: "image://base_front_live/latest"
                                 fillMode: Image.PreserveAspectFit
                                 cache: false
-                                asynchronous: true
+                                asynchronous: false
 
                                 // Status overlay when no video
                                 Rectangle {
                                     anchors.fill: parent
                                     color: "#2D2D30"
-                                    visible: baseFrontVideo.status !== Image.Ready
+                                    visible: !baseFrontVideoActive
 
                                     ColumnLayout {
                                         anchors.centerIn: parent
@@ -231,7 +235,7 @@ Rectangle {
                                     radius: 15
                                     color: "#000000"
                                     opacity: 0.7
-                                    visible: baseFrontVideo.status === Image.Ready
+                                    visible: baseFrontVideoActive
 
                                     RowLayout {
                                         anchors.centerIn: parent
@@ -263,6 +267,7 @@ Rectangle {
                             Connections {
                                 target: baseStreamHandler
                                 function onBaseFrontFrameReady() {
+                                    baseFrontVideoActive = true
                                     baseFrontVideo.source = ""
                                     baseFrontVideo.source = "image://base_front_live/latest"
                                 }
@@ -420,13 +425,13 @@ Rectangle {
                                 source: "image://ef_live/latest"
                                 fillMode: Image.PreserveAspectFit
                                 cache: false
-                                asynchronous: true
+                                asynchronous: false
 
                                 // Status overlay when no video
                                 Rectangle {
                                     anchors.fill: parent
                                     color: "#2D2D30"
-                                    visible: endEffectorVideo.status !== Image.Ready
+                                    visible: !endEffectorVideoActive
 
                                     ColumnLayout {
                                         anchors.centerIn: parent
@@ -466,7 +471,7 @@ Rectangle {
                                     radius: 15
                                     color: "#000000"
                                     opacity: 0.7
-                                    visible: endEffectorVideo.status === Image.Ready
+                                    visible: endEffectorVideoActive
 
                                     RowLayout {
                                         anchors.centerIn: parent
@@ -498,6 +503,7 @@ Rectangle {
                             Connections {
                                 target: baseStreamHandler
                                 function onEndEffectorFrameReady() {
+                                    endEffectorVideoActive = true
                                     endEffectorVideo.source = ""
                                     endEffectorVideo.source = "image://ef_live/latest"
                                 }

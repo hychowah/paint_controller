@@ -38,12 +38,12 @@ Item {
         }
     }
     
-    // Status display at bottom middle (above wall detection)
+    // Status display at left middle side
     Rectangle {
         anchors {
-            bottom: parent.bottom
-            horizontalCenter: parent.horizontalCenter
-            bottomMargin: 150  // Position above wall detection overlay
+            left: parent.left
+            verticalCenter: parent.verticalCenter
+            leftMargin: 20
         }
         width: Math.max(statusLayout.implicitWidth + 40, 300)
         height: statusLayout.implicitHeight + 30
@@ -54,12 +54,18 @@ Item {
         
         ColumnLayout {
             id: statusLayout
-            anchors.centerIn: parent
+            anchors {
+                left: parent.left
+                right: parent.right
+                verticalCenter: parent.verticalCenter
+                leftMargin: 20
+                rightMargin: 20
+            }
             spacing: 8
             
             // Status indicator
             RowLayout {
-                Layout.alignment: Qt.AlignHCenter
+                Layout.alignment: Qt.AlignLeft
                 spacing: 10
                 
                 // Animated indicator
@@ -98,7 +104,7 @@ Item {
             
             // WorkFlow name
             Text {
-                Layout.alignment: Qt.AlignHCenter
+                Layout.alignment: Qt.AlignLeft
                 text: workFlowRunner ? workFlowRunner.current_workflow : ""
                 color: "#FFFFFF"
                 font.family: "Helvetica"
@@ -110,20 +116,18 @@ Item {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 1
-                Layout.leftMargin: 20
-                Layout.rightMargin: 20
                 color: "#444444"
                 visible: currentActionText.text !== ""
             }
             
             // Current action display
             ColumnLayout {
-                Layout.alignment: Qt.AlignHCenter
+                Layout.alignment: Qt.AlignLeft
                 spacing: 4
                 visible: currentActionText.text !== ""
                 
                 Text {
-                    Layout.alignment: Qt.AlignHCenter
+                    Layout.alignment: Qt.AlignLeft
                     text: "Current Action:"
                     color: "#AAAAAA"
                     font.family: "Helvetica"
@@ -132,7 +136,7 @@ Item {
                 
                 Text {
                     id: currentActionText
-                    Layout.alignment: Qt.AlignHCenter
+                    Layout.alignment: Qt.AlignLeft
                     text: {
                         if (!workFlowRunner) return ""
                         
@@ -153,7 +157,7 @@ Item {
                 
                 // Action description
                 Text {
-                    Layout.alignment: Qt.AlignHCenter
+                    Layout.alignment: Qt.AlignLeft
                     text: {
                         if (!workFlowRunner) return ""
                         
@@ -174,7 +178,7 @@ Item {
             
             // Progress indicator
             RowLayout {
-                Layout.alignment: Qt.AlignHCenter
+                Layout.alignment: Qt.AlignLeft
                 Layout.topMargin: 4
                 spacing: 8
                 visible: workFlowRunner && workFlowRunner.current_action_index >= 0

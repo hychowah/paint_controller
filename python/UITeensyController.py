@@ -559,7 +559,7 @@ class TeensyController(QObject):
     def set_thrust_force(self, value: float) -> None:
         """Set thrust force value with range constraint [-1.0, 1.0]"""
         # Clamp value to [-1.0, 1.0]
-        clamped_value = max(-1.0, min(1.0, value))
+        clamped_value = max(-1.5, min(1.5, value))
         
         if self._thrust_force != clamped_value:
             self._thrust_force = clamped_value
