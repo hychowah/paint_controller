@@ -22,7 +22,7 @@ class SettingsManager(QObject):
     """
     
     # Signals for individual setting changes
-    winch_max_speed_changed = Signal(float)
+    winch_max_speed_mmps_changed = Signal(float)
     track_max_speed_changed = Signal(float)
     track_min_speed_changed = Signal(float)
     thrust_force_changed = Signal(float)
@@ -41,13 +41,13 @@ class SettingsManager(QObject):
         
         # Define settings schema with metadata
         self._settings_schema: Dict[str, Dict[str, Any]] = {
-            "winch_max_speed": {
-                "default": 60.0,
+            "winch_max_speed_mmps": {
+                "default": 200.0,
                 "min": 0.0,
-                "max": 100.0,
+                "max": 400.0,
                 "type": "float",
                 "requires_restart": False,
-                "description": "Maximum winch speed limit"
+                "description": "Maximum winch speed limit (mm/s)"
             },
             "track_max_speed": {
                 "default": 25.0,
@@ -232,7 +232,7 @@ class SettingsManager(QObject):
     def _emit_setting_signal(self, key: str, value: Any):
         """Emit the specific signal for a setting change"""
         signal_map = {
-            "winch_max_speed": self.winch_max_speed_changed,
+            "winch_max_speed_mmps": self.winch_max_speed_mmps_changed,
             "track_max_speed": self.track_max_speed_changed,
             "track_min_speed": self.track_min_speed_changed,
             "thrust_force": self.thrust_force_changed,
@@ -367,13 +367,13 @@ class SettingsManager(QObject):
     # Qt Properties for QML binding
     # =====================================================
     
-    @Property(float, notify=winch_max_speed_changed)
-    def winch_max_speed(self) -> float:
-        return self._values.get("winch_max_speed", 60.0)
+    @Property(float, notify=winch_max_speed_mmps_changed)
+    def winch_max_speed_mmps(self) -> float:
+        return self._values.get("winch_max_speed_mmps", 400.0)
     
-    @winch_max_speed.setter
-    def winch_max_speed(self, value: float):
-        self.set("winch_max_speed", value)
+    @winch_max_speed_mmps.setter
+    def winch_max_speed_mmps(self, value: float):
+        self.set("winch_max_speed_mmps", value)
     
     @Property(float, notify=track_max_speed_changed)
     def track_max_speed(self) -> float:

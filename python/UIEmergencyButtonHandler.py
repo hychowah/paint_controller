@@ -80,7 +80,7 @@ class EmergencyButtonHandler(QObject):
             self._state['is_holding'] = False
             self.overlay_changed.emit(False, 0, 0)
             
-            self.robot_controller.winch_controller.command_speed(0)
+            self.robot_controller.winch_controller.command_speed_rpm(0)
             self.robot_controller.teensy_controller.setSprayTrigger(1000)
             
             # Show emergency popup

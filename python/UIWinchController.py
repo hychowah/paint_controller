@@ -26,11 +26,11 @@ class WinchController(QObject):
         # Initialize property values
         # Get max_speed from settings_manager if available, otherwise use default
         if hasattr(node, 'settings_manager'):
-            self._max_speed = node.settings_manager.get('winch_max_speed') or 60.0
+            self._max_speed = node.settings_manager.get('winch_max_speed_mmps') or 400.0
             # Subscribe to settings changes
-            node.settings_manager.winch_max_speed_changed.connect(self._on_max_speed_changed)
+            node.settings_manager.winch_max_speed_mmps_changed.connect(self._on_max_speed_changed)
         else:
-            self._max_speed = 60.0  # default output rpm
+            self._max_speed = 400.0  # default output mm/s
 
         self._cable_length = 0.0
         self._cable_speed = 0.0
@@ -64,11 +64,12 @@ class WinchController(QObject):
     
     def _setup_publishers(self):
         """Setup ROS publishers for winch control"""
-        self._speed_pub = self._node.create_publisher(Float64, 'winch/move/speed/rpm/cmd', 1)
+        self._speed_rpm_pub = self._node.create_publisher(Float64, 'winch/move/speed/rpm/cmd', 1)
+        self._speed_mmps_pub = self._node.create_publisher(Float64, 'winch/move/speed/mmps/cmd', 1)
         self._enable_pub = self._node.create_publisher(Bool, 'winch/enable/cmd', 1)
         self._move_increment_pub = self._node.create_publisher(MoveWinchLength, 'winch/move/increment/cmd', 1)
-        self._load_detection_pub = self._node.create_publisher(Bool, 'winch/load_detection/cmd', 1)
         self._move_absolute_pub = self._node.create_publisher(MoveWinchLength, 'winch/move/absolute/cmd', 1)
+        self._load_detection_pub = self._node.create_publisher(Bool, 'winch/load_detection/cmd', 1)
     
     def _setup_subscribers(self):
         """Setup ROS subscribers for winch status"""
@@ -133,15 +134,27 @@ class WinchController(QObject):
             self.set_load_detection_enabled(msg.load_detection_mode)  
             self.set_unusual_load_detected(msg.unusual_load_detected)  
     
-    def command_speed(self, speed: float) -> bool:
-        """Command winch speed with safety limits"""
+    def command_speed_rpm(self, speed: float) -> bool:
+        """Command winch speed with safety limits (RPM)"""
         if not self._available:
             print("Cannot command speed: Winch not available")
             return False
         safe_speed = float(self._apply_safety_limits(speed))
         msg = Float64()
         msg.data = safe_speed
-        self._speed_pub.publish(msg)
+        self._speed_rpm_pub.publish(msg)
+        self._last_command_time = time.time()
+        return True
+    
+    def command_speed_mmps(self, speed: float) -> bool:
+        """Command winch speed in mm/s with clamping to ±max_speed"""
+        if not self._available:
+            print("Cannot command speed: Winch not available")
+            return False
+        clamped_speed = float(self._apply_safety_limits(speed))
+        msg = Float64()
+        msg.data = clamped_speed
+        self._speed_mmps_pub.publish(msg)
         self._last_command_time = time.time()
         return True
     
@@ -311,7 +324,7 @@ class WinchController(QObject):
     @Slot(float)
     def setSpeed(self, speed: float):
         """Set winch speed from QML"""
-        return self.command_speed(speed)
+        return self.command_speed_rpm(speed)
     
     @Slot(int, int)
     def moveIncrement(self, length_mm: int, speed_mm_s: int):

@@ -99,7 +99,7 @@ Item {
                                             id: winchMaxSpeedInput
                                             anchors.fill: parent
                                             anchors.margins: 10
-                                            text: settingsManager ? settingsManager.winch_max_speed.toFixed(1) : "60.0"
+                                            text: settingsManager ? settingsManager.winch_max_speed_mmps.toFixed(1) : "400.0"
                                             color: "#FFFFFF"
                                             font.pixelSize: 14
                                             verticalAlignment: TextInput.AlignVCenter
@@ -137,10 +137,10 @@ Item {
                                             onClicked: {
                                                 var num = parseFloat(winchMaxSpeedInput.text)
                                                 if (!isNaN(num) && settingsManager) {
-                                                    settingsManager.winch_max_speed = num
-                                                    if (settingsManager.saveSetting("winch_max_speed")) {
+                                                    settingsManager.winch_max_speed_mmps = num
+                                                    if (settingsManager.saveSetting("winch_max_speed_mmps")) {
                                                         confirmationPopup.messageTitle = "Saved"
-                                                        confirmationPopup.messageText = "Winch max speed set to " + num.toFixed(1)
+                                                        confirmationPopup.messageText = "Winch max speed set to " + num.toFixed(1) + " mm/s"
                                                         confirmationPopup.messageType = "info"
                                                         confirmationPopup.open()
                                                     }
