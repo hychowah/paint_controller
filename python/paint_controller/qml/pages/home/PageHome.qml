@@ -137,7 +137,7 @@ Rectangle {
 
                                             // Pulsing animation when available
                                             SequentialAnimation on opacity {
-                                                running: sshHandler.deviceAvailability.BASE
+                                                running: sshHandler.deviceAvailability.BASE ?? false
                                                 loops: Animation.Infinite
                                                 NumberAnimation { from: 1.0; to: 0.5; duration: 1000; easing.type: Easing.InOutQuad }
                                                 NumberAnimation { from: 0.5; to: 1.0; duration: 1000; easing.type: Easing.InOutQuad }

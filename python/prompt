@@ -1,3 +1,0 @@
-this is  ros2 package that use Qt to provide GUI for robot control. the Qt program is originally programmed in python. The main program is paint_controller.py. Now i am working towards to cpp solution. i already has a paint_controller.cpp that can launch the qt program with original qml. of course, right now there are lots of backend function missing compared to python.  I want to move the class step by step. 
-
-I want to start with UISteamDeckHandler.py. it access the hardware button and read all the button status and joystick status. I would like you to create a class that can raed the status. no need to integrate to the qt program yet. i want to make use a testing program that can read the state properly before next step. 

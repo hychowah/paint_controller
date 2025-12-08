@@ -742,8 +742,7 @@ def main():
     engine.addImageProvider("base_rear_live", controller.video_stream_handler.rear_image_provider)
     
     # Add QML import path for relative imports to resolve
-    # Navigate up from python/paint_controller/core/application.py to project root/qml
-    qml_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'qml')
+    qml_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'qml')
     engine.addImportPath(qml_dir)
     
     # Load QML interface

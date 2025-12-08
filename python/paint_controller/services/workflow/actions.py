@@ -52,7 +52,7 @@ class WinchIncrementHandler(ActionHandler):
         if not self.hardware.winch:
             raise ControllerNotAvailable("Winch controller not available")
         
-        self.hardware.winch.move_increment_with_accel(int(length), int(speed), int(acceleration))
+        self.hardware.winch.move_increment(int(length), int(speed), int(acceleration))
         if self.logger:
             self.logger.debug(f"Winch moved increment: {length}mm at {speed}mm/s with acceleration {acceleration} RPM/s")
 
@@ -81,7 +81,7 @@ class WinchAbsoluteHandler(ActionHandler):
         current_length = self.hardware.winch.get_cable_length()
         distance = abs(length - current_length)
         
-        self.hardware.winch.move_absolute_with_accel(int(length), int(speed), int(acceleration))
+        self.hardware.winch.move_absolute(int(length), int(speed), int(acceleration))
         
         # Store estimated time for later use
         self._last_estimated_time = (distance / speed) if speed > 0 else 0.0

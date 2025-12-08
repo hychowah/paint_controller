@@ -47,12 +47,12 @@ class IWinchController(ABC):
     """Abstract interface for Winch controller."""
 
     @abstractmethod
-    def move_increment(self, length: int, speed: int) -> None:
+    def move_increment(self, length: int, speed: int, acceleration: int = 30) -> None:
         """Move winch by incremental distance."""
         pass
 
     @abstractmethod
-    def move_absolute(self, length: int, speed: int) -> None:
+    def move_absolute(self, length: int, speed: int, acceleration: int = 30) -> None:
         """Move winch to absolute position."""
         pass
 
@@ -111,17 +111,17 @@ class WinchControllerAdapter(IWinchController):
         """
         self._controller = controller
 
-    def move_increment(self, length: int, speed: int) -> None:
+    def move_increment(self, length: int, speed: int, acceleration: int = 30) -> None:
         """Move winch by incremental distance."""
         if not self._controller:
             raise ControllerNotAvailable("Winch controller not available")
-        self._controller.moveIncrement(int(length), int(speed))
+        self._controller.move_increment_with_accel(int(length), int(speed), int(acceleration))
 
-    def move_absolute(self, length: int, speed: int) -> None:
+    def move_absolute(self, length: int, speed: int, acceleration: int = 30) -> None:
         """Move winch to absolute position."""
         if not self._controller:
             raise ControllerNotAvailable("Winch controller not available")
-        self._controller.moveAbsolute(int(length), int(speed))
+        self._controller.move_absolute_with_accel(int(length), int(speed), int(acceleration))
 
     def get_cable_length(self) -> float:
         """Get current cable length in mm."""

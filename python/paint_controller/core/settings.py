@@ -3,7 +3,7 @@ SettingsManager - Centralized settings management with file persistence
 
 This module provides a centralized location for application parameters that were
 previously scattered across multiple controller classes. Settings are persisted
-to ~/.config/paint_controller/settings.json and can be modified at runtime.
+to ~/ros2_ws/src/paint_controller_ros2/python/config/settings.json and can be modified at runtime.
 """
 
 import os
@@ -17,7 +17,7 @@ class SettingsManager(QObject):
     """
     Centralized settings manager with file persistence and QML integration.
     
-    Settings are stored in ~/.config/paint_controller/settings.json
+    Settings are stored in ~/ros2_ws/src/paint_controller_ros2/python/config/settings.json
     Each setting has metadata including: value, default, min, max, type, requires_restart, description
     """
     
@@ -103,7 +103,8 @@ class SettingsManager(QObject):
         self._values: Dict[str, Any] = {}
         
         # Config directory and file path
-        self._config_dir = Path.home() / ".config" / "paint_controller"
+        package_dir = Path(__file__).parent.parent.parent
+        self._config_dir = package_dir / "config"
         self._config_file = self._config_dir / "settings.json"
         
         # Load settings from file (or use defaults)
