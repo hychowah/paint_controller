@@ -745,11 +745,7 @@ def main():
     qml_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'qml')
     engine.addImportPath(qml_dir)
     
-    # Load QML interface
-    qml_path = os.path.join(qml_dir, 'core', 'MainWindow.qml')
-    engine.load(QUrl.fromLocalFile(qml_path))
-    
-    # Set context properties
+    # Set context properties BEFORE loading QML to avoid "ReferenceError: X is not defined"
     engine.rootContext().setContextProperty("backend", controller)
     engine.rootContext().setContextProperty("baseStreamer", controller)
     engine.rootContext().setContextProperty("overlayController", controller.overlayController)
@@ -771,6 +767,10 @@ def main():
     engine.rootContext().setContextProperty("systemMonitor", controller.system_monitor)
     engine.rootContext().setContextProperty("settingsManager", controller.settings_manager)
     controller.engine = engine
+    
+    # Load QML interface AFTER setting context properties
+    qml_path = os.path.join(qml_dir, 'core', 'MainWindow.qml')
+    engine.load(QUrl.fromLocalFile(qml_path))
     
     # Start status update timer
     status_timer = QTimer()

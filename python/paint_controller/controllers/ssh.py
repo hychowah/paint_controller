@@ -103,8 +103,8 @@ class UISSHController(QObject):
         self._devicePingTimes = {}  # Backing store for ping times: {device_name: float}
         self._is_cleaning_up = False  # Flag to prevent signal emission during cleanup
 
-        # Store config paths
-        config_dir = os.path.join(os.getcwd(), "config")
+        # Store config paths - resolve to absolute path
+        config_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "config"))
         self.ssh_path = os.path.join(config_dir, "ssh_config.json")
         self.bash_path = os.path.join(config_dir, "bash_config.json")
         
@@ -155,7 +155,6 @@ class UISSHController(QObject):
                 self.deviceAvailabilityChanged.emit()
                 self.deviceAvailable.emit(name, is_available, message)
                 self.devicePingTime.emit(name, ping_time)
-                # print(f"[UISSHController] {message}")
             except RuntimeError as e:
                 # Catch "Internal C++ object already deleted" errors
                 if "already deleted" in str(e):

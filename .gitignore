@@ -3,3 +3,4 @@ paint_controller/__pycache__/
 .github/
 *.pyc
 __pycache__/
+*.egg-info/
