@@ -170,6 +170,27 @@ Item {
                             onClicked: videoStreamer.toggleRecording()
                         }
 
+                        // Screen Recording Control
+                        ControlPanel {
+                            Layout.fillWidth: true
+                            controlName: "Screen Recording"
+                            controlStatus: {
+                                if (screenRecorder.free_space_gb < 5.0) {
+                                    return "Low Storage! (" + screenRecorder.free_space_gb.toFixed(1) + " GB)"
+                                } else if (screenRecorder.is_recording) {
+                                    var mins = Math.floor(screenRecorder.recording_duration / 60)
+                                    var secs = screenRecorder.recording_duration % 60
+                                    return "Recording " + mins + ":" + (secs < 10 ? "0" : "") + secs + " (" + screenRecorder.free_space_gb.toFixed(1) + " GB free)"
+                                } else {
+                                    return "Idle (" + screenRecorder.free_space_gb.toFixed(1) + " GB free)"
+                                }
+                            }
+                            enabledState: screenRecorder.is_recording
+                            iconText: "SCR"
+                            
+                            onClicked: screenRecorder.toggleRecording()
+                        }
+
                         // Teensy Relay Control
                         ControlPanel {
                             Layout.fillWidth: true

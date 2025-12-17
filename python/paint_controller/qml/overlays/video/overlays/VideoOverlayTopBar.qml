@@ -215,6 +215,51 @@ Rectangle {
             anchors.centerIn: parent // Center this Row inside the new centerPanel
             spacing: 20
             
+            // Screen Recording Indicator (only visible when recording)
+            Row {
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 6
+                visible: screenRecorder.is_recording
+                
+                // Pulsing red dot
+                Rectangle {
+                    width: 10
+                    height: 10
+                    radius: 5
+                    color: "#FF3333"
+                    anchors.verticalCenter: parent.verticalCenter
+                    
+                    SequentialAnimation on opacity {
+                        running: screenRecorder.is_recording
+                        loops: Animation.Infinite
+                        NumberAnimation { from: 1.0; to: 0.3; duration: 500 }
+                        NumberAnimation { from: 0.3; to: 1.0; duration: 500 }
+                    }
+                }
+                
+                Text {
+                    text: {
+                        var mins = Math.floor(screenRecorder.recording_duration / 60)
+                        var secs = screenRecorder.recording_duration % 60
+                        return "REC " + mins + ":" + (secs < 10 ? "0" : "") + secs
+                    }
+                    color: "#FF3333"
+                    font.pixelSize: 11
+                    font.bold: true
+                    font.family: "Courier New"
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+            
+            // Divider (only visible when recording)
+            Rectangle {
+                width: 1
+                height: parent.height * 0.6
+                color: style.dividerColor
+                anchors.verticalCenter: parent.verticalCenter
+                visible: screenRecorder.is_recording
+            }
+            
             // System Battery Info
             BatteryDisplay {
                 anchors.verticalCenter: parent.verticalCenter
