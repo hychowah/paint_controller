@@ -1,6 +1,16 @@
-# Paint Controller
+# Paint Controller (Old Documentation)
+
+> **⚠️ NOTICE: This documentation is outdated and refers to the discontinued C++ version.**
+> 
+> **For current Python version documentation, see [README.md](README.md)**
 
 The `Paint Controller` is a ROS 2 node designed to provide a user interface for controlling the robot
+
+---
+
+**The content below is preserved for historical reference only. The C++ version is no longer maintained.**
+
+---
 
 ## Dependencies
 
