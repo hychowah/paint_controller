@@ -4,6 +4,8 @@ A comprehensive ROS 2-based control system for robotic painting operations with 
 
 > **Note:** The C++ version of this project has been discontinued. This documentation focuses on the actively maintained **Python version**.
 
+> **🚀 New to Paint Controller?** Check out the [Quick Start Guide](QUICKSTART.md) to get running in 15 minutes!
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -574,22 +576,31 @@ pytest --cov=paint_controller
 
 ### Contributing
 
-Contributions are welcome! Please:
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on:
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes with clear commit messages
-4. Test your changes thoroughly
-5. Submit a pull request
+- Development setup
+- Code style and standards
+- Testing requirements
+- Submitting changes
+- Review process
 
 ## Documentation
 
-Additional documentation:
+### Getting Started
 
-- **[ARCHITECTURE.md](ARCHITECTURE.md)**: Detailed system architecture and design
-- **[API_REFERENCE.md](API_REFERENCE.md)**: Complete API documentation
-- **[WORKFLOWS.md](WORKFLOWS.md)**: Workflow system guide
-- **[README_OLD.md](README_OLD.md)**: Previous README with C++ information
+- **[QUICKSTART.md](QUICKSTART.md)**: Fast track to running the application (15 minutes)
+- **[README.md](README.md)**: This file - comprehensive overview and user guide
+
+### Development & Architecture
+
+- **[ARCHITECTURE.md](ARCHITECTURE.md)**: Detailed system architecture and design patterns
+- **[API_REFERENCE.md](API_REFERENCE.md)**: Complete API documentation for all classes
+- **[CONTRIBUTING.md](CONTRIBUTING.md)**: Development guidelines and contribution process
+
+### Features & Usage
+
+- **[WORKFLOWS.md](WORKFLOWS.md)**: Workflow system guide with examples
+- **[README_OLD.md](README_OLD.md)**: Historical documentation (C++ version - deprecated)
 
 ## License
 
