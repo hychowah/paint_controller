@@ -14,6 +14,7 @@ class ControlConfig:
     min_value: float = float('-inf')
     max_value: float = float('inf')
     msg_type: type = Float32
+    bidirectional: bool = False  # True for controls that support negative values (e.g., winch speed)
 
 class ControlProcessor(QObject):
     # Signals for control info changes
@@ -52,7 +53,7 @@ class ControlProcessor(QObject):
         if hasattr(robot_controller, 'settings_manager'):
             self.TRACK_MAX_SPEED = robot_controller.settings_manager.get('track_max_speed') or 25.0
             self.TRACK_MIN_SPEED = robot_controller.settings_manager.get('track_min_speed') or 15.0
-            self._valve_turn_max = robot_controller.settings_manager.get('valve_turn_max') or 6.0
+            self._valve_turn_max = robot_controller.settings_manager.get('valve_turn_max') or 20.0
             self._winch_max_speed_mmps = robot_controller.settings_manager.get('winch_max_speed_mmps') or 400.0
             # Subscribe to settings changes
             robot_controller.settings_manager.track_max_speed_changed.connect(self._on_track_max_speed_changed)
@@ -125,7 +126,8 @@ class ControlProcessor(QObject):
                 scale=self.WINCH_SCALE,
                 min_interval=self.WINCH_UPDATE_INTERVAL,
                 min_value=-self._winch_max_speed_mmps,
-                max_value=self._winch_max_speed_mmps
+                max_value=self._winch_max_speed_mmps,
+                bidirectional=True
             ),
             "Track Control Left": ControlConfig(
                 scale=self.TRACK_SCALE,
@@ -239,11 +241,15 @@ class ControlProcessor(QObject):
             # Update control processor properties for overlay display
             self.left_control_mode = left_mode if left_mode else "None"
             self.left_control_value = str(left_value) if isinstance(left_value, str) else (
-                f"L:{left_value:.1f}" if isinstance(left_value, (int, float)) else str(left_value)
+                f"Fx:{left_value[0]:.1f} Fy:{left_value[1]:.1f}" if isinstance(left_value, tuple) else (
+                    f"L:{left_value:.1f}" if isinstance(left_value, (int, float)) else str(left_value)
+                )
             )
             self.right_control_mode = right_mode if right_mode else "None"
             self.right_control_value = str(right_value) if isinstance(right_value, str) else (
-                f"R:{right_value:.1f}" if isinstance(right_value, (int, float)) else str(right_value)
+                f"Fx:{right_value[0]:.1f} Fy:{right_value[1]:.1f}" if isinstance(right_value, tuple) else (
+                    f"R:{right_value:.1f}" if isinstance(right_value, (int, float)) else str(right_value)
+                )
             )
 
     def _can_send_message(self) -> bool:
@@ -507,7 +513,12 @@ class ControlProcessor(QObject):
         config = self.controls[mode]
         value = input_state[f'{stick}_stick']['y'] * config.scale + config.offset
         
-        if value < config.min_value:
+        # Apply value constraints based on control type
+        if config.bidirectional:
+            # Bidirectional controls (e.g., winch): clamp to [min_value, max_value]
+            value = max(config.min_value, min(config.max_value, value))
+        elif value < config.min_value:
+            # Unidirectional controls (e.g., triggers): zero out if below threshold
             value = 0.0
             
         # Update current values
@@ -659,8 +670,10 @@ class ControlProcessor(QObject):
         """Handle winch_max_speed_mmps change from SettingsManager"""
         self._winch_max_speed_mmps = new_value
         self.WINCH_SCALE = self._winch_max_speed_mmps / self.JOYSTICK_MAX_VALUE
-        # Update control config
+        # Update control config - including min/max values for proper clamping
         self.controls["Winch Speed"].scale = self.WINCH_SCALE
+        self.controls["Winch Speed"].min_value = -self._winch_max_speed_mmps
+        self.controls["Winch Speed"].max_value = self._winch_max_speed_mmps
         print(f"[ControlProcessor] Winch max speed updated to: {new_value} mm/s")
 
     # Properties for left control info

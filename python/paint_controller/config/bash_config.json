@@ -12,14 +12,14 @@
   "END_EFFECTOR": {
     "Camera": {
       "start": "bash -c 'sudo systemctl restart paint-ef-camera'",
-      "stop": "pkill -f gst-launch-1.0 && echo 'GStreamer process killed.'"
+      "stop": "bash -c 'sudo systemctl stop paint-ef-camera'"
     },
     "Teensy": {
       "start": "bash -c 'sudo systemctl restart paint-ef-teensy'",
-      "stop": "pkill -f teensy_node.py && echo 'Teensy stopped.'"
+      "stop": "bash -c 'sudo systemctl stop paint-ef-teensy' "
     },
     "Lidar": {
-      "start": "bash -c 'sudo systemctl restart paint-ef-lidar'",
+      "start": "bash -c 'sudo systemctl restart paint-ef-lidar && sudo systemctl restart paint-ef-wall-detection'",
       "stop": "bash -c 'source ~/ros2_ws/src/paint_end_effector/bash/stop_lidar.bash'"
     }
   }

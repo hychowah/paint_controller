@@ -40,6 +40,7 @@ from paint_controller.controllers.ssh import UISSHController
 from paint_controller.controllers.system_monitor import SystemMonitor
 from paint_controller.services.workflow.workflow_runner import WorkFlowRunner
 from paint_controller.services.screen_recorder import ScreenRecorder
+from paint_controller.services.ros_bag_recorder import RosBagRecorder
 from paint_controller.core.settings import SettingsManager
 
 # Global reference for signal handler
@@ -286,6 +287,7 @@ class RobotController(Node, QObject):
         self.ssh_controller = UISSHController(self)
         self.system_monitor = SystemMonitor()
         self.screen_recorder = ScreenRecorder()
+        self.ros_bag_recorder = RosBagRecorder(self)
 
         
         self.setup_steam_deck_callbacks()
@@ -682,6 +684,12 @@ class RobotController(Node, QObject):
                 except Exception as e:
                     self.get_logger().error(f"Error cleaning up system monitor: {e}")
             
+            if hasattr(self, 'ros_bag_recorder') and self.ros_bag_recorder:
+                try:
+                    self.ros_bag_recorder.cleanup()
+                except Exception as e:
+                    self.get_logger().error(f"Error cleaning up ros bag recorder: {e}")
+            
             if hasattr(self, 'screen_recorder') and self.screen_recorder:
                 try:
                     self.screen_recorder.cleanup()
@@ -774,6 +782,7 @@ def main():
     engine.rootContext().setContextProperty("videoStreamer", controller.video_stream_handler)
     engine.rootContext().setContextProperty("systemMonitor", controller.system_monitor)
     engine.rootContext().setContextProperty("screenRecorder", controller.screen_recorder)
+    engine.rootContext().setContextProperty("rosBagRecorder", controller.ros_bag_recorder)
     engine.rootContext().setContextProperty("settingsManager", controller.settings_manager)
     controller.engine = engine
     

@@ -191,6 +191,31 @@ Item {
                             onClicked: screenRecorder.toggleRecording()
                         }
 
+                        // ROS Bag Recording Control (Remote End Effector)
+                        ControlPanel {
+                            Layout.fillWidth: true
+                            controlName: "ROS Bag Recording"
+                            controlStatus: {
+                                if (rosBagRecorder.is_compressing) {
+                                    return "Compressing..."
+                                } else if (rosBagRecorder.is_bag_recording) {
+                                    var mins = Math.floor(rosBagRecorder.bag_recording_duration / 60)
+                                    var secs = rosBagRecorder.bag_recording_duration % 60
+                                    return "Recording " + mins + ":" + (secs < 10 ? "0" : "") + secs
+                                } else if (rosBagRecorder.bag_status_message !== "") {
+                                    return rosBagRecorder.bag_status_message
+                                } else {
+                                    return "Idle (Remote EF)"
+                                }
+                            }
+                            enabledState: rosBagRecorder.is_bag_recording
+                            iconText: "BAG"
+                            enabled: !rosBagRecorder.is_compressing
+                            opacity: rosBagRecorder.is_compressing ? 0.6 : 1.0
+                            
+                            onClicked: rosBagRecorder.toggleBagRecording()
+                        }
+
                         // Teensy Relay Control
                         ControlPanel {
                             Layout.fillWidth: true
@@ -213,6 +238,17 @@ Item {
                             onClicked: teensyController.setEnabled(!teensyController.all_status.enabled)
                         }
                         
+                        // Stability Controller (Master Enable)
+                        ControlPanel {
+                            Layout.fillWidth: true
+                            controlName: "Stability Controller"
+                            controlStatus: teensyController.stability_enabled ? "Active" : "Inactive"
+                            enabledState: teensyController.stability_enabled
+                            iconText: "SC"
+                            
+                            onClicked: teensyController.setStabilityEnabled(!teensyController.stability_enabled)
+                        }
+
                         // Yaw Control
                         ControlPanel {
                             Layout.fillWidth: true

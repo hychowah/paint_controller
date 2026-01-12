@@ -19,6 +19,7 @@ class TeensyController(QObject):
     spray_gun_leveling_changed = Signal(bool)
     spray_gun_led_changed = Signal(bool)
     auto_correction_enabled_changed = Signal(bool)
+    stability_enabled_changed = Signal(bool)
     thrust_force_changed = Signal(float)
     thrust_force_enabled_changed = Signal(bool)
     valve_turn_changed = Signal(float)
@@ -86,6 +87,7 @@ class TeensyController(QObject):
         # Member state variables
         self._enabled = False
         self._relay_enabled = False
+        self._stability_enabled = False
         self._spray_gun_leveling_enabled = False
         self._auto_correction_enabled = False
         self._spray_gun_led_on = False
@@ -126,13 +128,15 @@ class TeensyController(QObject):
         self.ef_spray_gimbal_speed_pub = self._robot_controller.create_publisher(Int32, 'teensy/spray_gun/gimbal/speed/cmd', 1)
         self.ef_spray_gimbal_pub = self._robot_controller.create_publisher(Float32MultiArray, 'teensy/spray_gun/gimbal/angle/cmd', 1)
         self.ef_spray_led_pub = self._robot_controller.create_publisher(Bool, 'teensy/spray_gun/led/cmd', 1)
-        self.ef_yaw_enable_pub = self._robot_controller.create_publisher(Bool, 'teensy/yaw_control/enable/cmd', 1)
-        self.ef_yaw_angle_pub = self._robot_controller.create_publisher(Float32, 'teensy/yaw_control/angle/cmd', 1)
-        self.ef_short_param_pub = self._robot_controller.create_publisher(TeensyYaw, 'teensy/yaw_control/short_params/cmd', 1)
-        self.ef_long_param_pub = self._robot_controller.create_publisher(TeensyYaw, 'teensy/yaw_control/long_params/cmd', 1)
-        self.ef_auto_correction_enable_pub = self._robot_controller.create_publisher(Bool, 'teensy/yaw_control/auto_correction/cmd', 1)
+        # Stability controller publishers (decoupled force and yaw control)
+        self.stability_enable_pub = self._robot_controller.create_publisher(Bool, 'stability_controller/enable/cmd', 1)
+        self.stability_yaw_enable_pub = self._robot_controller.create_publisher(Bool, 'stability_controller/yaw_control/enable/cmd', 1)
+        self.stability_yaw_angle_pub = self._robot_controller.create_publisher(Float32, 'stability_controller/yaw_control/angle/cmd', 1)
+        self.stability_short_param_pub = self._robot_controller.create_publisher(TeensyYaw, 'stability_controller/yaw_control/short_params/cmd', 1)
+        self.stability_long_param_pub = self._robot_controller.create_publisher(TeensyYaw, 'stability_controller/yaw_control/long_params/cmd', 1)
+        self.stability_auto_correction_enable_pub = self._robot_controller.create_publisher(Bool, 'stability_controller/yaw_control/auto_correction/cmd', 1)
+        self.stability_force_pub = self._robot_controller.create_publisher(Twist, 'stability_controller/force/cmd', 1)
         self.ef_spray_level_enable_pub = self._robot_controller.create_publisher(Bool, 'teensy/spray_gun/leveling_enable/cmd', 1)
-        self.ef_force_pub = self._robot_controller.create_publisher(Twist, 'teensy/force/cmd', 1)
         self.ef_lidar_power_pub = self._robot_controller.create_publisher(Bool, 'unilidar/power', 1)
         self.ef_tap_freq_pub = self._robot_controller.create_publisher(Int32MultiArray, 'teensy/tapper/tap_freq/cmd', 1)
         self.ef_tap_once_pub = self._robot_controller.create_publisher(Int32, 'teensy/tapper/tap_once/cmd', 1)
@@ -429,11 +433,26 @@ class TeensyController(QObject):
         self.ef_lidar_power_pub.publish(msg)
 
     @Slot(bool)
+    def setStabilityEnabled(self, enabled: bool):
+        """Enable/disable stability controller (master enable for force and yaw control)"""
+        self._stability_enabled = enabled
+        self._status['stability_enabled'] = enabled
+        
+        msg = Bool()
+        msg.data = enabled
+        self.stability_enable_pub.publish(msg)
+        self._robot_controller.get_logger().info(f'Stability controller {"enabled" if enabled else "disabled"}')
+        
+        # Emit signals for UI updates
+        self.stability_enabled_changed.emit(enabled)
+        self.status_changed.emit(self._status)
+
+    @Slot(bool)
     def setYawEnabled(self, enabled: bool):
         """Enable/disable yaw control"""
         msg = Bool()
         msg.data = enabled
-        self.ef_yaw_enable_pub.publish(msg)
+        self.stability_yaw_enable_pub.publish(msg)
 
     @Slot(bool)
     def setAutoCorrectonEnabled(self, enabled: bool):
@@ -443,7 +462,7 @@ class TeensyController(QObject):
         
         msg = Bool()
         msg.data = enabled
-        self.ef_auto_correction_enable_pub.publish(msg)
+        self.stability_auto_correction_enable_pub.publish(msg)
         self._robot_controller.get_logger().info(f'Auto correction {"enabled" if enabled else "disabled"}')
         
         # Emit both signals for UI updates
@@ -455,7 +474,7 @@ class TeensyController(QObject):
         """Set the yaw angle"""
         msg = Float32()
         msg.data = float(angle)
-        self.ef_yaw_angle_pub.publish(msg)
+        self.stability_yaw_angle_pub.publish(msg)
 
     @Slot(float, float, float)
     def setShortParams(self, p: float, i: float, d: float):
@@ -464,7 +483,7 @@ class TeensyController(QObject):
         msg.yaw_pid_p = p
         msg.yaw_pid_i = i
         msg.yaw_pid_d = d
-        self.ef_short_param_pub.publish(msg)
+        self.stability_short_param_pub.publish(msg)
 
     @Slot(float, float, float)
     def setLongParams(self, p: float, i: float, d: float):
@@ -473,7 +492,7 @@ class TeensyController(QObject):
         msg.yaw_pid_p = p
         msg.yaw_pid_i = i
         msg.yaw_pid_d = d
-        self.ef_long_param_pub.publish(msg)
+        self.stability_long_param_pub.publish(msg)
 
     @Slot(float, float)
     def startTapFreq(self, power: float, period: float):
@@ -531,11 +550,11 @@ class TeensyController(QObject):
         msg.linear = Vector3(x=Fx, y=Fy, z=0.0)
         
         # Publish to the appropriate topic
-        if hasattr(self._robot_controller.teensy_controller, 'ef_force_pub'):
-            self._robot_controller.teensy_controller.ef_force_pub.publish(msg)
+        if hasattr(self._robot_controller.teensy_controller, 'stability_force_pub'):
+            self._robot_controller.teensy_controller.stability_force_pub.publish(msg)
             self._robot_controller.get_logger().info(f'Sent EF force: Fx={Fx}, Fy={Fy}')
         else:
-            self._robot_controller.get_logger().error("EF force publisher not initialized. Cannot send force values.")
+            self._robot_controller.get_logger().error("Stability force publisher not initialized. Cannot send force values.")
     
     # Define a property to expose the entire status dictionary
     def get_all_status(self) -> Dict:
@@ -551,6 +570,7 @@ class TeensyController(QObject):
     spray_gun_leveling_enabled = Property(bool, lambda self: self._spray_gun_leveling_enabled, notify=spray_gun_leveling_changed)
     spray_gun_led_on = Property(bool, lambda self: self._spray_gun_led_on, notify=spray_gun_led_changed)
     auto_correction_enabled = Property(bool, lambda self: self._auto_correction_enabled, notify=auto_correction_enabled_changed)
+    stability_enabled = Property(bool, lambda self: self._stability_enabled, notify=stability_enabled_changed)
     
     def get_thrust_force(self) -> float:
         """Get current thrust force value"""
