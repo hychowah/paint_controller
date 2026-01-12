@@ -21,13 +21,13 @@ Rectangle {
         z: 200  // Highest z-index
     }
     
-    // LEFT SIDE - Wheel Data (Speed & Heading)
+    // LEFT SIDE - Left Motor Data (RPM, Current, Travel)
     // --- CHANGE: Replaced Rectangle with Item for no visual container ---
     Item { 
         id: leftDataPanel
         // Width and Height are still necessary for layout calculation
         width: style.panelWidth 
-        height: style.panelHeight 
+        height: style.panelHeight * 1.5
         
         anchors.bottom: parent.bottom
         anchors.bottomMargin: style.controlPanelBottomMargin
@@ -40,29 +40,28 @@ Rectangle {
             anchors.fill: parent
             anchors.margins: style.panelMargins
             anchors.topMargin: 0 // Reduced margin for pure text look
-            spacing: style.contentSpacing * 1.5 // Increased spacing between data pairs
+            spacing: style.contentSpacing * 1.2
             
-            // Speed Row
+            // Left RPM Row
             Row {
                 width: parent.width
-                // Simplified height calculation as divider is gone
-                height: (parent.height - style.contentSpacing * 1.5) / 2 
+                height: (parent.height - style.contentSpacing * 2.4) / 3
                 
                 Text {
-                    text: "SPEED"
-                    color: style.labelColor // Softer color for secondary text
+                    text: "L RPM"
+                    color: style.labelColor
                     font.pixelSize: style.labelFontSize
-                    font.bold: false // Less emphasis
+                    font.bold: false
                     font.letterSpacing: style.labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 
                 Text {
-                    text: wheelController.wheel_speed ? wheelController.wheel_speed.toFixed(1) + " m/s" : "0.0 m/s"
-                    color: style.valueColor // Bright/White for primary value
+                    text: wheelController.left_wheel_speed.toFixed(0)
+                    color: style.valueColor
                     font.pixelSize: style.valueFontSize
-                    font.bold: true // Strong emphasis
+                    font.bold: true
                     font.family: "Courier New"
                     font.letterSpacing: style.valueLetterSpacing
                     anchors.right: parent.right
@@ -70,28 +69,53 @@ Rectangle {
                 }
             }
             
-            // --- REMOVED: Divider line ---
-            
-            // Heading Row
+            // Left Current Row
             Row {
                 width: parent.width
-                height: (parent.height - style.contentSpacing * 1.5) / 2
+                height: (parent.height - style.contentSpacing * 2.4) / 3
                 
                 Text {
-                    text: "HEADING"
+                    text: "L CURR"
                     color: style.labelColor
                     font.pixelSize: style.labelFontSize
-                    font.bold: false // Less emphasis
+                    font.bold: false
                     font.letterSpacing: style.labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 
                 Text {
-                    text: "0.0°"
+                    text: wheelController.left_wheel_current.toFixed(1) + " A"
                     color: style.valueColor
                     font.pixelSize: style.valueFontSize
-                    font.bold: true // Strong emphasis
+                    font.bold: true
+                    font.family: "Courier New"
+                    font.letterSpacing: style.valueLetterSpacing
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+            
+            // Left Travel Row
+            Row {
+                width: parent.width
+                height: (parent.height - style.contentSpacing * 2.4) / 3
+                
+                Text {
+                    text: "L TRAVEL"
+                    color: style.labelColor
+                    font.pixelSize: style.labelFontSize
+                    font.bold: false
+                    font.letterSpacing: style.labelLetterSpacing
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                
+                Text {
+                    text: wheelController.left_wheel_position.toFixed(0) + " mm"
+                    color: style.valueColor
+                    font.pixelSize: style.valueFontSize
+                    font.bold: true
                     font.family: "Courier New"
                     font.letterSpacing: style.valueLetterSpacing
                     anchors.right: parent.right
@@ -101,12 +125,12 @@ Rectangle {
         }
     }
     
-    // RIGHT SIDE - LiDAR Data (Distance & Status)
+    // RIGHT SIDE - Right Motor Data (RPM, Current, Travel)
     // --- CHANGE: Replaced Rectangle with Item for no visual container ---
     Item {
         id: rightDataPanel
         width: style.panelWidth
-        height: style.panelHeight
+        height: style.panelHeight * 1.5
         
         anchors.bottom: parent.bottom
         anchors.bottomMargin: style.controlPanelBottomMargin
@@ -119,28 +143,28 @@ Rectangle {
             anchors.fill: parent
             anchors.margins: style.panelMargins
             anchors.topMargin: 0 // Reduced margin
-            spacing: style.contentSpacing * 1.5 // Increased spacing between data pairs
+            spacing: style.contentSpacing * 1.2
             
-            // Distance Row
+            // Right RPM Row
             Row {
                 width: parent.width
-                height: (parent.height - style.contentSpacing * 1.5) / 2
+                height: (parent.height - style.contentSpacing * 2.4) / 3
                 
                 Text {
-                    text: "DISTANCE"
+                    text: "R RPM"
                     color: style.labelColor
                     font.pixelSize: style.labelFontSize
-                    font.bold: false // Less emphasis
+                    font.bold: false
                     font.letterSpacing: style.labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 
                 Text {
-                    text: "0.0 m"
+                    text: wheelController.right_wheel_speed.toFixed(0)
                     color: style.valueColor
                     font.pixelSize: style.valueFontSize
-                    font.bold: true // Strong emphasis
+                    font.bold: true
                     font.family: "Courier New"
                     font.letterSpacing: style.valueLetterSpacing
                     anchors.right: parent.right
@@ -148,28 +172,53 @@ Rectangle {
                 }
             }
             
-            // --- REMOVED: Divider line ---
-            
-            // Status Row
+            // Right Current Row
             Row {
                 width: parent.width
-                height: (parent.height - style.contentSpacing * 1.5) / 2
+                height: (parent.height - style.contentSpacing * 2.4) / 3
                 
                 Text {
-                    text: "STATUS"
+                    text: "R CURR"
                     color: style.labelColor
                     font.pixelSize: style.labelFontSize
-                    font.bold: false // Less emphasis
+                    font.bold: false
                     font.letterSpacing: style.labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 
                 Text {
-                    text: "OK"
-                    color: style.panelBorderEnabled
+                    text: wheelController.right_wheel_current.toFixed(1) + " A"
+                    color: style.valueColor
                     font.pixelSize: style.valueFontSize
-                    font.bold: true // Strong emphasis
+                    font.bold: true
+                    font.family: "Courier New"
+                    font.letterSpacing: style.valueLetterSpacing
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+            
+            // Right Travel Row
+            Row {
+                width: parent.width
+                height: (parent.height - style.contentSpacing * 2.4) / 3
+                
+                Text {
+                    text: "R TRAVEL"
+                    color: style.labelColor
+                    font.pixelSize: style.labelFontSize
+                    font.bold: false
+                    font.letterSpacing: style.labelLetterSpacing
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                
+                Text {
+                    text: wheelController.right_wheel_position.toFixed(0) + " mm"
+                    color: style.valueColor
+                    font.pixelSize: style.valueFontSize
+                    font.bold: true
                     font.family: "Courier New"
                     font.letterSpacing: style.valueLetterSpacing
                     anchors.right: parent.right

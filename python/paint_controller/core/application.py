@@ -304,6 +304,9 @@ class RobotController(Node, QObject):
         # Connect emergency handler signals to our signals
         self.emergency_handler.overlay_changed.connect(self.emergency_overlay_changed.emit)
         self.emergency_handler.emergency_triggered.connect(self.emergency_triggered.emit)
+        
+        # Connect wheel controller error signal to trigger emergency
+        self.wheel_controller.error_state_changed.connect(self._handle_wheel_motor_error)
 
         # Setup ROS subscribers and publishers
         self._setup_subscribers()
@@ -352,6 +355,22 @@ class RobotController(Node, QObject):
             self.get_logger().info(f'Showing {popup_type} popup: {title} - {message}')
         else:
             self.get_logger().error('Popup not found in QML')
+
+    def _handle_wheel_motor_error(self, has_error: bool, error_message: str):
+        """Handle wheel motor error signal - trigger emergency stop and show popup"""
+        if has_error:
+            self.get_logger().error(f'Wheel motor error detected: {error_message}')
+            
+            # Stop all motors
+            self.wheel_controller.emergency_stop()
+            self.winch_controller.command_speed_rpm(0)
+            self.teensy_controller.setSprayTrigger(1000)
+            
+            # Show error popup
+            self.show_popup("MOTOR ERROR", error_message, "error", 5000)
+            
+            # Emit emergency signal
+            self.emergency_triggered.emit()
 
     def setup_steam_deck_callbacks(self):
         ih = self.input_handler

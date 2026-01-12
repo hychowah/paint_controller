@@ -51,8 +51,8 @@ class ControlProcessor(QObject):
         
         # Track control parameters - get from settings_manager if available
         if hasattr(robot_controller, 'settings_manager'):
-            self.TRACK_MAX_SPEED = robot_controller.settings_manager.get('track_max_speed') or 25.0
-            self.TRACK_MIN_SPEED = robot_controller.settings_manager.get('track_min_speed') or 15.0
+            self.TRACK_MAX_SPEED = robot_controller.settings_manager.get('track_max_speed') or 500.0
+            self.TRACK_MIN_SPEED = robot_controller.settings_manager.get('track_min_speed') or 50.0
             self._valve_turn_max = robot_controller.settings_manager.get('valve_turn_max') or 20.0
             self._winch_max_speed_mmps = robot_controller.settings_manager.get('winch_max_speed_mmps') or 400.0
             # Subscribe to settings changes
@@ -61,8 +61,8 @@ class ControlProcessor(QObject):
             robot_controller.settings_manager.valve_turn_max_changed.connect(self._on_valve_turn_max_changed)
             robot_controller.settings_manager.winch_max_speed_mmps_changed.connect(self._on_winch_max_speed_mmps_changed)
         else:
-            self.TRACK_MAX_SPEED = 25.0         # Maximum track speed
-            self.TRACK_MIN_SPEED = 15.0         # Minimum speed to overcome friction
+            self.TRACK_MAX_SPEED = 500.0         # Maximum track speed
+            self.TRACK_MIN_SPEED = 50.0         # Minimum speed to overcome friction
             self._valve_turn_max = 6.0          # Maximum valve turn value
             self._winch_max_speed_mmps = 400.0        # Maximum winch speed (mm/s)
         self.TRACK_DEAD_ZONE = 0.05         # 5% joystick dead zone

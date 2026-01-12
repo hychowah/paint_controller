@@ -50,17 +50,17 @@ class SettingsManager(QObject):
                 "description": "Maximum winch speed limit (mm/s)"
             },
             "track_max_speed": {
-                "default": 25.0,
+                "default": 500.0,
                 "min": 5.0,
-                "max": 50.0,
+                "max": 500.0,
                 "type": "float",
                 "requires_restart": False,
                 "description": "Maximum track/wheel speed"
             },
             "track_min_speed": {
-                "default": 15.0,
+                "default": 50.0,
                 "min": 0.0,
-                "max": 30.0,
+                "max": 50.0,
                 "type": "float",
                 "requires_restart": False,
                 "description": "Minimum track speed to overcome friction"
@@ -378,7 +378,7 @@ class SettingsManager(QObject):
     
     @Property(float, notify=track_max_speed_changed)
     def track_max_speed(self) -> float:
-        return self._values.get("track_max_speed", 25.0)
+        return self._values.get("track_max_speed", 500.0)
     
     @track_max_speed.setter
     def track_max_speed(self, value: float):
@@ -386,7 +386,7 @@ class SettingsManager(QObject):
     
     @Property(float, notify=track_min_speed_changed)
     def track_min_speed(self) -> float:
-        return self._values.get("track_min_speed", 15.0)
+        return self._values.get("track_min_speed", 50.0)
     
     @track_min_speed.setter
     def track_min_speed(self, value: float):
