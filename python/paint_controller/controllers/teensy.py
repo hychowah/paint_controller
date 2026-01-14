@@ -239,7 +239,6 @@ class TeensyController(QObject):
                 'yaw_pid_p': msg.yaw_pid_p,
                 'yaw_pid_i': msg.yaw_pid_i,
                 'yaw_pid_d': msg.yaw_pid_d,
-                'yaw_pwm': msg.yaw_pwm,
                 # Add member state variables for QML access
                 'target_yaw': msg.yaw_command
             }

@@ -4,3 +4,8 @@ paint_controller/__pycache__/
 *.pyc
 __pycache__/
 *.egg-info/
+
+# Virtual environment
+venv/
+.venv/
+python/paint_controller/venv/

@@ -99,7 +99,7 @@ install(PROGRAMS
 
 # Install directories
 install(DIRECTORY
-  qml/
+  python/paint_controller/qml/
   DESTINATION share/${PROJECT_NAME}/qml
 )
 

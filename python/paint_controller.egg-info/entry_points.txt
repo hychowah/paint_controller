@@ -1,5 +1,0 @@
-[console_scripts]
-paint-test-vtk = paint_controller.scripts.test_vtk:main
-paint-test-vtk-ros = paint_controller.scripts.test_vtk_ros:main
-paint_controller = paint_controller.core.application:main
-
