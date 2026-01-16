@@ -30,12 +30,13 @@ Item {
         // Moving pitch ladder (moves opposite to pitch)
         Item {
             id: pitchLadder
-            anchors.centerIn: parent
+            x: parent.width / 2 - width / 2
             width: parent.width
             height: parent.height * 3
             
             // Vertical offset based on pitch (inverted - positive pitch moves horizon down)
-            y: -root.currentPitch * root.pitchScale
+            // Position vertically so that center of ladder aligns with center of container at pitch=0
+            y: parent.height / 2 - height / 2 - root.currentPitch * root.pitchScale
             
             Behavior on y {
                 NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
@@ -56,6 +57,8 @@ Item {
             Canvas {
                 id: pitchMarks
                 anchors.fill: parent
+                
+                Component.onCompleted: requestPaint()
                 
                 onPaint: {
                     var ctx = getContext("2d")
