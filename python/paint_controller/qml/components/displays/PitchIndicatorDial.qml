@@ -71,8 +71,8 @@ Item {
                     ctx.textBaseline = "middle"
                     ctx.lineWidth = 2
                     
-                    // Draw pitch lines every 2.5 degrees from -10 to +10
-                    for (var pitch = -10; pitch <= 10; pitch += 2.5) {
+                    // Draw pitch lines every 2.5 degrees from -pitchRange to +pitchRange
+                    for (var pitch = -root.pitchRange; pitch <= root.pitchRange; pitch += 2.5) {
                         if (pitch === 0) continue // Skip horizon line
                         
                         var y = centerY + pitch * root.pitchScale
