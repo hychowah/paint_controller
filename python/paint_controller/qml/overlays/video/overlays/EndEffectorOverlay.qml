@@ -208,7 +208,7 @@ Rectangle {
         
         anchors.verticalCenter: parent.verticalCenter
         anchors.right: parent.right
-        anchors.rightMargin: style.controlPanelSideMargin + style.controlPanelWidth + 10
+        anchors.rightMargin: style.controlPanelSideMargin  // Align with rightControlPanel
         
         color: "#AA000000" // Semi-transparent dark background for readability
         radius: 6
