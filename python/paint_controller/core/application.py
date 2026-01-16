@@ -99,11 +99,7 @@ class RobotConfig:
     """Robot configuration parameters"""
     video_port: int = 5000
     update_rate: float = 60.0  # Hz
-    watchdog_timeout: float = 1.0  # seconds
     joystick_deadzone: float = 0.1
-    max_winch_speed: float = 1500.0
-    video_width: int = 640
-    video_height: int = 480
 
 class ConfigLoader:
     @staticmethod
