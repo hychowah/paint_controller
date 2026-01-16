@@ -3,13 +3,11 @@ SettingsManager - Centralized settings management with file persistence
 
 This module provides a centralized location for application parameters that were
 previously scattered across multiple controller classes. Settings are persisted
-to ~/.config/paint_controller/settings.json (or $XDG_CONFIG_HOME/paint_controller/settings.json)
-and can be modified at runtime.
+to ~/ros2_ws/src/paint_controller_ros2/python/config/settings.json and can be modified at runtime.
 """
 
 import os
 import json
-import shutil
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from PySide6.QtCore import QObject, Signal, Slot, Property
@@ -19,8 +17,7 @@ class SettingsManager(QObject):
     """
     Centralized settings manager with file persistence and QML integration.
     
-    Settings are stored in ~/.config/paint_controller/settings.json
-    (or $XDG_CONFIG_HOME/paint_controller/settings.json if XDG_CONFIG_HOME is set)
+    Settings are stored in ~/ros2_ws/src/paint_controller_ros2/python/config/settings.json
     Each setting has metadata including: value, default, min, max, type, requires_restart, description
     """
     
@@ -106,12 +103,8 @@ class SettingsManager(QObject):
         self._values: Dict[str, Any] = {}
         
         # Config directory and file path
-        # Use XDG_CONFIG_HOME if set, otherwise ~/.config
-        config_home = os.environ.get('XDG_CONFIG_HOME')
-        if config_home:
-            self._config_dir = Path(config_home) / "paint_controller"
-        else:
-            self._config_dir = Path.home() / ".config" / "paint_controller"
+        package_dir = Path(__file__).parent.parent.parent
+        self._config_dir = package_dir / "config"
         self._config_file = self._config_dir / "settings.json"
         
         # Load settings from file (or use defaults)
@@ -121,37 +114,6 @@ class SettingsManager(QObject):
         """Get the configuration file path, creating directory if needed"""
         self._config_dir.mkdir(parents=True, exist_ok=True)
         return self._config_file
-    
-    def _migrate_old_config(self) -> bool:
-        """
-        Migrate config from old location to new location if needed.
-        Old location: <package_dir>/config/settings.json
-        New location: ~/.config/paint_controller/settings.json
-        
-        Returns:
-            bool: True if migration was performed, False otherwise
-        """
-        # Check if new config already exists
-        if self._config_file.exists():
-            return False
-        
-        # Try to find old config location
-        try:
-            old_package_dir = Path(__file__).parent.parent.parent
-            old_config_file = old_package_dir / "config" / "settings.json"
-            
-            if old_config_file.exists():
-                print(f"[SettingsManager] Migrating config from {old_config_file} to {self._config_file}")
-                # Ensure destination directory exists
-                self._config_dir.mkdir(parents=True, exist_ok=True)
-                # Copy old config to new location
-                shutil.copy2(old_config_file, self._config_file)
-                print(f"[SettingsManager] Config migration completed")
-                return True
-        except Exception as e:
-            print(f"[SettingsManager] Config migration failed: {e}")
-        
-        return False
     
     def load(self) -> bool:
         """
@@ -165,10 +127,6 @@ class SettingsManager(QObject):
             self._values[key] = schema["default"]
         
         config_path = self._get_config_path()
-        
-        # Try to migrate old config if new one doesn't exist
-        if not config_path.exists():
-            self._migrate_old_config()
         
         if not config_path.exists():
             print(f"[SettingsManager] No config file found, using defaults")
