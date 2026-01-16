@@ -4,16 +4,19 @@ import QtQuick.Shapes 1.15
 Item {
     id: root
     width: 180
-    height: 180
+    height: 120
     
     // Property for pitch data binding
     property real currentPitch: 0.0
     
     // Opacity for the background, 0.0 (fully transparent) to 1.0 (fully opaque)
-    property real backgroundOpacity: 0.8
+    property real backgroundOpacity: 0.6
+    
+    // Pitch range (±10 degrees)
+    property real pitchRange: 10.0
     
     // Pitch scale factor (pixels per degree)
-    property real pitchScale: 3.5
+    property real pitchScale: 4.5
     
     Rectangle {
         id: container
@@ -21,152 +24,114 @@ Item {
         color: "#000000"
         opacity: root.backgroundOpacity
         radius: 8
-        border.width: 2
-        border.color: "#333333"
+        border.width: 0
         clip: true
         
-        // Circular mask for the attitude indicator
-        Rectangle {
-            id: attitudeCircle
+        // Moving pitch ladder (moves opposite to pitch)
+        Item {
+            id: pitchLadder
             anchors.centerIn: parent
-            width: Math.min(parent.width, parent.height) - 20
-            height: width
-            radius: width / 2
-            clip: true
-            color: "transparent"
+            width: parent.width
+            height: parent.height * 3
             
-            // Moving pitch ladder (moves opposite to pitch)
-            Item {
-                id: pitchLadder
-                anchors.centerIn: parent
-                width: parent.width
-                height: parent.height * 4
+            // Vertical offset based on pitch (inverted - positive pitch moves horizon down)
+            y: -root.currentPitch * root.pitchScale
+            
+            Behavior on y {
+                NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
+            }
+            
+            // Center horizon line
+            Rectangle {
+                id: horizonLine
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: parent.height / 2 - 1.5
+                width: parent.width * 0.5
+                height: 3
+                color: "#FFFFFF"
+                radius: 1.5
+            }
+            
+            // Pitch ladder marks
+            Canvas {
+                id: pitchMarks
+                anchors.fill: parent
                 
-                // Vertical offset based on pitch (inverted - positive pitch moves horizon down)
-                y: -root.currentPitch * root.pitchScale
-                
-                Behavior on y {
-                    NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
-                }
-                
-                // Sky (blue background)
-                Rectangle {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    y: 0
-                    width: parent.width
-                    height: parent.height / 2
-                    color: "#4A90E2"
-                }
-                
-                // Ground (brown background)
-                Rectangle {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    y: parent.height / 2
-                    width: parent.width
-                    height: parent.height / 2
-                    color: "#8B6F47"
-                }
-                
-                // Horizon line
-                Rectangle {
-                    id: horizonLine
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    y: parent.height / 2 - 2
-                    width: parent.width
-                    height: 4
-                    color: "#FFFFFF"
-                }
-                
-                // Pitch ladder marks
-                Canvas {
-                    id: pitchMarks
-                    anchors.fill: parent
+                onPaint: {
+                    var ctx = getContext("2d")
+                    ctx.clearRect(0, 0, width, height)
                     
-                    onPaint: {
-                        var ctx = getContext("2d")
-                        ctx.clearRect(0, 0, width, height)
+                    var centerX = width / 2
+                    var centerY = height / 2
+                    
+                    ctx.strokeStyle = "#CCCCCC"
+                    ctx.fillStyle = "#FFFFFF"
+                    ctx.font = "11px Arial"
+                    ctx.textAlign = "center"
+                    ctx.textBaseline = "middle"
+                    ctx.lineWidth = 2
+                    
+                    // Draw pitch lines every 2.5 degrees from -10 to +10
+                    for (var pitch = -10; pitch <= 10; pitch += 2.5) {
+                        if (pitch === 0) continue // Skip horizon line
                         
-                        var centerX = width / 2
-                        var centerY = height / 2
+                        var y = centerY + pitch * root.pitchScale
+                        var lineWidth = (pitch % 5 === 0) ? 50 : 30
                         
-                        ctx.strokeStyle = "#FFFFFF"
-                        ctx.fillStyle = "#FFFFFF"
-                        ctx.font = "bold 11px Arial"
-                        ctx.textAlign = "center"
-                        ctx.textBaseline = "middle"
-                        ctx.lineWidth = 2
+                        // Pitch line
+                        ctx.beginPath()
+                        ctx.moveTo(centerX - lineWidth / 2, y)
+                        ctx.lineTo(centerX + lineWidth / 2, y)
+                        ctx.stroke()
                         
-                        // Draw pitch lines every 5 degrees from -30 to +30
-                        for (var pitch = -30; pitch <= 30; pitch += 5) {
-                            if (pitch === 0) continue // Skip horizon line
-                            
-                            var y = centerY + pitch * root.pitchScale
-                            var lineWidth = (pitch % 10 === 0) ? 60 : 40
-                            
-                            // Pitch line
-                            ctx.beginPath()
-                            ctx.moveTo(centerX - lineWidth / 2, y)
-                            ctx.lineTo(centerX + lineWidth / 2, y)
-                            ctx.stroke()
-                            
-                            // Labels for 10-degree intervals
-                            if (pitch % 10 === 0) {
-                                var label = Math.abs(pitch).toString()
-                                ctx.fillText(label, centerX - lineWidth / 2 - 15, y)
-                                ctx.fillText(label, centerX + lineWidth / 2 + 15, y)
-                            }
+                        // Labels for 5-degree intervals
+                        if (pitch % 5 === 0) {
+                            var label = Math.abs(pitch).toString()
+                            ctx.fillText(label, centerX - lineWidth / 2 - 12, y)
+                            ctx.fillText(label, centerX + lineWidth / 2 + 12, y)
                         }
                     }
                 }
             }
+        }
+        
+        // Fixed center reference indicator
+        Item {
+            id: centerReference
+            anchors.centerIn: parent
+            width: parent.width
+            height: 30
+            z: 10
             
-            // Fixed aircraft symbol (center reference)
-            Item {
-                id: aircraftSymbol
+            // Left reference line
+            Rectangle {
+                x: parent.width / 2 - 50
+                y: parent.height / 2 - 1.5
+                width: 40
+                height: 3
+                color: "#FFAA00"
+                radius: 1.5
+            }
+            
+            // Right reference line
+            Rectangle {
+                x: parent.width / 2 + 10
+                y: parent.height / 2 - 1.5
+                width: 40
+                height: 3
+                color: "#FFAA00"
+                radius: 1.5
+            }
+            
+            // Center dot
+            Rectangle {
                 anchors.centerIn: parent
-                width: parent.width
-                height: 40
-                z: 10
-                
-                // Left wing
-                Rectangle {
-                    x: parent.width / 2 - 60
-                    y: parent.height / 2 - 2
-                    width: 50
-                    height: 4
-                    color: "#FFAA00"
-                    radius: 2
-                }
-                
-                // Right wing
-                Rectangle {
-                    x: parent.width / 2 + 10
-                    y: parent.height / 2 - 2
-                    width: 50
-                    height: 4
-                    color: "#FFAA00"
-                    radius: 2
-                }
-                
-                // Center fuselage
-                Rectangle {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    y: parent.height / 2 - 2
-                    width: 8
-                    height: 4
-                    color: "#FFAA00"
-                }
-                
-                // Center dot
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: 8
-                    height: 8
-                    radius: 4
-                    color: "#FFAA00"
-                    border.color: "#000000"
-                    border.width: 1
-                }
+                width: 6
+                height: 6
+                radius: 3
+                color: "#FFAA00"
+                border.color: "#000000"
+                border.width: 1
             }
         }
         
@@ -177,33 +142,23 @@ Item {
             anchors.top: parent.top
             anchors.topMargin: 5
             text: "PITCH"
-            color: "#FFFFFF"
-            font.pixelSize: 10
+            color: "#CCCCCC"
+            font.pixelSize: 9
             font.bold: true
             z: 11
         }
         
-        // Digital pitch readout at bottom
-        Rectangle {
+        // Digital pitch readout
+        Text {
             anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 5
-            width: 60
-            height: 20
-            color: "#000000"
-            border.color: "#666666"
-            border.width: 1
-            radius: 3
+            anchors.top: pitchLabel.bottom
+            anchors.topMargin: 25
+            text: (root.currentPitch >= 0 ? "+" : "") + root.currentPitch.toFixed(1) + "°"
+            color: "#FFFFFF"
+            font.pixelSize: 11
+            font.bold: true
+            font.family: "Courier New"
             z: 11
-            
-            Text {
-                anchors.centerIn: parent
-                text: (root.currentPitch >= 0 ? "+" : "") + root.currentPitch.toFixed(1) + "°"
-                color: "#00FF00"
-                font.pixelSize: 11
-                font.bold: true
-                font.family: "Courier New"
-            }
         }
     }
 }
