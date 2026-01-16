@@ -83,7 +83,8 @@ class ActionConfigPython(QObject):
     @Slot(str, result=str)
     def getActionIdByPrefix(self, prefix):
         """Find an action ID by its prefix string (QML callable)"""
-        return self.get_action_id_by_prefix(prefix) or ""
+        action_id = self.get_action_id_by_prefix(prefix)
+        return action_id if action_id is not None else ""
     
     @Slot(str, result=dict)
     def createActionItem(self, action_id):
