@@ -11,15 +11,14 @@ Rectangle {
     
     VideoOverlayStyle { id: style }
     
-    // Top Center - Yaw Indicator Dial
-    YawIndicatorDial {
-        id: yawIndicator
+    // Top Center - Pitch Indicator Dial
+    PitchIndicatorDial {
+        id: pitchIndicator
         anchors.top: parent.top
         anchors.topMargin: 50
         anchors.horizontalCenter: parent.horizontalCenter
         
-        currentYaw: teensyController.all_status.imu_yaw
-        targetYaw: teensyController.all_status.target_yaw
+        currentPitch: teensyController.all_status.imu_pitch
         z: 50
     }
     
