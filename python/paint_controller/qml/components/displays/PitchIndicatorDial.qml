@@ -19,7 +19,9 @@ Item {
     // Opacity for the background, 0.0 (fully transparent) to 1.0 (fully opaque)
     property real backgroundOpacity: 0.6
     
-    // Calculate needle angle - pitch centered at 0°
+    // Calculate needle angle
+    // Clamp pitch to the dial range, then map to visual angle
+    // Negative multiplication ensures proper needle direction (positive pitch = left, negative pitch = right)
     property real clampedPitch: Math.max(-dialRange, Math.min(dialRange, currentPitch))
     property real needleAngle: (clampedPitch / dialRange) * -dialVisualAngle
     
