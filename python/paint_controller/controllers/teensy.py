@@ -75,7 +75,13 @@ class TeensyController(QObject):
             'yaw_pid_d': 0.0,
             'yaw_pwm': 0,
             'target_yaw': 0.0,
-            'valve_turn': 0.0
+            'valve_turn': 0.0,
+            'valve_motor_current': 0,
+            'valve_position': 0.0,
+            'valve_rate': 0.0,
+            'total_volumne': 0.0,
+            'valve_motor_connected': False,
+            'flow_meter_connected': False
         }
         
         self._last_status_update_time = 0
@@ -240,7 +246,14 @@ class TeensyController(QObject):
                 'yaw_pid_i': msg.yaw_pid_i,
                 'yaw_pid_d': msg.yaw_pid_d,
                 # Add member state variables for QML access
-                'target_yaw': msg.yaw_command
+                'target_yaw': msg.yaw_command,
+                # Valve status
+                'valve_motor_current': msg.valve_motor_current,
+                'valve_position': msg.valve_position,
+                'valve_rate': msg.valve_rate,
+                'total_volumne': msg.total_volumne,
+                'valve_motor_connected': msg.valve_motor_connected,
+                'flow_meter_connected': msg.flow_meter_connected
             }
 
             current_time = time.time()
