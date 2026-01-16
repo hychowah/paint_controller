@@ -9,6 +9,7 @@ and can be modified at runtime.
 
 import os
 import json
+import shutil
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from PySide6.QtCore import QObject, Signal, Slot, Property
@@ -141,8 +142,9 @@ class SettingsManager(QObject):
             
             if old_config_file.exists():
                 print(f"[SettingsManager] Migrating config from {old_config_file} to {self._config_file}")
+                # Ensure destination directory exists
+                self._config_dir.mkdir(parents=True, exist_ok=True)
                 # Copy old config to new location
-                import shutil
                 shutil.copy2(old_config_file, self._config_file)
                 print(f"[SettingsManager] Config migration completed")
                 return True
