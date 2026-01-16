@@ -30,11 +30,11 @@ class LidarController(QObject):
         )
         self._angle_sub = self._robot_controller.create_subscription(
             Float32,
-            '/ef/lidar/wall_detection/angle',
+            '/ef/lidar/wall_detection/filtered_angle',
             self._angle_callback,
             10
         )
-        print('LidarController: Subscribed to /ef/lidar/wall_detection/distance and /ef/lidar/wall_detection/angle')
+        print('LidarController: Subscribed to /ef/lidar/wall_detection/distance and /ef/lidar/wall_detection/filtered_angle')
     
     def get_distance(self) -> float:
         return self._distance
