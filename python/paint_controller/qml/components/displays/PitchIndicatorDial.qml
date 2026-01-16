@@ -42,8 +42,8 @@ Item {
                 width: parent.width
                 height: parent.height * 4
                 
-                // Vertical offset based on pitch
-                y: root.currentPitch * root.pitchScale
+                // Vertical offset based on pitch (inverted - positive pitch moves horizon down)
+                y: -root.currentPitch * root.pitchScale
                 
                 Behavior on y {
                     NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
@@ -100,7 +100,7 @@ Item {
                         for (var pitch = -30; pitch <= 30; pitch += 5) {
                             if (pitch === 0) continue // Skip horizon line
                             
-                            var y = centerY - pitch * root.pitchScale
+                            var y = centerY + pitch * root.pitchScale
                             var lineWidth = (pitch % 10 === 0) ? 60 : 40
                             
                             // Pitch line
