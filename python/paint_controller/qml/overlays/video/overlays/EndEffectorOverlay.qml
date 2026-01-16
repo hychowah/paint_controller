@@ -341,7 +341,7 @@ Rectangle {
                 }
                 
                 Text {
-                    text: teensyController.all_status.total_volumne.toFixed(1)
+                    text: teensyController.all_status.total_volumne.toFixed(2)
                     color: style.valueColor
                     font.pixelSize: style.valueFontSize
                     font.bold: true
