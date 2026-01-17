@@ -20,6 +20,14 @@ Rectangle {
     anchors.fill: parent
     color: "black"
     
+    // MouseArea to consume all touch/mouse events when active
+    MouseArea {
+        anchors.fill: parent
+        enabled: root.active
+        // Tap anywhere to exit fullscreen
+        onClicked: root.active = false
+    }
+    
     // Video background
     Image {
         id: videoFrame
