@@ -216,10 +216,11 @@ class ControlProcessor(QObject):
                 is_locked if left_mode == "Winch Speed" else False
             )
             self._last_left_display_parts = left_cache_key
+            # Store the formatted part for reuse
+            self._last_left_part = left_part
         else:
-            # Use cached value - extract from previous message (with safe parsing)
-            parts = self._last_display_message.split(" | ")
-            left_part = parts[0].replace("LEFT: ", "") if len(parts) > 0 else "None"
+            # Reuse cached formatted part (no parsing needed)
+            left_part = self._last_left_part if hasattr(self, '_last_left_part') else "None"
         
         if self._last_right_display_parts != right_cache_key:
             right_part, right_mode, right_value = self._format_display_part(
@@ -227,10 +228,11 @@ class ControlProcessor(QObject):
                 is_locked if right_mode == "Winch Speed" else False
             )
             self._last_right_display_parts = right_cache_key
+            # Store the formatted part for reuse
+            self._last_right_part = right_part
         else:
-            # Use cached value - extract from previous message (with safe parsing)
-            parts = self._last_display_message.split(" | ")
-            right_part = parts[1].replace("RIGHT: ", "") if len(parts) > 1 else "None"
+            # Reuse cached formatted part (no parsing needed)
+            right_part = self._last_right_part if hasattr(self, '_last_right_part') else "None"
         
         # Build complete message
         message = f"LEFT: {left_part} | RIGHT: {right_part}"
