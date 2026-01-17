@@ -2,6 +2,14 @@
 
 A ROS 2 node with PySide6 UI for controlling the robot.
 
+## Features
+
+- **Adaptive Multi-Screen Support** - Real-time display detection and management
+  - Automatically detects connected/disconnected displays
+  - Switch between displays in Settings
+  - Supports extended and duplicate display modes
+  - See [Multi-Screen Support Documentation](docs/MULTI_SCREEN_SUPPORT.md) for details
+
 ## Prerequisites
 
 - Ubuntu 22.04/24.04
