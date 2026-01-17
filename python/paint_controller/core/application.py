@@ -42,6 +42,7 @@ from paint_controller.services.workflow.workflow_runner import WorkFlowRunner
 from paint_controller.services.screen_recorder import ScreenRecorder
 from paint_controller.services.ros_bag_recorder import RosBagRecorder
 from paint_controller.core.settings import SettingsManager
+from paint_controller.core.screen_manager import ScreenManager
 
 # Global reference for signal handler
 _app_instance = None
@@ -249,6 +250,10 @@ class RobotController(Node, QObject):
         
         # Initialize settings manager first (before sub-controllers)
         self.settings_manager = SettingsManager(self)
+        
+        # Initialize screen manager for multi-screen support
+        # Note: Must be created after QApplication is initialized
+        self.screen_manager = None  # Will be initialized in main() after QApplication
         
         # Initialize components
         self.warningHandler = WarningHandler()
@@ -716,6 +721,13 @@ class RobotController(Node, QObject):
                     self.workflow_runner.cleanup()
                 except Exception as e:
                     self.get_logger().error(f"Error cleaning up workflow runner: {e}")
+            
+            # Clean up screen manager
+            if hasattr(self, 'screen_manager') and self.screen_manager:
+                try:
+                    self.screen_manager.cleanup()
+                except Exception as e:
+                    self.get_logger().error(f"Error cleaning up screen manager: {e}")
 
             # Destroy publishers
             if hasattr(self, 'heartbeat_pub') and self.heartbeat_pub:
@@ -753,6 +765,9 @@ def main():
     # Create robot controller
     controller = RobotController(config)
     _controller_instance = controller
+    
+    # Initialize screen manager AFTER QApplication is created
+    controller.screen_manager = ScreenManager(parent=controller)
 
     
     # Start ROS thread
@@ -799,6 +814,7 @@ def main():
     engine.rootContext().setContextProperty("screenRecorder", controller.screen_recorder)
     engine.rootContext().setContextProperty("rosBagRecorder", controller.ros_bag_recorder)
     engine.rootContext().setContextProperty("settingsManager", controller.settings_manager)
+    engine.rootContext().setContextProperty("screenManager", controller.screen_manager)
     controller.engine = engine
     
     # Load QML interface AFTER setting context properties

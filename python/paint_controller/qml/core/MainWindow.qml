@@ -27,18 +27,114 @@ ApplicationWindow {
     id: mainWindow
     visible: true
     visibility: Window.FullScreen
-    property var screens: Qt.application.screens
-    property var targetScreen: screens.length > 1 ? screens[0] : screens[0]
+    
+    // Screen management - use ScreenManager for adaptive multi-screen support
+    property int targetScreenIndex: 0  // Default to primary screen
+    property var allScreens: Qt.application.screens
+    property var targetScreen: {
+        // Use screenManager if available and target index is valid
+        if (typeof screenManager !== 'undefined' && screenManager) {
+            var idx = targetScreenIndex
+            if (idx >= 0 && idx < allScreens.length) {
+                return allScreens[idx]
+            }
+        }
+        // Fallback to primary screen
+        return allScreens.length > 0 ? allScreens[0] : null
+    }
 
     property int sidebarWidth: 150 // Initial value (expanded width)
     
     // Expose the video fullscreen overlay as a property
     property alias videoFullscreenOverlay: videoFullscreenOverlay
     
-    x: targetScreen.virtualX
-    y: targetScreen.virtualY
-    width: targetScreen.width
-    height: targetScreen.height
+    // Update window position and size when target screen changes or screens are added/removed
+    Component.onCompleted: {
+        updateWindowGeometry()
+        
+        // Connect to screenManager signals if available
+        if (typeof screenManager !== 'undefined' && screenManager) {
+            screenManager.screens_changed.connect(updateWindowGeometry)
+            screenManager.screen_added.connect(handleScreenAdded)
+            screenManager.screen_removed.connect(handleScreenRemoved)
+            
+            console.log("MainWindow: Connected to ScreenManager - " + screenManager.screen_count + " screen(s) detected")
+            logScreenInfo()
+        }
+    }
+    
+    // Function to update window geometry based on target screen
+    function updateWindowGeometry() {
+        if (targetScreen) {
+            mainWindow.x = targetScreen.virtualX
+            mainWindow.y = targetScreen.virtualY
+            mainWindow.width = targetScreen.width
+            mainWindow.height = targetScreen.height
+            console.log("Window geometry updated to screen: " + targetScreen.name + 
+                       " (" + targetScreen.width + "x" + targetScreen.height + ")")
+        }
+    }
+    
+    // Handle screen addition
+    function handleScreenAdded(index, name) {
+        console.log("Screen added: " + name + " at index " + index)
+        allScreens = Qt.application.screens  // Refresh screen list
+        logScreenInfo()
+    }
+    
+    // Handle screen removal
+    function handleScreenRemoved(index, name) {
+        console.log("Screen removed: " + name + " (was at index " + index + ")")
+        allScreens = Qt.application.screens  // Refresh screen list
+        
+        // If we're on the removed screen, switch to primary
+        if (targetScreenIndex === index) {
+            console.log("Target screen removed, switching to primary screen")
+            targetScreenIndex = 0
+            updateWindowGeometry()
+        } else if (targetScreenIndex > index) {
+            // Adjust index if a screen before our target was removed
+            targetScreenIndex--
+        }
+        
+        logScreenInfo()
+    }
+    
+    // Log information about all connected screens
+    function logScreenInfo() {
+        if (typeof screenManager !== 'undefined' && screenManager) {
+            var screenCount = screenManager.screen_count
+            console.log("=== Screen Information ===")
+            console.log("Total screens: " + screenCount)
+            console.log("Multiple screens: " + screenManager.has_multiple_screens)
+            console.log("Primary screen: " + screenManager.primary_screen_name)
+            
+            for (var i = 0; i < screenCount; i++) {
+                var info = screenManager.get_screen_info(i)
+                console.log("Screen " + i + ": " + info.name + 
+                           (info.isPrimary ? " (PRIMARY)" : "") +
+                           " - " + info.width + "x" + info.height +
+                           " @ " + info.refreshRate + "Hz")
+            }
+            console.log("=========================")
+        }
+    }
+    
+    // Function to switch to a specific screen
+    function switchToScreen(screenIndex) {
+        if (screenIndex >= 0 && screenIndex < allScreens.length) {
+            targetScreenIndex = screenIndex
+            updateWindowGeometry()
+            console.log("Switched to screen " + screenIndex)
+        } else {
+            console.log("Invalid screen index: " + screenIndex)
+        }
+    }
+    
+    x: targetScreen ? targetScreen.virtualX : 0
+    y: targetScreen ? targetScreen.virtualY : 0
+    width: targetScreen ? targetScreen.width : 800
+    height: targetScreen ? targetScreen.height : 600
 
     // Controller bindings
     property bool showOverlay: overlayController.show_overlay

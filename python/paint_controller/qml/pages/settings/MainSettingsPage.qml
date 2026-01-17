@@ -32,6 +32,19 @@ ScrollView {
         }
         
         SettingsItem {
+            title: "Display"
+            subtitle: {
+                if (typeof screenManager !== 'undefined' && screenManager) {
+                    var count = screenManager.screen_count
+                    return count + " display" + (count !== 1 ? "s" : "") + " detected"
+                }
+                return "Screen configuration"
+            }
+            
+            onClicked: root.pageRequested("display")
+        }
+        
+        SettingsItem {
             title: "Winch"
             subtitle: "Max speed: " + root.winchMaxSpeed.toFixed(1) + " RPM"
             

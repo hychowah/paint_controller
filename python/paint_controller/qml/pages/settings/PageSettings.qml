@@ -21,10 +21,11 @@ Rectangle {
         currentIndex: {
             switch(settingsMenu.currentPage) {
                 case "main": return 0
-                case "winch": return 1
-                case "wheels": return 2
-                case "camera": return 3
-                case "arm": return 4
+                case "display": return 1
+                case "winch": return 2
+                case "wheels": return 3
+                case "camera": return 4
+                case "arm": return 5
                 default: return 0
             }
         }
@@ -35,6 +36,14 @@ Rectangle {
             
             onPageRequested: function(page) {
                 settingsMenu.currentPage = page
+            }
+        }
+        
+        DisplaySettingsPage {
+            id: displayPage
+            
+            onBackRequested: {
+                settingsMenu.currentPage = "main"
             }
         }
         
