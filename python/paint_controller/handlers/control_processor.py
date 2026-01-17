@@ -217,8 +217,9 @@ class ControlProcessor(QObject):
             )
             self._last_left_display_parts = left_cache_key
         else:
-            # Use cached value - extract from previous message
-            left_part = self._last_display_message.split(" | ")[0].replace("LEFT: ", "") if self._last_display_message else "None"
+            # Use cached value - extract from previous message (with safe parsing)
+            parts = self._last_display_message.split(" | ")
+            left_part = parts[0].replace("LEFT: ", "") if parts else "None"
         
         if self._last_right_display_parts != right_cache_key:
             right_part, right_mode, right_value = self._format_display_part(
@@ -227,8 +228,9 @@ class ControlProcessor(QObject):
             )
             self._last_right_display_parts = right_cache_key
         else:
-            # Use cached value - extract from previous message
-            right_part = self._last_display_message.split(" | ")[1].replace("RIGHT: ", "") if " | " in self._last_display_message else "None"
+            # Use cached value - extract from previous message (with safe parsing)
+            parts = self._last_display_message.split(" | ")
+            right_part = parts[1].replace("RIGHT: ", "") if len(parts) > 1 else "None"
         
         # Build complete message
         message = f"LEFT: {left_part} | RIGHT: {right_part}"

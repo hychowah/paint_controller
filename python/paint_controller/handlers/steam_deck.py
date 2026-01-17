@@ -48,7 +48,7 @@ class SteamDeckReaderThread(QThread):
                 # Only log error if we're not stopping
                 if not self._stop_requested:
                     print(f"Error reading from Steam Deck: {e}")
-                QThread.msleep(100)  # Sleep on error to avoid rapid retry loops
+                QThread.msleep(50)  # Short sleep on error to avoid rapid retry loops while maintaining responsiveness
     
     def stop(self):
         """Request the thread to stop"""
