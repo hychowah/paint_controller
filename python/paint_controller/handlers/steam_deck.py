@@ -26,7 +26,7 @@ class SteamDeckReaderThread(QThread):
         self._device = device
     
     def run(self):
-        """Main thread function to read from HID device"""
+        """Main thread function to read from HID device with blocking read optimization"""
         self._stop_requested = False
         
         if not self._device:
@@ -37,17 +37,18 @@ class SteamDeckReaderThread(QThread):
             try:
                 with QMutexLocker(self._mutex):
                     if self._device and not self._stop_requested:
-                        data = self._device.read(64)
+                        # Use blocking read with 50ms timeout instead of polling
+                        # This reduces CPU usage and provides better responsiveness than sleep+poll
+                        data = self._device.read(64, timeout_ms=50)
                         if data:
                             self.data_read.emit(bytes(data))
                 
-                # Short sleep to prevent tight loop
-                QThread.msleep(10)  # Reduced from 1ms to 10ms (100Hz is sufficient)
+                # No additional sleep needed - blocking read provides throttling
             except Exception as e:
                 # Only log error if we're not stopping
                 if not self._stop_requested:
                     print(f"Error reading from Steam Deck: {e}")
-                QThread.msleep(10)  # Longer sleep on error
+                QThread.msleep(100)  # Sleep on error to avoid rapid retry loops
     
     def stop(self):
         """Request the thread to stop"""
