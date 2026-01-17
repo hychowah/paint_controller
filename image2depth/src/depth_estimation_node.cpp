@@ -10,7 +10,9 @@ public:
         : Node("depth_estimation_node")
     {
         // Declare parameters
-        this->declare_parameter<std::string>("model_path", "/tmp/midas_small.onnx");
+        this->declare_parameter<std::string>("model_path", 
+            std::string(getenv("HOME") ? getenv("HOME") : ".") + 
+            "/.local/share/image2depth/models/midas_small.onnx");
         this->declare_parameter<int>("input_width", 384);
         this->declare_parameter<int>("input_height", 384);
         this->declare_parameter<bool>("normalize_output", true);

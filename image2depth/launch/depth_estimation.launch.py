@@ -13,7 +13,7 @@ def generate_launch_description():
     # Declare launch arguments
     model_path_arg = DeclareLaunchArgument(
         'model_path',
-        default_value='/tmp/midas_small.onnx',
+        default_value='~/.local/share/image2depth/models/midas_small.onnx',
         description='Path to ONNX depth estimation model'
     )
     

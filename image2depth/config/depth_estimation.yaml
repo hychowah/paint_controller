@@ -2,7 +2,7 @@
 
 # Steam Deck optimized settings (targeting 10+ FPS)
 steam_deck_config:
-  model_path: "/tmp/midas_small.onnx"
+  model_path: "~/.local/share/image2depth/models/midas_small.onnx"
   input_width: 256
   input_height: 256
   normalize_output: true
@@ -14,7 +14,7 @@ steam_deck_config:
 
 # High quality settings (5-8 FPS on Steam Deck)
 high_quality_config:
-  model_path: "/tmp/midas_v21.onnx"
+  model_path: "~/.local/share/image2depth/models/midas_v21.onnx"
   input_width: 384
   input_height: 384
   normalize_output: true
@@ -26,7 +26,7 @@ high_quality_config:
 
 # Balanced settings (10-15 FPS on Steam Deck)
 balanced_config:
-  model_path: "/tmp/midas_small.onnx"
+  model_path: "~/.local/share/image2depth/models/midas_small.onnx"
   input_width: 384
   input_height: 384
   normalize_output: true

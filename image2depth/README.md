@@ -77,10 +77,10 @@ Download a pre-trained MiDaS model in ONNX format:
 
 ```bash
 # MiDaS Small (recommended for Steam Deck - good speed/accuracy balance)
-wget https://github.com/isl-org/MiDaS/releases/download/v3_1/midas_v21_small_256.onnx -O /tmp/midas_small.onnx
+wget https://github.com/isl-org/MiDaS/releases/download/v3_1/midas_v21_small_256.onnx -O ~/.local/share/image2depth/models/midas_small.onnx
 
 # Alternative: MiDaS v2.1 Small 384x384 (better accuracy, slower)
-# wget <URL_TO_MODEL> -O /tmp/midas_small.onnx
+# wget <URL_TO_MODEL> -O ~/.local/share/image2depth/models/midas_small.onnx
 ```
 
 **Note:** You may need to export MiDaS models to ONNX format yourself if pre-converted models are not available. See [MiDaS repository](https://github.com/isl-org/MiDaS) for details.
@@ -104,30 +104,30 @@ Test depth estimation without ROS2:
 ```bash
 # Process a single image
 ./install/image2depth/lib/image2depth/depth_estimation_test \
-    --model /tmp/midas_small.onnx \
+    --model ~/.local/share/image2depth/models/midas_small.onnx \
     --image input.jpg \
     --output depth_output.jpg
 
 # Process a video file
 ./install/image2depth/lib/image2depth/depth_estimation_test \
-    --model /tmp/midas_small.onnx \
+    --model ~/.local/share/image2depth/models/midas_small.onnx \
     --video input.mp4 \
     --output depth_output.avi
 
 # Process camera stream
 ./install/image2depth/lib/image2depth/depth_estimation_test \
-    --model /tmp/midas_small.onnx \
+    --model ~/.local/share/image2depth/models/midas_small.onnx \
     --camera 0
 
 # Use GPU acceleration (if available)
 ./install/image2depth/lib/image2depth/depth_estimation_test \
-    --model /tmp/midas_small.onnx \
+    --model ~/.local/share/image2depth/models/midas_small.onnx \
     --camera 0 \
     --gpu
 
 # Apply bilateral filtering for smoother results
 ./install/image2depth/lib/image2depth/depth_estimation_test \
-    --model /tmp/midas_small.onnx \
+    --model ~/.local/share/image2depth/models/midas_small.onnx \
     --camera 0 \
     --filter
 ```
@@ -143,7 +143,7 @@ ros2 run image2depth depth_estimation_node
 # With custom parameters
 ros2 run image2depth depth_estimation_node \
     --ros-args \
-    -p model_path:=/tmp/midas_small.onnx \
+    -p model_path:=~/.local/share/image2depth/models/midas_small.onnx \
     -p input_topic:=/camera/image_raw \
     -p output_topic:=/depth/image \
     -p input_width:=384 \
@@ -153,7 +153,7 @@ ros2 run image2depth depth_estimation_node \
 
 ### ROS2 Parameters
 
-- `model_path` (string): Path to ONNX model file (default: `/tmp/midas_small.onnx`)
+- `model_path` (string): Path to ONNX model file (default: `~/.local/share/image2depth/models/midas_small.onnx`)
 - `input_width` (int): Model input width in pixels (default: 384)
 - `input_height` (int): Model input height in pixels (default: 384)
 - `normalize_output` (bool): Normalize depth to 0-255 range (default: true)
@@ -234,7 +234,7 @@ auto depth_subscription = create_subscription<sensor_msgs::msg::Image>(
 
 ### Model Not Found
 ```
-Error: Model file not found: /tmp/midas_small.onnx
+Error: Model file not found: ~/.local/share/image2depth/models/midas_small.onnx
 ```
 Download the model using instructions in Installation section.
 

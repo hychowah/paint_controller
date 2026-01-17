@@ -234,8 +234,14 @@ bool ensureModelAvailable(const std::string& model_path)
 
 std::string getDefaultModelPath()
 {
-    // Default path relative to the package
-    return "/tmp/midas_small.onnx";
+    // Default path in user's local data directory
+    // User should set this to actual model location
+    const char* home = getenv("HOME");
+    if (home) {
+        return std::string(home) + "/.local/share/image2depth/models/midas_small.onnx";
+    }
+    // Fallback to current directory
+    return "./midas_small.onnx";
 }
 
 } // namespace image2depth

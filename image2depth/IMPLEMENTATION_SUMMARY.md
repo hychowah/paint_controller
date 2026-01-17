@@ -81,7 +81,7 @@ colcon build --packages-select image2depth
 
 # Test with camera
 ./install/image2depth/lib/image2depth/depth_estimation_test \
-    --model /tmp/midas_small.onnx \
+    --model ~/.local/share/image2depth/models/midas_small.onnx \
     --camera 0
 ```
 
@@ -98,7 +98,7 @@ ros2 launch image2depth depth_estimation.launch.py
 ```bash
 # Use conversion script
 cd image2depth
-./convert_model.py --model small --output /tmp/midas_small.onnx
+./convert_model.py --model small --output ~/.local/share/image2depth/models/midas_small.onnx
 
 # Or use download script
 ./download_model.sh

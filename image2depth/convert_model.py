@@ -99,7 +99,7 @@ def main():
         epilog="""
 Examples:
   # Download and convert MiDaS small model
-  %(prog)s --model small --output /tmp/midas_small.onnx
+  %(prog)s --model small --output ~/.local/share/image2depth/models/midas_small.onnx
 
   # Convert existing PyTorch model
   %(prog)s --convert model-small.pt --output midas_small.onnx --size 256
@@ -150,6 +150,12 @@ Note: For best results, use the official MiDaS repository for conversion:
     if not args.model and not args.convert:
         parser.error("Either --model or --convert must be specified")
     
+    # Create output directory if it doesn't exist
+    output_dir = os.path.dirname(args.output)
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir, mode=0o755)
+        print(f"Created directory: {output_dir}")
+    
     # Handle download
     if args.model:
         # Define model URLs
@@ -165,8 +171,11 @@ Note: For best results, use the official MiDaS repository for conversion:
             if not download_file(url, args.output):
                 return 1
         else:
-            # Download to temporary file
-            temp_path = f"/tmp/midas_{args.model}.pt"
+            # Download to user's cache directory (safer than /tmp)
+            cache_dir = os.path.expanduser("~/.cache/image2depth")
+            os.makedirs(cache_dir, mode=0o700, exist_ok=True)
+            temp_path = os.path.join(cache_dir, f"midas_{args.model}.pt")
+            
             if not download_file(url, temp_path):
                 return 1
             

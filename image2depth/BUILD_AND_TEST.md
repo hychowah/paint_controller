@@ -170,7 +170,7 @@ EOF
 python export_to_onnx.py
 
 # Move model to standard location
-sudo cp midas_small_256.onnx /tmp/midas_small.onnx
+sudo cp midas_small_256.onnx ~/.local/share/image2depth/models/midas_small.onnx
 ```
 
 ### Step 2: Test with Standalone Application
@@ -184,7 +184,7 @@ wget https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Van_Gogh_-_Starry
 
 # Run depth estimation
 ./install/image2depth/lib/image2depth/depth_estimation_test \
-    --model /tmp/midas_small.onnx \
+    --model ~/.local/share/image2depth/models/midas_small.onnx \
     --image test_image.jpg \
     --output depth_output.jpg
 
@@ -196,7 +196,7 @@ display depth_output.jpg  # or use your favorite image viewer
 ```bash
 # Test with webcam (device 0)
 ./install/image2depth/lib/image2depth/depth_estimation_test \
-    --model /tmp/midas_small.onnx \
+    --model ~/.local/share/image2depth/models/midas_small.onnx \
     --camera 0
 
 # The application will show two windows:
@@ -210,7 +210,7 @@ display depth_output.jpg  # or use your favorite image viewer
 ```bash
 # Download or use your own video
 ./install/image2depth/lib/image2depth/depth_estimation_test \
-    --model /tmp/midas_small.onnx \
+    --model ~/.local/share/image2depth/models/midas_small.onnx \
     --video input_video.mp4 \
     --output depth_video.avi
 ```
@@ -220,27 +220,27 @@ display depth_output.jpg  # or use your favorite image viewer
 # Test with different input sizes
 # Smaller = faster, less accurate
 ./install/image2depth/lib/image2depth/depth_estimation_test \
-    --model /tmp/midas_small.onnx \
+    --model ~/.local/share/image2depth/models/midas_small.onnx \
     --camera 0 \
     --width 256 \
     --height 256
 
 # Larger = slower, more accurate
 ./install/image2depth/lib/image2depth/depth_estimation_test \
-    --model /tmp/midas_small.onnx \
+    --model ~/.local/share/image2depth/models/midas_small.onnx \
     --camera 0 \
     --width 384 \
     --height 384
 
 # With GPU (if available)
 ./install/image2depth/lib/image2depth/depth_estimation_test \
-    --model /tmp/midas_small.onnx \
+    --model ~/.local/share/image2depth/models/midas_small.onnx \
     --camera 0 \
     --gpu
 
 # With bilateral filtering
 ./install/image2depth/lib/image2depth/depth_estimation_test \
-    --model /tmp/midas_small.onnx \
+    --model ~/.local/share/image2depth/models/midas_small.onnx \
     --camera 0 \
     --filter
 ```
@@ -248,7 +248,7 @@ display depth_output.jpg  # or use your favorite image viewer
 Expected output:
 ```
 Depth estimator initialized successfully
-Model loaded successfully from: /tmp/midas_small.onnx
+Model loaded successfully from: ~/.local/share/image2depth/models/midas_small.onnx
 Input size: 256x256
 Using CPU backend for inference
 Processing camera stream: 0
@@ -314,7 +314,7 @@ ros2 launch image2depth depth_estimation.launch.py
 
 # With custom parameters
 ros2 launch image2depth depth_estimation.launch.py \
-    model_path:=/tmp/midas_small.onnx \
+    model_path:=~/.local/share/image2depth/models/midas_small.onnx \
     input_topic:=/camera/image_raw \
     output_topic:=/depth/image \
     input_width:=256 \

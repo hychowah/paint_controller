@@ -4,12 +4,18 @@
 
 set -e
 
-MODEL_DIR="/tmp"
+# Default model directory in user's local data directory
+MODEL_DIR="${HOME}/.local/share/image2depth/models"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Create model directory if it doesn't exist
+mkdir -p "${MODEL_DIR}"
 
 echo "=================================================="
 echo "MiDaS Depth Estimation Model Download Script"
 echo "=================================================="
+echo ""
+echo "Models will be saved to: ${MODEL_DIR}"
 echo ""
 
 # Function to download file

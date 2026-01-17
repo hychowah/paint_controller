@@ -64,11 +64,11 @@ Choose ONE of these options:
 - [ ] Run conversion script
   ```bash
   cd ~/ros2_ws/src/paint_controller_ros2/image2depth
-  ./convert_model.py --model small --output /tmp/midas_small.onnx --size 256
+  ./convert_model.py --model small --output ~/.local/share/image2depth/models/midas_small.onnx --size 256
   ```
 - [ ] Verify model exists
   ```bash
-  ls -lh /tmp/midas_small.onnx
+  ls -lh ~/.local/share/image2depth/models/midas_small.onnx
   ```
 
 #### Option B: Use Bash Download Script
@@ -86,7 +86,7 @@ Choose ONE of these options:
   cd /tmp/MiDaS
   ```
 - [ ] Follow MiDaS conversion instructions (see BUILD_AND_TEST.md)
-- [ ] Copy converted model to `/tmp/midas_small.onnx`
+- [ ] Copy converted model to `~/.local/share/image2depth/models/midas_small.onnx`
 
 ## Testing
 
@@ -100,7 +100,7 @@ Choose ONE of these options:
 - [ ] Run depth estimation
   ```bash
   ./install/image2depth/lib/image2depth/depth_estimation_test \
-      --model /tmp/midas_small.onnx \
+      --model ~/.local/share/image2depth/models/midas_small.onnx \
       --image /tmp/test.jpg \
       --output /tmp/depth_output.jpg
   ```
@@ -115,7 +115,7 @@ Choose ONE of these options:
 - [ ] Run depth estimation
   ```bash
   ./install/image2depth/lib/image2depth/depth_estimation_test \
-      --model /tmp/midas_small.onnx \
+      --model ~/.local/share/image2depth/models/midas_small.onnx \
       --camera 0
   ```
 - [ ] Verify windows open showing:
@@ -184,7 +184,7 @@ Choose ONE of these options:
 - [ ] Launch with custom parameters
   ```bash
   ros2 launch image2depth depth_estimation.launch.py \
-      model_path:=/tmp/midas_small.onnx \
+      model_path:=~/.local/share/image2depth/models/midas_small.onnx \
       input_width:=256 \
       input_height:=256 \
       verbose:=true
@@ -196,7 +196,7 @@ Choose ONE of these options:
 - [ ] Run standalone test with FPS monitoring
   ```bash
   ./install/image2depth/lib/image2depth/depth_estimation_test \
-      --model /tmp/midas_small.onnx \
+      --model ~/.local/share/image2depth/models/midas_small.onnx \
       --camera 0 \
       --width 256 \
       --height 256
@@ -206,7 +206,7 @@ Choose ONE of these options:
 - [ ] Test with larger input
   ```bash
   ./install/image2depth/lib/image2depth/depth_estimation_test \
-      --model /tmp/midas_small.onnx \
+      --model ~/.local/share/image2depth/models/midas_small.onnx \
       --camera 0 \
       --width 384 \
       --height 384
@@ -240,7 +240,7 @@ Choose ONE of these options:
 
 #### Model Issues
 - [ ] Model not found
-  - Solution: Verify path with `ls /tmp/midas_small.onnx`
+  - Solution: Verify path with `ls ~/.local/share/image2depth/models/midas_small.onnx`
 - [ ] Model loading fails
   - Solution: Try re-converting or use different model
 
