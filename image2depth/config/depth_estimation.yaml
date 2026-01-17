@@ -1,0 +1,37 @@
+# Configuration for depth estimation node
+
+# Steam Deck optimized settings (targeting 10+ FPS)
+steam_deck_config:
+  model_path: "/tmp/midas_small.onnx"
+  input_width: 256
+  input_height: 256
+  normalize_output: true
+  use_gpu: false  # Steam Deck CPU often faster for small models
+  apply_bilateral_filter: false  # Disable for max FPS
+  verbose: true
+  input_topic: "/camera/image_raw"
+  output_topic: "/depth/image"
+
+# High quality settings (5-8 FPS on Steam Deck)
+high_quality_config:
+  model_path: "/tmp/midas_v21.onnx"
+  input_width: 384
+  input_height: 384
+  normalize_output: true
+  use_gpu: false
+  apply_bilateral_filter: true  # Better quality, slower
+  verbose: true
+  input_topic: "/camera/image_raw"
+  output_topic: "/depth/image"
+
+# Balanced settings (10-15 FPS on Steam Deck)
+balanced_config:
+  model_path: "/tmp/midas_small.onnx"
+  input_width: 384
+  input_height: 384
+  normalize_output: true
+  use_gpu: false
+  apply_bilateral_filter: false
+  verbose: true
+  input_topic: "/camera/image_raw"
+  output_topic: "/depth/image"

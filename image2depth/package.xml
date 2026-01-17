@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>image2depth</name>
+  <version>0.0.1</version>
+  <description>Real-time monocular depth estimation from RGB images, optimized for Steam Deck</description>
+  <maintainer email="hychowah@gmail.com">c3spray_deck</maintainer>
+  <license>Apache License 2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- Core dependencies -->
+  <build_depend>rclcpp</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>cv_bridge</build_depend>
+  <build_depend>libopencv-dev</build_depend>
+
+  <!-- Runtime dependencies -->
+  <exec_depend>rclcpp</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>libopencv-dev</exec_depend>
+
+  <!-- Optional dependencies for better performance -->
+  <!-- <build_depend>onnxruntime</build_depend> -->
+  <!-- <exec_depend>onnxruntime</exec_depend> -->
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
