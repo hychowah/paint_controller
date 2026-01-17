@@ -4,22 +4,31 @@
 
 void printUsage(const char* program_name)
 {
-    std::cout << "Usage: " << program_name << " [options]\n"
-              << "Options:\n"
-              << "  --model <path>        Path to ONNX model file (required)\n"
-              << "  --image <path>        Path to input image file\n"
-              << "  --video <path>        Path to input video file\n"
-              << "  --camera <id>         Camera device ID (default: 0)\n"
+    std::cout << "Usage: " << program_name << " --model <path> [--image|--video|--camera] [options]\n"
+              << "\nRequired:\n"
+              << "  --model <path>        Path to ONNX model file\n"
+              << "\nInput Source (choose one):\n"
+              << "  --image <path>        Process a single image file\n"
+              << "  --video <path>        Process a video file\n"
+              << "  --camera <id>         Process camera stream (device ID, e.g., 0)\n"
+              << "\nOptional Parameters:\n"
               << "  --width <pixels>      Model input width (default: 384)\n"
               << "  --height <pixels>     Model input height (default: 384)\n"
               << "  --gpu                 Use GPU acceleration if available\n"
               << "  --filter              Apply bilateral filter to output\n"
-              << "  --output <path>       Save output to image/video file\n"
+              << "  --output <path>       Save output to file (image or video)\n"
               << "  --help                Show this help message\n"
               << "\nExamples:\n"
+              << "  # Process an image\n"
               << "  " << program_name << " --model midas_small.onnx --image input.jpg\n"
+              << "\n  # Process an image and save output\n"
+              << "  " << program_name << " --model midas_small.onnx --image input.jpg --output depth.jpg\n"
+              << "\n  # Process a video\n"
+              << "  " << program_name << " --model midas_small.onnx --video input.mp4 --output depth_output.avi\n"
+              << "\n  # Process camera stream\n"
               << "  " << program_name << " --model midas_small.onnx --camera 0\n"
-              << "  " << program_name << " --model midas_small.onnx --video input.mp4 --output depth_output.avi\n";
+              << "\n  # Use GPU and filtering\n"
+              << "  " << program_name << " --model midas_small.onnx --image input.jpg --gpu --filter\n";
 }
 
 int main(int argc, char** argv)
@@ -70,7 +79,10 @@ int main(int argc, char** argv)
     }
     
     if (image_path.empty() && video_path.empty() && camera_id < 0) {
-        std::cerr << "Error: Must specify --image, --video, or --camera\n" << std::endl;
+        std::cerr << "Error: You must specify one input source:\n"
+                  << "       --image <path>   for image files\n"
+                  << "       --video <path>   for video files\n"
+                  << "       --camera <id>    for camera stream\n" << std::endl;
         printUsage(argv[0]);
         return 1;
     }
