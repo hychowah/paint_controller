@@ -156,6 +156,7 @@ ros2 run image2depth depth_estimation_node \
 - `model_path` (string): Path to ONNX model file (default: `~/.local/share/image2depth/models/midas_small.onnx`)
 - `input_width` (int): Model input width in pixels (default: 384)
 - `input_height` (int): Model input height in pixels (default: 384)
+- `max_input_dimension` (int): Max input dimension for auto-scaling (default: 1280, 0=disable)
 - `normalize_output` (bool): Normalize depth to 0-255 range (default: true)
 - `use_gpu` (bool): Use GPU acceleration if available (default: false)
 - `apply_bilateral_filter` (bool): Apply bilateral filter to output (default: false)
@@ -171,7 +172,30 @@ ros2 run image2depth depth_estimation_node \
 2. **Use MiDaS Small model**: Better speed/accuracy tradeoff
 3. **Disable GPU**: Steam Deck's CPU may be faster for small models
 4. **Disable bilateral filter**: Saves processing time
-5. **Use ONNX Runtime**: If available, provides better performance
+5. **Enable auto-scaling**: Automatically scales down large images (default: enabled at 1280px)
+6. **Use ONNX Runtime**: If available, provides better performance
+
+### Auto-Scaling for High-Resolution Inputs
+
+The module automatically scales down large images/videos before processing to improve performance:
+
+- **Default**: Images larger than 1280px (width or height) are scaled down proportionally
+- **Benefits**: Significantly faster processing for 4K, 1080p, or high-resolution images
+- **Quality**: Minimal impact on depth estimation accuracy
+- **Disable**: Set `max_input_dimension=0` to process at full resolution
+- **Adjust**: Set custom max size, e.g., `--max-size 1920` for 1080p sources
+
+Example:
+```bash
+# Process 4K image with auto-scaling (much faster)
+./depth_estimation_test --model model.onnx --image 4k_image.jpg
+
+# Process at full resolution (slower)
+./depth_estimation_test --model model.onnx --image 4k_image.jpg --max-size 0
+
+# Custom max size for 1080p videos
+./depth_estimation_test --model model.onnx --video 1080p.mp4 --max-size 1920
+```
 
 ### Expected Performance on Steam Deck
 

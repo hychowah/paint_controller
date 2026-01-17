@@ -14,6 +14,7 @@ void printUsage(const char* program_name)
               << "\nOptional Parameters:\n"
               << "  --width <pixels>      Model input width (default: 384)\n"
               << "  --height <pixels>     Model input height (default: 384)\n"
+              << "  --max-size <pixels>   Max input dimension for auto-scaling (default: 1280, 0=disable)\n"
               << "  --gpu                 Use GPU acceleration if available\n"
               << "  --filter              Apply bilateral filter to output\n"
               << "  --output <path>       Save output to file (image or video)\n"
@@ -25,6 +26,8 @@ void printUsage(const char* program_name)
               << "  " << program_name << " --model midas_small.onnx --image input.jpg --output depth.jpg\n"
               << "\n  # Process a video\n"
               << "  " << program_name << " --model midas_small.onnx --video input.mp4 --output depth_output.avi\n"
+              << "\n  # Process high-res image with auto-scaling\n"
+              << "  " << program_name << " --model midas_small.onnx --image 4k_image.jpg --max-size 1920\n"
               << "\n  # Process camera stream\n"
               << "  " << program_name << " --model midas_small.onnx --camera 0\n"
               << "\n  # Use GPU and filtering\n"
@@ -41,6 +44,7 @@ int main(int argc, char** argv)
     int camera_id = -1;
     int input_width = 384;
     int input_height = 384;
+    int max_input_dimension = 1280;
     bool use_gpu = false;
     bool apply_filter = false;
     
@@ -62,6 +66,8 @@ int main(int argc, char** argv)
             input_width = std::stoi(argv[++i]);
         } else if (arg == "--height" && i + 1 < argc) {
             input_height = std::stoi(argv[++i]);
+        } else if (arg == "--max-size" && i + 1 < argc) {
+            max_input_dimension = std::stoi(argv[++i]);
         } else if (arg == "--gpu") {
             use_gpu = true;
         } else if (arg == "--filter") {
@@ -92,6 +98,7 @@ int main(int argc, char** argv)
     config.model_path = model_path;
     config.input_width = input_width;
     config.input_height = input_height;
+    config.max_input_dimension = max_input_dimension;
     config.normalize_output = true;
     config.use_gpu = use_gpu;
     config.apply_bilateral_filter = apply_filter;

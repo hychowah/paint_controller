@@ -15,6 +15,7 @@ public:
             "/.local/share/image2depth/models/midas_small.onnx");
         this->declare_parameter<int>("input_width", 384);
         this->declare_parameter<int>("input_height", 384);
+        this->declare_parameter<int>("max_input_dimension", 1280);
         this->declare_parameter<bool>("normalize_output", true);
         this->declare_parameter<bool>("use_gpu", false);
         this->declare_parameter<bool>("apply_bilateral_filter", false);
@@ -26,6 +27,7 @@ public:
         std::string model_path = this->get_parameter("model_path").as_string();
         int input_width = this->get_parameter("input_width").as_int();
         int input_height = this->get_parameter("input_height").as_int();
+        int max_input_dimension = this->get_parameter("max_input_dimension").as_int();
         bool normalize_output = this->get_parameter("normalize_output").as_bool();
         bool use_gpu = this->get_parameter("use_gpu").as_bool();
         bool apply_bilateral_filter = this->get_parameter("apply_bilateral_filter").as_bool();
@@ -38,6 +40,7 @@ public:
         config.model_path = model_path;
         config.input_width = input_width;
         config.input_height = input_height;
+        config.max_input_dimension = max_input_dimension;
         config.normalize_output = normalize_output;
         config.use_gpu = use_gpu;
         config.apply_bilateral_filter = apply_bilateral_filter;

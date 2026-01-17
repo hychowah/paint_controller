@@ -41,6 +41,12 @@ def generate_launch_description():
         description='Model input height in pixels'
     )
     
+    max_input_dimension_arg = DeclareLaunchArgument(
+        'max_input_dimension',
+        default_value='1280',
+        description='Max input dimension for auto-scaling (0=disable)'
+    )
+    
     use_gpu_arg = DeclareLaunchArgument(
         'use_gpu',
         default_value='false',
@@ -71,6 +77,7 @@ def generate_launch_description():
             'output_topic': LaunchConfiguration('output_topic'),
             'input_width': LaunchConfiguration('input_width'),
             'input_height': LaunchConfiguration('input_height'),
+            'max_input_dimension': LaunchConfiguration('max_input_dimension'),
             'use_gpu': LaunchConfiguration('use_gpu'),
             'apply_bilateral_filter': LaunchConfiguration('apply_bilateral_filter'),
             'verbose': LaunchConfiguration('verbose'),
@@ -83,6 +90,7 @@ def generate_launch_description():
         output_topic_arg,
         input_width_arg,
         input_height_arg,
+        max_input_dimension_arg,
         use_gpu_arg,
         apply_bilateral_filter_arg,
         verbose_arg,

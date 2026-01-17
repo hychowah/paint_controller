@@ -172,16 +172,42 @@ bool DepthEstimator::estimateDepth(const cv::Mat& input_image, cv::Mat& depth_ma
     auto start_time = std::chrono::steady_clock::now();
     
     try {
+        // Auto-scale input image if it's too large
+        cv::Mat processing_image = input_image;
+        cv::Size original_size = input_image.size();
+        
+        if (config_.max_input_dimension > 0) {
+            int max_dim = std::max(input_image.cols, input_image.rows);
+            
+            if (max_dim > config_.max_input_dimension) {
+                // Calculate scaling factor
+                double scale = static_cast<double>(config_.max_input_dimension) / max_dim;
+                cv::Size new_size(
+                    static_cast<int>(input_image.cols * scale),
+                    static_cast<int>(input_image.rows * scale)
+                );
+                
+                // Scale down the image
+                cv::resize(input_image, processing_image, new_size, 0, 0, cv::INTER_AREA);
+                
+                if (config_.verbose && frame_count_ == 0) {
+                    std::cout << "Auto-scaled input from " << input_image.cols << "x" << input_image.rows
+                              << " to " << new_size.width << "x" << new_size.height
+                              << " (max_input_dimension=" << config_.max_input_dimension << ")" << std::endl;
+                }
+            }
+        }
+        
         // Preprocess input image
-        cv::Mat blob = preprocessImage(input_image);
+        cv::Mat blob = preprocessImage(processing_image);
         
         // Run inference
         if (config_.backend == DepthEstimatorConfig::Backend::OPENCV_DNN) {
             net_.setInput(blob);
             cv::Mat output = net_.forward();
             
-            // Postprocess output
-            depth_map = postprocessOutput(output, input_image.size());
+            // Postprocess output - scale back to original size
+            depth_map = postprocessOutput(output, original_size);
         } else if (config_.backend == DepthEstimatorConfig::Backend::ONNXRUNTIME) {
             // ONNX Runtime inference not implemented
             std::cerr << "Error: ONNX Runtime backend not available" << std::endl;

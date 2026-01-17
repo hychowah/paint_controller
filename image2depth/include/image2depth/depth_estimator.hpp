@@ -39,6 +39,11 @@ struct DepthEstimatorConfig
     
     // Print performance metrics
     bool verbose = true;
+    
+    // Auto-scale large input images/videos before processing
+    // Set to 0 to disable, or specify max dimension (e.g., 1280)
+    // This improves performance for high-resolution inputs
+    int max_input_dimension = 1280;
 };
 
 /**
