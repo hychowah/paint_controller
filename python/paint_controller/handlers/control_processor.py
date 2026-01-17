@@ -34,6 +34,11 @@ class ControlProcessor(QObject):
         self._right_control_mode = "None"
         self._right_control_value = ""
         
+        # Cache for display strings to avoid unnecessary rebuilds
+        self._last_display_message = ""
+        self._last_left_display_parts = None
+        self._last_right_display_parts = None
+        
         # Valve turn deadzone tracking
         self.valve_turn_in_deadzone = False
         self.valve_turn_deadzone_start_time = 0
@@ -187,70 +192,85 @@ class ControlProcessor(QObject):
         }
 
     def _update_display(self):
-        """Update the display with current control values at 5Hz"""
-        if self._can_send_message():
-            if self.robot.overlayController.get_left_selected_option() == "None":
-                left_part = "None"
-                left_mode = "None"
-                left_value = ""
-            else:
-                left_mode = self.current_values['left_mode']
-                left_value = self.current_values['left_value']
-                
-                # Add LOCKED indicator for Winch Speed when locked
-                if left_mode == "Winch Speed" and self._is_winch_control_locked():
-                    left_part = f"{left_mode} {left_value:.2f} (LOCKED)" if left_mode else "None"
-                elif left_mode in ["Track Control Left", "Track Control Right"]:
-                    # Track Control already returns a formatted string
-                    left_part = f"{left_mode} {left_value}" if left_mode else "None"
-                elif left_mode == "EF Force":
-                    # left_value contains a tuple (Fx, Fy) for EF Force
-                    if isinstance(left_value, tuple):
-                        left_part = f"{left_mode} Fx:{left_value[0]:.2f} Fy:{left_value[1]:.2f}"
-                    else:
-                        left_part = f"{left_mode} {left_value:.2f}"
-                else:
-                    left_part = f"{left_mode} {left_value:.2f}" if left_mode else "None"
-
-            if self.robot.overlayController.get_right_selected_option() == "None":
-                right_part = "None"
-                right_mode = "None"
-                right_value = ""
-            else:
-                right_mode = self.current_values['right_mode']
-                right_value = self.current_values['right_value']
-                
-                # Add LOCKED indicator for Winch Speed when locked
-                if right_mode == "Winch Speed" and self._is_winch_control_locked():
-                    right_part = f"{right_mode} {right_value:.2f} (LOCKED)" if right_mode else "None"
-                elif right_mode in ["Track Control Left", "Track Control Right"]:
-                    # Track Control already returns a formatted string
-                    right_part = f"{right_mode} {right_value}" if right_mode else "None"
-                elif right_mode == "EF Force":
-                    # right_value contains a tuple (Fx, Fy) for EF Force
-                    if isinstance(right_value, tuple):
-                        right_part = f"{right_mode} Fx:{right_value[0]:.2f} Fy:{right_value[1]:.2f}"
-                    else:
-                        right_part = f"{right_mode} {right_value:.2f}"
-                else:
-                    right_part = f"{right_mode} {right_value:.2f}" if right_mode else "None"
-                    
-            message = f"LEFT: {left_part} | RIGHT: {right_part}"
+        """Update the display with current control values at 5Hz (with caching optimization)"""
+        if not self._can_send_message():
+            return
+        
+        # Get current control options and values
+        left_option = self.robot.overlayController.get_left_selected_option()
+        right_option = self.robot.overlayController.get_right_selected_option()
+        left_mode = self.current_values.get('left_mode')
+        left_value = self.current_values.get('left_value')
+        right_mode = self.current_values.get('right_mode')
+        right_value = self.current_values.get('right_value')
+        is_locked = self._is_winch_control_locked()
+        
+        # Create cache keys for comparison
+        left_cache_key = (left_option, left_mode, left_value, is_locked if left_mode == "Winch Speed" else False)
+        right_cache_key = (right_option, right_mode, right_value, is_locked if right_mode == "Winch Speed" else False)
+        
+        # Only rebuild strings if values changed
+        if self._last_left_display_parts != left_cache_key:
+            left_part, left_mode, left_value = self._format_display_part(
+                left_option, left_mode, left_value, 
+                is_locked if left_mode == "Winch Speed" else False
+            )
+            self._last_left_display_parts = left_cache_key
+        else:
+            # Use cached value - extract from previous message
+            left_part = self._last_display_message.split(" | ")[0].replace("LEFT: ", "") if self._last_display_message else "None"
+        
+        if self._last_right_display_parts != right_cache_key:
+            right_part, right_mode, right_value = self._format_display_part(
+                right_option, right_mode, right_value,
+                is_locked if right_mode == "Winch Speed" else False
+            )
+            self._last_right_display_parts = right_cache_key
+        else:
+            # Use cached value - extract from previous message
+            right_part = self._last_display_message.split(" | ")[1].replace("RIGHT: ", "") if " | " in self._last_display_message else "None"
+        
+        # Build complete message
+        message = f"LEFT: {left_part} | RIGHT: {right_part}"
+        
+        # Only update if message changed
+        if message != self._last_display_message:
             self.robot.display_message = message
-            
-            # Update control processor properties for overlay display
-            self.left_control_mode = left_mode if left_mode else "None"
-            self.left_control_value = str(left_value) if isinstance(left_value, str) else (
-                f"Fx:{left_value[0]:.1f} Fy:{left_value[1]:.1f}" if isinstance(left_value, tuple) else (
-                    f"L:{left_value:.1f}" if isinstance(left_value, (int, float)) else str(left_value)
-                )
+            self._last_display_message = message
+        
+        # Update control processor properties for overlay display
+        self.left_control_mode = left_mode if left_mode else "None"
+        self.left_control_value = str(left_value) if isinstance(left_value, str) else (
+            f"Fx:{left_value[0]:.1f} Fy:{left_value[1]:.1f}" if isinstance(left_value, tuple) else (
+                f"L:{left_value:.1f}" if isinstance(left_value, (int, float)) else str(left_value)
             )
-            self.right_control_mode = right_mode if right_mode else "None"
-            self.right_control_value = str(right_value) if isinstance(right_value, str) else (
-                f"Fx:{right_value[0]:.1f} Fy:{right_value[1]:.1f}" if isinstance(right_value, tuple) else (
-                    f"R:{right_value:.1f}" if isinstance(right_value, (int, float)) else str(right_value)
-                )
+        )
+        self.right_control_mode = right_mode if right_mode else "None"
+        self.right_control_value = str(right_value) if isinstance(right_value, str) else (
+            f"Fx:{right_value[0]:.1f} Fy:{right_value[1]:.1f}" if isinstance(right_value, tuple) else (
+                f"R:{right_value:.1f}" if isinstance(right_value, (int, float)) else str(right_value)
             )
+        )
+    
+    def _format_display_part(self, option, mode, value, is_locked=False):
+        """Helper method to format display string for a control (with caching optimization)"""
+        if option == "None":
+            return "None", "None", ""
+        
+        # Generate formatted string based on mode and value type
+        if mode == "Winch Speed" and is_locked:
+            part = f"{mode} {value:.2f} (LOCKED)"
+        elif mode in ["Track Control Left", "Track Control Right"]:
+            part = f"{mode} {value}"
+        elif mode == "EF Force":
+            if isinstance(value, tuple):
+                part = f"{mode} Fx:{value[0]:.2f} Fy:{value[1]:.2f}"
+            else:
+                part = f"{mode} {value:.2f}"
+        else:
+            part = f"{mode} {value:.2f}" if mode else "None"
+        
+        return part, mode, value
 
     def _can_send_message(self) -> bool:
         """Check if we should update the display"""
