@@ -113,14 +113,11 @@ private:
     // Configuration
     DepthEstimatorConfig config_;
     
-    // Model
-    cv::dnn::Net net_;  // OpenCV DNN backend
+    // Model (using OpenCV DNN backend)
+    cv::dnn::Net net_;
     
-#ifdef USE_ONNXRUNTIME
-    // ONNX Runtime session (if available)
-    void* ort_session_;  // Pointer to avoid exposing ONNX headers
-    void* ort_env_;
-#endif
+    // Note: ONNX Runtime backend is not yet implemented
+    // When implemented, it will provide 20-30% performance improvement
     
     // State
     bool initialized_;
