@@ -228,12 +228,12 @@ ApplicationWindow {
         z: 3000  // Highest z-index to ensure it's on top
     }
 
-        // Video Fullscreen Overlay - above everything for fullscreen video with DJI-style overlay
+    // Video Fullscreen Overlay - for fullscreen video with DJI-style overlay
     VideoFullscreenOverlay {
         id: videoFullscreenOverlay
         objectName: "videoFullscreenOverlay"
         anchors.fill: parent
-        z: 500  // Above everything including emergency overlay
+        z: 500  // Below emergency overlay but above main content
     }
 
     // LiDAR 3D View
