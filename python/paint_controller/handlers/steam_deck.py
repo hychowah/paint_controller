@@ -192,7 +192,7 @@ class SteamDeckHandler(QObject):
         # Create availability check timer
         self._availability_timer = QTimer(self)
         self._availability_timer.timeout.connect(self._check_availability)
-        self._availability_timer.start(200)  # Check every 200ms
+        self._availability_timer.start(1000)  # Check every 1000ms (optimized from 200ms)
         
         # Button callback system - store callbacks for each button
         self._button_callbacks = {

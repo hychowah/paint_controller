@@ -115,7 +115,7 @@ class TeensyController(QObject):
         # Create connection check timer
         self._availability_timer = QTimer(self)
         self._availability_timer.timeout.connect(self._check_availability)
-        self._availability_timer.start(200)  # Check every 200ms
+        self._availability_timer.start(1000)  # Check every 1000ms (optimized from 200ms)
         
     def _setup_publishers(self):
         """Set up ROS publishers for Teensy control"""

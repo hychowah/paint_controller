@@ -37,7 +37,7 @@ class VTKPointCloudWidget(QWidget):
             self._setup_error_ui()
             return
         
-        self.points_data = collections.deque(maxlen=10)  # Store last 5 frames
+        self.points_data = collections.deque(maxlen=2)  # Store last 2 frames (optimized from 10)
         self.color_mode = "z-axis"  # "distance", "height", "uniform", "intensity", "z-axis"
         
         # VTK components
@@ -47,6 +47,9 @@ class VTKPointCloudWidget(QWidget):
         self.axes_actor = None
         self.grid_actor = None
         self.camera_info_actor = None
+        
+        # Cache for color lookup tables to avoid recreation
+        self._color_lut_cache = {}
         
         self._setup_ui()
         self._setup_vtk()
@@ -361,10 +364,14 @@ class VTKPointCloudWidget(QWidget):
             z_min, z_max = z_values.min(), z_values.max()
             z_normalized = (z_values - z_min) / (z_max - z_min + 1e-6)
             
-            # Create a lookup table (LUT) for rainbow colors
-            lut = vtk.vtkLookupTable()
-            lut.SetHueRange(0.667, 0.0) # Blue to Red
-            lut.Build()
+            # Use cached lookup table (LUT) for rainbow colors to avoid recreation
+            if "z-axis" not in self._color_lut_cache:
+                lut = vtk.vtkLookupTable()
+                lut.SetHueRange(0.667, 0.0)  # Blue to Red
+                lut.Build()
+                self._color_lut_cache["z-axis"] = lut
+            else:
+                lut = self._color_lut_cache["z-axis"]
 
             rgb = [0.0, 0.0, 0.0]
             for i in range(num_points):

@@ -197,16 +197,21 @@ class OverlayController(QObject):
             return
             
         current_index = self._temp_left_index if self._active_menu == "left" else self._temp_right_index
+        new_index = None
         
         for index in range(current_index - 1, -1, -1):
             if self._can_select_option(index):
-                if self._active_menu == "left":
-                    self._temp_left_index = index
-                    self.leftSelectedIndexChanged.emit(index)
-                else:
-                    self._temp_right_index = index
-                    self.rightSelectedIndexChanged.emit(index)
+                new_index = index
                 break
+        
+        # Only update and emit if we found a valid new index
+        if new_index is not None:
+            if self._active_menu == "left":
+                self._temp_left_index = new_index
+                self.leftSelectedIndexChanged.emit(new_index)
+            else:
+                self._temp_right_index = new_index
+                self.rightSelectedIndexChanged.emit(new_index)
                 
         self._input_locked = True
         self._input_timer.start()
@@ -218,16 +223,21 @@ class OverlayController(QObject):
             return
             
         current_index = self._temp_left_index if self._active_menu == "left" else self._temp_right_index
+        new_index = None
         
         for index in range(current_index + 1, len(self._control_options)):
             if self._can_select_option(index):
-                if self._active_menu == "left":
-                    self._temp_left_index = index
-                    self.leftSelectedIndexChanged.emit(index)
-                else:
-                    self._temp_right_index = index
-                    self.rightSelectedIndexChanged.emit(index)
+                new_index = index
                 break
+        
+        # Only update and emit if we found a valid new index
+        if new_index is not None:
+            if self._active_menu == "left":
+                self._temp_left_index = new_index
+                self.leftSelectedIndexChanged.emit(new_index)
+            else:
+                self._temp_right_index = new_index
+                self.rightSelectedIndexChanged.emit(new_index)
                 
         self._input_locked = True
         self._input_timer.start()

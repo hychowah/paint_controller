@@ -98,7 +98,7 @@ class HeartbeatStatus(Enum):
 class RobotConfig:
     """Robot configuration parameters"""
     video_port: int = 5000
-    update_rate: float = 60.0  # Hz
+    update_rate: float = 30.0  # Hz - Reduced from 60Hz to 30Hz for better performance
     joystick_deadzone: float = 0.1
 
 class ConfigLoader:
@@ -812,7 +812,7 @@ def main():
 
     heartbeat_timer = QTimer()
     heartbeat_timer.timeout.connect(controller._publish_heartbeat)
-    heartbeat_timer.start(500)  # 500 milliseconds = 0.5 seconds
+    heartbeat_timer.start(1000)  # 1000 milliseconds = 1 second (optimized from 500ms)
     
     # Start system monitoring (every 1 second)
     controller.system_monitor.start_monitoring(interval_ms=1000)
