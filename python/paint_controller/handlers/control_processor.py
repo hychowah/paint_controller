@@ -219,7 +219,7 @@ class ControlProcessor(QObject):
         else:
             # Use cached value - extract from previous message (with safe parsing)
             parts = self._last_display_message.split(" | ")
-            left_part = parts[0].replace("LEFT: ", "") if parts else "None"
+            left_part = parts[0].replace("LEFT: ", "") if len(parts) > 0 else "None"
         
         if self._last_right_display_parts != right_cache_key:
             right_part, right_mode, right_value = self._format_display_part(
