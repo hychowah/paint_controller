@@ -45,44 +45,26 @@ from paint_controller.core.settings import SettingsManager
 
 # Global reference for signal handler
 _app_instance = None
-_controller_instance = None
-_ros_thread_instance = None
 
 def signal_handler(signum, frame):
-    """Handle SIGINT (Ctrl+C) gracefully"""
+    """Handle SIGINT (Ctrl+C) gracefully - force immediate exit"""
     print("\n\nReceived interrupt signal (Ctrl+C)...")
-    print("Initiating graceful shutdown...")
+    print("Forcing immediate shutdown...")
     
-    global _app_instance, _controller_instance, _ros_thread_instance
-    
-    # Stop ROS thread first
-    if _ros_thread_instance is not None:
-        try:
-            print("Stopping ROS thread...")
-            _ros_thread_instance.request_shutdown()
-            _ros_thread_instance.wait(1000)  # Wait 1 second
-        except Exception as e:
-            print(f"Error stopping ROS thread: {e}")
-    
-    # Cleanup controller
-    if _controller_instance is not None:
-        try:
-            print("Cleaning up controller...")
-            _controller_instance.cleanup()
-        except Exception as e:
-            print(f"Error cleaning up controller: {e}")
-    
-    # Quit Qt application
-    if _app_instance is not None:
-        try:
-            print("Quitting Qt application...")
+    # Don't try to cleanup from signal handler - just force exit
+    # The finally block in main() will handle cleanup if app.exec() exits normally
+    # But if we're here, something is stuck, so just exit
+    try:
+        # Try to stop the Qt app first
+        global _app_instance
+        if _app_instance is not None:
             _app_instance.quit()
-        except Exception as e:
-            print(f"Error quitting application: {e}")
+    except:
+        pass
     
-    # Force exit if needed
-    print("Shutdown complete.")
-    sys.exit(0)
+    # Force exit immediately - don't wait for cleanup
+    print("Forced shutdown complete.")
+    os._exit(1)  # Use os._exit to bypass cleanup that might be stuck
 
 #############################################
 ### Configuration
@@ -734,7 +716,7 @@ class RobotController(Node, QObject):
 #############################################
 
 def main():
-    global _app_instance, _controller_instance, _ros_thread_instance
+    global _app_instance
     
     # Setup signal handler for graceful shutdown
     signal.signal(signal.SIGINT, signal_handler)
@@ -752,12 +734,10 @@ def main():
     
     # Create robot controller
     controller = RobotController(config)
-    _controller_instance = controller
 
     
     # Start ROS thread
     ros_thread = RosThread(controller)
-    _ros_thread_instance = ros_thread
     ros_thread.start()
     
     # Setup timer to process Python signals in Qt event loop
@@ -833,25 +813,41 @@ def main():
         except Exception as e:
             print(f"Error stopping timers: {e}")
         
-        # Step 2: Request ROS thread shutdown and wait for it
+        # Step 2: Request ROS thread shutdown and wait for it (short timeout)
         try:
             ros_thread.request_shutdown()
-            # Wait max 3 seconds for ROS thread to finish
-            ros_thread.wait(3000)
-            if ros_thread.isRunning():
+            # Wait max 2 seconds for ROS thread to finish (reduced from 3)
+            if not ros_thread.wait(2000):
                 print("WARNING: ROS thread did not exit cleanly, forcing termination...")
                 ros_thread.terminate()
-                ros_thread.wait(1000)
+                ros_thread.wait(500)
         except Exception as e:
             print(f"Error shutting down ROS thread: {e}")
         
         # Step 3: Call cleanup on controller (which calls cleanup on all sub-components)
+        # Use a timeout to prevent hanging
         try:
-            controller.cleanup()
+            import threading
+            cleanup_done = threading.Event()
+            
+            def do_cleanup():
+                try:
+                    controller.cleanup()
+                    cleanup_done.set()
+                except Exception as e:
+                    print(f"Error during controller cleanup: {e}")
+                    cleanup_done.set()
+            
+            cleanup_thread = threading.Thread(target=do_cleanup, daemon=True)
+            cleanup_thread.start()
+            
+            # Wait max 3 seconds for cleanup (reduced from infinite)
+            if not cleanup_done.wait(timeout=3.0):
+                print("WARNING: Controller cleanup timed out, continuing shutdown...")
         except Exception as e:
             print(f"Error during controller cleanup: {e}")
         
-        # Step 4: Clean up heartbeat handler
+        # Step 4: Clean up heartbeat handler (quick operation)
         try:
             controller.heartbeat_handler.cleanup()
         except Exception as e:
@@ -864,6 +860,12 @@ def main():
             print(f"Error during ROS shutdown: {e}")
         
         print("Emergency shutdown sequence complete")
+        
+        # Step 6: Force exit if we reach here
+        # If app.exec() returned normally, sys.exit() should have been called
+        # But if something prevented that, we force exit here
+        print("Forcing application exit...")
+        os._exit(0)
 
 if __name__ == '__main__':
     main()
