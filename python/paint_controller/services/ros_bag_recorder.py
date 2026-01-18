@@ -394,60 +394,43 @@ class RosBagRecorder(QObject):
         """
         Cleanup resources on application exit.
         
-        Stops any active recording and compresses the bag folder.
-        Uses a blocking approach to ensure cleanup completes.
+        Attempts to stop any active recording but doesn't block on SSH operations.
+        This allows the application to exit quickly even if the remote device is unreachable.
         """
         print("[RosBagRecorder] Cleanup called")
-        self._duration_timer.stop()
+        
+        # Stop the duration timer
+        try:
+            if self._duration_timer.isActive():
+                self._duration_timer.stop()
+        except Exception as e:
+            print(f"[RosBagRecorder] Error stopping timer: {e}")
         
         if self._is_bag_recording:
-            print("[RosBagRecorder] Stopping active recording for cleanup...")
+            print("[RosBagRecorder] Stopping active recording for cleanup (non-blocking)...")
             
-            # For cleanup, we do a synchronous-style stop
-            # Use SIGINT (-2) for graceful shutdown, then wait for ros2 bag to finish
+            # Try to stop recording but don't wait - the remote device can
+            # continue running and we'll just leave the uncompressed bag file
+            # This is better than hanging the application on exit
             if self._remote_pid:
                 stop_command = (
-                    f"bash -c '"
-                    f"kill -2 {self._remote_pid} 2>/dev/null || pkill -2 -f \"ros2 bag record\" 2>/dev/null; "
-                    f"sleep 3"  # Wait for ros2 bag to finish writing
-                    f"'"
+                    f"kill -2 {self._remote_pid} 2>/dev/null || "
+                    f"pkill -2 -f 'ros2 bag record' 2>/dev/null"
                 )
             else:
-                stop_command = (
-                    "bash -c '"
-                    "pkill -2 -f \"ros2 bag record\" 2>/dev/null; "
-                    "sleep 3"  # Wait for ros2 bag to finish writing
-                    "'"
-                )
+                stop_command = "pkill -2 -f 'ros2 bag record' 2>/dev/null"
             
-            cleanup_done = threading.Event()
+            def on_cleanup_attempt(stdout: str, stderr: str):
+                print("[RosBagRecorder] Cleanup stop command sent (not waiting for completion)")
             
-            def on_cleanup_stop(stdout: str, stderr: str):
-                print("[RosBagRecorder] Recording stopped during cleanup")
-                
-                if self._current_bag_folder:
-                    # Compress the folder
-                    compress_command = (
-                        f"bash -c '"
-                        f"cd {self.REMOTE_OUTPUT_DIR} && "
-                        f"tar -czf {self._current_bag_folder}.tar.gz {self._current_bag_folder} && "
-                        f"rm -rf {self._current_bag_folder}"
-                        f"'"
-                    )
-                    
-                    def on_cleanup_compress(stdout: str, stderr: str):
-                        print(f"[RosBagRecorder] Cleanup compression complete: {self._current_bag_folder}")
-                        cleanup_done.set()
-                    
-                    self._run_ssh_command(compress_command, on_cleanup_compress)
-                else:
-                    cleanup_done.set()
+            # Send the command but don't wait for response
+            try:
+                self._run_ssh_command(stop_command, on_cleanup_attempt)
+            except Exception as e:
+                print(f"[RosBagRecorder] Cleanup command failed (ignoring): {e}")
             
-            self._run_ssh_command(stop_command, on_cleanup_stop)
-            
-            # Wait for cleanup to complete (max 30 seconds for compression)
-            cleanup_done.wait(timeout=30)
-            print("[RosBagRecorder] Cleanup complete")
+            # Don't wait - just mark as complete
+            print("[RosBagRecorder] Cleanup complete (non-blocking)")
         
         self._is_bag_recording = False
         self._is_compressing = False

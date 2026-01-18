@@ -17,7 +17,7 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import UInt8
 
-from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Property, Signal, QThread, QMetaObject, Q_ARG, Qt
+from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Property, Signal, QThread, QMetaObject, Q_ARG
 from PySide6.QtQml import QQmlApplicationEngine, QQmlProperty
 from PySide6.QtWidgets import QApplication
 
@@ -45,31 +45,26 @@ from paint_controller.core.settings import SettingsManager
 
 # Global reference for signal handler
 _app_instance = None
-_controller_instance = None
 
 def signal_handler(signum, frame):
-    """Handle SIGINT (Ctrl+C) gracefully"""
+    """Handle SIGINT (Ctrl+C) gracefully - force immediate exit"""
     print("\n\nReceived interrupt signal (Ctrl+C)...")
-    print("Initiating graceful shutdown...")
+    print("Forcing immediate shutdown...")
     
-    global _app_instance, _controller_instance
+    # Don't try to cleanup from signal handler - just force exit
+    # The finally block in main() will handle cleanup if app.exec() exits normally
+    # But if we're here, something is stuck, so just exit
+    try:
+        # Try to stop the Qt app first
+        global _app_instance
+        if _app_instance is not None:
+            _app_instance.quit()
+    except:
+        pass
     
-    # Request graceful shutdown through Qt event loop
-    # This ensures shutdown happens in the main thread
-    if _app_instance is not None and _controller_instance is not None:
-        try:
-            # Use QMetaObject.invokeMethod to call shutdown from main thread
-            success = QMetaObject.invokeMethod(_controller_instance, "request_shutdown", 
-                                             Qt.QueuedConnection)
-            if not success:
-                print("Warning: Failed to invoke request_shutdown method")
-                # Fallback: directly quit the application
-                _app_instance.quit()
-        except Exception as e:
-            print(f"Error requesting shutdown: {e}")
-            # Fallback: directly quit the application
-            if _app_instance is not None:
-                _app_instance.quit()
+    # Force exit immediately - don't wait for cleanup
+    print("Forced shutdown complete.")
+    os._exit(1)  # Use os._exit to bypass cleanup that might be stuck
 
 #############################################
 ### Configuration
@@ -194,15 +189,17 @@ class RosThread(QThread):
         
         Called when thread is shutting down to properly destroy the node.
         This is now called both on normal exit AND on exceptions.
-        
-        Note: We do NOT call node.cleanup() here because that would stop
-        QTimers from the wrong thread. The main thread's finally block
-        calls controller.cleanup() instead.
         """
         try:
             if self.node:
-                # Only destroy the node to clean up ROS resources
-                # Do NOT call node.cleanup() as that would stop Qt timers from wrong thread
+                # First trigger cleanup on the node itself (calls cleanup on all sub-components)
+                if hasattr(self.node, 'cleanup'):
+                    try:
+                        self.node.cleanup()
+                    except Exception as e:
+                        print(f"Error calling node cleanup method: {e}")
+                
+                # Then destroy the node to clean up all ROS resources
                 self.node.destroy_node()
                 print("ROS node destroyed successfully")
         except Exception as e:
@@ -231,10 +228,6 @@ class RobotController(Node, QObject):
         # Cleanup guard to prevent multiple cleanup calls
         self._cleanup_in_progress = False
         self._cleanup_complete = False
-        
-        # Store main thread timer references to ensure they are stopped 
-        # in the correct thread during shutdown
-        self._main_timers = []
         
         # Initialize settings manager first (before sub-controllers)
         self.settings_manager = SettingsManager(self)
@@ -613,35 +606,6 @@ class RobotController(Node, QObject):
         self.get_logger().info(f'Toggle switch changed to: {checked}')
         # Add specific toggle switch handling logic here
 
-    @Slot()
-    def request_shutdown(self):
-        """
-        Request graceful shutdown of the application.
-        
-        This slot can be called from QML or signal handlers to initiate
-        a clean shutdown sequence. It ensures all timers are stopped in
-        the main thread before cleanup begins.
-        """
-        self.get_logger().info('Shutdown requested')
-        
-        # Stop all main thread timers first
-        for i, timer in enumerate(self._main_timers):
-            try:
-                timer_name = f"Timer #{i+1}"
-                if timer.isActive():
-                    timer.stop()
-                    self.get_logger().info(f'Stopped {timer_name}')
-                else:
-                    self.get_logger().info(f'{timer_name} was already stopped')
-            except Exception as e:
-                self.get_logger().error(f"Error stopping timer #{i+1}: {e}")
-        
-        # Get the Qt application instance and quit
-        app = QApplication.instance()
-        if app:
-            self.get_logger().info('Quitting Qt application...')
-            app.quit()
-
     def cleanup(self):
         """Cleanup all controller resources"""
         # Prevent multiple cleanup attempts
@@ -752,7 +716,7 @@ class RobotController(Node, QObject):
 #############################################
 
 def main():
-    global _app_instance, _controller_instance
+    global _app_instance
     
     # Setup signal handler for graceful shutdown
     signal.signal(signal.SIGINT, signal_handler)
@@ -770,7 +734,6 @@ def main():
     
     # Create robot controller
     controller = RobotController(config)
-    _controller_instance = controller
 
     
     # Start ROS thread
@@ -782,7 +745,6 @@ def main():
     timer = QTimer()
     timer.start(500)  # Check for signals every 500ms
     timer.timeout.connect(lambda: None)  # Just process events
-    controller._main_timers.append(timer)
     
     # Setup QML engine
     engine = QQmlApplicationEngine()
@@ -827,12 +789,10 @@ def main():
     status_timer = QTimer()
     status_timer.timeout.connect(controller.status_updated.emit)
     status_timer.start(int(1000 / config.update_rate))
-    controller._main_timers.append(status_timer)
 
     heartbeat_timer = QTimer()
     heartbeat_timer.timeout.connect(controller._publish_heartbeat)
     heartbeat_timer.start(500)  # 500 milliseconds = 0.5 seconds
-    controller._main_timers.append(heartbeat_timer)
     
     # Start system monitoring (every 1 second)
     controller.system_monitor.start_monitoring(interval_ms=1000)
@@ -845,31 +805,55 @@ def main():
     finally:
         print("Starting emergency shutdown sequence...")
         
-        # Step 1: Request ROS thread shutdown and wait for it
+        # Step 1: Stop timers BEFORE cleaning up anything else (must happen from main thread)
+        try:
+            status_timer.stop()
+            heartbeat_timer.stop()
+            timer.stop()
+        except Exception as e:
+            print(f"Error stopping timers: {e}")
+        
+        # Step 2: Request ROS thread shutdown and wait for it (short timeout)
         try:
             ros_thread.request_shutdown()
-            # Wait max 3 seconds for ROS thread to finish
-            ros_thread.wait(3000)
-            if ros_thread.isRunning():
+            # Wait max 2 seconds for ROS thread to finish (reduced from 3)
+            if not ros_thread.wait(2000):
                 print("WARNING: ROS thread did not exit cleanly, forcing termination...")
                 ros_thread.terminate()
-                ros_thread.wait(1000)
+                ros_thread.wait(500)
         except Exception as e:
             print(f"Error shutting down ROS thread: {e}")
         
-        # Step 2: Call cleanup on controller (which calls cleanup on all sub-components)
+        # Step 3: Call cleanup on controller (which calls cleanup on all sub-components)
+        # Use a timeout to prevent hanging
         try:
-            controller.cleanup()
+            import threading
+            cleanup_done = threading.Event()
+            
+            def do_cleanup():
+                try:
+                    controller.cleanup()
+                    cleanup_done.set()
+                except Exception as e:
+                    print(f"Error during controller cleanup: {e}")
+                    cleanup_done.set()
+            
+            cleanup_thread = threading.Thread(target=do_cleanup, daemon=True)
+            cleanup_thread.start()
+            
+            # Wait max 3 seconds for cleanup (reduced from infinite)
+            if not cleanup_done.wait(timeout=3.0):
+                print("WARNING: Controller cleanup timed out, continuing shutdown...")
         except Exception as e:
             print(f"Error during controller cleanup: {e}")
         
-        # Step 3: Clean up heartbeat handler
+        # Step 4: Clean up heartbeat handler (quick operation)
         try:
             controller.heartbeat_handler.cleanup()
         except Exception as e:
             print(f"Error cleaning up heartbeat handler: {e}")
         
-        # Step 4: Shutdown ROS context
+        # Step 5: Shutdown ROS context
         try:
             rclpy.shutdown()
         except Exception as e:
