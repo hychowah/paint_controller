@@ -860,6 +860,12 @@ def main():
             print(f"Error during ROS shutdown: {e}")
         
         print("Emergency shutdown sequence complete")
+        
+        # Step 6: Force exit if we reach here
+        # If app.exec() returned normally, sys.exit() should have been called
+        # But if something prevented that, we force exit here
+        print("Forcing application exit...")
+        os._exit(0)
 
 if __name__ == '__main__':
     main()
