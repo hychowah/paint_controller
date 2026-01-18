@@ -411,4 +411,3 @@ Rectangle {
     // Remove the exitTimer - we don't need it anymore since
     // backend.request_shutdown() handles the shutdown sequence
 }
-}
