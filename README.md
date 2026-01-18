@@ -109,6 +109,35 @@ cd ~/ros2_ws/src/paint_controller_ros2/python
 python -m paint_controller
 ```
 
+## Features
+
+### Multi-Screen Display Support
+
+The application now supports adaptive multi-screen display with real-time detection:
+
+- **Automatic Detection**: Detects connected displays automatically
+- **Real-Time Monitoring**: Updates when monitors are plugged/unplugged
+- **Test Interface**: Dedicated UI for testing multi-screen functionality
+- **Extended Display**: Can utilize external monitors for extended workspace
+
+#### Using Multi-Screen Support
+
+1. Launch the application normally
+2. Navigate to **Settings** → **Display Settings**
+3. Click **"Multi-Screen Test"** to open the test window
+4. Connect/disconnect external monitors to see real-time updates
+
+For detailed documentation, see [docs/MULTISCREEN_SUPPORT.md](docs/MULTISCREEN_SUPPORT.md)
+
+#### Testing Multi-Screen (Standalone)
+
+```bash
+cd python/paint_controller/scripts
+python3 test_multiscreen.py
+```
+
+This runs a standalone test that monitors screen changes without the full application.
+
 ## Troubleshooting
 
 ### Qt Platform Plugin Error
