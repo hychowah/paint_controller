@@ -59,8 +59,12 @@ def signal_handler(signum, frame):
     if _app_instance is not None and _controller_instance is not None:
         try:
             # Use QMetaObject.invokeMethod to call shutdown from main thread
-            QMetaObject.invokeMethod(_controller_instance, "request_shutdown", 
-                                   Qt.QueuedConnection)
+            success = QMetaObject.invokeMethod(_controller_instance, "request_shutdown", 
+                                             Qt.QueuedConnection)
+            if not success:
+                print("Warning: Failed to invoke request_shutdown method")
+                # Fallback: directly quit the application
+                _app_instance.quit()
         except Exception as e:
             print(f"Error requesting shutdown: {e}")
             # Fallback: directly quit the application
@@ -228,7 +232,8 @@ class RobotController(Node, QObject):
         self._cleanup_in_progress = False
         self._cleanup_complete = False
         
-        # Store timer references for proper shutdown
+        # Store main thread timer references to ensure they are stopped 
+        # in the correct thread during shutdown
         self._main_timers = []
         
         # Initialize settings manager first (before sub-controllers)
@@ -620,13 +625,16 @@ class RobotController(Node, QObject):
         self.get_logger().info('Shutdown requested')
         
         # Stop all main thread timers first
-        for timer in self._main_timers:
+        for i, timer in enumerate(self._main_timers):
             try:
+                timer_name = f"Timer #{i+1}"
                 if timer.isActive():
                     timer.stop()
-                    self.get_logger().info(f'Stopped timer: {timer}')
+                    self.get_logger().info(f'Stopped {timer_name}')
+                else:
+                    self.get_logger().info(f'{timer_name} was already stopped')
             except Exception as e:
-                self.get_logger().error(f"Error stopping timer: {e}")
+                self.get_logger().error(f"Error stopping timer #{i+1}: {e}")
         
         # Get the Qt application instance and quit
         app = QApplication.instance()
