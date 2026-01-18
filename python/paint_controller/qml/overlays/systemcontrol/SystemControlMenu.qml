@@ -28,6 +28,13 @@ Item {
                 easing.type: Easing.InOutQuad 
             }
         }
+        
+        MouseArea {
+            anchors.fill: parent
+            enabled: showSystemMenu
+            // Consume all mouse/touch events to prevent propagation
+            onClicked: overlayController.hide_menu()
+        }
     }
 
     Rectangle {
