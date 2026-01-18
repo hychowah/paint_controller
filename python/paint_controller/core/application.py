@@ -629,7 +629,6 @@ class RobotController(Node, QObject):
                 self.get_logger().error(f"Error stopping timer: {e}")
         
         # Get the Qt application instance and quit
-        from PySide6.QtWidgets import QApplication
         app = QApplication.instance()
         if app:
             self.get_logger().info('Quitting Qt application...')
