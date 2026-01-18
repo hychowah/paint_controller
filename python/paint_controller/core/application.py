@@ -190,17 +190,15 @@ class RosThread(QThread):
         
         Called when thread is shutting down to properly destroy the node.
         This is now called both on normal exit AND on exceptions.
+        
+        Note: We do NOT call node.cleanup() here because that would stop
+        QTimers from the wrong thread. The main thread's finally block
+        calls controller.cleanup() instead.
         """
         try:
             if self.node:
-                # First trigger cleanup on the node itself (calls cleanup on all sub-components)
-                if hasattr(self.node, 'cleanup'):
-                    try:
-                        self.node.cleanup()
-                    except Exception as e:
-                        print(f"Error calling node cleanup method: {e}")
-                
-                # Then destroy the node to clean up all ROS resources
+                # Only destroy the node to clean up ROS resources
+                # Do NOT call node.cleanup() as that would stop Qt timers from wrong thread
                 self.node.destroy_node()
                 print("ROS node destroyed successfully")
         except Exception as e:
