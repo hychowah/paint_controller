@@ -402,14 +402,13 @@ Rectangle {
         MouseArea {
             anchors.fill: parent
             onClicked: {
-                exitTimer.start()
+                // Use backend's graceful shutdown instead of Qt.quit()
+                backend.request_shutdown()
             }
         }
     }
 
-    Timer {
-        id: exitTimer
-        interval: 1000
-        onTriggered: Qt.quit()
-    }
+    // Remove the exitTimer - we don't need it anymore since
+    // backend.request_shutdown() handles the shutdown sequence
+}
 }
