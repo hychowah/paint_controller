@@ -182,9 +182,7 @@ Window {
                         
                         onClicked: {
                             // Force refresh of screen list
-                            screenListView.model = 0
-                            screenListView.model = screenManager.get_screen_count()
-                            screenCountText.text = "Detected Screens: " + screenManager.get_screen_count()
+                            refreshScreenList()
                         }
                     }
                     
@@ -216,34 +214,36 @@ Window {
         }
     }
     
+    // Helper function to refresh screen list
+    function refreshScreenList() {
+        // Update model to trigger ListView refresh
+        var count = screenManager.get_screen_count()
+        screenListView.model = count
+        screenCountText.text = "Detected Screens: " + count
+    }
+    
     // Connections to screen manager signals
     Connections {
         target: screenManager
         
         function onScreens_changed() {
             console.log("Screens changed detected in QML")
-            screenListView.model = 0
-            screenListView.model = screenManager.get_screen_count()
-            screenCountText.text = "Detected Screens: " + screenManager.get_screen_count()
+            refreshScreenList()
         }
         
         function onScreen_added(index) {
             console.log("Screen added at index:", index)
-            screenListView.model = screenManager.get_screen_count()
-            screenCountText.text = "Detected Screens: " + screenManager.get_screen_count()
+            refreshScreenList()
         }
         
         function onScreen_removed(index) {
             console.log("Screen removed at index:", index)
-            screenListView.model = screenManager.get_screen_count()
-            screenCountText.text = "Detected Screens: " + screenManager.get_screen_count()
+            refreshScreenList()
         }
         
         function onPrimary_screen_changed(screenName) {
             console.log("Primary screen changed to:", screenName)
-            // Refresh all screen info
-            screenListView.model = 0
-            screenListView.model = screenManager.get_screen_count()
+            refreshScreenList()
         }
     }
     

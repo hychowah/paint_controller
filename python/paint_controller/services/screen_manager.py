@@ -97,6 +97,8 @@ class ScreenManager(QObject):
         """Helper method for logging that checks if logger is available"""
         if hasattr(self, 'node') and hasattr(self.node, 'get_logger'):
             self.node.get_logger().info(message)
+        # Note: No fallback print to avoid cluttering console during testing
+        # Enable standard logging if needed for standalone usage
     
     def _detect_screens(self) -> None:
         """Detect all available screens"""
@@ -137,7 +139,12 @@ class ScreenManager(QObject):
     def _on_screen_added(self, screen: QScreen) -> None:
         """Handle screen added event"""
         self._detect_screens()
-        index = self._screens.index(screen) if screen in self._screens else -1
+        
+        # Use try-except for more efficient index lookup
+        try:
+            index = self._screens.index(screen)
+        except ValueError:
+            index = -1
         
         info = ScreenInfo(screen, index)
         self._log_info(f'Screen added: {info}')
@@ -149,8 +156,11 @@ class ScreenManager(QObject):
     @Slot(QScreen)
     def _on_screen_removed(self, screen: QScreen) -> None:
         """Handle screen removed event"""
-        # Get index before it's removed
-        index = self._screens.index(screen) if screen in self._screens else -1
+        # Get index before it's removed - use try-except for efficiency
+        try:
+            index = self._screens.index(screen)
+        except ValueError:
+            index = -1
         
         self._log_info(f'Screen removed: {screen.name()} (index {index})')
         
