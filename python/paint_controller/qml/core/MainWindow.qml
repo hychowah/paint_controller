@@ -27,13 +27,19 @@ ApplicationWindow {
     id: mainWindow
     visible: true
     visibility: Window.FullScreen
+    
+    // Multi-screen support
     property var screens: Qt.application.screens
-    property var targetScreen: screens.length > 1 ? screens[0] : screens[0]
+    property int primaryScreenIndex: 0
+    property var targetScreen: screens.length > primaryScreenIndex ? screens[primaryScreenIndex] : screens[0]
 
     property int sidebarWidth: 150 // Initial value (expanded width)
     
     // Expose the video fullscreen overlay as a property
     property alias videoFullscreenOverlay: videoFullscreenOverlay
+    
+    // Multi-screen test window
+    property var multiScreenWindow: null
     
     x: targetScreen.virtualX
     y: targetScreen.virtualY
@@ -240,6 +246,65 @@ ApplicationWindow {
     Lidar3DView {
         id: lidar3DView
         objectName: "lidarOverlay"
+    }
+    
+    // Multi-screen test window component
+    Component {
+        id: multiScreenComponent
+        MultiScreenListUI {
+            id: multiScreenTestWindow
+        }
+    }
+    
+    // Function to open/close multi-screen test window
+    function toggleMultiScreenWindow() {
+        if (multiScreenWindow === null) {
+            // Create and show the window
+            multiScreenWindow = multiScreenComponent.createObject(mainWindow)
+            if (multiScreenWindow) {
+                // Position on second screen if available
+                if (screens.length > 1) {
+                    multiScreenWindow.x = screens[1].virtualX
+                    multiScreenWindow.y = screens[1].virtualY
+                    multiScreenWindow.width = screens[1].width
+                    multiScreenWindow.height = screens[1].height
+                    multiScreenWindow.targetScreenIndex = 1
+                }
+                multiScreenWindow.visible = true
+                console.log("Multi-screen test window opened")
+            }
+        } else {
+            // Close and destroy the window
+            multiScreenWindow.visible = false
+            multiScreenWindow.destroy()
+            multiScreenWindow = null
+            console.log("Multi-screen test window closed")
+        }
+    }
+    
+    // Monitor screen changes and update
+    Connections {
+        target: screenManager
+        
+        function onScreens_changed() {
+            console.log("MainWindow: Screen configuration changed")
+            screens = Qt.application.screens
+            
+            // Update target screen if needed
+            if (screens.length > primaryScreenIndex) {
+                targetScreen = screens[primaryScreenIndex]
+            } else {
+                targetScreen = screens[0]
+            }
+            
+            // Reposition multi-screen window if it exists and there's a second screen
+            if (multiScreenWindow !== null && screens.length > 1) {
+                multiScreenWindow.x = screens[1].virtualX
+                multiScreenWindow.y = screens[1].virtualY
+                multiScreenWindow.width = screens[1].width
+                multiScreenWindow.height = screens[1].height
+            }
+        }
     }
 }
 
