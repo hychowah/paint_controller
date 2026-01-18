@@ -63,6 +63,9 @@ class ScreenManager(QObject):
         primary_screen_changed: Emitted when primary screen changes
     """
     
+    # Configuration constants
+    MONITOR_INTERVAL_MS = 1000  # Polling interval for screen changes (milliseconds)
+    
     screens_changed = Signal()
     screen_added = Signal(int)  # screen index
     screen_removed = Signal(int)  # screen index
@@ -75,10 +78,10 @@ class ScreenManager(QObject):
         self._screen_count = 0
         self._primary_screen_name = ""
         
-        # Monitor for screen changes every second
+        # Monitor for screen changes
         self._monitor_timer = QTimer(self)
         self._monitor_timer.timeout.connect(self._check_screen_changes)
-        self._monitor_timer.start(1000)
+        self._monitor_timer.start(self.MONITOR_INTERVAL_MS)
         
         # Initial detection
         self._detect_screens()
@@ -89,6 +92,11 @@ class ScreenManager(QObject):
             app.screenAdded.connect(self._on_screen_added)
             app.screenRemoved.connect(self._on_screen_removed)
             app.primaryScreenChanged.connect(self._on_primary_screen_changed)
+    
+    def _log_info(self, message: str) -> None:
+        """Helper method for logging that checks if logger is available"""
+        if hasattr(self, 'node') and hasattr(self.node, 'get_logger'):
+            self.node.get_logger().info(message)
     
     def _detect_screens(self) -> None:
         """Detect all available screens"""
@@ -103,12 +111,10 @@ class ScreenManager(QObject):
         if primary:
             self._primary_screen_name = primary.name()
         
-        if hasattr(self, 'node') and hasattr(self.node, 'get_logger'):
-            logger = self.node.get_logger()
-            logger.info(f'Detected {self._screen_count} screen(s)')
-            for i, screen in enumerate(self._screens):
-                info = ScreenInfo(screen, i)
-                logger.info(f'  {info}')
+        self._log_info(f'Detected {self._screen_count} screen(s)')
+        for i, screen in enumerate(self._screens):
+            info = ScreenInfo(screen, i)
+            self._log_info(f'  {info}')
     
     def _check_screen_changes(self) -> None:
         """Periodic check for screen configuration changes"""
@@ -121,9 +127,7 @@ class ScreenManager(QObject):
         
         # Check if screen count changed
         if current_count != self._screen_count:
-            if hasattr(self, 'node') and hasattr(self.node, 'get_logger'):
-                logger = self.node.get_logger()
-                logger.info(f'Screen count changed: {self._screen_count} -> {current_count}')
+            self._log_info(f'Screen count changed: {self._screen_count} -> {current_count}')
             
             self._screen_count = current_count
             self._screens = current_screens
@@ -135,10 +139,8 @@ class ScreenManager(QObject):
         self._detect_screens()
         index = self._screens.index(screen) if screen in self._screens else -1
         
-        if hasattr(self, 'node') and hasattr(self.node, 'get_logger'):
-            logger = self.node.get_logger()
-            info = ScreenInfo(screen, index)
-            logger.info(f'Screen added: {info}')
+        info = ScreenInfo(screen, index)
+        self._log_info(f'Screen added: {info}')
         
         if index >= 0:
             self.screen_added.emit(index)
@@ -150,9 +152,7 @@ class ScreenManager(QObject):
         # Get index before it's removed
         index = self._screens.index(screen) if screen in self._screens else -1
         
-        if hasattr(self, 'node') and hasattr(self.node, 'get_logger'):
-            logger = self.node.get_logger()
-            logger.info(f'Screen removed: {screen.name()} (index {index})')
+        self._log_info(f'Screen removed: {screen.name()} (index {index})')
         
         self._detect_screens()
         
@@ -167,9 +167,7 @@ class ScreenManager(QObject):
             old_name = self._primary_screen_name
             self._primary_screen_name = screen.name()
             
-            if hasattr(self, 'node') and hasattr(self.node, 'get_logger'):
-                logger = self.node.get_logger()
-                logger.info(f'Primary screen changed: {old_name} -> {self._primary_screen_name}')
+            self._log_info(f'Primary screen changed: {old_name} -> {self._primary_screen_name}')
             
             self.primary_screen_changed.emit(self._primary_screen_name)
     
