@@ -1,0 +1,75 @@
+Industrial Monitor UI Layout (1280x720)
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ TOP HEADER BAR (80px, #252a35)                                                                  │
+│                                                                                                  │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐      ┌─────────┐ ┌──────────────┐      ┌──────────────┐  │
+│  │ ⚡       │ │ 🌡️      │ │ ⏱️       │      │ RELAY:  │ │   SYSTEM     │      │   EMERGENCY  │  │
+│  │ 24.5V   │ │  45°C   │ │ Loop:   │      │   ON    │ │   ENABLED    │      │     STOP     │  │
+│  │         │ │         │ │  2ms    │      │ (small) │ │   (large)    │      │  (200x60px)  │  │
+│  └─────────┘ └─────────┘ └─────────┘      └─────────┘ └──────────────┘      └──────────────┘  │
+│    Telemetry (Left)            Status Badges (Middle, Passive)        E-Stop (Right, Active)   │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ MAIN BODY (640px, #1e222b background)                                                           │
+│                                                                                                  │
+│ ┌─────────────────────┐ ┌───────────────────────────────┐ ┌─────────────────────┐             │
+│ │ LEFT COLUMN (30%)   │ │ CENTER COLUMN (40%, HERO)     │ │ RIGHT COLUMN (30%)  │             │
+│ │                     │ │                               │ │                     │             │
+│ │ ╔═══════════════╗   │ │ ╔═════════════════════════╗   │ │ ╔═════════════════╗ │             │
+│ │ ║ WHEELS        ║   │ │ ║ TEENSY ARM              ║   │ │ ║ IMU             ║ │             │
+│ │ ╠═══════════════╣   │ │ ╠═════════════════════════╣   │ │ ╠═════════════════╣ │             │
+│ │ ║ L       R     ║   │ │ ║ Extension: 1.45 m       ║   │ │ ║ Type │X │Y │Z │▁║ │             │
+│ │ ║ 2.1    1.9    ║   │ │ ║ ████████████████░░░░    ║   │ │ ╠═════╪══╪══╪══╪══╣ │             │
+│ │ ║ m/s    m/s    ║   │ │ ║                         ║   │ │ ║ Ang  │12│-5│8 │▁║ │             │
+│ │ ║ 3.2A   2.8A   ║   │ │ ║  Arm Cur  Spray Cur     ║   │ │ ║ Acc  │.2│.1│.3│▁║ │             │
+│ │ ║ ▓▓▓░░  ▓▓░░░  ║   │ │ ║    ██       ████        ║   │ │ ║ AngA │.5│.2│.1│▁║ │             │
+│ │ ╚═══════════════╝   │ │ ║    ██       ████        ║   │ │ ╚═════════════════╝ │             │
+│ │                     │ │ ║   2.1A      3.5A        ║   │ │                     │             │
+│ │ ╔═══════════════╗   │ │ ╚═════════════════════════╝   │ │  (Sparklines show  │             │
+│ │ ║ VALVES        ║   │ │                               │ │   IMU trends)       │             │
+│ │ ╠═══════════════╣   │ │ ╔═════════════════════════╗   │ │                     │             │
+│ │ ║ Flow Rate     ║   │ │ ║ WINCH DATA              ║   │ │                     │             │
+│ │ ║               ║   │ │ ╠═════════════════════════╣   │ │                     │             │
+│ │ ║    15.7       ║   │ │ ║ 📏 Cable: 45.2 m        ║   │ │                     │             │
+│ │ ║               ║   │ │ ║ ↑ Speed: 0.5 m/s        ║   │ │                     │             │
+│ │ ║   L/min       ║   │ │ ║ Voltage: 24.1 V         ║   │ │                     │             │
+│ │ ║               ║   │ │ ║ Torque: 45.2 Nm         ║   │ │                     │             │
+│ │ ║ Position: 65% ║   │ │ ╚═════════════════════════╝   │ │                     │             │
+│ │ ║ ▓▓▓▓▓▓▓○░░░░  ║   │ │                               │ │                     │             │
+│ │ ╚═══════════════╝   │ │  (○ = white thumb)            │ │                     │             │
+│ └─────────────────────┘ └───────────────────────────────┘ └─────────────────────┘             │
+│                                                                                                  │
+│  Mobility & Fluids        Core Operations (Hero)           Sensor Density                      │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+COLOR LEGEND:
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+Background:        #1e222b (dark industrial)
+Cards:             #29303b (8px rounded corners)
+Header Bar:        #252a35
+Green (#2ecc71):   Nominal/enabled states, progress bars
+Cyan (#3498db):    Fluid/motion indicators, wheel speeds
+Red (#e74c3c):     Emergency stop button only
+Amber (#f39c12):   Warnings (torque >80%), directional arrows
+White (#FFFFFF):   Primary text, numerical values
+Gray (#AAAAAA):    Labels, secondary text
+
+TYPOGRAPHY:
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+Body Text:         Roboto (sans-serif)
+Numerical Values:  Monospace (prevents layout shift)
+Headers:           Roboto Bold
+
+KEY FEATURES:
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+✓ Monospace fonts for all numbers prevent "shaking" during updates
+✓ Passive status badges (not clickable) vs active E-Stop button
+✓ Real-time sparkline graphs for IMU Z-axis data (last 10 samples)
+✓ Progress bars show current load relative to max capacity
+✓ Color-coded warnings (amber for high torque)
+✓ Clear visual hierarchy: 40% center, 30% sides
+✓ Optimized for 1280x720 industrial displays
+✓ Automatically appears on Steam Deck built-in screen when external monitor connected

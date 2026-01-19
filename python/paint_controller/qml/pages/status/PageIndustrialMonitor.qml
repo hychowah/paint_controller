@@ -16,6 +16,9 @@ Rectangle {
     property var imuAngularAccZHistory: []
     property var imuRollHistory: []
     
+    // Constants for max values
+    property real maxWinchTorque: 100.0  // Nm - adjust based on actual motor specs
+    
     // Update IMU history when data changes
     Connections {
         target: teensyController
@@ -240,8 +243,18 @@ Rectangle {
                     }
                     
                     onClicked: {
-                        // TODO: Connect to emergency stop handler
+                        // TODO: Wire to actual emergency stop handler when available
+                        // For now, try to disable all systems
                         console.log("EMERGENCY STOP ACTIVATED")
+                        if (typeof teensyController !== 'undefined') {
+                            teensyController.setEnabled(false)
+                        }
+                        if (typeof wheelController !== 'undefined') {
+                            wheelController.setEnabled(false)
+                        }
+                        if (typeof winchController !== 'undefined') {
+                            winchController.setEnabled(false)
+                        }
                     }
                 }
             }
@@ -513,7 +526,7 @@ Rectangle {
                             }
                             
                             Text {
-                                text: (teensyController.all_status.arm_extension_dist / 1000 || 0).toFixed(2) + " m"
+                                text: ((teensyController.all_status.arm_extension_dist || 0) / 1000).toFixed(2) + " m"
                                 font.pixelSize: 28
                                 font.family: "Monospace"
                                 font.bold: true
@@ -722,7 +735,7 @@ Rectangle {
                             }
                             
                             Text {
-                                property real torquePercent: (winchController.winch_torque || 0) / 100 * 100  // Assuming max 100 Nm
+                                property real torquePercent: (winchController.winch_torque || 0) / maxWinchTorque * 100
                                 text: (winchController.winch_torque || 0).toFixed(1) + " Nm"
                                 font.pixelSize: 16
                                 font.family: "Monospace"

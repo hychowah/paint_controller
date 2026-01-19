@@ -15,11 +15,25 @@ Canvas {
     width: 40
     height: 20
     
-    // Auto-scale based on data if not explicitly set
-    property real autoMin: dataPoints.length > 0 ? Math.min(...dataPoints) : minValue
-    property real autoMax: dataPoints.length > 0 ? Math.max(...dataPoints) : maxValue
+    // Cached min/max values for performance
+    property real cachedMin: minValue
+    property real cachedMax: maxValue
     
-    onDataPointsChanged: requestPaint()
+    // Update cached min/max when dataPoints change
+    onDataPointsChanged: {
+        if (dataPoints.length > 0) {
+            cachedMin = dataPoints[0]
+            cachedMax = dataPoints[0]
+            for (var i = 1; i < dataPoints.length; i++) {
+                if (dataPoints[i] < cachedMin) cachedMin = dataPoints[i]
+                if (dataPoints[i] > cachedMax) cachedMax = dataPoints[i]
+            }
+        } else {
+            cachedMin = minValue
+            cachedMax = maxValue
+        }
+        requestPaint()
+    }
     
     onPaint: {
         var ctx = getContext("2d")
@@ -27,7 +41,7 @@ Canvas {
         
         if (dataPoints.length < 2) return
         
-        var range = autoMax - autoMin
+        var range = cachedMax - cachedMin
         if (range === 0) range = 1
         
         ctx.strokeStyle = lineColor
@@ -44,7 +58,7 @@ Canvas {
             var dataIndex = startIndex + i
             var value = dataPoints[dataIndex]
             var x = i * step
-            var y = height - ((value - autoMin) / range) * height
+            var y = height - ((value - cachedMin) / range) * height
             
             if (i === 0) {
                 ctx.moveTo(x, y)
