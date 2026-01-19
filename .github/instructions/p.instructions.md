@@ -1,1 +1,7 @@
-No need to create documentation file unless user ask for it.
+---
+applyTo: "**"
+---
+
+# Deprecated
+
+See [../.github/copilot-instructions.md](../copilot-instructions.md) for all instructions.

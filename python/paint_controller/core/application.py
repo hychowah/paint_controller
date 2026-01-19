@@ -42,6 +42,7 @@ from paint_controller.services.workflow.workflow_runner import WorkFlowRunner
 from paint_controller.services.screen_recorder import ScreenRecorder
 from paint_controller.services.ros_bag_recorder import RosBagRecorder
 from paint_controller.core.settings import SettingsManager
+from paint_controller.services.screen_manager import ScreenManager
 
 # Global reference for signal handler
 _app_instance = None
@@ -266,6 +267,8 @@ class RobotController(Node, QObject):
         self.system_monitor = SystemMonitor()
         self.screen_recorder = ScreenRecorder()
         self.ros_bag_recorder = RosBagRecorder(self)
+        self.screen_manager = ScreenManager(self)
+        self.screen_manager.node = self  # Give screen manager access to logger
 
         
         self.setup_steam_deck_callbacks()
@@ -533,6 +536,18 @@ class RobotController(Node, QObject):
     # Note: The LiDAR overlay automatically updates via QML signal connections
     # when lidar_controller emits points_ready signal, so no manual update methods needed
     
+    @Slot()
+    def toggle_multiscreen_window(self):
+        """Toggle the multi-screen test window"""
+        root_objects = self.engine.rootObjects()
+        if not root_objects:
+            self.get_logger().error('No root QML objects found')
+            return
+            
+        root = root_objects[0]
+        # Call the QML function to toggle the window
+        QMetaObject.invokeMethod(root, "toggleMultiScreenWindow")
+        self.get_logger().info('Toggled multi-screen test window')
     
 
 
@@ -698,6 +713,12 @@ class RobotController(Node, QObject):
                     self.workflow_runner.cleanup()
                 except Exception as e:
                     self.get_logger().error(f"Error cleaning up workflow runner: {e}")
+            
+            if hasattr(self, 'screen_manager') and self.screen_manager:
+                try:
+                    self.screen_manager.cleanup()
+                except Exception as e:
+                    self.get_logger().error(f"Error cleaning up screen manager: {e}")
 
             # Destroy publishers
             if hasattr(self, 'heartbeat_pub') and self.heartbeat_pub:
@@ -779,6 +800,7 @@ def main():
     engine.rootContext().setContextProperty("screenRecorder", controller.screen_recorder)
     engine.rootContext().setContextProperty("rosBagRecorder", controller.ros_bag_recorder)
     engine.rootContext().setContextProperty("settingsManager", controller.settings_manager)
+    engine.rootContext().setContextProperty("screenManager", controller.screen_manager)
     controller.engine = engine
     
     # Load QML interface AFTER setting context properties

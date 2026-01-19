@@ -63,6 +63,21 @@ ScrollView {
             onClicked: root.pageRequested("arm")
         }
         
+        SettingsCategory {
+            title: "Display Settings"
+        }
+        
+        SettingsItem {
+            title: "Multi-Screen Test"
+            subtitle: "Test multi-screen display support"
+            
+            onClicked: {
+                if (backend) {
+                    backend.toggle_multiscreen_window()
+                }
+            }
+        }
+        
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 20

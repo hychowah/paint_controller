@@ -1,6 +1,5 @@
 paint_controller/__pycache__/
 .vscode/
-.github/
 *.pyc
 __pycache__/
 *.egg-info/
