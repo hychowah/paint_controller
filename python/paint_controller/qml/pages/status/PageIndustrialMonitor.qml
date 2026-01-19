@@ -16,8 +16,11 @@ Rectangle {
     property var imuAngularAccZHistory: []
     property var imuRollHistory: []
     
-    // Constants for max values
-    property real maxWinchTorque: 100.0  // Nm - adjust based on actual motor specs
+    // Constants for max values (adjust based on actual hardware specs)
+    property real maxWinchTorque: 100.0      // Nm
+    property real maxWheelCurrent: 10.0      // A
+    property real maxArmCurrent: 5.0         // A
+    property real maxArmExtension: 2000.0    // mm
     
     // Update IMU history when data changes
     Connections {
@@ -333,7 +336,7 @@ Rectangle {
                                 Layout.fillWidth: true
                                 Layout.margins: 4
                                 value: Math.abs(wheelController.left_wheel_current || 0)
-                                maxValue: 10.0  // Adjust based on max current
+                                maxValue: maxWheelCurrent
                                 barColor: "#2ecc71"
                             }
                         }
@@ -386,7 +389,7 @@ Rectangle {
                                 Layout.fillWidth: true
                                 Layout.margins: 4
                                 value: Math.abs(wheelController.right_wheel_current || 0)
-                                maxValue: 10.0  // Adjust based on max current
+                                maxValue: maxWheelCurrent
                                 barColor: "#2ecc71"
                             }
                         }
@@ -444,8 +447,11 @@ Rectangle {
                             Layout.fillWidth: true
                             spacing: 6
                             
+                            // Calculate valve position percentage once
+                            property real valvePositionPercent: (teensyController.all_status.valve_position || 0)
+                            
                             Text {
-                                text: "Valve Position: " + (teensyController.all_status.valve_position || 0).toFixed(0) + "%"
+                                text: "Valve Position: " + parent.valvePositionPercent.toFixed(0) + "%"
                                 font.pixelSize: 12
                                 font.family: "Roboto"
                                 color: "#AAAAAA"
@@ -456,6 +462,8 @@ Rectangle {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 20
                                 
+                                property real valvePositionPercent: parent.valvePositionPercent
+                                
                                 // Background bar
                                 Rectangle {
                                     anchors.fill: parent
@@ -465,7 +473,7 @@ Rectangle {
                                 
                                 // Progress bar (cyan)
                                 Rectangle {
-                                    width: Math.max(0, Math.min(parent.width * (teensyController.all_status.valve_position || 0) / 100, parent.width))
+                                    width: Math.max(0, Math.min(parent.width * parent.valvePositionPercent / 100, parent.width))
                                     height: parent.height
                                     color: "#3498db"
                                     radius: 10
@@ -477,7 +485,7 @@ Rectangle {
                                 
                                 // White thumb indicator
                                 Rectangle {
-                                    x: Math.max(5, Math.min(parent.width * (teensyController.all_status.valve_position || 0) / 100 - 5, parent.width - 15))
+                                    x: Math.max(5, Math.min(parent.width * parent.valvePositionPercent / 100 - 5, parent.width - 15))
                                     y: parent.height / 2 - 7
                                     width: 14
                                     height: 14
@@ -536,7 +544,7 @@ Rectangle {
                             ProgressBarIndicator {
                                 Layout.fillWidth: true
                                 value: teensyController.all_status.arm_extension_dist || 0
-                                maxValue: 2000  // Adjust based on max extension (mm)
+                                maxValue: maxArmExtension
                                 barColor: "#2ecc71"
                                 barHeight: 8
                             }
@@ -572,7 +580,7 @@ Rectangle {
                                     Rectangle {
                                         anchors.bottom: parent.bottom
                                         width: parent.width
-                                        height: Math.max(10, parent.height * Math.abs(teensyController.all_status.arm_rail_current || 0) / 5.0)
+                                        height: Math.max(10, parent.height * Math.abs(teensyController.all_status.arm_rail_current || 0) / maxArmCurrent)
                                         color: "#3498db"
                                         radius: 4
                                         
@@ -615,7 +623,7 @@ Rectangle {
                                     Rectangle {
                                         anchors.bottom: parent.bottom
                                         width: parent.width
-                                        height: Math.max(10, parent.height * Math.abs(teensyController.all_status.spray_gun_motor_current || 0) / 5.0)
+                                        height: Math.max(10, parent.height * Math.abs(teensyController.all_status.spray_gun_motor_current || 0) / maxArmCurrent)
                                         color: "#e74c3c"
                                         radius: 4
                                         
