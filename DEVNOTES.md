@@ -36,110 +36,61 @@
 
 ### 2026-01-19 - Industrial Monitor UI Implementation
 
-**Goal**: Create a dedicated 1280x720 industrial-style monitoring interface for the secondary screen (Steam Deck built-in) with dark theme, clear visual hierarchy separating passive monitoring from active controls.
+**Goal**: Create a dedicated 1280x720 monitoring interface for secondary screen (Steam Deck built-in) with modular architecture and 7-inch display optimization.
 
 **Approach**:
-- Replaced `MultiScreenListUI` test interface with `PageIndustrialMonitor`
-- Created 4 reusable components: `IndustrialCard`, `MonospaceDataLabel`, `ProgressBarIndicator`, `Sparkline`
+- Split monolithic 1073-line QML into 7 modular components (115-223 lines each)
+- Created reusable cards: MonitorHeader, WheelsCard, ValvesCard, TeensyArmCard, WinchCard, IMUCard
+- Increased font sizes 6-25% for 7-inch screen readability (primary values 32-34px, labels 11-14px)
 - Implemented 3-column layout: Mobility (30%) | Core Operations (40%) | Sensors (30%)
-- Used monospace fonts for all numerical values to prevent layout shift
+- Added standalone test script with mock controllers for development without hardware
 
 **Layout Structure**:
 1. **Header Bar (80px)**: Telemetry (voltage, temp, loop time) | Status badges (relay, enable) | E-Stop button
 2. **Main Body (640px)**: Wheels + Valves | Teensy Arm + Winch | IMU grid with sparklines
 
 **Color Scheme** (Industrial Dark):
-- Background: `#1e222b`
-- Cards: `#29303b` (8px radius)
-- Green: `#2ecc71` (nominal/enabled)
-- Cyan: `#3498db` (fluid/motion)
-- Red: `#e74c3c` (emergency only)
-- Amber: `#f39c12` (warnings)
+- Background: `#1e222b`, Cards: `#29303b` (8px radius)
+- Green: `#2ecc71` (nominal), Cyan: `#3498db` (motion), Red: `#e74c3c` (emergency), Amber: `#f39c12` (warnings)
 
 **Files**:
-- `qml/pages/status/PageIndustrialMonitor.qml` (main page, 1000+ lines)
-- `qml/components/displays/IndustrialCard.qml`
-- `qml/components/displays/MonospaceDataLabel.qml`
-- `qml/components/displays/ProgressBarIndicator.qml`
-- `qml/components/displays/Sparkline.qml`
-- `qml/overlays/MultiScreenListUI.qml` (updated to load industrial monitor)
+- Main: `qml/pages/status/PageMonitor.qml` (115 lines)
+- Components: `qml/components/displays/{MonitorHeader,WheelsCard,ValvesCard,TeensyArmCard,WinchCard,IMUCard}.qml`
+- Test: `scripts/test_industrial_monitor.py` (347 lines with mock controllers)
+- Integration: `qml/overlays/MultiScreenListUI.qml`
 
 **Data Sources**:
 - `teensyController.all_status.*` (voltage, temp, loop time, IMU, arm, valves, spray gun)
-- `wheelController.*` (speed, current for L/R wheels)
-- `winchController.*` (cable length, speed, torque, voltage)
+- `wheelController.*` (speed, current, motor availability for L/R wheels)
+- `winchController.*` (cable length, speed, torque, voltage, temperature)
 
-**Result**: ✅ All QML files pass syntax checks. Ready for hardware testing.
+**Result**: ✅ Modular architecture (90% reduction in main file size), optimized for 7-inch displays, standalone testable
 
 **Issues Fixed**:
-- **polish() loop error**: Using `parent.width * 0.30` inside RowLayout children caused circular layout dependency. Fixed by wrapping RowLayout in `Item { id: mainBodyContainer }` and referencing `mainBodyContainer.width` instead.
-- Changed `Layout.preferredHeight: parent.height * 0.5` to `Layout.fillHeight: true` to let layouts expand naturally.
+- **Layout recursion**: Using `parent.width * 0.30` in RowLayout caused circular dependency. Fixed with weight-based layouts (`Layout.preferredWidth: 3` for 30% of total 10).
+- **Test script display**: QQmlApplicationEngine can't display Rectangle roots. Switched to QQuickView with SizeRootObjectToView mode.
+- **Font sizes**: Increased throughout for 7-inch screen readability (see KNOWLEDGE.md).
 
 ---
 
-### 2026-01-19 17:30 - UX Pass #1: Font Size & Readability
+### 2026-01-19 18:00 - Monitor UI: Test Script & Layout Fixes
 
-**Goal**: Improve readability on 7-inch high-PPI display at 2-3 feet viewing distance.
-
-**Changes Applied**:
-| Element | Before | After |
-|---------|--------|-------|
-| Unit labels (m/s, L/min) | 10-11px | 13-14px |
-| Current values | 12-13px | 14px |
-| Section labels | 9-11px | 12-13px |
-| IMU headers & values | 10-11px | 12-13px |
-| Winch labels | 10-11px | 12-13px |
-| Progress bar height | 6px | 12px (default) |
-| Arm extension bar | 8px | 12px |
-| Valve position bar | 16px | 20px |
-
-**Other Fixes**:
-- Removed unnecessary spacer `Item` elements in Valves and Teensy Arm cards
-- Vertical bar charts now 50px wide (was 40px), 80px tall (was 100px)
-- IMU sparklines use `Layout.fillWidth` with 24px height
-
-**Result**: ✅ Fonts more legible, progress bars more visible
-
-**Next Steps** (pending user feedback):
-- [ ] Increase hero values to 48-54px for glanceability
-- [ ] Switch to value-first vertical stacking (label above large value)
-- [ ] Consolidate IMU to 2x2 grid with combined X|Y|Z strings
-- [ ] Increase header bar to 100px, E-Stop text to 24px
-- [ ] Replace card margins (10px → 4px) with dividers to recover space
-
----
-
-### 2026-01-19 18:00 - Fix Test Script Window Display & Layout Recursion
-
-**Goal**: Get `test_industrial_monitor.py` to actually display the monitor UI window
+**Goal**: Enable standalone testing of monitor UI without main app
 
 **Issues**:
-1. Script said "QML loaded successfully" but no window appeared
+1. Test script said "loaded successfully" but no window appeared
 2. Console flooded with `Qt Quick Layouts: Detected recursive rearrange` errors
 
 **Root Causes**:
-1. `QQmlApplicationEngine` can't display `Rectangle`-based QML directly—needs `Window` as root
-2. Layout children referenced `parent.width * 0.30` inside `RowLayout`, causing circular dependency
+1. `QQmlApplicationEngine` requires Window root, not Rectangle
+2. Layout children used `parent.width * 0.30` causing circular dependency
 
 **Solution**:
-1. Switched from `QQmlApplicationEngine` to `QQuickView` which properly hosts Rectangle-based components
-2. Replaced `Layout.preferredWidth: parent.width * 0.30` with `Layout.preferredWidth: 3` (weight-based)
-3. Replaced `Layout.preferredHeight: parent.height * 0.5` with `Layout.fillHeight: true` + `Layout.preferredHeight: 1`
+1. Switched to `QQuickView` with `SizeRootObjectToView` mode
+2. Replaced percentage-based widths with weight-based layouts: `Layout.preferredWidth: 3` (30% of total 10)
+3. Created mock controllers (TeensyController, WheelController, WinchController) with realistic 10Hz data simulation
 
-**Before** (broken):
-```qml
-ColumnLayout {
-    Layout.preferredWidth: parent.width * 0.30  // ❌ Circular!
-```
-
-**After** (working):
-```qml
-ColumnLayout {
-    Layout.fillWidth: true
-    Layout.preferredWidth: 3  // ✅ Weight-based (3 of 10)
-```
-
-**Result**: ✅ Window displays correctly, no layout warnings
+**Result**: ✅ Window displays correctly, no layout warnings, fully functional standalone test
 
 **Files**: `scripts/test_industrial_monitor.py`, `qml/pages/status/PageMonitor.qml`
 
