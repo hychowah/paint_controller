@@ -293,21 +293,33 @@ Rectangle {
                         ColumnLayout {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            spacing: 8
+                            spacing: 6
                             
-                            Text {
-                                text: "L"
-                                font.pixelSize: 16
-                                font.bold: true
-                                font.family: "Roboto"
-                                color: "#AAAAAA"
-                                horizontalAlignment: Text.AlignHCenter
+                            Row {
+                                spacing: 4
                                 Layout.alignment: Qt.AlignHCenter
+                                
+                                Text {
+                                    text: "L"
+                                    font.pixelSize: 16
+                                    font.bold: true
+                                    font.family: "Roboto"
+                                    color: "#AAAAAA"
+                                }
+                                
+                                // Motor availability indicator
+                                Rectangle {
+                                    width: 12
+                                    height: 12
+                                    radius: 6
+                                    color: wheelController.left_motor_available ? "#2ecc71" : "#e74c3c"
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
                             }
                             
                             Text {
                                 text: Math.abs(wheelController.left_wheel_speed || 0).toFixed(2)
-                                font.pixelSize: 28
+                                font.pixelSize: 26
                                 font.family: "Monospace"
                                 font.bold: true
                                 color: "#3498db"
@@ -317,7 +329,7 @@ Rectangle {
                             
                             Text {
                                 text: "m/s"
-                                font.pixelSize: 12
+                                font.pixelSize: 11
                                 font.family: "Roboto"
                                 color: "#AAAAAA"
                                 horizontalAlignment: Text.AlignHCenter
@@ -326,7 +338,7 @@ Rectangle {
                             
                             Text {
                                 text: Math.abs(wheelController.left_wheel_current || 0).toFixed(1) + " A"
-                                font.pixelSize: 14
+                                font.pixelSize: 13
                                 font.family: "Monospace"
                                 color: "#FFFFFF"
                                 horizontalAlignment: Text.AlignHCenter
@@ -346,21 +358,33 @@ Rectangle {
                         ColumnLayout {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            spacing: 8
+                            spacing: 6
                             
-                            Text {
-                                text: "R"
-                                font.pixelSize: 16
-                                font.bold: true
-                                font.family: "Roboto"
-                                color: "#AAAAAA"
-                                horizontalAlignment: Text.AlignHCenter
+                            Row {
+                                spacing: 4
                                 Layout.alignment: Qt.AlignHCenter
+                                
+                                Text {
+                                    text: "R"
+                                    font.pixelSize: 16
+                                    font.bold: true
+                                    font.family: "Roboto"
+                                    color: "#AAAAAA"
+                                }
+                                
+                                // Motor availability indicator
+                                Rectangle {
+                                    width: 12
+                                    height: 12
+                                    radius: 6
+                                    color: wheelController.right_motor_available ? "#2ecc71" : "#e74c3c"
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
                             }
                             
                             Text {
                                 text: Math.abs(wheelController.right_wheel_speed || 0).toFixed(2)
-                                font.pixelSize: 28
+                                font.pixelSize: 26
                                 font.family: "Monospace"
                                 font.bold: true
                                 color: "#3498db"
@@ -370,7 +394,7 @@ Rectangle {
                             
                             Text {
                                 text: "m/s"
-                                font.pixelSize: 12
+                                font.pixelSize: 11
                                 font.family: "Roboto"
                                 color: "#AAAAAA"
                                 horizontalAlignment: Text.AlignHCenter
@@ -379,7 +403,7 @@ Rectangle {
                             
                             Text {
                                 text: Math.abs(wheelController.right_wheel_current || 0).toFixed(1) + " A"
-                                font.pixelSize: 14
+                                font.pixelSize: 13
                                 font.family: "Monospace"
                                 color: "#FFFFFF"
                                 horizontalAlignment: Text.AlignHCenter
@@ -405,16 +429,16 @@ Rectangle {
                     
                     ColumnLayout {
                         anchors.fill: parent
-                        spacing: 10
+                        spacing: 8
                         
                         // Flow Rate
                         ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 4
+                            spacing: 2
                             
                             Text {
                                 text: "Flow Rate"
-                                font.pixelSize: 12
+                                font.pixelSize: 11
                                 font.family: "Roboto"
                                 color: "#AAAAAA"
                                 horizontalAlignment: Text.AlignHCenter
@@ -423,7 +447,7 @@ Rectangle {
                             
                             Text {
                                 text: (teensyController.all_status.valve_rate || 0).toFixed(1)
-                                font.pixelSize: 32
+                                font.pixelSize: 28
                                 font.family: "Monospace"
                                 font.bold: true
                                 color: "#3498db"
@@ -433,7 +457,7 @@ Rectangle {
                             
                             Text {
                                 text: "L/min"
-                                font.pixelSize: 12
+                                font.pixelSize: 10
                                 font.family: "Roboto"
                                 color: "#AAAAAA"
                                 horizontalAlignment: Text.AlignHCenter
@@ -441,19 +465,19 @@ Rectangle {
                             }
                         }
                         
-                        Item { Layout.preferredHeight: 10 }
+                        Item { Layout.preferredHeight: 4 }
                         
                         // Valve Position
                         ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 6
+                            spacing: 4
                             
                             // Calculate valve position percentage once
                             property real valvePositionPercent: (teensyController.all_status.valve_position || 0)
                             
                             Text {
-                                text: "Valve Position: " + parent.valvePositionPercent.toFixed(0) + "%"
-                                font.pixelSize: 12
+                                text: "Position: " + parent.valvePositionPercent.toFixed(0) + "%"
+                                font.pixelSize: 10
                                 font.family: "Roboto"
                                 color: "#AAAAAA"
                             }
@@ -461,7 +485,7 @@ Rectangle {
                             // Position bar with thumb indicator
                             Item {
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 20
+                                Layout.preferredHeight: 16
                                 
                                 property real valvePositionPercent: parent.valvePositionPercent
                                 property real normalizedPosition: valvePositionPercent / 100.0
@@ -470,7 +494,7 @@ Rectangle {
                                 Rectangle {
                                     anchors.fill: parent
                                     color: "#1e222b"
-                                    radius: 10
+                                    radius: 8
                                 }
                                 
                                 // Progress bar (cyan)
@@ -478,7 +502,7 @@ Rectangle {
                                     width: Math.max(0, Math.min(parent.width * parent.normalizedPosition, parent.width))
                                     height: parent.height
                                     color: "#3498db"
-                                    radius: 10
+                                    radius: 8
                                     
                                     Behavior on width {
                                         NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
@@ -487,12 +511,12 @@ Rectangle {
                                 
                                 // White thumb indicator
                                 Rectangle {
-                                    x: Math.max(5, Math.min(parent.width * parent.normalizedPosition - 5, parent.width - 15))
-                                    y: parent.height / 2 - 7
-                                    width: 14
-                                    height: 14
+                                    x: Math.max(4, Math.min(parent.width * parent.normalizedPosition - 4, parent.width - 12))
+                                    y: parent.height / 2 - 6
+                                    width: 12
+                                    height: 12
                                     color: "#FFFFFF"
-                                    radius: 7
+                                    radius: 6
                                     border.color: "#3498db"
                                     border.width: 2
                                     
@@ -500,6 +524,46 @@ Rectangle {
                                         NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
                                     }
                                 }
+                            }
+                        }
+                        
+                        Item { Layout.preferredHeight: 4 }
+                        
+                        // Additional valve data
+                        GridLayout {
+                            Layout.fillWidth: true
+                            columns: 2
+                            rowSpacing: 4
+                            columnSpacing: 8
+                            
+                            Text {
+                                text: "Motor Current:"
+                                font.pixelSize: 9
+                                font.family: "Roboto"
+                                color: "#AAAAAA"
+                            }
+                            
+                            Text {
+                                text: (teensyController.all_status.valve_motor_current || 0).toFixed(1) + " A"
+                                font.pixelSize: 10
+                                font.family: "Monospace"
+                                color: "#FFFFFF"
+                                horizontalAlignment: Text.AlignRight
+                            }
+                            
+                            Text {
+                                text: "Total Volume:"
+                                font.pixelSize: 9
+                                font.family: "Roboto"
+                                color: "#AAAAAA"
+                            }
+                            
+                            Text {
+                                text: (teensyController.all_status.total_volumne || 0).toFixed(1) + " L"
+                                font.pixelSize: 10
+                                font.family: "Monospace"
+                                color: "#FFFFFF"
+                                horizontalAlignment: Text.AlignRight
                             }
                         }
                     }
@@ -661,8 +725,8 @@ Rectangle {
                     GridLayout {
                         anchors.fill: parent
                         columns: 2
-                        rowSpacing: 12
-                        columnSpacing: 20
+                        rowSpacing: 10
+                        columnSpacing: 16
                         
                         // Cable Length
                         ColumnLayout {
@@ -671,14 +735,14 @@ Rectangle {
                             
                             Text {
                                 text: "📏 Cable Length"
-                                font.pixelSize: 12
+                                font.pixelSize: 11
                                 font.family: "Roboto"
                                 color: "#AAAAAA"
                             }
                             
                             Text {
                                 text: ((winchController.cable_length || 0) / 1000).toFixed(2) + " m"
-                                font.pixelSize: 24
+                                font.pixelSize: 22
                                 font.family: "Monospace"
                                 font.bold: true
                                 color: "#3498db"
@@ -695,13 +759,13 @@ Rectangle {
                                 
                                 Text {
                                     text: (winchController.cable_speed || 0) >= 0 ? "↑" : "↓"
-                                    font.pixelSize: 16
+                                    font.pixelSize: 14
                                     color: "#f39c12"
                                 }
                                 
                                 Text {
                                     text: "Cable Speed"
-                                    font.pixelSize: 12
+                                    font.pixelSize: 11
                                     font.family: "Roboto"
                                     color: "#AAAAAA"
                                 }
@@ -709,7 +773,7 @@ Rectangle {
                             
                             Text {
                                 text: Math.abs(winchController.cable_speed || 0).toFixed(1) + " m/s"
-                                font.pixelSize: 24
+                                font.pixelSize: 22
                                 font.family: "Monospace"
                                 font.bold: true
                                 color: "#f39c12"
@@ -719,18 +783,38 @@ Rectangle {
                         // Winch Voltage
                         ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 4
+                            spacing: 2
                             
                             Text {
-                                text: "Winch Voltage"
-                                font.pixelSize: 11
+                                text: "Voltage"
+                                font.pixelSize: 10
                                 font.family: "Roboto"
                                 color: "#AAAAAA"
                             }
                             
                             Text {
                                 text: (winchController.motor_voltage || 0).toFixed(1) + " V"
-                                font.pixelSize: 16
+                                font.pixelSize: 14
+                                font.family: "Monospace"
+                                color: "#2ecc71"
+                            }
+                        }
+                        
+                        // Motor Temperature
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+                            
+                            Text {
+                                text: "Temperature"
+                                font.pixelSize: 10
+                                font.family: "Roboto"
+                                color: "#AAAAAA"
+                            }
+                            
+                            Text {
+                                text: (winchController.motor_temperature || 0).toFixed(1) + " °C"
+                                font.pixelSize: 14
                                 font.family: "Monospace"
                                 color: "#2ecc71"
                             }
@@ -739,19 +823,20 @@ Rectangle {
                         // Torque (Amber if > 80% of max)
                         ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 4
+                            Layout.columnSpan: 2
+                            spacing: 2
                             
                             Text {
                                 text: "Torque"
-                                font.pixelSize: 11
+                                font.pixelSize: 10
                                 font.family: "Roboto"
                                 color: "#AAAAAA"
                             }
                             
                             Text {
                                 property real torquePercent: maxWinchTorque > 0 ? (winchController.winch_torque || 0) / maxWinchTorque * 100 : 0
-                                text: (winchController.winch_torque || 0).toFixed(1) + " Nm"
-                                font.pixelSize: 16
+                                text: (winchController.winch_torque || 0).toFixed(1) + " Nm (" + torquePercent.toFixed(0) + "%)"
+                                font.pixelSize: 14
                                 font.family: "Monospace"
                                 color: torquePercent > 80 ? "#f39c12" : "#2ecc71"  // Amber if high
                             }

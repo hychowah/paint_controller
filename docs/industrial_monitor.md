@@ -26,11 +26,13 @@ The Industrial Monitor provides real-time system telemetry and status visualizat
 
 **Left Column (30%) - Mobility & Fluids:**
 - **Wheels Card:**
-  - Left/Right wheel speed (m/s)
+  - Left/Right wheel speed (m/s) with motor availability indicator (green/red dot)
   - Current draw (A) with visual progress bar
 - **Valves Card:**
   - Flow rate (L/min)
   - Valve position (%) with cyan position indicator
+  - Valve motor current (A)
+  - Total volume dispensed (L)
 
 **Center Column (40%) - Core Operations:**
 - **Teensy Arm Card:**
@@ -40,7 +42,8 @@ The Industrial Monitor provides real-time system telemetry and status visualizat
   - Cable length (m)
   - Cable speed (m/s) with directional arrow
   - Winch voltage (V)
-  - Torque (Nm) - turns amber when >80% of max
+  - Motor temperature (°C)
+  - Torque (Nm) with percentage - turns amber when >80% of max
 
 **Right Column (30%) - Sensor Density:**
 - **IMU Card:**
@@ -62,9 +65,9 @@ The Industrial Monitor provides real-time system telemetry and status visualizat
 ## Data Sources
 
 The monitor pulls real-time data from:
-- `teensyController`: IMU, arm, valves, spray gun, system voltage/temp
-- `wheelController`: Wheel speeds and motor currents
-- `winchController`: Cable position, speed, and motor telemetry
+- `teensyController`: IMU, arm, valves (position, rate, motor current, total volume), spray gun, system voltage/temp
+- `wheelController`: Wheel speeds, motor currents, and motor availability status (left/right)
+- `winchController`: Cable position, speed, motor telemetry (voltage, temperature, torque)
 
 ## Components
 
