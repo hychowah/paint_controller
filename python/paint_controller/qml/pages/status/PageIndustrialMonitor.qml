@@ -17,6 +17,7 @@ Rectangle {
     property var imuRollHistory: []
     
     // Constants for max values (adjust based on actual hardware specs)
+    // Note: These must be > 0 to avoid division by zero
     property real maxWinchTorque: 100.0      // Nm
     property real maxWheelCurrent: 10.0      // A
     property real maxArmCurrent: 5.0         // A
@@ -463,6 +464,7 @@ Rectangle {
                                 Layout.preferredHeight: 20
                                 
                                 property real valvePositionPercent: parent.valvePositionPercent
+                                property real normalizedPosition: valvePositionPercent / 100.0
                                 
                                 // Background bar
                                 Rectangle {
@@ -473,7 +475,7 @@ Rectangle {
                                 
                                 // Progress bar (cyan)
                                 Rectangle {
-                                    width: Math.max(0, Math.min(parent.width * parent.valvePositionPercent / 100, parent.width))
+                                    width: Math.max(0, Math.min(parent.width * parent.normalizedPosition, parent.width))
                                     height: parent.height
                                     color: "#3498db"
                                     radius: 10
@@ -485,7 +487,7 @@ Rectangle {
                                 
                                 // White thumb indicator
                                 Rectangle {
-                                    x: Math.max(5, Math.min(parent.width * parent.valvePositionPercent / 100 - 5, parent.width - 15))
+                                    x: Math.max(5, Math.min(parent.width * parent.normalizedPosition - 5, parent.width - 15))
                                     y: parent.height / 2 - 7
                                     width: 14
                                     height: 14
@@ -577,10 +579,12 @@ Rectangle {
                                     Layout.preferredHeight: 100
                                     Layout.alignment: Qt.AlignHCenter
                                     
+                                    property real heightRatio: maxArmCurrent > 0 ? Math.abs(teensyController.all_status.arm_rail_current || 0) / maxArmCurrent : 0
+                                    
                                     Rectangle {
                                         anchors.bottom: parent.bottom
                                         width: parent.width
-                                        height: Math.max(10, parent.height * Math.abs(teensyController.all_status.arm_rail_current || 0) / maxArmCurrent)
+                                        height: Math.max(10, parent.height * parent.heightRatio)
                                         color: "#3498db"
                                         radius: 4
                                         
@@ -620,10 +624,12 @@ Rectangle {
                                     Layout.preferredHeight: 100
                                     Layout.alignment: Qt.AlignHCenter
                                     
+                                    property real heightRatio: maxArmCurrent > 0 ? Math.abs(teensyController.all_status.spray_gun_motor_current || 0) / maxArmCurrent : 0
+                                    
                                     Rectangle {
                                         anchors.bottom: parent.bottom
                                         width: parent.width
-                                        height: Math.max(10, parent.height * Math.abs(teensyController.all_status.spray_gun_motor_current || 0) / maxArmCurrent)
+                                        height: Math.max(10, parent.height * parent.heightRatio)
                                         color: "#e74c3c"
                                         radius: 4
                                         
@@ -743,7 +749,7 @@ Rectangle {
                             }
                             
                             Text {
-                                property real torquePercent: (winchController.winch_torque || 0) / maxWinchTorque * 100
+                                property real torquePercent: maxWinchTorque > 0 ? (winchController.winch_torque || 0) / maxWinchTorque * 100 : 0
                                 text: (winchController.winch_torque || 0).toFixed(1) + " Nm"
                                 font.pixelSize: 16
                                 font.family: "Monospace"

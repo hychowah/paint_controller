@@ -39,7 +39,8 @@ Canvas {
         var ctx = getContext("2d")
         ctx.clearRect(0, 0, width, height)
         
-        if (dataPoints.length < 2) return
+        // Need at least 2 points and maxDataPoints > 1 to draw
+        if (dataPoints.length < 2 || maxDataPoints < 2) return
         
         var range = cachedMax - cachedMin
         if (range === 0) range = 1
