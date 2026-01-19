@@ -108,3 +108,39 @@
 - [ ] Replace card margins (10px → 4px) with dividers to recover space
 
 ---
+
+### 2026-01-19 18:00 - Fix Test Script Window Display & Layout Recursion
+
+**Goal**: Get `test_industrial_monitor.py` to actually display the monitor UI window
+
+**Issues**:
+1. Script said "QML loaded successfully" but no window appeared
+2. Console flooded with `Qt Quick Layouts: Detected recursive rearrange` errors
+
+**Root Causes**:
+1. `QQmlApplicationEngine` can't display `Rectangle`-based QML directly—needs `Window` as root
+2. Layout children referenced `parent.width * 0.30` inside `RowLayout`, causing circular dependency
+
+**Solution**:
+1. Switched from `QQmlApplicationEngine` to `QQuickView` which properly hosts Rectangle-based components
+2. Replaced `Layout.preferredWidth: parent.width * 0.30` with `Layout.preferredWidth: 3` (weight-based)
+3. Replaced `Layout.preferredHeight: parent.height * 0.5` with `Layout.fillHeight: true` + `Layout.preferredHeight: 1`
+
+**Before** (broken):
+```qml
+ColumnLayout {
+    Layout.preferredWidth: parent.width * 0.30  // ❌ Circular!
+```
+
+**After** (working):
+```qml
+ColumnLayout {
+    Layout.fillWidth: true
+    Layout.preferredWidth: 3  // ✅ Weight-based (3 of 10)
+```
+
+**Result**: ✅ Window displays correctly, no layout warnings
+
+**Files**: `scripts/test_industrial_monitor.py`, `qml/pages/status/PageMonitor.qml`
+
+---

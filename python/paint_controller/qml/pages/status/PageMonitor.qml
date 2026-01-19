@@ -57,48 +57,55 @@ Rectangle {
             
             // LEFT COLUMN (30%): Mobility & Fluids
             ColumnLayout {
-                Layout.preferredWidth: parent.width * 0.30
+                Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.preferredWidth: 3  // 30% weight (3 of 10)
                 Layout.margins: 10
                 spacing: 10
                 
                 WheelsCard {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: parent.height * 0.5
+                    Layout.fillHeight: true
+                    Layout.preferredHeight: 1  // Equal weight with ValvesCard
                     maxWheelCurrent: monitorPage.maxWheelCurrent
                 }
                 
                 ValvesCard {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: parent.height * 0.5
+                    Layout.fillHeight: true
+                    Layout.preferredHeight: 1  // Equal weight with WheelsCard
                 }
             }
             
             // CENTER COLUMN (40%): Core Operations
             ColumnLayout {
-                Layout.preferredWidth: parent.width * 0.40
+                Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.preferredWidth: 4  // 40% weight (4 of 10)
                 Layout.margins: 10
                 spacing: 10
                 
                 TeensyArmCard {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: parent.height * 0.5
+                    Layout.fillHeight: true
+                    Layout.preferredHeight: 1  // Equal weight
                     maxArmCurrent: monitorPage.maxArmCurrent
                     maxArmExtension: monitorPage.maxArmExtension
                 }
                 
                 WinchCard {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: parent.height * 0.5
+                    Layout.fillHeight: true
+                    Layout.preferredHeight: 1  // Equal weight
                     maxWinchTorque: monitorPage.maxWinchTorque
                 }
             }
             
             // RIGHT COLUMN (30%): Sensor Density
             ColumnLayout {
-                Layout.preferredWidth: parent.width * 0.30
+                Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.preferredWidth: 3  // 30% weight (3 of 10)
                 Layout.margins: 10
                 spacing: 10
                 

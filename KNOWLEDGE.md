@@ -18,6 +18,12 @@ Python signals may fire before Qt's internal state updates. Use a short Timer (1
 ### Qt.application.screens Staleness
 Dynamic list but may have stale data immediately after screen changes. Always re-query after a delay, not in direct signal handler.
 
+### Layout Children: Never Use parent.width/height
+Inside `RowLayout`/`ColumnLayout`, children must NOT reference `parent.width * 0.30` — causes recursive rearrange errors. Use weight-based sizing: `Layout.fillWidth: true` + `Layout.preferredWidth: 3` (for 30% of total weight 10).
+
+### QQuickView vs QQmlApplicationEngine
+`QQmlApplicationEngine` requires `Window` or `ApplicationWindow` as QML root. For `Rectangle`-based components, use `QQuickView` with `SizeRootObjectToView` resize mode instead.
+
 ---
 
 ## ROS2 Tips

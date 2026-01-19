@@ -22,9 +22,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 try:
     from PySide6.QtCore import QObject, QUrl, Signal, Property, QTimer, Qt
-    from PySide6.QtQml import QQmlApplicationEngine
+    from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType
     from PySide6.QtWidgets import QApplication
     from PySide6.QtGui import QIcon
+    from PySide6.QtQuick import QQuickView
     
     class MockTeensyController(QObject):
         """Mock Teensy controller with simulated data"""
@@ -263,19 +264,11 @@ try:
         app = QApplication(sys.argv)
         app.setApplicationName("Paint Controller Monitor Test")
         
-        # Create QML engine
-        engine = QQmlApplicationEngine()
-        
         # Create mock controllers
         print("Creating mock controllers...")
         teensy_controller = MockTeensyController()
         wheel_controller = MockWheelController()
         winch_controller = MockWinchController()
-        
-        # Expose controllers to QML
-        engine.rootContext().setContextProperty("teensyController", teensy_controller)
-        engine.rootContext().setContextProperty("wheelController", wheel_controller)
-        engine.rootContext().setContextProperty("winchController", winch_controller)
         
         # Path to the QML file
         qml_file = os.path.join(
@@ -294,12 +287,28 @@ try:
             print(f"❌ ERROR: QML file not found: {abs_qml_file}")
             return False
         
-        # Load the QML file
-        engine.load(QUrl.fromLocalFile(abs_qml_file))
+        # Use QQuickView to display Rectangle-based QML
+        view = QQuickView()
+        view.setTitle("Industrial Monitor Test - 1280x720")
+        view.setResizeMode(QQuickView.SizeRootObjectToView)
+        view.setWidth(1280)
+        view.setHeight(720)
         
-        if not engine.rootObjects():
+        # Expose controllers to QML
+        view.rootContext().setContextProperty("teensyController", teensy_controller)
+        view.rootContext().setContextProperty("wheelController", wheel_controller)
+        view.rootContext().setContextProperty("winchController", winch_controller)
+        
+        # Load the QML file
+        view.setSource(QUrl.fromLocalFile(abs_qml_file))
+        
+        if view.status() == QQuickView.Error:
             print("❌ ERROR: Failed to load QML file")
+            for error in view.errors():
+                print(f"  - {error.toString()}")
             return False
+        
+        view.show()
         
         print("✅ QML file loaded successfully!")
         print("\n" + "=" * 60)
