@@ -18,10 +18,23 @@ Window {
     title: "Multi-Screen Display - Paint Controller"
     width: 800
     height: 600
-    visible: false
     
     // Properties to control which screen this window appears on
     property int targetScreenIndex: 0
+    
+    // Property to enable fullscreen mode - use visibility instead of visible
+    property bool fullscreenMode: false
+    visibility: fullscreenMode ? Window.FullScreen : Window.Hidden
+    
+    // Function to show the window (avoids visible/visibility conflict)
+    function showWindow() {
+        visibility = fullscreenMode ? Window.FullScreen : Window.Windowed
+    }
+    
+    // Function to hide the window
+    function hideWindow() {
+        visibility = Window.Hidden
+    }
     
     // Background
     Rectangle {
