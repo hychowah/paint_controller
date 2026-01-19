@@ -9,7 +9,7 @@ Item {
     property real maxValue: 100.0
     property color barColor: "#2ecc71"
     property color backgroundColor: "#1e222b"
-    property int barHeight: 6
+    property int barHeight: 12
     
     height: barHeight
     

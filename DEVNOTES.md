@@ -71,14 +71,40 @@
 
 **Result**: ✅ All QML files pass syntax checks. Ready for hardware testing.
 
+**Issues Fixed**:
+- **polish() loop error**: Using `parent.width * 0.30` inside RowLayout children caused circular layout dependency. Fixed by wrapping RowLayout in `Item { id: mainBodyContainer }` and referencing `mainBodyContainer.width` instead.
+- Changed `Layout.preferredHeight: parent.height * 0.5` to `Layout.fillHeight: true` to let layouts expand naturally.
+
 ---
 
-### 2026-01-19 16:00 - Code Review Notes
+### 2026-01-19 17:30 - UX Pass #1: Font Size & Readability
 
-**Status**: ✅ Good quality, minor cleanup needed
+**Goal**: Improve readability on 7-inch high-PPI display at 2-3 feet viewing distance.
 
-**Items to address**:
-- Reduce debug logging (18 `console.log` statements)
-- Extract screen positioning logic to helper function
-- Replace magic numbers (100ms, screen indices) with constants
-- Add validation for >2 screen edge cases
+**Changes Applied**:
+| Element | Before | After |
+|---------|--------|-------|
+| Unit labels (m/s, L/min) | 10-11px | 13-14px |
+| Current values | 12-13px | 14px |
+| Section labels | 9-11px | 12-13px |
+| IMU headers & values | 10-11px | 12-13px |
+| Winch labels | 10-11px | 12-13px |
+| Progress bar height | 6px | 12px (default) |
+| Arm extension bar | 8px | 12px |
+| Valve position bar | 16px | 20px |
+
+**Other Fixes**:
+- Removed unnecessary spacer `Item` elements in Valves and Teensy Arm cards
+- Vertical bar charts now 50px wide (was 40px), 80px tall (was 100px)
+- IMU sparklines use `Layout.fillWidth` with 24px height
+
+**Result**: ✅ Fonts more legible, progress bars more visible
+
+**Next Steps** (pending user feedback):
+- [ ] Increase hero values to 48-54px for glanceability
+- [ ] Switch to value-first vertical stacking (label above large value)
+- [ ] Consolidate IMU to 2x2 grid with combined X|Y|Z strings
+- [ ] Increase header bar to 100px, E-Stop text to 24px
+- [ ] Replace card margins (10px → 4px) with dividers to recover space
+
+---

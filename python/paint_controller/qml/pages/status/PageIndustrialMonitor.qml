@@ -267,27 +267,31 @@ Rectangle {
         // ====================================================================
         // MAIN BODY (3-Column Layout) - remaining 640px height
         // ====================================================================
-        RowLayout {
+        Item {
+            id: mainBodyContainer
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 10
             
-            // LEFT COLUMN (30%): Mobility & Fluids
-            ColumnLayout {
-                Layout.preferredWidth: parent.width * 0.30
-                Layout.fillHeight: true
-                Layout.margins: 10
+            RowLayout {
+                anchors.fill: parent
                 spacing: 10
                 
-                // WHEELS CARD
-                IndustrialCard {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: parent.height * 0.5
-                    title: "Wheels"
+                // LEFT COLUMN (30%): Mobility & Fluids
+                ColumnLayout {
+                    Layout.preferredWidth: mainBodyContainer.width * 0.30
+                    Layout.fillHeight: true
+                    Layout.margins: 10
+                    spacing: 10
                     
-                    RowLayout {
-                        anchors.fill: parent
-                        spacing: 8
+                    // WHEELS CARD
+                    IndustrialCard {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        title: "Wheels"
+                    
+                        RowLayout {
+                            anchors.fill: parent
+                            spacing: 8
                         
                         // Left Wheel
                         ColumnLayout {
@@ -329,7 +333,7 @@ Rectangle {
                             
                             Text {
                                 text: "m/s"
-                                font.pixelSize: 11
+                                font.pixelSize: 14
                                 font.family: "Roboto"
                                 color: "#AAAAAA"
                                 horizontalAlignment: Text.AlignHCenter
@@ -338,7 +342,7 @@ Rectangle {
                             
                             Text {
                                 text: Math.abs(wheelController.left_wheel_current || 0).toFixed(1) + " A"
-                                font.pixelSize: 13
+                                font.pixelSize: 14
                                 font.family: "Monospace"
                                 color: "#FFFFFF"
                                 horizontalAlignment: Text.AlignHCenter
@@ -394,7 +398,7 @@ Rectangle {
                             
                             Text {
                                 text: "m/s"
-                                font.pixelSize: 11
+                                font.pixelSize: 14
                                 font.family: "Roboto"
                                 color: "#AAAAAA"
                                 horizontalAlignment: Text.AlignHCenter
@@ -403,7 +407,7 @@ Rectangle {
                             
                             Text {
                                 text: Math.abs(wheelController.right_wheel_current || 0).toFixed(1) + " A"
-                                font.pixelSize: 13
+                                font.pixelSize: 14
                                 font.family: "Monospace"
                                 color: "#FFFFFF"
                                 horizontalAlignment: Text.AlignHCenter
@@ -424,7 +428,7 @@ Rectangle {
                 // VALVES CARD
                 IndustrialCard {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: parent.height * 0.5
+                    Layout.fillHeight: true
                     title: "Valves"
                     
                     ColumnLayout {
@@ -438,7 +442,7 @@ Rectangle {
                             
                             Text {
                                 text: "Flow Rate"
-                                font.pixelSize: 11
+                                font.pixelSize: 13
                                 font.family: "Roboto"
                                 color: "#AAAAAA"
                                 horizontalAlignment: Text.AlignHCenter
@@ -447,7 +451,7 @@ Rectangle {
                             
                             Text {
                                 text: (teensyController.all_status.valve_rate || 0).toFixed(1)
-                                font.pixelSize: 28
+                                font.pixelSize: 32
                                 font.family: "Monospace"
                                 font.bold: true
                                 color: "#3498db"
@@ -457,15 +461,13 @@ Rectangle {
                             
                             Text {
                                 text: "L/min"
-                                font.pixelSize: 10
+                                font.pixelSize: 13
                                 font.family: "Roboto"
                                 color: "#AAAAAA"
                                 horizontalAlignment: Text.AlignHCenter
                                 Layout.alignment: Qt.AlignHCenter
                             }
                         }
-                        
-                        Item { Layout.preferredHeight: 4 }
                         
                         // Valve Position
                         ColumnLayout {
@@ -477,7 +479,7 @@ Rectangle {
                             
                             Text {
                                 text: "Position: " + parent.valvePositionPercent.toFixed(0) + "%"
-                                font.pixelSize: 10
+                                font.pixelSize: 12
                                 font.family: "Roboto"
                                 color: "#AAAAAA"
                             }
@@ -485,7 +487,7 @@ Rectangle {
                             // Position bar with thumb indicator
                             Item {
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 16
+                                Layout.preferredHeight: 20
                                 
                                 property real valvePositionPercent: parent.valvePositionPercent
                                 property real normalizedPosition: valvePositionPercent / 100.0
@@ -527,8 +529,6 @@ Rectangle {
                             }
                         }
                         
-                        Item { Layout.preferredHeight: 4 }
-                        
                         // Additional valve data
                         GridLayout {
                             Layout.fillWidth: true
@@ -538,14 +538,14 @@ Rectangle {
                             
                             Text {
                                 text: "Motor Current:"
-                                font.pixelSize: 9
+                                font.pixelSize: 12
                                 font.family: "Roboto"
                                 color: "#AAAAAA"
                             }
                             
                             Text {
                                 text: (teensyController.all_status.valve_motor_current || 0).toFixed(1) + " A"
-                                font.pixelSize: 10
+                                font.pixelSize: 13
                                 font.family: "Monospace"
                                 color: "#FFFFFF"
                                 horizontalAlignment: Text.AlignRight
@@ -553,14 +553,14 @@ Rectangle {
                             
                             Text {
                                 text: "Total Volume:"
-                                font.pixelSize: 9
+                                font.pixelSize: 12
                                 font.family: "Roboto"
                                 color: "#AAAAAA"
                             }
                             
                             Text {
                                 text: (teensyController.all_status.total_volumne || 0).toFixed(1) + " L"
-                                font.pixelSize: 10
+                                font.pixelSize: 13
                                 font.family: "Monospace"
                                 color: "#FFFFFF"
                                 horizontalAlignment: Text.AlignRight
@@ -572,7 +572,7 @@ Rectangle {
             
             // CENTER COLUMN (40%): Core Operations (HERO)
             ColumnLayout {
-                Layout.preferredWidth: parent.width * 0.40
+                Layout.preferredWidth: mainBodyContainer.width * 0.40
                 Layout.fillHeight: true
                 Layout.margins: 10
                 spacing: 10
@@ -580,7 +580,7 @@ Rectangle {
                 // TEENSY ARM CARD
                 IndustrialCard {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: parent.height * 0.5
+                    Layout.fillHeight: true
                     title: "Teensy Arm"
                     
                     ColumnLayout {
@@ -612,11 +612,9 @@ Rectangle {
                                 value: teensyController.all_status.arm_extension_dist || 0
                                 maxValue: maxArmExtension
                                 barColor: "#2ecc71"
-                                barHeight: 8
+                                barHeight: 12
                             }
                         }
-                        
-                        Item { Layout.preferredHeight: 10 }
                         
                         // Current comparison: Arm vs Spray Gun
                         RowLayout {
@@ -630,7 +628,7 @@ Rectangle {
                                 
                                 Text {
                                     text: "Arm Current"
-                                    font.pixelSize: 11
+                                    font.pixelSize: 13
                                     font.family: "Roboto"
                                     color: "#AAAAAA"
                                     horizontalAlignment: Text.AlignHCenter
@@ -639,8 +637,8 @@ Rectangle {
                                 
                                 // Vertical bar chart
                                 Item {
-                                    Layout.preferredWidth: 40
-                                    Layout.preferredHeight: 100
+                                    Layout.preferredWidth: 50
+                                    Layout.preferredHeight: 80
                                     Layout.alignment: Qt.AlignHCenter
                                     
                                     property real heightRatio: maxArmCurrent > 0 ? Math.abs(teensyController.all_status.arm_rail_current || 0) / maxArmCurrent : 0
@@ -650,7 +648,7 @@ Rectangle {
                                         width: parent.width
                                         height: Math.max(10, parent.height * parent.heightRatio)
                                         color: "#3498db"
-                                        radius: 4
+                                        radius: 6
                                         
                                         Behavior on height {
                                             NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
@@ -660,7 +658,7 @@ Rectangle {
                                 
                                 Text {
                                     text: Math.abs(teensyController.all_status.arm_rail_current || 0).toFixed(2) + " A"
-                                    font.pixelSize: 12
+                                    font.pixelSize: 14
                                     font.family: "Monospace"
                                     color: "#FFFFFF"
                                     horizontalAlignment: Text.AlignHCenter
@@ -675,7 +673,7 @@ Rectangle {
                                 
                                 Text {
                                     text: "Spray Gun Current"
-                                    font.pixelSize: 11
+                                    font.pixelSize: 13
                                     font.family: "Roboto"
                                     color: "#AAAAAA"
                                     horizontalAlignment: Text.AlignHCenter
@@ -684,8 +682,8 @@ Rectangle {
                                 
                                 // Vertical bar chart
                                 Item {
-                                    Layout.preferredWidth: 40
-                                    Layout.preferredHeight: 100
+                                    Layout.preferredWidth: 50
+                                    Layout.preferredHeight: 80
                                     Layout.alignment: Qt.AlignHCenter
                                     
                                     property real heightRatio: maxArmCurrent > 0 ? Math.abs(teensyController.all_status.spray_gun_motor_current || 0) / maxArmCurrent : 0
@@ -695,7 +693,7 @@ Rectangle {
                                         width: parent.width
                                         height: Math.max(10, parent.height * parent.heightRatio)
                                         color: "#e74c3c"
-                                        radius: 4
+                                        radius: 6
                                         
                                         Behavior on height {
                                             NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
@@ -705,7 +703,7 @@ Rectangle {
                                 
                                 Text {
                                     text: Math.abs(teensyController.all_status.spray_gun_motor_current || 0).toFixed(2) + " A"
-                                    font.pixelSize: 12
+                                    font.pixelSize: 14
                                     font.family: "Monospace"
                                     color: "#FFFFFF"
                                     horizontalAlignment: Text.AlignHCenter
@@ -719,7 +717,7 @@ Rectangle {
                 // WINCH DATA CARD
                 IndustrialCard {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: parent.height * 0.5
+                    Layout.fillHeight: true
                     title: "Winch Data"
                     
                     GridLayout {
@@ -735,14 +733,14 @@ Rectangle {
                             
                             Text {
                                 text: "📏 Cable Length"
-                                font.pixelSize: 11
+                                font.pixelSize: 13
                                 font.family: "Roboto"
                                 color: "#AAAAAA"
                             }
                             
                             Text {
                                 text: ((winchController.cable_length || 0) / 1000).toFixed(2) + " m"
-                                font.pixelSize: 22
+                                font.pixelSize: 24
                                 font.family: "Monospace"
                                 font.bold: true
                                 color: "#3498db"
@@ -765,7 +763,7 @@ Rectangle {
                                 
                                 Text {
                                     text: "Cable Speed"
-                                    font.pixelSize: 11
+                                    font.pixelSize: 13
                                     font.family: "Roboto"
                                     color: "#AAAAAA"
                                 }
@@ -773,7 +771,7 @@ Rectangle {
                             
                             Text {
                                 text: Math.abs(winchController.cable_speed || 0).toFixed(1) + " m/s"
-                                font.pixelSize: 22
+                                font.pixelSize: 24
                                 font.family: "Monospace"
                                 font.bold: true
                                 color: "#f39c12"
@@ -787,14 +785,14 @@ Rectangle {
                             
                             Text {
                                 text: "Voltage"
-                                font.pixelSize: 10
+                                font.pixelSize: 12
                                 font.family: "Roboto"
                                 color: "#AAAAAA"
                             }
                             
                             Text {
                                 text: (winchController.motor_voltage || 0).toFixed(1) + " V"
-                                font.pixelSize: 14
+                                font.pixelSize: 16
                                 font.family: "Monospace"
                                 color: "#2ecc71"
                             }
@@ -807,14 +805,14 @@ Rectangle {
                             
                             Text {
                                 text: "Temperature"
-                                font.pixelSize: 10
+                                font.pixelSize: 12
                                 font.family: "Roboto"
                                 color: "#AAAAAA"
                             }
                             
                             Text {
                                 text: (winchController.motor_temperature || 0).toFixed(1) + " °C"
-                                font.pixelSize: 14
+                                font.pixelSize: 16
                                 font.family: "Monospace"
                                 color: "#2ecc71"
                             }
@@ -828,7 +826,7 @@ Rectangle {
                             
                             Text {
                                 text: "Torque"
-                                font.pixelSize: 10
+                                font.pixelSize: 12
                                 font.family: "Roboto"
                                 color: "#AAAAAA"
                             }
@@ -836,7 +834,7 @@ Rectangle {
                             Text {
                                 property real torquePercent: maxWinchTorque > 0 ? (winchController.winch_torque || 0) / maxWinchTorque * 100 : 0
                                 text: (winchController.winch_torque || 0).toFixed(1) + " Nm (" + torquePercent.toFixed(0) + "%)"
-                                font.pixelSize: 14
+                                font.pixelSize: 16
                                 font.family: "Monospace"
                                 color: torquePercent > 80 ? "#f39c12" : "#2ecc71"  // Amber if high
                             }
@@ -847,7 +845,7 @@ Rectangle {
             
             // RIGHT COLUMN (30%): Sensor Density (IMU)
             ColumnLayout {
-                Layout.preferredWidth: parent.width * 0.30
+                Layout.preferredWidth: mainBodyContainer.width * 0.30
                 Layout.fillHeight: true
                 Layout.margins: 10
                 spacing: 10
@@ -868,18 +866,18 @@ Rectangle {
                             spacing: 4
                             
                             Text {
-                                Layout.preferredWidth: 80
-                                text: "Data Type"
-                                font.pixelSize: 10
+                                Layout.preferredWidth: 70
+                                text: "Type"
+                                font.pixelSize: 12
                                 font.family: "Roboto"
                                 font.bold: true
                                 color: "#AAAAAA"
                             }
                             
                             Text {
-                                Layout.preferredWidth: 50
+                                Layout.preferredWidth: 55
                                 text: "X"
-                                font.pixelSize: 10
+                                font.pixelSize: 12
                                 font.family: "Roboto"
                                 font.bold: true
                                 color: "#AAAAAA"
@@ -887,9 +885,9 @@ Rectangle {
                             }
                             
                             Text {
-                                Layout.preferredWidth: 50
+                                Layout.preferredWidth: 55
                                 text: "Y"
-                                font.pixelSize: 10
+                                font.pixelSize: 12
                                 font.family: "Roboto"
                                 font.bold: true
                                 color: "#AAAAAA"
@@ -897,9 +895,9 @@ Rectangle {
                             }
                             
                             Text {
-                                Layout.preferredWidth: 50
+                                Layout.preferredWidth: 55
                                 text: "Z"
-                                font.pixelSize: 10
+                                font.pixelSize: 12
                                 font.family: "Roboto"
                                 font.bold: true
                                 color: "#AAAAAA"
@@ -907,9 +905,9 @@ Rectangle {
                             }
                             
                             Text {
-                                Layout.preferredWidth: 50
+                                Layout.fillWidth: true
                                 text: "Trend"
-                                font.pixelSize: 10
+                                font.pixelSize: 12
                                 font.family: "Roboto"
                                 font.bold: true
                                 color: "#AAAAAA"
@@ -925,43 +923,43 @@ Rectangle {
                             spacing: 4
                             
                             Text {
-                                Layout.preferredWidth: 80
+                                Layout.preferredWidth: 70
                                 text: "Angle (°)"
-                                font.pixelSize: 10
+                                font.pixelSize: 12
                                 font.family: "Roboto"
                                 color: "#FFFFFF"
                             }
                             
                             Text {
-                                Layout.preferredWidth: 50
+                                Layout.preferredWidth: 55
                                 text: (teensyController.all_status.imu_pitch || 0).toFixed(1)
-                                font.pixelSize: 11
+                                font.pixelSize: 13
                                 font.family: "Monospace"
                                 color: "#3498db"
                                 horizontalAlignment: Text.AlignRight
                             }
                             
                             Text {
-                                Layout.preferredWidth: 50
+                                Layout.preferredWidth: 55
                                 text: (teensyController.all_status.imu_roll || 0).toFixed(1)
-                                font.pixelSize: 11
+                                font.pixelSize: 13
                                 font.family: "Monospace"
                                 color: "#3498db"
                                 horizontalAlignment: Text.AlignRight
                             }
                             
                             Text {
-                                Layout.preferredWidth: 50
+                                Layout.preferredWidth: 55
                                 text: (teensyController.all_status.imu_yaw || 0).toFixed(1)
-                                font.pixelSize: 11
+                                font.pixelSize: 13
                                 font.family: "Monospace"
                                 color: "#3498db"
                                 horizontalAlignment: Text.AlignRight
                             }
                             
                             Sparkline {
-                                Layout.preferredWidth: 50
-                                Layout.preferredHeight: 20
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 24
                                 dataPoints: imuRollHistory
                                 lineColor: "#3498db"
                             }
@@ -975,43 +973,43 @@ Rectangle {
                             spacing: 4
                             
                             Text {
-                                Layout.preferredWidth: 80
+                                Layout.preferredWidth: 70
                                 text: "Accel (g)"
-                                font.pixelSize: 10
+                                font.pixelSize: 12
                                 font.family: "Roboto"
                                 color: "#FFFFFF"
                             }
                             
                             Text {
-                                Layout.preferredWidth: 50
+                                Layout.preferredWidth: 55
                                 text: (teensyController.all_status.imu_acc_x || 0).toFixed(2)
-                                font.pixelSize: 11
+                                font.pixelSize: 13
                                 font.family: "Monospace"
                                 color: "#2ecc71"
                                 horizontalAlignment: Text.AlignRight
                             }
                             
                             Text {
-                                Layout.preferredWidth: 50
+                                Layout.preferredWidth: 55
                                 text: (teensyController.all_status.imu_acc_y || 0).toFixed(2)
-                                font.pixelSize: 11
+                                font.pixelSize: 13
                                 font.family: "Monospace"
                                 color: "#2ecc71"
                                 horizontalAlignment: Text.AlignRight
                             }
                             
                             Text {
-                                Layout.preferredWidth: 50
+                                Layout.preferredWidth: 55
                                 text: (teensyController.all_status.imu_acc_z || 0).toFixed(2)
-                                font.pixelSize: 11
+                                font.pixelSize: 13
                                 font.family: "Monospace"
                                 color: "#2ecc71"
                                 horizontalAlignment: Text.AlignRight
                             }
                             
                             Sparkline {
-                                Layout.preferredWidth: 50
-                                Layout.preferredHeight: 20
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 24
                                 dataPoints: imuAccZHistory
                                 lineColor: "#2ecc71"
                             }
@@ -1025,43 +1023,43 @@ Rectangle {
                             spacing: 4
                             
                             Text {
-                                Layout.preferredWidth: 80
+                                Layout.preferredWidth: 70
                                 text: "Ang Accel"
-                                font.pixelSize: 10
+                                font.pixelSize: 12
                                 font.family: "Roboto"
                                 color: "#FFFFFF"
                             }
                             
                             Text {
-                                Layout.preferredWidth: 50
+                                Layout.preferredWidth: 55
                                 text: (teensyController.all_status.imu_angular_acc_x || 0).toFixed(2)
-                                font.pixelSize: 11
+                                font.pixelSize: 13
                                 font.family: "Monospace"
                                 color: "#f39c12"
                                 horizontalAlignment: Text.AlignRight
                             }
                             
                             Text {
-                                Layout.preferredWidth: 50
+                                Layout.preferredWidth: 55
                                 text: (teensyController.all_status.imu_angular_acc_y || 0).toFixed(2)
-                                font.pixelSize: 11
+                                font.pixelSize: 13
                                 font.family: "Monospace"
                                 color: "#f39c12"
                                 horizontalAlignment: Text.AlignRight
                             }
                             
                             Text {
-                                Layout.preferredWidth: 50
+                                Layout.preferredWidth: 55
                                 text: (teensyController.all_status.imu_angular_acc_z || 0).toFixed(2)
-                                font.pixelSize: 11
+                                font.pixelSize: 13
                                 font.family: "Monospace"
                                 color: "#f39c12"
                                 horizontalAlignment: Text.AlignRight
                             }
                             
                             Sparkline {
-                                Layout.preferredWidth: 50
-                                Layout.preferredHeight: 20
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 24
                                 dataPoints: imuAngularAccZHistory
                                 lineColor: "#f39c12"
                             }
@@ -1069,6 +1067,7 @@ Rectangle {
                     }
                 }
             }
-        }
+        }  // RowLayout
+        }  // Item mainBodyContainer
     }
 }
