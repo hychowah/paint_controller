@@ -123,34 +123,32 @@ Rectangle {
                 
                 // Relay Status Badge
                 Rectangle {
-                    Layout.preferredWidth: 110
-                    Layout.preferredHeight: 38
-                    color: "transparent"
-                    border.color: teensyController.all_status.relay_on ? "#2ecc71" : "#7f8c8d"
-                    border.width: 2
-                    radius: 6
+                    Layout.preferredWidth: 120
+                    Layout.preferredHeight: 48
+                    color: teensyController.all_status.relay_on ? "#2ecc71" : "#7f8c8d"
+                    radius: 8
                     
                     Text {
                         anchors.centerIn: parent
-                        text: "RELAY: " + (teensyController.all_status.relay_on ? "ON" : "OFF")
-                        font.pixelSize: 13
+                        text: teensyController.all_status.relay_on ? "RELAY ON" : "RELAY OFF"
+                        font.pixelSize: 14
                         font.family: "Roboto"
                         font.bold: true
-                        color: teensyController.all_status.relay_on ? "#2ecc71" : "#7f8c8d"
+                        color: "#FFFFFF"
                     }
                 }
                 
                 // Enable Status Badge
                 Rectangle {
-                    Layout.preferredWidth: 190
-                    Layout.preferredHeight: 52
+                    Layout.preferredWidth: 180
+                    Layout.preferredHeight: 48
                     color: teensyController.all_status.enabled ? "#2ecc71" : "#7f8c8d"
                     radius: 8
                     
                     Text {
                         anchors.centerIn: parent
                         text: teensyController.all_status.enabled ? "SYSTEM ENABLED" : "SYSTEM DISABLED"
-                        font.pixelSize: 15
+                        font.pixelSize: 14
                         font.family: "Roboto"
                         font.bold: true
                         color: "#FFFFFF"

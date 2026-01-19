@@ -5,34 +5,45 @@ import QtQuick.Layouts 1.15
 import "."
 
 IndustrialCard {
+    id: imuCard
     title: "IMU"
     
+    // === CONFIGURABLE SIZES (adjust these for different displays) ===
+    property int labelFontSize: 16      // Header and row labels
+    property int valueFontSize: 18      // Data values
+    property int labelWidth: 100        // "Data Type" column width
+    property int valueWidth: 60         // X, Y, Z column widths
+    property int sparklineWidth: 55     // Trend column width
+    property int sparklineHeight: 28    // Sparkline height
+    property int rowSpacing: 8          // Spacing between elements
+    
+    // Data history
     property var imuAccZHistory: []
     property var imuAngularAccZHistory: []
     property var imuRollHistory: []
     
     ColumnLayout {
         anchors.fill: parent
-        spacing: 6
+        spacing: imuCard.rowSpacing
         
         // Header row
         RowLayout {
             Layout.fillWidth: true
-            spacing: 6
+            spacing: imuCard.rowSpacing
             
             Text {
-                Layout.preferredWidth: 90
+                Layout.preferredWidth: imuCard.labelWidth
                 text: "Data Type"
-                font.pixelSize: 11
+                font.pixelSize: imuCard.labelFontSize
                 font.family: "Roboto"
                 font.bold: true
                 color: "#AAAAAA"
             }
             
             Text {
-                Layout.preferredWidth: 55
+                Layout.preferredWidth: imuCard.valueWidth
                 text: "X"
-                font.pixelSize: 11
+                font.pixelSize: imuCard.labelFontSize
                 font.family: "Roboto"
                 font.bold: true
                 color: "#AAAAAA"
@@ -40,9 +51,9 @@ IndustrialCard {
             }
             
             Text {
-                Layout.preferredWidth: 55
+                Layout.preferredWidth: imuCard.valueWidth
                 text: "Y"
-                font.pixelSize: 11
+                font.pixelSize: imuCard.labelFontSize
                 font.family: "Roboto"
                 font.bold: true
                 color: "#AAAAAA"
@@ -50,9 +61,9 @@ IndustrialCard {
             }
             
             Text {
-                Layout.preferredWidth: 55
+                Layout.preferredWidth: imuCard.valueWidth
                 text: "Z"
-                font.pixelSize: 11
+                font.pixelSize: imuCard.labelFontSize
                 font.family: "Roboto"
                 font.bold: true
                 color: "#AAAAAA"
@@ -60,9 +71,9 @@ IndustrialCard {
             }
             
             Text {
-                Layout.preferredWidth: 50
+                Layout.preferredWidth: imuCard.sparklineWidth
                 text: "Trend"
-                font.pixelSize: 11
+                font.pixelSize: imuCard.labelFontSize
                 font.family: "Roboto"
                 font.bold: true
                 color: "#AAAAAA"
@@ -75,46 +86,46 @@ IndustrialCard {
         // Angle row
         RowLayout {
             Layout.fillWidth: true
-            spacing: 6
+            spacing: imuCard.rowSpacing
             
             Text {
-                Layout.preferredWidth: 90
+                Layout.preferredWidth: imuCard.labelWidth
                 text: "Angle (°)"
-                font.pixelSize: 11
+                font.pixelSize: imuCard.labelFontSize
                 font.family: "Roboto"
                 color: "#FFFFFF"
             }
             
             Text {
-                Layout.preferredWidth: 55
+                Layout.preferredWidth: imuCard.valueWidth
                 text: (teensyController.all_status.imu_pitch || 0).toFixed(1)
-                font.pixelSize: 12
+                font.pixelSize: imuCard.valueFontSize
                 font.family: "Monospace"
                 color: "#3498db"
                 horizontalAlignment: Text.AlignRight
             }
             
             Text {
-                Layout.preferredWidth: 55
+                Layout.preferredWidth: imuCard.valueWidth
                 text: (teensyController.all_status.imu_roll || 0).toFixed(1)
-                font.pixelSize: 12
+                font.pixelSize: imuCard.valueFontSize
                 font.family: "Monospace"
                 color: "#3498db"
                 horizontalAlignment: Text.AlignRight
             }
             
             Text {
-                Layout.preferredWidth: 55
+                Layout.preferredWidth: imuCard.valueWidth
                 text: (teensyController.all_status.imu_yaw || 0).toFixed(1)
-                font.pixelSize: 12
+                font.pixelSize: imuCard.valueFontSize
                 font.family: "Monospace"
                 color: "#3498db"
                 horizontalAlignment: Text.AlignRight
             }
             
             Sparkline {
-                Layout.preferredWidth: 50
-                Layout.preferredHeight: 24
+                Layout.preferredWidth: imuCard.sparklineWidth
+                Layout.preferredHeight: imuCard.sparklineHeight
                 dataPoints: imuRollHistory
                 lineColor: "#3498db"
             }
@@ -125,46 +136,46 @@ IndustrialCard {
         // Acceleration row
         RowLayout {
             Layout.fillWidth: true
-            spacing: 6
+            spacing: imuCard.rowSpacing
             
             Text {
-                Layout.preferredWidth: 90
+                Layout.preferredWidth: imuCard.labelWidth
                 text: "Accel (g)"
-                font.pixelSize: 11
+                font.pixelSize: imuCard.labelFontSize
                 font.family: "Roboto"
                 color: "#FFFFFF"
             }
             
             Text {
-                Layout.preferredWidth: 55
+                Layout.preferredWidth: imuCard.valueWidth
                 text: (teensyController.all_status.imu_acc_x || 0).toFixed(2)
-                font.pixelSize: 12
+                font.pixelSize: imuCard.valueFontSize
                 font.family: "Monospace"
                 color: "#2ecc71"
                 horizontalAlignment: Text.AlignRight
             }
             
             Text {
-                Layout.preferredWidth: 55
+                Layout.preferredWidth: imuCard.valueWidth
                 text: (teensyController.all_status.imu_acc_y || 0).toFixed(2)
-                font.pixelSize: 12
+                font.pixelSize: imuCard.valueFontSize
                 font.family: "Monospace"
                 color: "#2ecc71"
                 horizontalAlignment: Text.AlignRight
             }
             
             Text {
-                Layout.preferredWidth: 55
+                Layout.preferredWidth: imuCard.valueWidth
                 text: (teensyController.all_status.imu_acc_z || 0).toFixed(2)
-                font.pixelSize: 12
+                font.pixelSize: imuCard.valueFontSize
                 font.family: "Monospace"
                 color: "#2ecc71"
                 horizontalAlignment: Text.AlignRight
             }
             
             Sparkline {
-                Layout.preferredWidth: 50
-                Layout.preferredHeight: 24
+                Layout.preferredWidth: imuCard.sparklineWidth
+                Layout.preferredHeight: imuCard.sparklineHeight
                 dataPoints: imuAccZHistory
                 lineColor: "#2ecc71"
             }
@@ -175,46 +186,46 @@ IndustrialCard {
         // Angular Acceleration row
         RowLayout {
             Layout.fillWidth: true
-            spacing: 6
+            spacing: imuCard.rowSpacing
             
             Text {
-                Layout.preferredWidth: 90
+                Layout.preferredWidth: imuCard.labelWidth
                 text: "Ang Accel"
-                font.pixelSize: 11
+                font.pixelSize: imuCard.labelFontSize
                 font.family: "Roboto"
                 color: "#FFFFFF"
             }
             
             Text {
-                Layout.preferredWidth: 55
+                Layout.preferredWidth: imuCard.valueWidth
                 text: (teensyController.all_status.imu_angular_acc_x || 0).toFixed(2)
-                font.pixelSize: 12
+                font.pixelSize: imuCard.valueFontSize
                 font.family: "Monospace"
                 color: "#f39c12"
                 horizontalAlignment: Text.AlignRight
             }
             
             Text {
-                Layout.preferredWidth: 55
+                Layout.preferredWidth: imuCard.valueWidth
                 text: (teensyController.all_status.imu_angular_acc_y || 0).toFixed(2)
-                font.pixelSize: 12
+                font.pixelSize: imuCard.valueFontSize
                 font.family: "Monospace"
                 color: "#f39c12"
                 horizontalAlignment: Text.AlignRight
             }
             
             Text {
-                Layout.preferredWidth: 55
+                Layout.preferredWidth: imuCard.valueWidth
                 text: (teensyController.all_status.imu_angular_acc_z || 0).toFixed(2)
-                font.pixelSize: 12
+                font.pixelSize: imuCard.valueFontSize
                 font.family: "Monospace"
                 color: "#f39c12"
                 horizontalAlignment: Text.AlignRight
             }
             
             Sparkline {
-                Layout.preferredWidth: 50
-                Layout.preferredHeight: 24
+                Layout.preferredWidth: imuCard.sparklineWidth
+                Layout.preferredHeight: imuCard.sparklineHeight
                 dataPoints: imuAngularAccZHistory
                 lineColor: "#f39c12"
             }

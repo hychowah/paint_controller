@@ -5,44 +5,63 @@ import QtQuick.Layouts 1.15
 import "."
 
 IndustrialCard {
+    id: valvesCard
     title: "Valves"
+    
+    // Consistent sizing for all metrics
+    property int metricValueSize: 28
+    property int metricLabelSize: 13
+    property int metricUnitSize: 12
     
     ColumnLayout {
         anchors.fill: parent
         spacing: 10
         
-        // Flow Rate
-        ColumnLayout {
+        // Top row: Flow Rate, Motor Current, Total Volume
+        RowLayout {
             Layout.fillWidth: true
-            spacing: 4
+            spacing: 0
             
-            Text {
-                text: "Flow Rate"
-                font.pixelSize: 13
-                font.family: "Roboto"
-                color: "#AAAAAA"
-                horizontalAlignment: Text.AlignHCenter
-                Layout.alignment: Qt.AlignHCenter
+            Item { Layout.fillWidth: true }
+            
+            // Flow Rate
+            MetricValue {
+                label: "Flow Rate"
+                value: (teensyController.all_status.valve_rate || 0).toFixed(1)
+                unit: "L/min"
+                valueColor: "#3498db"
+                valueFontSize: valvesCard.metricValueSize
+                labelFontSize: valvesCard.metricLabelSize
+                unitFontSize: valvesCard.metricUnitSize
             }
             
-            Text {
-                text: (teensyController.all_status.valve_rate || 0).toFixed(1)
-                font.pixelSize: 34
-                font.family: "Monospace"
-                font.bold: true
-                color: "#3498db"
-                horizontalAlignment: Text.AlignHCenter
-                Layout.alignment: Qt.AlignHCenter
+            Item { Layout.fillWidth: true }
+            
+            // Motor Current
+            MetricValue {
+                label: "Motor Current"
+                value: (teensyController.all_status.valve_motor_current || 0).toFixed(1)
+                unit: "A"
+                valueColor: "#2ecc71"
+                valueFontSize: valvesCard.metricValueSize
+                labelFontSize: valvesCard.metricLabelSize
+                unitFontSize: valvesCard.metricUnitSize
             }
             
-            Text {
-                text: "L/min"
-                font.pixelSize: 12
-                font.family: "Roboto"
-                color: "#AAAAAA"
-                horizontalAlignment: Text.AlignHCenter
-                Layout.alignment: Qt.AlignHCenter
+            Item { Layout.fillWidth: true }
+            
+            // Total Volume
+            MetricValue {
+                label: "Total Volume"
+                value: (teensyController.all_status.total_volumne || 0).toFixed(1)
+                unit: "L"
+                valueColor: "#f39c12"
+                valueFontSize: valvesCard.metricValueSize
+                labelFontSize: valvesCard.metricLabelSize
+                unitFontSize: valvesCard.metricUnitSize
             }
+            
+            Item { Layout.fillWidth: true }
         }
         
         Item { Layout.preferredHeight: 6 }
@@ -99,46 +118,6 @@ IndustrialCard {
                         NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
                     }
                 }
-            }
-        }
-        
-        Item { Layout.preferredHeight: 6 }
-        
-        // Additional data
-        GridLayout {
-            Layout.fillWidth: true
-            columns: 2
-            rowSpacing: 6
-            columnSpacing: 10
-            
-            Text {
-                text: "Motor Current:"
-                font.pixelSize: 11
-                font.family: "Roboto"
-                color: "#AAAAAA"
-            }
-            
-            Text {
-                text: (teensyController.all_status.valve_motor_current || 0).toFixed(1) + " A"
-                font.pixelSize: 12
-                font.family: "Monospace"
-                color: "#FFFFFF"
-                horizontalAlignment: Text.AlignRight
-            }
-            
-            Text {
-                text: "Total Volume:"
-                font.pixelSize: 11
-                font.family: "Roboto"
-                color: "#AAAAAA"
-            }
-            
-            Text {
-                text: (teensyController.all_status.total_volumne || 0).toFixed(1) + " L"
-                font.pixelSize: 12
-                font.family: "Monospace"
-                color: "#FFFFFF"
-                horizontalAlignment: Text.AlignRight
             }
         }
     }

@@ -66,7 +66,7 @@ IndustrialCard {
                 
                 Item {
                     Layout.preferredWidth: 50
-                    Layout.preferredHeight: 110
+                    Layout.preferredHeight: 80
                     Layout.alignment: Qt.AlignHCenter
                     
                     property real heightRatio: maxArmCurrent > 0 ? Math.abs(teensyController.all_status.arm_rail_current || 0) / maxArmCurrent : 0
@@ -110,7 +110,7 @@ IndustrialCard {
                 
                 Item {
                     Layout.preferredWidth: 50
-                    Layout.preferredHeight: 110
+                    Layout.preferredHeight: 80
                     Layout.alignment: Qt.AlignHCenter
                     
                     property real heightRatio: maxArmCurrent > 0 ? Math.abs(teensyController.all_status.spray_gun_motor_current || 0) / maxArmCurrent : 0
