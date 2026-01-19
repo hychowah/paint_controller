@@ -71,23 +71,42 @@ The monitor pulls real-time data from:
 
 ## Components
 
-New reusable components created:
-- `IndustrialCard`: Dark-themed card container with rounded corners
-- `MonospaceDataLabel`: Label+value+unit with monospace numbers
-- `ProgressBarIndicator`: Horizontal progress bar for current/load visualization
-- `Sparkline`: Mini line graph for trend visualization
+Modular, reusable components for maintainability:
+
+### Main Page
+- `PageMonitor.qml` (115 lines) - Main container coordinating all components
+
+### Card Components
+- `MonitorHeader.qml` (217 lines) - Header bar with telemetry, badges, and E-Stop
+- `WheelsCard.qml` (144 lines) - Wheel speed and current display
+- `ValvesCard.qml` (145 lines) - Valve control and flow data
+- `TeensyArmCard.qml` (142 lines) - Arm extension and current comparison
+- `WinchCard.qml` (132 lines) - Cable and motor telemetry
+- `IMUCard.qml` (223 lines) - Sensor grid with sparklines
+
+### Base Components
+- `IndustrialCard.qml` - Dark-themed card container
+- `MonospaceDataLabel.qml` - Label+value+unit with monospace numbers
+- `ProgressBarIndicator.qml` - Horizontal progress bar for current/load
+- `Sparkline.qml` - Mini line graph for trend visualization
 
 ## File Locations
 
 ```
 python/paint_controller/qml/
 ├── pages/status/
-│   └── PageIndustrialMonitor.qml    # Main industrial monitor page
+│   └── PageMonitor.qml              # Main monitor page (115 lines)
 ├── components/displays/
-│   ├── IndustrialCard.qml
-│   ├── MonospaceDataLabel.qml
-│   ├── ProgressBarIndicator.qml
-│   └── Sparkline.qml
+│   ├── MonitorHeader.qml            # Header bar component (217 lines)
+│   ├── WheelsCard.qml               # Wheels display (144 lines)
+│   ├── ValvesCard.qml               # Valves display (145 lines)
+│   ├── TeensyArmCard.qml            # Arm data (142 lines)
+│   ├── WinchCard.qml                # Winch data (132 lines)
+│   ├── IMUCard.qml                  # IMU sensors (223 lines)
+│   ├── IndustrialCard.qml           # Base card component
+│   ├── MonospaceDataLabel.qml       # Data label component
+│   ├── ProgressBarIndicator.qml     # Progress bar component
+│   └── Sparkline.qml                # Trend graph component
 └── overlays/
     └── MultiScreenListUI.qml        # Window wrapper for secondary screen
 ```

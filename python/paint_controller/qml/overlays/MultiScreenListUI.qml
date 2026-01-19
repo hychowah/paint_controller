@@ -10,6 +10,8 @@ import "../pages/status"
  * This window shows on the built-in Steam Deck display (1280x800) when an external
  * monitor is connected. It provides a dedicated industrial-style monitoring interface
  * for real-time system telemetry and control status.
+ * 
+ * Note: Optimized for 7-inch display (Steam Deck built-in screen)
  */
 Window {
     id: multiScreenWindow
@@ -35,7 +37,7 @@ Window {
     }
     
     // Industrial Monitor Content
-    PageIndustrialMonitor {
+    PageMonitor {
         anchors.fill: parent
     }
     
