@@ -3,6 +3,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Window 2.15
 import "../pages/status"
+import "../overlays/systemcontrol"
 
 /**
  * MultiScreenListUI - Industrial Monitor Display for Secondary Screen
@@ -39,6 +40,15 @@ Window {
     // Industrial Monitor Content
     PageMonitor {
         anchors.fill: parent
+    }
+    
+    // SystemControlMenu appears on this screen when in dual-monitor mode
+    SystemControlMenu {
+        anchors.fill: parent
+        id: systemControlMenuSecondary
+        z: 1001
+        showOverlay: overlayController.show_overlay
+        activeMenu: overlayController.active_menu
     }
     
     Component.onCompleted: {
