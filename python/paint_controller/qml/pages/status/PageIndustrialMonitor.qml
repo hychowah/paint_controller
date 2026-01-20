@@ -1,0 +1,1073 @@
+// Industrial Monitor UI - 1280x720 optimized for external industrial display
+import QtQuick 2.15
+import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
+import "../../core"
+import "../../components/buttons"
+import "../../components/displays"
+
+Rectangle {
+    id: industrialMonitorPage
+    anchors.fill: parent
+    color: "#1e222b"  // Industrial dark background
+    
+    // Track IMU history for sparklines
+    property var imuAccZHistory: []
+    property var imuAngularAccZHistory: []
+    property var imuRollHistory: []
+    
+    // Constants for max values (adjust based on actual hardware specs)
+    // Note: These must be > 0 to avoid division by zero
+    property real maxWinchTorque: 100.0      // Nm
+    property real maxWheelCurrent: 10.0      // A
+    property real maxArmCurrent: 5.0         // A
+    property real maxArmExtension: 2000.0    // mm
+    
+    // Update IMU history when data changes
+    Connections {
+        target: teensyController
+        
+        function onStatus_changed(status) {
+            // Add new values and keep last 10
+            imuAccZHistory.push(status.imu_acc_z || 0)
+            if (imuAccZHistory.length > 10) imuAccZHistory.shift()
+            
+            imuAngularAccZHistory.push(status.imu_angular_acc_z || 0)
+            if (imuAngularAccZHistory.length > 10) imuAngularAccZHistory.shift()
+            
+            imuRollHistory.push(status.imu_roll || 0)
+            if (imuRollHistory.length > 10) imuRollHistory.shift()
+        }
+    }
+    
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: 0
+        
+        // ====================================================================
+        // TOP HEADER BAR (80px) - Global Status & E-Stop
+        // ====================================================================
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 80
+            color: "#252a35"
+            
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 20
+                
+                // LEFT SECTION: Telemetry
+                RowLayout {
+                    Layout.preferredWidth: 350
+                    spacing: 15
+                    
+                    // Voltage indicator
+                    Rectangle {
+                        Layout.preferredWidth: 110
+                        Layout.fillHeight: true
+                        color: "#29303b"
+                        radius: 6
+                        
+                        ColumnLayout {
+                            anchors.centerIn: parent
+                            spacing: 4
+                            
+                            Text {
+                                text: "⚡"
+                                font.pixelSize: 20
+                                color: "#3498db"
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+                            
+                            Text {
+                                text: (teensyController.all_status.voltage || 0).toFixed(1) + "V"
+                                font.pixelSize: 18
+                                font.family: "Monospace"
+                                font.bold: true
+                                color: "#FFFFFF"
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+                        }
+                    }
+                    
+                    // Temperature indicator
+                    Rectangle {
+                        Layout.preferredWidth: 110
+                        Layout.fillHeight: true
+                        color: "#29303b"
+                        radius: 6
+                        
+                        ColumnLayout {
+                            anchors.centerIn: parent
+                            spacing: 4
+                            
+                            Text {
+                                text: "🌡️"
+                                font.pixelSize: 20
+                                color: "#f39c12"
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+                            
+                            Text {
+                                text: (teensyController.all_status.temperature || 0).toFixed(0) + "°C"
+                                font.pixelSize: 18
+                                font.family: "Monospace"
+                                font.bold: true
+                                color: "#FFFFFF"
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+                        }
+                    }
+                    
+                    // Loop time indicator
+                    Rectangle {
+                        Layout.preferredWidth: 110
+                        Layout.fillHeight: true
+                        color: "#29303b"
+                        radius: 6
+                        
+                        ColumnLayout {
+                            anchors.centerIn: parent
+                            spacing: 4
+                            
+                            Text {
+                                text: "⏱️"
+                                font.pixelSize: 20
+                                color: "#2ecc71"
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+                            
+                            Text {
+                                text: "Loop: " + (teensyController.all_status.loop_time || 0).toFixed(0) + "ms"
+                                font.pixelSize: 14
+                                font.family: "Monospace"
+                                font.bold: true
+                                color: "#FFFFFF"
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+                        }
+                    }
+                }
+                
+                // MIDDLE SECTION: Status Badges (PASSIVE - Labels, not buttons)
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    
+                    RowLayout {
+                        anchors.centerIn: parent
+                        spacing: 12
+                        
+                        // Relay Status Badge (small)
+                        Rectangle {
+                            Layout.preferredWidth: 100
+                            Layout.preferredHeight: 35
+                            color: "transparent"
+                            border.color: teensyController.all_status.relay_on ? "#2ecc71" : "#7f8c8d"
+                            border.width: 2
+                            radius: 6
+                            
+                            Text {
+                                anchors.centerIn: parent
+                                text: "RELAY: " + (teensyController.all_status.relay_on ? "ON" : "OFF")
+                                font.pixelSize: 11
+                                font.family: "Roboto"
+                                font.bold: true
+                                color: teensyController.all_status.relay_on ? "#2ecc71" : "#7f8c8d"
+                            }
+                        }
+                        
+                        // Enable Status Badge (larger)
+                        Rectangle {
+                            Layout.preferredWidth: 180
+                            Layout.preferredHeight: 50
+                            color: teensyController.all_status.enabled ? "#2ecc71" : "#7f8c8d"
+                            radius: 8
+                            
+                            Text {
+                                anchors.centerIn: parent
+                                text: teensyController.all_status.enabled ? "SYSTEM ENABLED" : "SYSTEM DISABLED"
+                                font.pixelSize: 14
+                                font.family: "Roboto"
+                                font.bold: true
+                                color: "#FFFFFF"
+                            }
+                        }
+                    }
+                }
+                
+                // RIGHT SECTION: Emergency Action (ACTIVE)
+                Button {
+                    id: emergencyStopButton
+                    Layout.preferredWidth: 200
+                    Layout.preferredHeight: 60
+                    
+                    background: Rectangle {
+                        color: emergencyStopButton.pressed ? "#c0392b" : "#e74c3c"
+                        radius: 8
+                        border.color: "#a93226"
+                        border.width: 3
+                        
+                        // Subtle pulse animation
+                        SequentialAnimation on opacity {
+                            running: true
+                            loops: Animation.Infinite
+                            NumberAnimation { to: 0.85; duration: 1000 }
+                            NumberAnimation { to: 1.0; duration: 1000 }
+                        }
+                        
+                        // Drop shadow effect (simulated with offset rectangle)
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: -2
+                            color: "transparent"
+                            border.color: "#00000040"
+                            border.width: 2
+                            radius: 10
+                            z: -1
+                        }
+                    }
+                    
+                    contentItem: Text {
+                        text: "EMERGENCY STOP"
+                        font.pixelSize: 16
+                        font.family: "Roboto"
+                        font.bold: true
+                        font.letterSpacing: 1.5
+                        color: "#FFFFFF"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    
+                    onClicked: {
+                        // TODO: Wire to actual emergency stop handler when available
+                        // For now, try to disable all systems
+                        console.log("EMERGENCY STOP ACTIVATED")
+                        if (typeof teensyController !== 'undefined') {
+                            teensyController.setEnabled(false)
+                        }
+                        if (typeof wheelController !== 'undefined') {
+                            wheelController.setEnabled(false)
+                        }
+                        if (typeof winchController !== 'undefined') {
+                            winchController.setEnabled(false)
+                        }
+                    }
+                }
+            }
+        }
+        
+        // ====================================================================
+        // MAIN BODY (3-Column Layout) - remaining 640px height
+        // ====================================================================
+        Item {
+            id: mainBodyContainer
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            
+            RowLayout {
+                anchors.fill: parent
+                spacing: 10
+                
+                // LEFT COLUMN (30%): Mobility & Fluids
+                ColumnLayout {
+                    Layout.preferredWidth: mainBodyContainer.width * 0.30
+                    Layout.fillHeight: true
+                    Layout.margins: 10
+                    spacing: 10
+                    
+                    // WHEELS CARD
+                    IndustrialCard {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        title: "Wheels"
+                    
+                        RowLayout {
+                            anchors.fill: parent
+                            spacing: 8
+                        
+                        // Left Wheel
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            spacing: 6
+                            
+                            Row {
+                                spacing: 4
+                                Layout.alignment: Qt.AlignHCenter
+                                
+                                Text {
+                                    text: "L"
+                                    font.pixelSize: 16
+                                    font.bold: true
+                                    font.family: "Roboto"
+                                    color: "#AAAAAA"
+                                }
+                                
+                                // Motor availability indicator
+                                Rectangle {
+                                    width: 12
+                                    height: 12
+                                    radius: 6
+                                    color: wheelController.left_motor_available ? "#2ecc71" : "#e74c3c"
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+                            
+                            Text {
+                                text: Math.abs(wheelController.left_wheel_speed || 0).toFixed(2)
+                                font.pixelSize: 26
+                                font.family: "Monospace"
+                                font.bold: true
+                                color: "#3498db"
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+                            
+                            Text {
+                                text: "m/s"
+                                font.pixelSize: 14
+                                font.family: "Roboto"
+                                color: "#AAAAAA"
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+                            
+                            Text {
+                                text: Math.abs(wheelController.left_wheel_current || 0).toFixed(1) + " A"
+                                font.pixelSize: 14
+                                font.family: "Monospace"
+                                color: "#FFFFFF"
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+                            
+                            ProgressBarIndicator {
+                                Layout.fillWidth: true
+                                Layout.margins: 4
+                                value: Math.abs(wheelController.left_wheel_current || 0)
+                                maxValue: maxWheelCurrent
+                                barColor: "#2ecc71"
+                            }
+                        }
+                        
+                        // Right Wheel
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            spacing: 6
+                            
+                            Row {
+                                spacing: 4
+                                Layout.alignment: Qt.AlignHCenter
+                                
+                                Text {
+                                    text: "R"
+                                    font.pixelSize: 16
+                                    font.bold: true
+                                    font.family: "Roboto"
+                                    color: "#AAAAAA"
+                                }
+                                
+                                // Motor availability indicator
+                                Rectangle {
+                                    width: 12
+                                    height: 12
+                                    radius: 6
+                                    color: wheelController.right_motor_available ? "#2ecc71" : "#e74c3c"
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+                            
+                            Text {
+                                text: Math.abs(wheelController.right_wheel_speed || 0).toFixed(2)
+                                font.pixelSize: 26
+                                font.family: "Monospace"
+                                font.bold: true
+                                color: "#3498db"
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+                            
+                            Text {
+                                text: "m/s"
+                                font.pixelSize: 14
+                                font.family: "Roboto"
+                                color: "#AAAAAA"
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+                            
+                            Text {
+                                text: Math.abs(wheelController.right_wheel_current || 0).toFixed(1) + " A"
+                                font.pixelSize: 14
+                                font.family: "Monospace"
+                                color: "#FFFFFF"
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+                            
+                            ProgressBarIndicator {
+                                Layout.fillWidth: true
+                                Layout.margins: 4
+                                value: Math.abs(wheelController.right_wheel_current || 0)
+                                maxValue: maxWheelCurrent
+                                barColor: "#2ecc71"
+                            }
+                        }
+                    }
+                }
+                
+                // VALVES CARD
+                IndustrialCard {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    title: "Valves"
+                    
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: 8
+                        
+                        // Flow Rate
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+                            
+                            Text {
+                                text: "Flow Rate"
+                                font.pixelSize: 13
+                                font.family: "Roboto"
+                                color: "#AAAAAA"
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+                            
+                            Text {
+                                text: (teensyController.all_status.valve_rate || 0).toFixed(1)
+                                font.pixelSize: 32
+                                font.family: "Monospace"
+                                font.bold: true
+                                color: "#3498db"
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+                            
+                            Text {
+                                text: "L/min"
+                                font.pixelSize: 13
+                                font.family: "Roboto"
+                                color: "#AAAAAA"
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+                        }
+                        
+                        // Valve Position
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            
+                            // Calculate valve position percentage once
+                            property real valvePositionPercent: (teensyController.all_status.valve_position || 0)
+                            
+                            Text {
+                                text: "Position: " + parent.valvePositionPercent.toFixed(0) + "%"
+                                font.pixelSize: 12
+                                font.family: "Roboto"
+                                color: "#AAAAAA"
+                            }
+                            
+                            // Position bar with thumb indicator
+                            Item {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 20
+                                
+                                property real valvePositionPercent: parent.valvePositionPercent
+                                property real normalizedPosition: valvePositionPercent / 100.0
+                                
+                                // Background bar
+                                Rectangle {
+                                    anchors.fill: parent
+                                    color: "#1e222b"
+                                    radius: 8
+                                }
+                                
+                                // Progress bar (cyan)
+                                Rectangle {
+                                    width: Math.max(0, Math.min(parent.width * parent.normalizedPosition, parent.width))
+                                    height: parent.height
+                                    color: "#3498db"
+                                    radius: 8
+                                    
+                                    Behavior on width {
+                                        NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
+                                    }
+                                }
+                                
+                                // White thumb indicator
+                                Rectangle {
+                                    x: Math.max(4, Math.min(parent.width * parent.normalizedPosition - 4, parent.width - 12))
+                                    y: parent.height / 2 - 6
+                                    width: 12
+                                    height: 12
+                                    color: "#FFFFFF"
+                                    radius: 6
+                                    border.color: "#3498db"
+                                    border.width: 2
+                                    
+                                    Behavior on x {
+                                        NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Additional valve data
+                        GridLayout {
+                            Layout.fillWidth: true
+                            columns: 2
+                            rowSpacing: 4
+                            columnSpacing: 8
+                            
+                            Text {
+                                text: "Motor Current:"
+                                font.pixelSize: 12
+                                font.family: "Roboto"
+                                color: "#AAAAAA"
+                            }
+                            
+                            Text {
+                                text: (teensyController.all_status.valve_motor_current || 0).toFixed(1) + " A"
+                                font.pixelSize: 13
+                                font.family: "Monospace"
+                                color: "#FFFFFF"
+                                horizontalAlignment: Text.AlignRight
+                            }
+                            
+                            Text {
+                                text: "Total Volume:"
+                                font.pixelSize: 12
+                                font.family: "Roboto"
+                                color: "#AAAAAA"
+                            }
+                            
+                            Text {
+                                text: (teensyController.all_status.total_volumne || 0).toFixed(1) + " L"
+                                font.pixelSize: 13
+                                font.family: "Monospace"
+                                color: "#FFFFFF"
+                                horizontalAlignment: Text.AlignRight
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // CENTER COLUMN (40%): Core Operations (HERO)
+            ColumnLayout {
+                Layout.preferredWidth: mainBodyContainer.width * 0.40
+                Layout.fillHeight: true
+                Layout.margins: 10
+                spacing: 10
+                
+                // TEENSY ARM CARD
+                IndustrialCard {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    title: "Teensy Arm"
+                    
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: 12
+                        
+                        // Extension
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            
+                            Text {
+                                text: "Extension"
+                                font.pixelSize: 12
+                                font.family: "Roboto"
+                                color: "#AAAAAA"
+                            }
+                            
+                            Text {
+                                text: ((teensyController.all_status.arm_extension_dist || 0) / 1000).toFixed(2) + " m"
+                                font.pixelSize: 28
+                                font.family: "Monospace"
+                                font.bold: true
+                                color: "#2ecc71"
+                            }
+                            
+                            ProgressBarIndicator {
+                                Layout.fillWidth: true
+                                value: teensyController.all_status.arm_extension_dist || 0
+                                maxValue: maxArmExtension
+                                barColor: "#2ecc71"
+                                barHeight: 12
+                            }
+                        }
+                        
+                        // Current comparison: Arm vs Spray Gun
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 20
+                            
+                            // Arm Current
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 6
+                                
+                                Text {
+                                    text: "Arm Current"
+                                    font.pixelSize: 13
+                                    font.family: "Roboto"
+                                    color: "#AAAAAA"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+                                
+                                // Vertical bar chart
+                                Item {
+                                    Layout.preferredWidth: 50
+                                    Layout.preferredHeight: 80
+                                    Layout.alignment: Qt.AlignHCenter
+                                    
+                                    property real heightRatio: maxArmCurrent > 0 ? Math.abs(teensyController.all_status.arm_rail_current || 0) / maxArmCurrent : 0
+                                    
+                                    Rectangle {
+                                        anchors.bottom: parent.bottom
+                                        width: parent.width
+                                        height: Math.max(10, parent.height * parent.heightRatio)
+                                        color: "#3498db"
+                                        radius: 6
+                                        
+                                        Behavior on height {
+                                            NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
+                                        }
+                                    }
+                                }
+                                
+                                Text {
+                                    text: Math.abs(teensyController.all_status.arm_rail_current || 0).toFixed(2) + " A"
+                                    font.pixelSize: 14
+                                    font.family: "Monospace"
+                                    color: "#FFFFFF"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+                            }
+                            
+                            // Spray Gun Motor Current
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 6
+                                
+                                Text {
+                                    text: "Spray Gun Current"
+                                    font.pixelSize: 13
+                                    font.family: "Roboto"
+                                    color: "#AAAAAA"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+                                
+                                // Vertical bar chart
+                                Item {
+                                    Layout.preferredWidth: 50
+                                    Layout.preferredHeight: 80
+                                    Layout.alignment: Qt.AlignHCenter
+                                    
+                                    property real heightRatio: maxArmCurrent > 0 ? Math.abs(teensyController.all_status.spray_gun_motor_current || 0) / maxArmCurrent : 0
+                                    
+                                    Rectangle {
+                                        anchors.bottom: parent.bottom
+                                        width: parent.width
+                                        height: Math.max(10, parent.height * parent.heightRatio)
+                                        color: "#e74c3c"
+                                        radius: 6
+                                        
+                                        Behavior on height {
+                                            NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
+                                        }
+                                    }
+                                }
+                                
+                                Text {
+                                    text: Math.abs(teensyController.all_status.spray_gun_motor_current || 0).toFixed(2) + " A"
+                                    font.pixelSize: 14
+                                    font.family: "Monospace"
+                                    color: "#FFFFFF"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // WINCH DATA CARD
+                IndustrialCard {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    title: "Winch Data"
+                    
+                    GridLayout {
+                        anchors.fill: parent
+                        columns: 2
+                        rowSpacing: 10
+                        columnSpacing: 16
+                        
+                        // Cable Length
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            
+                            Text {
+                                text: "📏 Cable Length"
+                                font.pixelSize: 13
+                                font.family: "Roboto"
+                                color: "#AAAAAA"
+                            }
+                            
+                            Text {
+                                text: ((winchController.cable_length || 0) / 1000).toFixed(2) + " m"
+                                font.pixelSize: 24
+                                font.family: "Monospace"
+                                font.bold: true
+                                color: "#3498db"
+                            }
+                        }
+                        
+                        // Cable Speed
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            
+                            Row {
+                                spacing: 4
+                                
+                                Text {
+                                    text: (winchController.cable_speed || 0) >= 0 ? "↑" : "↓"
+                                    font.pixelSize: 14
+                                    color: "#f39c12"
+                                }
+                                
+                                Text {
+                                    text: "Cable Speed"
+                                    font.pixelSize: 13
+                                    font.family: "Roboto"
+                                    color: "#AAAAAA"
+                                }
+                            }
+                            
+                            Text {
+                                text: Math.abs(winchController.cable_speed || 0).toFixed(1) + " m/s"
+                                font.pixelSize: 24
+                                font.family: "Monospace"
+                                font.bold: true
+                                color: "#f39c12"
+                            }
+                        }
+                        
+                        // Winch Voltage
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+                            
+                            Text {
+                                text: "Voltage"
+                                font.pixelSize: 12
+                                font.family: "Roboto"
+                                color: "#AAAAAA"
+                            }
+                            
+                            Text {
+                                text: (winchController.motor_voltage || 0).toFixed(1) + " V"
+                                font.pixelSize: 16
+                                font.family: "Monospace"
+                                color: "#2ecc71"
+                            }
+                        }
+                        
+                        // Motor Temperature
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+                            
+                            Text {
+                                text: "Temperature"
+                                font.pixelSize: 12
+                                font.family: "Roboto"
+                                color: "#AAAAAA"
+                            }
+                            
+                            Text {
+                                text: (winchController.motor_temperature || 0).toFixed(1) + " °C"
+                                font.pixelSize: 16
+                                font.family: "Monospace"
+                                color: "#2ecc71"
+                            }
+                        }
+                        
+                        // Torque (Amber if > 80% of max)
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Layout.columnSpan: 2
+                            spacing: 2
+                            
+                            Text {
+                                text: "Torque"
+                                font.pixelSize: 12
+                                font.family: "Roboto"
+                                color: "#AAAAAA"
+                            }
+                            
+                            Text {
+                                property real torquePercent: maxWinchTorque > 0 ? (winchController.winch_torque || 0) / maxWinchTorque * 100 : 0
+                                text: (winchController.winch_torque || 0).toFixed(1) + " Nm (" + torquePercent.toFixed(0) + "%)"
+                                font.pixelSize: 16
+                                font.family: "Monospace"
+                                color: torquePercent > 80 ? "#f39c12" : "#2ecc71"  // Amber if high
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // RIGHT COLUMN (30%): Sensor Density (IMU)
+            ColumnLayout {
+                Layout.preferredWidth: mainBodyContainer.width * 0.30
+                Layout.fillHeight: true
+                Layout.margins: 10
+                spacing: 10
+                
+                // IMU CARD
+                IndustrialCard {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    title: "IMU"
+                    
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: 4
+                        
+                        // Header row
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            
+                            Text {
+                                Layout.preferredWidth: 70
+                                text: "Type"
+                                font.pixelSize: 12
+                                font.family: "Roboto"
+                                font.bold: true
+                                color: "#AAAAAA"
+                            }
+                            
+                            Text {
+                                Layout.preferredWidth: 55
+                                text: "X"
+                                font.pixelSize: 12
+                                font.family: "Roboto"
+                                font.bold: true
+                                color: "#AAAAAA"
+                                horizontalAlignment: Text.AlignRight
+                            }
+                            
+                            Text {
+                                Layout.preferredWidth: 55
+                                text: "Y"
+                                font.pixelSize: 12
+                                font.family: "Roboto"
+                                font.bold: true
+                                color: "#AAAAAA"
+                                horizontalAlignment: Text.AlignRight
+                            }
+                            
+                            Text {
+                                Layout.preferredWidth: 55
+                                text: "Z"
+                                font.pixelSize: 12
+                                font.family: "Roboto"
+                                font.bold: true
+                                color: "#AAAAAA"
+                                horizontalAlignment: Text.AlignRight
+                            }
+                            
+                            Text {
+                                Layout.fillWidth: true
+                                text: "Trend"
+                                font.pixelSize: 12
+                                font.family: "Roboto"
+                                font.bold: true
+                                color: "#AAAAAA"
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+                        }
+                        
+                        Rectangle { Layout.fillWidth: true; height: 1; color: "#3a4150" }
+                        
+                        // Angle row
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            
+                            Text {
+                                Layout.preferredWidth: 70
+                                text: "Angle (°)"
+                                font.pixelSize: 12
+                                font.family: "Roboto"
+                                color: "#FFFFFF"
+                            }
+                            
+                            Text {
+                                Layout.preferredWidth: 55
+                                text: (teensyController.all_status.imu_pitch || 0).toFixed(1)
+                                font.pixelSize: 13
+                                font.family: "Monospace"
+                                color: "#3498db"
+                                horizontalAlignment: Text.AlignRight
+                            }
+                            
+                            Text {
+                                Layout.preferredWidth: 55
+                                text: (teensyController.all_status.imu_roll || 0).toFixed(1)
+                                font.pixelSize: 13
+                                font.family: "Monospace"
+                                color: "#3498db"
+                                horizontalAlignment: Text.AlignRight
+                            }
+                            
+                            Text {
+                                Layout.preferredWidth: 55
+                                text: (teensyController.all_status.imu_yaw || 0).toFixed(1)
+                                font.pixelSize: 13
+                                font.family: "Monospace"
+                                color: "#3498db"
+                                horizontalAlignment: Text.AlignRight
+                            }
+                            
+                            Sparkline {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 24
+                                dataPoints: imuRollHistory
+                                lineColor: "#3498db"
+                            }
+                        }
+                        
+                        Rectangle { Layout.fillWidth: true; height: 1; color: "#3a4150" }
+                        
+                        // Acceleration row
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            
+                            Text {
+                                Layout.preferredWidth: 70
+                                text: "Accel (g)"
+                                font.pixelSize: 12
+                                font.family: "Roboto"
+                                color: "#FFFFFF"
+                            }
+                            
+                            Text {
+                                Layout.preferredWidth: 55
+                                text: (teensyController.all_status.imu_acc_x || 0).toFixed(2)
+                                font.pixelSize: 13
+                                font.family: "Monospace"
+                                color: "#2ecc71"
+                                horizontalAlignment: Text.AlignRight
+                            }
+                            
+                            Text {
+                                Layout.preferredWidth: 55
+                                text: (teensyController.all_status.imu_acc_y || 0).toFixed(2)
+                                font.pixelSize: 13
+                                font.family: "Monospace"
+                                color: "#2ecc71"
+                                horizontalAlignment: Text.AlignRight
+                            }
+                            
+                            Text {
+                                Layout.preferredWidth: 55
+                                text: (teensyController.all_status.imu_acc_z || 0).toFixed(2)
+                                font.pixelSize: 13
+                                font.family: "Monospace"
+                                color: "#2ecc71"
+                                horizontalAlignment: Text.AlignRight
+                            }
+                            
+                            Sparkline {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 24
+                                dataPoints: imuAccZHistory
+                                lineColor: "#2ecc71"
+                            }
+                        }
+                        
+                        Rectangle { Layout.fillWidth: true; height: 1; color: "#3a4150" }
+                        
+                        // Angular Acceleration row
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            
+                            Text {
+                                Layout.preferredWidth: 70
+                                text: "Ang Accel"
+                                font.pixelSize: 12
+                                font.family: "Roboto"
+                                color: "#FFFFFF"
+                            }
+                            
+                            Text {
+                                Layout.preferredWidth: 55
+                                text: (teensyController.all_status.imu_angular_acc_x || 0).toFixed(2)
+                                font.pixelSize: 13
+                                font.family: "Monospace"
+                                color: "#f39c12"
+                                horizontalAlignment: Text.AlignRight
+                            }
+                            
+                            Text {
+                                Layout.preferredWidth: 55
+                                text: (teensyController.all_status.imu_angular_acc_y || 0).toFixed(2)
+                                font.pixelSize: 13
+                                font.family: "Monospace"
+                                color: "#f39c12"
+                                horizontalAlignment: Text.AlignRight
+                            }
+                            
+                            Text {
+                                Layout.preferredWidth: 55
+                                text: (teensyController.all_status.imu_angular_acc_z || 0).toFixed(2)
+                                font.pixelSize: 13
+                                font.family: "Monospace"
+                                color: "#f39c12"
+                                horizontalAlignment: Text.AlignRight
+                            }
+                            
+                            Sparkline {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 24
+                                dataPoints: imuAngularAccZHistory
+                                lineColor: "#f39c12"
+                            }
+                        }
+                    }
+                }
+            }
+        }  // RowLayout
+        }  // Item mainBodyContainer
+    }
+}
