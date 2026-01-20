@@ -157,59 +157,38 @@ Rectangle {
             }
         }
         
-        // RIGHT SECTION: Emergency Stop
+        // RIGHT SECTION: Exit Button
         Button {
-            id: emergencyStopButton
-            Layout.preferredWidth: 200
+            id: exitButton
+            Layout.preferredWidth: 120
             Layout.preferredHeight: 60
             
             background: Rectangle {
-                color: emergencyStopButton.pressed ? "#c0392b" : "#e74c3c"
+                color: exitButton.pressed ? "#c0392b" : "#FF5733"
                 radius: 8
                 border.color: "#a93226"
-                border.width: 3
-                
-                SequentialAnimation on opacity {
-                    running: true
-                    loops: Animation.Infinite
-                    NumberAnimation { to: 0.85; duration: 1000 }
-                    NumberAnimation { to: 1.0; duration: 1000 }
-                }
-                
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.margins: -2
-                    color: "transparent"
-                    border.color: "#00000040"
-                    border.width: 2
-                    radius: 10
-                    z: -1
-                }
+                border.width: 2
             }
             
             contentItem: Text {
-                text: "EMERGENCY STOP"
-                font.pixelSize: 17
+                text: "EXIT"
+                font.pixelSize: 20
                 font.family: "Roboto"
                 font.bold: true
-                font.letterSpacing: 1.5
                 color: "#FFFFFF"
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
             }
             
             onClicked: {
-                console.log("EMERGENCY STOP ACTIVATED")
-                if (typeof teensyController !== 'undefined') {
-                    teensyController.setEnabled(false)
-                }
-                if (typeof wheelController !== 'undefined') {
-                    wheelController.setEnabled(false)
-                }
-                if (typeof winchController !== 'undefined') {
-                    winchController.setEnabled(false)
-                }
+                exitTimer.start()
             }
+        }
+        
+        Timer {
+            id: exitTimer
+            interval: 1000
+            onTriggered: Qt.quit()
         }
     }
 }

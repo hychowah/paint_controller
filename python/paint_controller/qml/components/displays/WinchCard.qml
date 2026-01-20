@@ -8,7 +8,7 @@ IndustrialCard {
     id: winchCard
     title: "Winch Data"
     
-    property real maxWinchTorque: 100.0
+    property real maxWinchCurrent: 10.0
     
     // Consistent sizing for all metrics
     property int metricValueSize: 28
@@ -73,34 +73,35 @@ IndustrialCard {
             unitFontSize: winchCard.metricUnitSize
         }
         
-        // Torque with progress bar
+        // Current with progress bar
         ColumnLayout {
             Layout.fillWidth: true
             Layout.columnSpan: 2
             spacing: 6
             
-            property real torquePercent: winchCard.maxWinchTorque > 0 ? (winchController.winch_torque || 0) / winchCard.maxWinchTorque * 100 : 0
+            property real currentValue: (winchController.winch_torque || 0) / 100
+            property real currentPercent: winchCard.maxWinchCurrent > 0 ? currentValue / winchCard.maxWinchCurrent * 100 : 0
             
             Text {
-                text: "Torque"
+                text: "Current"
                 font.pixelSize: winchCard.metricLabelSize
                 font.family: "Roboto"
                 color: "#AAAAAA"
             }
             
             Text {
-                text: (winchController.winch_torque || 0).toFixed(1) + " Nm (" + parent.torquePercent.toFixed(0) + "%)"
+                text: parent.currentValue.toFixed(2) + " A (" + parent.currentPercent.toFixed(0) + "%)"
                 font.pixelSize: winchCard.metricValueSize
                 font.family: "Monospace"
                 font.bold: true
-                color: parent.torquePercent > 80 ? "#f39c12" : "#2ecc71"
+                color: parent.currentPercent > 80 ? "#f39c12" : "#2ecc71"
             }
             
             ProgressBarIndicator {
                 Layout.fillWidth: true
-                value: winchController.winch_torque || 0
-                maxValue: winchCard.maxWinchTorque
-                barColor: parent.torquePercent > 80 ? "#f39c12" : "#2ecc71"
+                value: parent.currentValue
+                maxValue: winchCard.maxWinchCurrent
+                barColor: parent.currentPercent > 80 ? "#f39c12" : "#2ecc71"
                 barHeight: 10
             }
         }

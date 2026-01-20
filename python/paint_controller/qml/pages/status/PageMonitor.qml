@@ -18,7 +18,7 @@ Rectangle {
     
     // Constants for max values (adjust based on actual hardware specs)
     // Note: These must be > 0 to avoid division by zero
-    property real maxWinchTorque: 100.0      // Nm
+    property real maxWinchCurrent: 10.0      // A
     property real maxWheelCurrent: 10.0      // A
     property real maxArmCurrent: 5.0         // A
     property real maxArmExtension: 2000.0    // mm
@@ -97,7 +97,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.preferredHeight: 1  // Equal weight
-                    maxWinchTorque: monitorPage.maxWinchTorque
+                    maxWinchCurrent: monitorPage.maxWinchCurrent
                 }
             }
             
