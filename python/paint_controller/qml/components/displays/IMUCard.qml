@@ -13,14 +13,7 @@ IndustrialCard {
     property int valueFontSize: 18      // Data values
     property int labelWidth: 100        // "Data Type" column width
     property int valueWidth: 60         // X, Y, Z column widths
-    property int sparklineWidth: 55     // Trend column width
-    property int sparklineHeight: 28    // Sparkline height
     property int rowSpacing: 8          // Spacing between elements
-    
-    // Data history
-    property var imuAccZHistory: []
-    property var imuAngularAccZHistory: []
-    property var imuRollHistory: []
     
     ColumnLayout {
         anchors.fill: parent
@@ -69,16 +62,6 @@ IndustrialCard {
                 color: "#AAAAAA"
                 horizontalAlignment: Text.AlignRight
             }
-            
-            Text {
-                Layout.preferredWidth: imuCard.sparklineWidth
-                text: "Trend"
-                font.pixelSize: imuCard.labelFontSize
-                font.family: "Roboto"
-                font.bold: true
-                color: "#AAAAAA"
-                horizontalAlignment: Text.AlignHCenter
-            }
         }
         
         Rectangle { Layout.fillWidth: true; height: 1; color: "#3a4150" }
@@ -122,13 +105,6 @@ IndustrialCard {
                 color: "#3498db"
                 horizontalAlignment: Text.AlignRight
             }
-            
-            Sparkline {
-                Layout.preferredWidth: imuCard.sparklineWidth
-                Layout.preferredHeight: imuCard.sparklineHeight
-                dataPoints: imuRollHistory
-                lineColor: "#3498db"
-            }
         }
         
         Rectangle { Layout.fillWidth: true; height: 1; color: "#3a4150" }
@@ -151,7 +127,7 @@ IndustrialCard {
                 text: (teensyController.all_status.imu_acc_x || 0).toFixed(2)
                 font.pixelSize: imuCard.valueFontSize
                 font.family: "Monospace"
-                color: "#2ecc71"
+                color: "#3498db"
                 horizontalAlignment: Text.AlignRight
             }
             
@@ -160,7 +136,7 @@ IndustrialCard {
                 text: (teensyController.all_status.imu_acc_y || 0).toFixed(2)
                 font.pixelSize: imuCard.valueFontSize
                 font.family: "Monospace"
-                color: "#2ecc71"
+                color: "#3498db"
                 horizontalAlignment: Text.AlignRight
             }
             
@@ -169,15 +145,8 @@ IndustrialCard {
                 text: (teensyController.all_status.imu_acc_z || 0).toFixed(2)
                 font.pixelSize: imuCard.valueFontSize
                 font.family: "Monospace"
-                color: "#2ecc71"
+                color: "#3498db"
                 horizontalAlignment: Text.AlignRight
-            }
-            
-            Sparkline {
-                Layout.preferredWidth: imuCard.sparklineWidth
-                Layout.preferredHeight: imuCard.sparklineHeight
-                dataPoints: imuAccZHistory
-                lineColor: "#2ecc71"
             }
         }
         
@@ -201,7 +170,7 @@ IndustrialCard {
                 text: (teensyController.all_status.imu_angular_acc_x || 0).toFixed(2)
                 font.pixelSize: imuCard.valueFontSize
                 font.family: "Monospace"
-                color: "#f39c12"
+                color: "#3498db"
                 horizontalAlignment: Text.AlignRight
             }
             
@@ -210,7 +179,7 @@ IndustrialCard {
                 text: (teensyController.all_status.imu_angular_acc_y || 0).toFixed(2)
                 font.pixelSize: imuCard.valueFontSize
                 font.family: "Monospace"
-                color: "#f39c12"
+                color: "#3498db"
                 horizontalAlignment: Text.AlignRight
             }
             
@@ -219,15 +188,8 @@ IndustrialCard {
                 text: (teensyController.all_status.imu_angular_acc_z || 0).toFixed(2)
                 font.pixelSize: imuCard.valueFontSize
                 font.family: "Monospace"
-                color: "#f39c12"
+                color: "#3498db"
                 horizontalAlignment: Text.AlignRight
-            }
-            
-            Sparkline {
-                Layout.preferredWidth: imuCard.sparklineWidth
-                Layout.preferredHeight: imuCard.sparklineHeight
-                dataPoints: imuAngularAccZHistory
-                lineColor: "#f39c12"
             }
         }
     }

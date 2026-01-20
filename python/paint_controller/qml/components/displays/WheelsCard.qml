@@ -63,7 +63,7 @@ IndustrialCard {
                 text: Math.abs(wheelController.left_wheel_current || 0).toFixed(1) + " A"
                 font.pixelSize: 16
                 font.family: "Monospace"
-                color: "#FFFFFF"
+                color: "#3498db"
                 horizontalAlignment: Text.AlignHCenter
                 Layout.alignment: Qt.AlignHCenter
             }
@@ -127,7 +127,7 @@ IndustrialCard {
                 text: Math.abs(wheelController.right_wheel_current || 0).toFixed(1) + " A"
                 font.pixelSize: 16
                 font.family: "Monospace"
-                color: "#FFFFFF"
+                color: "#3498db"
                 horizontalAlignment: Text.AlignHCenter
                 Layout.alignment: Qt.AlignHCenter
             }

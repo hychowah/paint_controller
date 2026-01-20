@@ -41,7 +41,7 @@ IndustrialCard {
             label: ((winchController.cable_speed || 0) >= 0 ? "↑" : "↓") + " Cable Speed"
             value: Math.abs(winchController.cable_speed || 0).toFixed(1)
             unit: "m/s"
-            valueColor: "#f39c12"
+            valueColor: "#3498db"
             valueFontSize: winchCard.metricValueSize
             labelFontSize: winchCard.metricLabelSize
             unitFontSize: winchCard.metricUnitSize
@@ -54,7 +54,7 @@ IndustrialCard {
             label: "Voltage"
             value: (winchController.motor_voltage || 0).toFixed(1)
             unit: "V"
-            valueColor: "#2ecc71"
+            valueColor: "#3498db"
             valueFontSize: winchCard.metricValueSize
             labelFontSize: winchCard.metricLabelSize
             unitFontSize: winchCard.metricUnitSize
@@ -67,7 +67,7 @@ IndustrialCard {
             label: "Temperature"
             value: (winchController.motor_temperature || 0).toFixed(1)
             unit: "°C"
-            valueColor: "#2ecc71"
+            valueColor: "#3498db"
             valueFontSize: winchCard.metricValueSize
             labelFontSize: winchCard.metricLabelSize
             unitFontSize: winchCard.metricUnitSize
@@ -94,7 +94,7 @@ IndustrialCard {
                 font.pixelSize: winchCard.metricValueSize
                 font.family: "Monospace"
                 font.bold: true
-                color: parent.currentPercent > 80 ? "#f39c12" : "#2ecc71"
+                color: "#3498db"
             }
             
             ProgressBarIndicator {

@@ -100,7 +100,7 @@ Rectangle {
                     }
                     
                     Text {
-                        text: "Loop: " + (teensyController.all_status.loop_time || 0).toFixed(0) + "ms"
+                        text: "Loop: " + (teensyController.all_status.loop_time || 0).toFixed(0) + "us"
                         font.pixelSize: 16
                         font.family: "Monospace"
                         font.bold: true

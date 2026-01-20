@@ -42,7 +42,7 @@ IndustrialCard {
                 label: "Motor Current"
                 value: (teensyController.all_status.valve_motor_current || 0).toFixed(1)
                 unit: "A"
-                valueColor: "#2ecc71"
+                valueColor: "#3498db"
                 valueFontSize: valvesCard.metricValueSize
                 labelFontSize: valvesCard.metricLabelSize
                 unitFontSize: valvesCard.metricUnitSize
@@ -55,7 +55,7 @@ IndustrialCard {
                 label: "Total Volume"
                 value: (teensyController.all_status.total_volumne || 0).toFixed(1)
                 unit: "L"
-                valueColor: "#f39c12"
+                valueColor: "#3498db"
                 valueFontSize: valvesCard.metricValueSize
                 labelFontSize: valvesCard.metricLabelSize
                 unitFontSize: valvesCard.metricUnitSize

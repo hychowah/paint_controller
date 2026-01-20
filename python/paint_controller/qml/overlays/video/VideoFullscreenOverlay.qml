@@ -24,8 +24,8 @@ Rectangle {
     MouseArea {
         anchors.fill: parent
         enabled: root.active
-        // Tap anywhere to exit fullscreen
-        onClicked: root.active = false
+        // Touch-to-exit disabled - use controller button instead
+        // onClicked: root.active = false
     }
     
     // Video background
@@ -147,8 +147,9 @@ Rectangle {
         title: "RIGHT CONTROL"
     }
 
-    // Exit hint at bottom center
+    // Exit hint at bottom center - hidden since touch-to-exit is disabled
     Rectangle {
+        visible: false  // Touch-to-exit disabled
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: 20

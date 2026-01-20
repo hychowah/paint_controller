@@ -7,8 +7,8 @@ import "."
 IndustrialCard {
     title: "Teensy Arm"
     
-    property real maxArmCurrent: 5.0
-    property real maxArmExtension: 2000.0
+    property real maxArmCurrent: 200
+    property real maxArmExtension: 1500
     
     ColumnLayout {
         anchors.fill: parent
@@ -27,11 +27,11 @@ IndustrialCard {
             }
             
             Text {
-                text: ((teensyController.all_status.arm_extension_dist || 0) / 1000).toFixed(2) + " m"
+                text: ((teensyController.all_status.arm_extension_dist || 0)).toFixed(0) + " mm"
                 font.pixelSize: 32
                 font.family: "Monospace"
                 font.bold: true
-                color: "#2ecc71"
+                color: "#3498db"
             }
             
             ProgressBarIndicator {
@@ -85,10 +85,10 @@ IndustrialCard {
                 }
                 
                 Text {
-                    text: Math.abs(teensyController.all_status.arm_rail_current || 0).toFixed(2) + " A"
+                    text: (Math.abs(teensyController.all_status.arm_rail_current || 0) / 10).toFixed(0) + " A"
                     font.pixelSize: 14
                     font.family: "Monospace"
-                    color: "#FFFFFF"
+                    color: "#3498db"
                     horizontalAlignment: Text.AlignHCenter
                     Layout.alignment: Qt.AlignHCenter
                 }
@@ -119,7 +119,7 @@ IndustrialCard {
                         anchors.bottom: parent.bottom
                         width: parent.width
                         height: Math.max(12, parent.height * parent.heightRatio)
-                        color: "#e74c3c"
+                        color: "#3498db"
                         radius: 5
                         
                         Behavior on height {
@@ -129,10 +129,10 @@ IndustrialCard {
                 }
                 
                 Text {
-                    text: Math.abs(teensyController.all_status.spray_gun_motor_current || 0).toFixed(2) + " A"
+                    text: (Math.abs(teensyController.all_status.spray_gun_motor_current || 0) / 10).toFixed(0) + " A"
                     font.pixelSize: 14
                     font.family: "Monospace"
-                    color: "#FFFFFF"
+                    color: "#3498db"
                     horizontalAlignment: Text.AlignHCenter
                     Layout.alignment: Qt.AlignHCenter
                 }
