@@ -214,6 +214,9 @@ ApplicationWindow {
         z: 1001
         showOverlay: overlayController.show_overlay
         activeMenu: overlayController.active_menu
+        // Hide the system control menu on main window when in dual-monitor mode
+        // It will appear on the secondary screen (touchscreen) instead
+        visible: screenCount <= 1
     }
 
     CustomPopup {

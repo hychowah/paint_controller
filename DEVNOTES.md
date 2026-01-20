@@ -2,6 +2,29 @@
 
 ---
 
+### 2026-01-20 04:00 - SystemControlMenu Dual-Monitor Support
+
+**Goal**: Move SystemControlMenu to touchscreen display when in dual-monitor mode
+
+**Context**: Main UI moves to external (non-touchscreen) monitor when detected. SystemControlMenu relies on touch interaction, so it should appear on built-in touchscreen (showing PageMonitor) instead of main UI in dual-monitor mode.
+
+**Solution**:
+1. Added SystemControlMenu to MultiScreenListUI.qml (secondary screen window)
+2. Made SystemControlMenu in MainWindow.qml conditional: `visible: screenCount <= 1`
+3. SystemControlMenu now appears on touchscreen when 2 monitors detected
+
+**Result**: ✅ SystemControlMenu appears on correct screen based on monitor configuration
+
+**Files**: `qml/core/MainWindow.qml`, `qml/overlays/MultiScreenListUI.qml`
+
+**Behavior**:
+| Condition | SystemControlMenu Location |
+|-----------|---------------------------|
+| 1 monitor | Main UI (built-in) |
+| 2 monitors | Secondary window (built-in touchscreen) |
+
+---
+
 ### 2026-01-19 - Multi-Screen Display Implementation
 
 **Goal**: Automatic multi-screen support — Main UI on external monitor, secondary window on Steam Deck built-in screen
