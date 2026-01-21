@@ -187,6 +187,8 @@ class ControlProcessor(QObject):
         }
         
         # Control handler dispatch table
+        # Maps control names to their specialized handler methods.
+        # Controls not in this table use _process_standard_control as the default handler.
         self._control_handlers = {
             "Track Control Left": self._process_track_control,
             "Track Control Right": self._process_track_control,
