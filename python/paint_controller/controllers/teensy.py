@@ -587,8 +587,8 @@ class TeensyController(QObject):
         msg.linear = Vector3(x=Fx, y=Fy, z=0.0)
         
         # Publish to the appropriate topic
-        if hasattr(self._robot_controller.teensy_controller, 'stability_force_pub'):
-            self._robot_controller.teensy_controller.stability_force_pub.publish(msg)
+        if hasattr(self, 'stability_force_pub'):
+            self.stability_force_pub.publish(msg)
             self._robot_controller.get_logger().info(f'Sent EF force: Fx={Fx}, Fy={Fy}')
         else:
             self._robot_controller.get_logger().error("Stability force publisher not initialized. Cannot send force values.")
@@ -686,18 +686,20 @@ class TeensyController(QObject):
         # Calculate the difference between current and target
         delta = self._target_thrust_force - self._current_thrust_force
         
-        # If we're close enough, just set to target
+        # Only update if we haven't reached the target
         if abs(delta) < ramp_step:
-            self._current_thrust_force = self._target_thrust_force
+            # Reached target, set exactly and publish once
+            if self._current_thrust_force != self._target_thrust_force:
+                self._current_thrust_force = self._target_thrust_force
+                self.set_ef_force(0.0, self._current_thrust_force)
         else:
             # Move towards target by ramp_step
             if delta > 0:
                 self._current_thrust_force += ramp_step
             else:
                 self._current_thrust_force -= ramp_step
-        
-        # Apply the current ramped thrust force
-        self.set_ef_force(0.0, self._current_thrust_force)
+            # Publish the updated value
+            self.set_ef_force(0.0, self._current_thrust_force)
     
     def get_valve_turn(self) -> float:
         """Get current valve turn value"""
