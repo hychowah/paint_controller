@@ -313,6 +313,4 @@ class OverlayController(QObject):
         Returns:
             tuple: (left_control_name, right_control_name)
         """
-        left_control = self._control_options[self._left_selected_index]
-        right_control = self._control_options[self._right_selected_index]
-        return (left_control, right_control)
+        return (self.get_left_selected_option(), self.get_right_selected_option())
