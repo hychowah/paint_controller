@@ -311,6 +311,6 @@ class OverlayController(QObject):
         Get the current joystick control names
         
         Returns:
-            tuple: (left_control_name, right_control_name)
+            tuple[str, str]: A tuple containing (left_control_name, right_control_name)
         """
         return (self.get_left_selected_option(), self.get_right_selected_option())
