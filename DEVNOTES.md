@@ -2,6 +2,30 @@
 
 ---
 
+### 2026-01-21 01:20 - Thrust Force Ramp Up/Down Control
+
+**Goal**: Add configurable ramp up/down control for L1 button thrust force to prevent rapid/instant force application
+
+**Implementation**:
+1. Added `thrust_ramp_rate` setting to SettingsManager (default: 1.0, range: 0.1-10.0 thrust/s)
+2. Modified TeensyController to use QTimer at 10Hz for smooth ramping
+3. Created two methods:
+   - `set_thrust_force_enabled()` - Uses ramping (L1 button uses this)
+   - `set_thrust_force_instant()` - Instant thrust (preserved for future use)
+4. Added UI controls in SettingsTab.qml for ramp rate configuration
+
+**Technical Details**:
+- Timer runs at 10Hz (100ms intervals) - matches max command rate requirement
+- Ramp rate = thrust/second (1.0 = 0 to 1 in 1 second)
+- State tracking: `_current_thrust_force`, `_target_thrust_force`, `_thrust_ramp_rate`
+- Graceful ramp up when enabled, ramp down when disabled
+
+**Result**: ✅ Smooth thrust force application with configurable rate
+
+**Files**: `core/settings.py`, `controllers/teensy.py`, `qml/overlays/systemcontrol/SettingsTab.qml`
+
+---
+
 ### 2026-01-20 04:00 - SystemControlMenu Dual-Monitor Support
 
 **Goal**: Move SystemControlMenu to touchscreen display when in dual-monitor mode

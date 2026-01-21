@@ -20,8 +20,8 @@ Rectangle {
     // Note: These must be > 0 to avoid division by zero
     property real maxWinchCurrent: 10.0      // A
     property real maxWheelCurrent: 10.0      // A
-    property real maxArmCurrent: 5.0         // A
-    property real maxArmExtension: 2000.0    // mm
+    property real maxArmCurrent: 200        // mA
+    property real maxArmExtension: 1500.0    // mm
     
     ColumnLayout {
         anchors.fill: parent
