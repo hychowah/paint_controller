@@ -111,9 +111,9 @@ class TeensyController(QObject):
         # Thrust force ramping state
         self._current_thrust_force = 0.0  # Current ramped thrust value
         self._target_thrust_force = 0.0   # Target thrust value (either 0 or _thrust_force)
+        self._last_published_thrust = 0.0  # Last published value to avoid redundant messages
         if hasattr(robot_controller, 'settings_manager'):
-            ramp_rate = robot_controller.settings_manager.get('thrust_ramp_rate')
-            self._thrust_ramp_rate = ramp_rate if ramp_rate is not None else 1.0
+            self._thrust_ramp_rate = robot_controller.settings_manager.get('thrust_ramp_rate', 1.0)
             robot_controller.settings_manager.thrust_ramp_rate_changed.connect(self._on_thrust_ramp_rate_changed)
         else:
             self._thrust_ramp_rate = 1.0
@@ -688,18 +688,23 @@ class TeensyController(QObject):
         
         # Only update if we haven't reached the target
         if abs(delta) < ramp_step:
-            # Reached target, set exactly and publish once
+            # Reached target, set exactly and publish once if changed
             if self._current_thrust_force != self._target_thrust_force:
                 self._current_thrust_force = self._target_thrust_force
-                self.set_ef_force(0.0, self._current_thrust_force)
+                # Only publish if the value has changed meaningfully
+                if abs(self._current_thrust_force - self._last_published_thrust) > 0.001:
+                    self.set_ef_force(0.0, self._current_thrust_force)
+                    self._last_published_thrust = self._current_thrust_force
         else:
             # Move towards target by ramp_step
             if delta > 0:
                 self._current_thrust_force += ramp_step
             else:
                 self._current_thrust_force -= ramp_step
-            # Publish the updated value
-            self.set_ef_force(0.0, self._current_thrust_force)
+            # Only publish if the value has changed meaningfully (>0.001 threshold)
+            if abs(self._current_thrust_force - self._last_published_thrust) > 0.001:
+                self.set_ef_force(0.0, self._current_thrust_force)
+                self._last_published_thrust = self._current_thrust_force
     
     def get_valve_turn(self) -> float:
         """Get current valve turn value"""
