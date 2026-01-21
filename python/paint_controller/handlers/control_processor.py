@@ -185,6 +185,17 @@ class ControlProcessor(QObject):
                 min_interval=self.EF_RAIL_UPDATE_INTERVAL
             )
         }
+        
+        # Control handler dispatch table
+        # Maps control names to their specialized handler methods.
+        # Controls not in this table use _process_standard_control as the default handler.
+        self._control_handlers = {
+            "Track Control Left": self._process_track_control,
+            "Track Control Right": self._process_track_control,
+            "EF prop joint": self._process_joint_control,
+            "EF Yaw Angle": self._process_yaw_control,
+            "EF Force": self._process_ef_force_control,
+        }
 
     def _update_display(self):
         """Update the display with current control values at 5Hz"""
@@ -571,37 +582,30 @@ class ControlProcessor(QObject):
                 else:
                     self._publish_value(value, publisher, config)
 
+    def _process_control_with_dispatch(self, input_state: Dict, mode: str, stick: str):
+        """Process control input using dispatch table
+        
+        Args:
+            input_state: Current input state
+            mode: Control mode name
+            stick: 'left' or 'right' joystick
+        """
+        # Get handler from dispatch table, defaulting to standard control
+        handler = self._control_handlers.get(mode, self._process_standard_control)
+        handler(input_state, mode, stick)
+
     def process_input(self, input_state: Dict):
         """Process all control inputs with rate limiting"""
         try:
             # Process left joystick
             left_mode = self.robot.overlayController.get_left_selected_option()
             if left_mode in self.controls and self._can_send_command(left_mode):
-                if left_mode in ["Track Control Left", "Track Control Right"]:
-                    self._process_track_control(input_state, left_mode, 'left')
-                elif left_mode == "EF prop joint":
-                    self._process_joint_control(input_state, left_mode, 'left')
-                elif left_mode == "EF Yaw Angle":
-                    self._process_yaw_control(input_state, left_mode, 'left')
-                elif left_mode == "EF Force":
-                    self._process_ef_force_control(input_state, left_mode, 'left')
-                else:
-                    self._process_standard_control(input_state, left_mode, 'left')
-            
+                self._process_control_with_dispatch(input_state, left_mode, 'left')
 
             # Process right joystick
             right_mode = self.robot.overlayController.get_right_selected_option()
             if right_mode in self.controls and self._can_send_command(right_mode):
-                if right_mode in ["Track Control Left", "Track Control Right"]:
-                    self._process_track_control(input_state, right_mode, 'right')
-                elif right_mode == "EF prop joint":
-                    self._process_joint_control(input_state, right_mode, 'right')
-                elif right_mode == "EF Yaw Angle":
-                    self._process_yaw_control(input_state, right_mode, 'right')
-                elif right_mode == "EF Force":
-                    self._process_ef_force_control(input_state, right_mode, 'right')
-                else:
-                    self._process_standard_control(input_state, right_mode, 'right')
+                self._process_control_with_dispatch(input_state, right_mode, 'right')
             
             # Process right trigger for valve turn command (continuous mapping)
             if self._can_send_command("Valve Turn"):
