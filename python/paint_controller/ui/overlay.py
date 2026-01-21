@@ -304,3 +304,15 @@ class OverlayController(QObject):
             current_yaw = self.robot.teensy_controller.get_status().get('imu_yaw', 0)
             self.robot.controlProcessor.controls["EF Yaw Angle"].offset = current_yaw
             print(f"Set target yaw angle to {current_yaw}")
+
+    @Slot(result=tuple)
+    def get_current_joystick_controls(self):
+        """
+        Get the current joystick control names
+        
+        Returns:
+            tuple: (left_control_name, right_control_name)
+        """
+        left_control = self._control_options[self._left_selected_index]
+        right_control = self._control_options[self._right_selected_index]
+        return (left_control, right_control)

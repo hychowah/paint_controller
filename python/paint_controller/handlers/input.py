@@ -20,6 +20,10 @@ class UIInputHandler(QObject):
             self._arm_retract_length = 250
             self._arm_extend_length = 800
         self._arm_preset_index = 0
+        
+        # Mode-specific joystick control memory
+        self._base_mode_joystick_controls = None
+        self._ef_mode_joystick_controls = None
     
     def _on_arm_retract_length_changed(self, new_value: int):
         """Handle arm_retract_length change from SettingsManager"""
@@ -53,13 +57,40 @@ class UIInputHandler(QObject):
 
     @Slot()
     def on_switch_pressed(self):
+        # Save current joystick controls before switching modes
+        current_controls = self.controller.overlayController.get_current_joystick_controls()
+        
         if self.controller.control_mode == "base":
+            # Save base mode controls
+            self._base_mode_joystick_controls = current_controls
+            
+            # Switch to EF mode
             self.controller.control_mode = "ef"
-            # self.controller.overlayController.set_joystick_controls("EF Yaw Angle", "Winch Speed")
+            
+            # Restore EF mode controls or use defaults
+            if self._ef_mode_joystick_controls is not None:
+                left_control, right_control = self._ef_mode_joystick_controls
+            else:
+                # Default EF mode controls
+                left_control, right_control = ("EF Yaw Angle", "Winch Speed")
+            
+            self.controller.overlayController.set_joystick_controls(left_control, right_control)
             self.controller.show_popup("Control Mode", "Switched to EF control mode", "info")
         else:
+            # Save EF mode controls
+            self._ef_mode_joystick_controls = current_controls
+            
+            # Switch to base mode
             self.controller.control_mode = "base"
-            # self.controller.overlayController.set_joystick_controls("Track Control", "None")
+            
+            # Restore base mode controls or use defaults
+            if self._base_mode_joystick_controls is not None:
+                left_control, right_control = self._base_mode_joystick_controls
+            else:
+                # Default base mode controls
+                left_control, right_control = ("Track Control Left", "None")
+            
+            self.controller.overlayController.set_joystick_controls(left_control, right_control)
             self.controller.show_popup("Control Mode", "Switched to Base control mode (Track Control)", "info")
 
     @Slot()
