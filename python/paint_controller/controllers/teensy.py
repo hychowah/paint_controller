@@ -108,6 +108,13 @@ class TeensyController(QObject):
         self._thrust_force_enabled = False
         self._valve_turn = 0.0
         
+        # Thrust force ramping state
+        self._current_thrust_force = 0.0  # Current ramped thrust value
+        self._target_thrust_force = 0.0   # Target thrust value (either 0 or _thrust_force)
+        self._thrust_ramp_rate = robot_controller.settings_manager.get('thrust_ramp_rate') or 1.0
+        if hasattr(robot_controller, 'settings_manager'):
+            robot_controller.settings_manager.thrust_ramp_rate_changed.connect(self._on_thrust_ramp_rate_changed)
+        
         # Configure publishers and subscribers
         self._setup_publishers()
         self._setup_subscribers()
@@ -116,6 +123,11 @@ class TeensyController(QObject):
         self._availability_timer = QTimer(self)
         self._availability_timer.timeout.connect(self._check_availability)
         self._availability_timer.start(200)  # Check every 200ms
+        
+        # Create thrust ramping timer (10Hz)
+        self._thrust_ramp_timer = QTimer(self)
+        self._thrust_ramp_timer.timeout.connect(self._update_thrust_ramp)
+        self._thrust_ramp_timer.start(100)  # 100ms = 10Hz
         
     def _setup_publishers(self):
         """Set up ROS publishers for Teensy control"""
@@ -542,6 +554,16 @@ class TeensyController(QObject):
         
         # Emit signal for UI updates
         self.valve_turn_changed.emit(self._valve_turn)
+    
+    @Slot(bool)
+    def setThrustForceEnabled(self, enabled: bool):
+        """Toggle thrust force on/off with ramping (QML callable)"""
+        self.set_thrust_force_enabled(enabled)
+    
+    @Slot(bool)
+    def setThrustForceInstant(self, enabled: bool):
+        """Toggle thrust force on/off instantly without ramping (QML callable)"""
+        self.set_thrust_force_instant(enabled)
 
     def _set_yaw_control(self, enabled: bool, target: float, p: float, i: float, d: float, pwm: int):
         """Internal method to send yaw control message"""
@@ -603,17 +625,37 @@ class TeensyController(QObject):
         return self._thrust_force_enabled
     
     def set_thrust_force_enabled(self, enabled: bool) -> None:
-        """Toggle thrust force on/off"""
+        """Toggle thrust force on/off with ramping"""
         if self._thrust_force_enabled != enabled:
             self._thrust_force_enabled = enabled
             self.thrust_force_enabled_changed.emit(self._thrust_force_enabled)
-            # If enabled, apply the current thrust force; if disabled, zero it out
+            
             if enabled:
-                self.set_ef_force(0.0, self._thrust_force)
-                self._robot_controller.get_logger().info(f'Thrust force enabled: {self._thrust_force:.2f}')
+                # Set target to current thrust force, ramping will handle the rest
+                self._target_thrust_force = self._thrust_force
+                self._robot_controller.get_logger().info(f'Thrust force enabled: ramping to {self._thrust_force:.2f}')
             else:
+                # Set target to 0, ramping will handle the rest
+                self._target_thrust_force = 0.0
+                self._robot_controller.get_logger().info('Thrust force disabled: ramping to 0.0')
+    
+    def set_thrust_force_instant(self, enabled: bool) -> None:
+        """Toggle thrust force on/off instantly (without ramping)"""
+        if self._thrust_force_enabled != enabled:
+            self._thrust_force_enabled = enabled
+            self.thrust_force_enabled_changed.emit(self._thrust_force_enabled)
+            
+            # Set both current and target immediately for instant response
+            if enabled:
+                self._current_thrust_force = self._thrust_force
+                self._target_thrust_force = self._thrust_force
+                self.set_ef_force(0.0, self._thrust_force)
+                self._robot_controller.get_logger().info(f'Thrust force enabled instantly: {self._thrust_force:.2f}')
+            else:
+                self._current_thrust_force = 0.0
+                self._target_thrust_force = 0.0
                 self.set_ef_force(0.0, 0.0)
-                self._robot_controller.get_logger().info('Thrust force disabled')
+                self._robot_controller.get_logger().info('Thrust force disabled instantly')
     
     thrust_force = Property(float, get_thrust_force, set_thrust_force, notify=thrust_force_changed)
     thrust_force_enabled = Property(bool, get_thrust_force_enabled, set_thrust_force_enabled, notify=thrust_force_enabled_changed)
@@ -626,6 +668,37 @@ class TeensyController(QObject):
             self._thrust_force = clamped_value
             self.thrust_force_changed.emit(self._thrust_force)
             print(f"[TeensyController] Thrust force updated from settings: {clamped_value}")
+    
+    def _on_thrust_ramp_rate_changed(self, new_value: float):
+        """Handle thrust_ramp_rate change from SettingsManager"""
+        self._thrust_ramp_rate = new_value
+        print(f"[TeensyController] Thrust ramp rate updated to: {new_value}")
+    
+    def _update_thrust_ramp(self):
+        """Update ramped thrust force at 10Hz"""
+        if not self._thrust_force_enabled:
+            # When disabled, ramp down to 0
+            return
+        
+        # Calculate the delta based on ramp rate (thrust/second)
+        # At 10Hz, each step is 0.1 seconds
+        ramp_step = self._thrust_ramp_rate * 0.1  # 0.1 second per update
+        
+        # Calculate the difference between current and target
+        delta = self._target_thrust_force - self._current_thrust_force
+        
+        # If we're close enough, just set to target
+        if abs(delta) < ramp_step:
+            self._current_thrust_force = self._target_thrust_force
+        else:
+            # Move towards target by ramp_step
+            if delta > 0:
+                self._current_thrust_force += ramp_step
+            else:
+                self._current_thrust_force -= ramp_step
+        
+        # Apply the current ramped thrust force
+        self.set_ef_force(0.0, self._current_thrust_force)
     
     def get_valve_turn(self) -> float:
         """Get current valve turn value"""
@@ -647,3 +720,5 @@ class TeensyController(QObject):
         """Clean up resources when shutting down"""
         if hasattr(self, '_availability_timer') and self._availability_timer.isActive():
             self._availability_timer.stop()
+        if hasattr(self, '_thrust_ramp_timer') and self._thrust_ramp_timer.isActive():
+            self._thrust_ramp_timer.stop()

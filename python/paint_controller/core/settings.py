@@ -26,6 +26,7 @@ class SettingsManager(QObject):
     track_max_speed_changed = Signal(float)
     track_min_speed_changed = Signal(float)
     thrust_force_changed = Signal(float)
+    thrust_ramp_rate_changed = Signal(float)
     valve_turn_max_changed = Signal(float)
     arm_retract_length_changed = Signal(int)
     arm_extend_length_changed = Signal(int)
@@ -72,6 +73,14 @@ class SettingsManager(QObject):
                 "type": "float",
                 "requires_restart": False,
                 "description": "Thrust force for vertical movement"
+            },
+            "thrust_ramp_rate": {
+                "default": 1.0,
+                "min": 0.1,
+                "max": 10.0,
+                "type": "float",
+                "requires_restart": False,
+                "description": "Thrust force ramp rate (thrust/second)"
             },
             "valve_turn_max": {
                 "default": 6.0,
@@ -237,6 +246,7 @@ class SettingsManager(QObject):
             "track_max_speed": self.track_max_speed_changed,
             "track_min_speed": self.track_min_speed_changed,
             "thrust_force": self.thrust_force_changed,
+            "thrust_ramp_rate": self.thrust_ramp_rate_changed,
             "valve_turn_max": self.valve_turn_max_changed,
             "arm_retract_length": self.arm_retract_length_changed,
             "arm_extend_length": self.arm_extend_length_changed
@@ -399,6 +409,14 @@ class SettingsManager(QObject):
     @thrust_force.setter
     def thrust_force(self, value: float):
         self.set("thrust_force", value)
+    
+    @Property(float, notify=thrust_ramp_rate_changed)
+    def thrust_ramp_rate(self) -> float:
+        return self._values.get("thrust_ramp_rate", 1.0)
+    
+    @thrust_ramp_rate.setter
+    def thrust_ramp_rate(self, value: float):
+        self.set("thrust_ramp_rate", value)
     
     @Property(float, notify=valve_turn_max_changed)
     def valve_turn_max(self) -> float:

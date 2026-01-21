@@ -431,6 +431,94 @@ Item {
                                 }
                             }
                             
+                            // Thrust Ramp Rate
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+                                
+                                Text {
+                                    text: "Thrust Ramp Rate (thrust/second, Range: 0.1 - 10.0)"
+                                    color: "#FFFFFF"
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                }
+                                
+                                Text {
+                                    text: "Controls how fast thrust force ramps up/down (1.0 = 0 to max in 1 second)"
+                                    color: "#AAAAAA"
+                                    font.pixelSize: 11
+                                    wrapMode: Text.WordWrap
+                                    Layout.fillWidth: true
+                                }
+                                
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
+                                    
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        height: 45
+                                        color: "#1A1A1A"
+                                        border.color: thrustRampRateInput.activeFocus ? "#3A5A8C" : "#333333"
+                                        border.width: 1
+                                        radius: 6
+                                        
+                                        TextInput {
+                                            id: thrustRampRateInput
+                                            anchors.fill: parent
+                                            anchors.margins: 10
+                                            text: settingsManager ? settingsManager.thrust_ramp_rate.toFixed(2) : "1.00"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 14
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            horizontalAlignment: TextInput.AlignRight
+                                            selectByMouse: true
+                                            
+                                            onActiveFocusChanged: {
+                                                if (activeFocus) {
+                                                    numberPad.targetField = thrustRampRateInput
+                                                    numberPad.open()
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    Rectangle {
+                                        width: 70
+                                        height: 45
+                                        radius: 6
+                                        color: thrustRampRateSaveArea.containsMouse ? "#4CAF50" : "#3A8F3A"
+                                        
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "Save"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 12
+                                            font.bold: true
+                                        }
+                                        
+                                        MouseArea {
+                                            id: thrustRampRateSaveArea
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                var num = parseFloat(thrustRampRateInput.text)
+                                                if (!isNaN(num) && settingsManager) {
+                                                    settingsManager.thrust_ramp_rate = num
+                                                    if (settingsManager.saveSetting("thrust_ramp_rate")) {
+                                                        confirmationPopup.messageTitle = "Saved"
+                                                        confirmationPopup.messageText = "Thrust ramp rate set to " + num.toFixed(2)
+                                                        confirmationPopup.messageType = "info"
+                                                        confirmationPopup.open()
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
                             // Valve Turn Max
                             ColumnLayout {
                                 Layout.fillWidth: true
