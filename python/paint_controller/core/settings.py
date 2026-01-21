@@ -198,17 +198,18 @@ class SettingsManager(QObject):
             print(f"[SettingsManager] Validation error for {key}: {e}")
             return None
     
-    def get(self, key: str) -> Any:
+    def get(self, key: str, default: Any = None) -> Any:
         """
         Get a setting value.
         
         Args:
             key: Setting key
+            default: Default value if key doesn't exist
             
         Returns:
-            Setting value or None if key doesn't exist
+            Setting value or default if key doesn't exist
         """
-        return self._values.get(key)
+        return self._values.get(key, default)
     
     def set(self, key: str, value: Any) -> Tuple[bool, str]:
         """
