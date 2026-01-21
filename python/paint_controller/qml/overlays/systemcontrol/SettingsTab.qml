@@ -505,7 +505,10 @@ Item {
                                             onClicked: {
                                                 var num = parseFloat(thrustRampRateInput.text)
                                                 if (!isNaN(num) && settingsManager) {
+                                                    // Clamp to valid range (0.1 - 10.0)
+                                                    num = Math.max(0.1, Math.min(10.0, num))
                                                     settingsManager.thrust_ramp_rate = num
+                                                    thrustRampRateInput.text = num.toFixed(2)  // Update display with clamped value
                                                     if (settingsManager.saveSetting("thrust_ramp_rate")) {
                                                         confirmationPopup.messageTitle = "Saved"
                                                         confirmationPopup.messageText = "Thrust ramp rate set to " + num.toFixed(2)

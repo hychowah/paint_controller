@@ -111,9 +111,12 @@ class TeensyController(QObject):
         # Thrust force ramping state
         self._current_thrust_force = 0.0  # Current ramped thrust value
         self._target_thrust_force = 0.0   # Target thrust value (either 0 or _thrust_force)
-        self._thrust_ramp_rate = robot_controller.settings_manager.get('thrust_ramp_rate') or 1.0
         if hasattr(robot_controller, 'settings_manager'):
+            ramp_rate = robot_controller.settings_manager.get('thrust_ramp_rate')
+            self._thrust_ramp_rate = ramp_rate if ramp_rate is not None else 1.0
             robot_controller.settings_manager.thrust_ramp_rate_changed.connect(self._on_thrust_ramp_rate_changed)
+        else:
+            self._thrust_ramp_rate = 1.0
         
         # Configure publishers and subscribers
         self._setup_publishers()
@@ -676,10 +679,6 @@ class TeensyController(QObject):
     
     def _update_thrust_ramp(self):
         """Update ramped thrust force at 10Hz"""
-        if not self._thrust_force_enabled:
-            # When disabled, ramp down to 0
-            return
-        
         # Calculate the delta based on ramp rate (thrust/second)
         # At 10Hz, each step is 0.1 seconds
         ramp_step = self._thrust_ramp_rate * 0.1  # 0.1 second per update
