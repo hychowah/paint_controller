@@ -1,9 +1,10 @@
 {
-  "winch_max_speed_mmps": 100.0,
+  "winch_max_speed_mmps": 200.0,
   "track_max_speed": 500.0,
   "track_min_speed": 50.0,
   "thrust_force": -1.0,
-  "valve_turn_max": 10.0,
-  "arm_retract_length": 250,
+  "thrust_ramp_rate": 1.0,
+  "valve_turn_max": 4.0,
+  "arm_retract_length": 650,
   "arm_extend_length": 800
 }
