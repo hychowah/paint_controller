@@ -2,6 +2,26 @@
 
 ---
 
+### 2026-01-21 04:30 - Mode-Specific Joystick Control Memory
+
+**Goal**: Remember joystick control selections separately for each control mode (base/ef)
+
+**Issues**: 
+- Original implementation had joystick controls reset to hardcoded defaults on mode switch
+- User's modification removed default fallback causing UnboundLocalError on first switch
+
+**Implementation**:
+1. Added `_base_mode_joystick_controls` and `_ef_mode_joystick_controls` state in UIInputHandler
+2. Modified `on_switch_pressed()` to save/restore mode-specific controls
+3. Added `get_current_joystick_controls()` in OverlayController
+4. Refactored control_processor.py with dispatch table pattern (reduced 20+ lines)
+
+**Result**: ✅ Mode switching preserves user's joystick preferences; dispatch table improves maintainability
+
+**Files**: `handlers/input.py`, `ui/overlay.py`, `handlers/control_processor.py`
+
+---
+
 ### 2026-01-21 01:20 - Thrust Force Ramp Up/Down Control
 
 **Goal**: Add configurable ramp up/down control for L1 button thrust force to prevent rapid/instant force application
