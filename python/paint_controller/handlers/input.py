@@ -72,7 +72,7 @@ class UIInputHandler(QObject):
                 left_control, right_control = self._ef_mode_joystick_controls
             else:
                 # Default EF mode controls
-                left_control, right_control = ("EF Yaw Angle", "Winch Speed")
+                left_control, right_control = ("None", "Winch Speed")
             
             self.controller.overlayController.set_joystick_controls(left_control, right_control)
             self.controller.show_popup("Control Mode", "Switched to EF control mode", "info")
@@ -88,7 +88,7 @@ class UIInputHandler(QObject):
                 left_control, right_control = self._base_mode_joystick_controls
             else:
                 # Default base mode controls
-                left_control, right_control = ("Track Control Left", "None")
+                left_control, right_control = ("Track Control Left", "Track Control Right")
             
             self.controller.overlayController.set_joystick_controls(left_control, right_control)
             self.controller.show_popup("Control Mode", "Switched to Base control mode (Track Control)", "info")
