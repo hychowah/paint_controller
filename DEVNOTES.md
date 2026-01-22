@@ -2,6 +2,39 @@
 
 ---
 
+### 2026-01-22 03:15 - QML Structure Refactoring
+
+**Goal**: Improve QML file organization, naming consistency, and dependency tracking for better maintainability
+
+**Issues**: 
+- Only 1 qmldir file existed (systemcontrol), making module structure unclear
+- Confusing deep nesting (overlays/video/overlays/)
+- Unclear naming (Page5.qml without descriptive purpose)
+- No documentation of module structure or dependencies
+
+**Implementation**:
+1. Added 22 new qmldir files defining modules for all directories
+   - Components: buttons, displays, inputs, panels, popups, specialized
+   - Pages: home, spray, workflow, wheel, winch, tuning, settings, status, misc
+   - Overlays: root, lidar, video, video.components
+   - Other: core, navigation, widgets.actions
+2. Flattened video overlay structure: `overlays/video/overlays/` → `overlays/video/components/`
+3. Renamed `Page5.qml` → `PageEnvironment.qml` (shows wind + lidar monitoring)
+4. Created comprehensive documentation:
+   - `qml/README.md`: Structure guide, naming conventions, maintenance tips
+   - `qml/DEPENDENCIES.md`: Dependency graph, import matrix, circular dependency rules
+
+**Result**: ✅ Clear module boundaries, documented dependencies, consistent naming, easier maintenance
+
+**Files**: 
+- Added: 22 qmldir files across all directories
+- Renamed: `pages/misc/Page5.qml` → `PageEnvironment.qml`
+- Moved: `overlays/video/overlays/*` → `overlays/video/components/*`
+- Updated: `VideoFullscreenOverlay.qml` import path
+- Documented: `qml/README.md`, `qml/DEPENDENCIES.md`
+
+---
+
 ### 2026-01-21 04:30 - Mode-Specific Joystick Control Memory
 
 **Goal**: Remember joystick control selections separately for each control mode (base/ef)
