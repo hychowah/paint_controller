@@ -8,7 +8,7 @@ import "../../components/displays"
 import "../../components/panels"
 
 Rectangle {
-    id: page5Rect
+    id: pageEnvironmentRect
     Layout.fillWidth: true
     Layout.fillHeight: true
     color: "#9F9F9F"
