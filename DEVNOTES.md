@@ -2,6 +2,25 @@
 
 ---
 
+### 2026-01-22 03:00 - Winch Speed Deadzone Timeout
+
+**Goal**: Stop sending winch speed commands when joystick remains in deadzone (speed = 0) for >1 second
+
+**Implementation**:
+1. Added deadzone tracking variables: `winch_speed_in_deadzone`, `winch_speed_deadzone_start_time`, `winch_speed_should_send`
+2. Added constants: `WINCH_SPEED_DEADZONE = 0.05`, `WINCH_SPEED_DEADZONE_TIMEOUT = 1.0`
+3. Created dedicated `_process_winch_speed()` handler with timeout logic
+4. Added "Winch Speed" to `_control_handlers` dispatch table
+5. Removed winch-specific handling from `_process_standard_control()`
+
+**Pattern**: Follows existing `_process_valve_turn()` implementation for consistency
+
+**Result**: ✅ Commands stop after 1s in deadzone, resume immediately when joystick exits deadzone
+
+**Files**: `handlers/control_processor.py`
+
+---
+
 ### 2026-01-21 04:30 - Mode-Specific Joystick Control Memory
 
 **Goal**: Remember joystick control selections separately for each control mode (base/ef)
