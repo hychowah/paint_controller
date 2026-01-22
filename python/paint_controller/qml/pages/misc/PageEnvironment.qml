@@ -22,15 +22,15 @@ Rectangle {
         WindVisualizer {
             Layout.preferredWidth: parent.width / 4
             Layout.fillHeight: true
-            windSpeed: windMonitor.windSpeed || 0
-            windDirection: windMonitor.windDirection || 0
+            windSpeed: windMonitor ? windMonitor.windSpeed || 0 : 0
+            windDirection: windMonitor ? windMonitor.windDirection || 0 : 0
         }
 
         // Lidar visualization
         LidarVisualizer {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            points: uiData.lidar_points || []
+            points: uiData ? uiData.lidar_points || [] : []
             showGrid: true
         }
     }
