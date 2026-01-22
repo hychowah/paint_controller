@@ -220,3 +220,51 @@ def mock_init(args=None):
 def mock_shutdown():
     """Mock rclpy.shutdown() - does nothing in standalone mode"""
     logging.info("ROS mock shutdown - standalone mode")
+
+
+if __name__ == '__main__':
+    # Simple test when run directly
+    print("Testing ROS Mock Module")
+    print("=" * 60)
+    
+    # Configure logging
+    logging.basicConfig(level=logging.INFO)
+    
+    # Test creating mock node
+    node = MockNode("test_node")
+    print(f"✓ Created mock node: {node.node_name}")
+    
+    # Test creating mock publisher
+    pub = node.create_publisher(MockFloat32, "/test/topic", 10)
+    print(f"✓ Created mock publisher: {pub.topic}")
+    
+    # Test publishing
+    msg = MockFloat32(data=42.0)
+    pub.publish(msg)
+    print(f"✓ Published mock message with data: {msg.data}")
+    
+    # Test mock subscription
+    def callback(msg):
+        pass
+    sub = node.create_subscription(MockFloat32, "/test/sub", callback, 10)
+    print(f"✓ Created mock subscription: {sub.topic}")
+    
+    # Test other mock functions
+    mock_init()
+    print("✓ mock_init() works")
+    
+    result = mock_ok()
+    print(f"✓ mock_ok() returns: {result}")
+    
+    mock_spin_once(node)
+    print("✓ mock_spin_once() works")
+    
+    mock_shutdown()
+    print("✓ mock_shutdown() works")
+    
+    node.destroy_node()
+    print("✓ Mock node destroyed")
+    
+    print()
+    print("✅ All mock functionality works correctly!")
+

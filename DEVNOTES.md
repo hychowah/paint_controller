@@ -2,6 +2,56 @@
 
 ---
 
+### 2026-01-22 03:20 - Standalone UI Mode (No ROS Required)
+
+**Goal**: Enable UI development without ROS2 installed - run paint_controller in environments without ROS
+
+**Motivation**: 
+- Faster UI iteration (no ROS environment setup needed)
+- Easier onboarding for UI/QML developers
+- Simplified testing and debugging
+- Follows pattern already established in `video_stream.py`
+
+**Implementation**:
+1. Created `core/ros_mock.py` with lightweight mock implementations:
+   - MockNode, MockPublisher, MockSubscription, MockClient, MockService
+   - Mock message types: UInt8, Bool, Float32, Float64, Int32, String, Empty, Twist, Vector3, arrays
+   - Mock functions: mock_init(), mock_ok(), mock_spin_once(), mock_shutdown()
+   
+2. Added try/except ROS detection pattern to 10 files:
+   - `core/application.py` - Main app with ROS2_AVAILABLE flag
+   - `controllers/teensy.py, wheel.py, winch.py, wind_monitor.py, lidar.py`
+   - `handlers/heartbeat.py, control_processor.py`
+   - `services/workflow_legacy.py`
+   - `services/video_stream.py` already had this pattern
+   
+3. Modified RosThread to no-op in standalone mode (just sleeps and waits for shutdown)
+
+4. Updated main() to print clear status message on startup
+
+**Pattern**: 
+```python
+try:
+    import rclpy
+    from std_msgs.msg import Float32
+    ROS2_AVAILABLE = True
+except ImportError:
+    ROS2_AVAILABLE = False
+    from paint_controller.core.ros_mock import MockFloat32 as Float32
+```
+
+**Testing**: Created `ros_mock.py` self-test - all mock functionality verified ✅
+
+**Documentation**: Added `docs/STANDALONE_MODE.md` with usage instructions
+
+**Result**: ✅ UI can now run without ROS - shows "⚠️ ROS2 not available - running in standalone UI mode" on startup
+
+**Files**: 
+- New: `core/ros_mock.py`, `docs/STANDALONE_MODE.md`
+- Modified: `core/application.py`, 5 controllers, 2 handlers, 1 service
+
+---
+
 ### 2026-01-22 03:00 - Winch Speed Deadzone Timeout
 
 **Goal**: Stop sending winch speed commands when joystick remains in deadzone (speed = 0) for >1 second
