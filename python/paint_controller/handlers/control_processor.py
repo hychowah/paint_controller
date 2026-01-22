@@ -44,6 +44,11 @@ class ControlProcessor(QObject):
         self.arm_rail_speed_deadzone_start_time = 0
         self.arm_rail_speed_should_send = True
         
+        # Winch speed deadzone tracking
+        self.winch_speed_in_deadzone = False
+        self.winch_speed_deadzone_start_time = 0
+        self.winch_speed_should_send = True
+        
         # ===== CONFIGURATION CONSTANTS =====
         
         # Display and messaging
@@ -103,6 +108,8 @@ class ControlProcessor(QObject):
         self.ARM_RAIL_SPEED_SCALE = 50.0 / self.JOYSTICK_MAX_VALUE  # Maps 0-32768 to 0-50.0
         self.ARM_RAIL_SPEED_DEADZONE = 0.05  # 5% deadzone threshold
         self.ARM_RAIL_SPEED_DEADZONE_TIMEOUT = 2.0  # seconds
+        self.WINCH_SPEED_DEADZONE = 0.05  # 5% deadzone threshold
+        self.WINCH_SPEED_DEADZONE_TIMEOUT = 1.0  # 1 second timeout
         
         # Control offsets and limits
         self.EF_TRIGGER_OFFSET = 1000
@@ -195,6 +202,7 @@ class ControlProcessor(QObject):
             "EF prop joint": self._process_joint_control,
             "EF Yaw Angle": self._process_yaw_control,
             "EF Force": self._process_ef_force_control,
+            "Winch Speed": self._process_winch_speed,
         }
 
     def _update_display(self):
@@ -519,6 +527,69 @@ class ControlProcessor(QObject):
             except Exception as e:
                 print(f"Error commanding arm rail speed: {str(e)}")
 
+    def _process_winch_speed(self, input_state: Dict, mode: str, stick: str):
+        """Handle winch speed control using joystick Y-axis
+        
+        Maps the joystick Y-axis to winch speed range (min_value to max_value)
+        Stops sending commands after 1 second in deadzone until joystick moves beyond deadzone
+        """
+        config = self.controls[mode]
+        
+        # Get joystick Y-axis input and calculate winch speed value
+        value = input_state[f'{stick}_stick']['y'] * config.scale + config.offset
+        
+        # Clamp value to configured min/max
+        value = max(config.min_value, min(config.max_value, value))
+        
+        # Update current values for display
+        if stick == 'left':
+            self.current_values['left_mode'] = mode
+            self.current_values['left_value'] = value
+        else:
+            self.current_values['right_mode'] = mode
+            self.current_values['right_value'] = value
+        
+        # Normalize to 0-1 range for deadzone check (handling bidirectional range)
+        normalized_value = abs(value) / config.max_value if config.max_value > 0 else 0
+        
+        current_time = time.monotonic()
+        
+        # Check if we're in deadzone
+        if normalized_value <= self.WINCH_SPEED_DEADZONE:
+            if not self.winch_speed_in_deadzone:
+                # Just entered deadzone
+                self.winch_speed_in_deadzone = True
+                self.winch_speed_deadzone_start_time = current_time
+                self.winch_speed_should_send = True
+            else:
+                # Already in deadzone - check if timeout has elapsed
+                if current_time - self.winch_speed_deadzone_start_time >= self.WINCH_SPEED_DEADZONE_TIMEOUT:
+                    self.winch_speed_should_send = False
+        else:
+            # Outside deadzone - reset and allow sending
+            self.winch_speed_in_deadzone = False
+            self.winch_speed_should_send = True
+        
+        # Only send command if we should send and conditions are met
+        if self.winch_speed_should_send:
+            try:
+                if not self.robot.winch_controller.get_available():
+                    print("Winch not available")
+                    return
+                
+                if self.robot.winch_controller.get_motor_brake():
+                    print("Winch motor brake is on")
+                    return
+                
+                if self._is_winch_control_locked():
+                    print("Winch control locked: Base or EF is in ONTASK state")
+                    return
+                
+                self.robot.winch_controller.command_speed_mmps(value)
+                # print(f"Commanding winch speed: {value} mm/s")
+            except Exception as e:
+                print(f"Error commanding winch speed: {str(e)}")
+
     def _process_standard_control(self, input_state: Dict, mode: str, stick: str):
         """Handle standard control modes"""
         config = self.controls[mode]
@@ -539,31 +610,6 @@ class ControlProcessor(QObject):
         else:
             self.current_values['right_mode'] = mode
             self.current_values['right_value'] = value
-
-        # Special handling for Winch Speed
-        if mode == "Winch Speed":
-            try:
-                if not self.robot.winch_controller.get_available():
-                    print("Winch not available")
-                    return
-                
-                if self.robot.winch_controller.get_motor_brake():
-                    print("Winch motor brake is on")
-                    return
-                
-                if self._is_winch_control_locked():
-                    print("Winch control locked: Base or EF is in ONTASK state")
-                    return
-                
-                # Clamp value using config min/max values
-                # clamped_value = max(config.min_value, min(config.max_value, value))
-                # print(f"Commanding winch speed: {clamped_value} mm/s")
-                self.robot.winch_controller.command_speed_mmps(value)
-
-            except Exception as e:
-                print(f"Error commanding winch speed: {str(e)}")
-            return
-        
 
         if value >= config.min_value:
             # Map modes to their publishers
