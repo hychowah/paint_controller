@@ -2,11 +2,22 @@
 
 A ROS 2 node with PySide6 UI for controlling the robot.
 
+**💡 New: Standalone UI Mode** - You can now run the UI without ROS for development! See [Standalone Mode Guide](docs/STANDALONE_MODE.md) or [Quick Start](docs/QUICKSTART_STANDALONE.md).
+
 ## Prerequisites
+
+### For Full Functionality (with ROS)
 
 - Ubuntu 22.04/24.04
 - ROS 2 (Humble or Jazzy)
 - Python 3.10+
+
+### For UI Development Only (no ROS)
+
+- Python 3.10+
+- PySide6 and dependencies
+
+See [Standalone Mode Guide](docs/STANDALONE_MODE.md) for UI-only setup.
 
 ### System Dependencies
 
