@@ -1,0 +1,4 @@
+module overlays.lidar
+Lidar2DView 1.0 Lidar2DView.qml
+Lidar3DView 1.0 Lidar3DView.qml
+LidarOverlay 1.0 LidarOverlay.qml

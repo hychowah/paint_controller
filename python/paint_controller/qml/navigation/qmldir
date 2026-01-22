@@ -1,0 +1,3 @@
+module navigation
+TopBar 1.0 TopBar.qml
+SelectBar 1.0 SelectBar.qml

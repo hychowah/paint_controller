@@ -1,0 +1,5 @@
+module components.inputs
+KeyboardPopup 1.0 KeyboardPopup.qml
+Numpad 1.0 Numpad.qml
+NumpadNew 1.0 NumpadNew.qml
+TrajNumpad 1.0 TrajNumpad.qml

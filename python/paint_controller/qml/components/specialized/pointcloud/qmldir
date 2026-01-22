@@ -1,0 +1,3 @@
+module components.specialized.pointcloud
+PointCloudEffect 1.0 PointCloudEffect.qml
+PointCloudGeometry 1.0 PointCloudGeometry.qml

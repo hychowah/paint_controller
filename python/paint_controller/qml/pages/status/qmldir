@@ -1,0 +1,7 @@
+module pages.status
+PageMonitor 1.0 PageMonitor.qml
+PageStatus 1.0 PageStatus.qml
+ExecutorPageStatus 1.0 ExecutorPageStatus.qml
+PlannerPageStatus 1.0 PlannerPageStatus.qml
+TeensyStatus 1.0 TeensyStatus.qml
+WheelStatus 1.0 WheelStatus.qml

@@ -1,0 +1,4 @@
+module components.panels
+ConnectionStatusPanel 1.0 ConnectionStatusPanel.qml
+ControlPanel 1.0 ControlPanel.qml
+SettingsSection 1.0 SettingsSection.qml
