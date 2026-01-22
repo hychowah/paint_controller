@@ -1,9 +1,27 @@
 #!/usr/bin/env python3
 import time
 from typing import Dict
-from rclpy.node import Node
-from std_msgs.msg import Bool
-from paint_interfaces.msg import MoveVehicleSpd, MoveVehiclePos, VehicleStatus
+
+# ROS2 imports (optional - gracefully handle if not available)
+try:
+    from rclpy.node import Node
+    from std_msgs.msg import Bool
+    from paint_interfaces.msg import MoveVehicleSpd, MoveVehiclePos, VehicleStatus
+    ROS2_AVAILABLE = True
+except ImportError:
+    ROS2_AVAILABLE = False
+    from paint_controller.core.ros_mock import MockNode as Node, MockBool as Bool
+    # Mock paint_interfaces messages
+    class MoveVehicleSpd:
+        def __init__(self):
+            pass
+    class MoveVehiclePos:
+        def __init__(self):
+            pass
+    class VehicleStatus:
+        def __init__(self):
+            pass
+
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 
 class WheelController(QObject):

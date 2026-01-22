@@ -13,9 +13,23 @@ import yaml
 if 'QT_QPA_PLATFORM' not in os.environ:
     os.environ['QT_QPA_PLATFORM'] = 'xcb'
 
-import rclpy
-from rclpy.node import Node
-from std_msgs.msg import UInt8
+# ROS2 imports (optional - gracefully handle if not available)
+try:
+    import rclpy
+    from rclpy.node import Node
+    from std_msgs.msg import UInt8
+    ROS2_AVAILABLE = True
+except ImportError:
+    ROS2_AVAILABLE = False
+    print("⚠️  ROS2 not available - running in standalone UI mode")
+    from paint_controller.core.ros_mock import (
+        MockNode as Node,
+        MockUInt8 as UInt8,
+        mock_init as rclpy_init,
+        mock_shutdown as rclpy_shutdown,
+        mock_ok as rclpy_ok,
+        mock_spin_once as rclpy_spin_once
+    )
 
 from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Property, Signal, QThread, QMetaObject, Q_ARG
 from PySide6.QtQml import QQmlApplicationEngine, QQmlProperty
@@ -125,6 +139,7 @@ class RosThread(QThread):
         """
         Run the ROS event loop in a separate thread.
         
+        In standalone mode (no ROS), this thread does nothing and exits immediately.
         Continuously spins the node until shutdown is requested.
         Handles exceptions and ensures proper cleanup.
         Recovers from network disconnections by destroying and recreating subscriptions.
@@ -133,13 +148,24 @@ class RosThread(QThread):
             self._running = True
             self.node_started.emit()
             
+            # In standalone mode, don't spin - just wait for shutdown
+            if not ROS2_AVAILABLE:
+                import time
+                while True:
+                    with self._lock:
+                        if self._shutdown_requested:
+                            break
+                    time.sleep(0.1)
+                self._cleanup()
+                return
+            
             while True:
                 # Thread-safe check of shutdown flag
                 with self._lock:
                     if self._shutdown_requested:
                         break
                 
-                if not rclpy.ok():
+                if not rclpy_ok():
                     error_msg = "ROS context is not valid - network may be disconnected"
                     self.error_occurred.emit(error_msg)
                     # Don't break - try to recover by waiting a bit
@@ -151,7 +177,7 @@ class RosThread(QThread):
                     import time
                     self._last_spin_time = time.time()
                     # Use smaller timeout to prevent long hangs on bad network
-                    rclpy.spin_once(self.node, timeout_sec=0.05)
+                    rclpy_spin_once(self.node, timeout_sec=0.05)
                     
                 except Exception as spin_error:
                     # Network error during spin - emit but continue trying
@@ -743,8 +769,13 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     
-    # Initialize ROS
-    rclpy.init()
+    # Initialize ROS (or mock in standalone mode)
+    if ROS2_AVAILABLE:
+        rclpy.init()
+        print("✓ ROS2 initialized successfully")
+    else:
+        rclpy_init()
+        print("✓ Running in standalone UI mode (no ROS)")
     
     # Load configuration
     config = ConfigLoader.load_config('robot_config.yaml')
@@ -877,7 +908,10 @@ def main():
         
         # Step 5: Shutdown ROS context
         try:
-            rclpy.shutdown()
+            if ROS2_AVAILABLE:
+                rclpy.shutdown()
+            else:
+                rclpy_shutdown()
         except Exception as e:
             print(f"Error during ROS shutdown: {e}")
         

@@ -3,8 +3,16 @@
 import time
 from enum import Enum
 from typing import Dict, Optional
-from rclpy.node import Node
-from std_msgs.msg import UInt8, Empty
+
+# ROS2 imports (optional - gracefully handle if not available)
+try:
+    from rclpy.node import Node
+    from std_msgs.msg import UInt8, Empty
+    ROS2_AVAILABLE = True
+except ImportError:
+    ROS2_AVAILABLE = False
+    from paint_controller.core.ros_mock import MockNode as Node, MockUInt8 as UInt8, MockEmpty as Empty
+
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 
 

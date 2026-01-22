@@ -1,23 +1,28 @@
 import os.path
 import json
-
-from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer, QThread
-import time
-from rclpy.node import Node
-from rclpy.clock import Clock
-from paint_interfaces.srv import PaintAction
-from paint_controller.models.action_config import ActionConfigPython
-
-import os.path
-import json
 import time
 
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer, QThread
-from rclpy.node import Node
-from rclpy.clock import Clock
-from paint_interfaces.srv import PaintAction
 from paint_controller.models.action_config import ActionConfigPython
 from paint_controller.handlers.heartbeat import HeartbeatStatus
+
+# ROS2 imports (optional - gracefully handle if not available)
+try:
+    from rclpy.node import Node
+    from rclpy.clock import Clock
+    from paint_interfaces.srv import PaintAction
+    ROS2_AVAILABLE = True
+except ImportError:
+    ROS2_AVAILABLE = False
+    from paint_controller.core.ros_mock import MockNode as Node, MockClock as Clock
+    # Mock paint_interfaces service
+    class PaintAction:
+        class Request:
+            def __init__(self):
+                pass
+        class Response:
+            def __init__(self):
+                pass
 
 
 class ActionWorker(QObject):

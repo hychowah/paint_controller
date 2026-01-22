@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 
-from std_msgs.msg import Float32
+# ROS2 imports (optional - gracefully handle if not available)
+try:
+    from std_msgs.msg import Float32
+    ROS2_AVAILABLE = True
+except ImportError:
+    ROS2_AVAILABLE = False
+    from paint_controller.core.ros_mock import MockFloat32 as Float32
+
 from PySide6.QtCore import QObject, Signal, Property, Slot
 
 

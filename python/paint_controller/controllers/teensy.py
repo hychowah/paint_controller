@@ -4,10 +4,35 @@ from dataclasses import dataclass
 from typing import Dict, Optional, Any, Union
 import time
 
-from rclpy.node import Node
-from std_msgs.msg import Bool, Float32, Float32MultiArray, Int32, Int32MultiArray
-from geometry_msgs.msg import Twist, Vector3
-from paint_interfaces.msg import TeensyStatus, TeensyYaw, MoveWinchLength
+# ROS2 imports (optional - gracefully handle if not available)
+try:
+    from rclpy.node import Node
+    from std_msgs.msg import Bool, Float32, Float32MultiArray, Int32, Int32MultiArray
+    from geometry_msgs.msg import Twist, Vector3
+    from paint_interfaces.msg import TeensyStatus, TeensyYaw, MoveWinchLength
+    ROS2_AVAILABLE = True
+except ImportError:
+    ROS2_AVAILABLE = False
+    from paint_controller.core.ros_mock import (
+        MockNode as Node,
+        MockBool as Bool,
+        MockFloat32 as Float32,
+        MockFloat32MultiArray as Float32MultiArray,
+        MockInt32 as Int32,
+        MockInt32MultiArray as Int32MultiArray,
+        MockTwist as Twist,
+        MockVector3 as Vector3
+    )
+    # Mock paint_interfaces messages
+    class TeensyStatus:
+        def __init__(self):
+            pass
+    class TeensyYaw:
+        def __init__(self):
+            pass
+    class MoveWinchLength:
+        def __init__(self):
+            pass
 
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 

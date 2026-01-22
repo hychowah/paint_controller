@@ -1,9 +1,24 @@
 #!/usr/bin/env python3
 import time
 from typing import Dict
-from rclpy.node import Node
-from std_msgs.msg import Float64, Bool
-from paint_interfaces.msg import WinchStatus, MoveWinchLength
+
+# ROS2 imports (optional - gracefully handle if not available)
+try:
+    from rclpy.node import Node
+    from std_msgs.msg import Float64, Bool
+    from paint_interfaces.msg import WinchStatus, MoveWinchLength
+    ROS2_AVAILABLE = True
+except ImportError:
+    ROS2_AVAILABLE = False
+    from paint_controller.core.ros_mock import MockNode as Node, MockBool as Bool, MockFloat64 as Float64
+    # Mock paint_interfaces messages
+    class WinchStatus:
+        def __init__(self):
+            pass
+    class MoveWinchLength:
+        def __init__(self):
+            pass
+
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 
 class WinchController(QObject):

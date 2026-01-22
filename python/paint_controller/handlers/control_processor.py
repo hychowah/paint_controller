@@ -1,10 +1,22 @@
 from dataclasses import dataclass
 from typing import Dict, Optional
-from std_msgs.msg import Float32, Int32
-from geometry_msgs.msg import Twist, Vector3
 import time
 from paint_controller.handlers.heartbeat import HeartbeatStatus
 from PySide6.QtCore import QObject, Signal, Property
+
+# ROS2 imports (optional - gracefully handle if not available)
+try:
+    from std_msgs.msg import Float32, Int32
+    from geometry_msgs.msg import Twist, Vector3
+    ROS2_AVAILABLE = True
+except ImportError:
+    ROS2_AVAILABLE = False
+    from paint_controller.core.ros_mock import (
+        MockFloat32 as Float32,
+        MockInt32 as Int32,
+        MockTwist as Twist,
+        MockVector3 as Vector3
+    )
 
 @dataclass
 class ControlConfig:
