@@ -28,7 +28,7 @@ class OverlayController(QObject):
             "EF prop pwm",
             "EF prop joint",
             "EF spray trigger",
-            "EF spray gimbal",
+            "EF spray pitch",
             "EF Yaw Angle",
             "EF Force"
         ]

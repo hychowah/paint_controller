@@ -53,7 +53,7 @@ IndustrialCard {
             // Total Volume
             MetricValue {
                 label: "Total Volume"
-                value: (teensyController.all_status.total_volumne || 0).toFixed(1)
+                value: (teensyController.all_status.total_volume || 0).toFixed(1)
                 unit: "L"
                 valueColor: "#3498db"
                 valueFontSize: valvesCard.metricValueSize

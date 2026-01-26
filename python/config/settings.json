@@ -4,7 +4,7 @@
   "track_min_speed": 50.0,
   "thrust_force": -1.0,
   "thrust_ramp_rate": 1.0,
-  "valve_turn_max": 4.0,
+  "valve_turn_max": 3.2,
   "arm_retract_length": 650,
   "arm_extend_length": 800
 }
