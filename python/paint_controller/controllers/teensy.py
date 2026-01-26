@@ -62,10 +62,13 @@ class TeensyController(QObject):
             'imu_roll': 0.0,
             'imu_yaw': 0.0,
             'spray_gun_pitch': 0.0,
-            'spray_gun_motor_angle': 0.0,
-            'spray_gun_motor_current': 0.0,
-            'spray_gun_motor_temp': 0.0,
-            'spray_gun_trigger': 0,
+            'gimbal_pitch_motor_angle': 0.0,
+            'gimbal_pitch_motor_current': 0.0,
+            'gimbal_pitch_motor_temp': 0.0,
+            'gimbal_roll_motor_angle': 0.0,
+            'gimbal_roll_motor_current': 0.0,
+            'gimbal_roll_motor_temp': 0.0,
+            'spray_gun_trigger': False,
             'spray_gun_leveling_enabled': False,
             'auto_correction_enabled': False,
             'yaw_enabled': False,
@@ -79,7 +82,7 @@ class TeensyController(QObject):
             'valve_motor_current': 0,
             'valve_position': 0.0,
             'valve_rate': 0.0,
-            'total_volumne': 0.0,
+            'total_volume': 0.0,
             'valve_motor_connected': False,
             'flow_meter_connected': False
         }
@@ -146,8 +149,8 @@ class TeensyController(QObject):
         self.prop_left_joint_pub = self._robot_controller.create_publisher(Float32, 'teensy/prop/left/joint/cmd', 1)
         self.prop_right_joint_pub = self._robot_controller.create_publisher(Float32, 'teensy/prop/right/joint/cmd', 1)
         self.ef_spray_trigger_pub = self._robot_controller.create_publisher(Int32, 'teensy/spray_gun/trigger/cmd', 1)
-        self.ef_spray_gimbal_speed_pub = self._robot_controller.create_publisher(Int32, 'teensy/spray_gun/gimbal/speed/cmd', 1)
-        self.ef_spray_gimbal_pub = self._robot_controller.create_publisher(Float32MultiArray, 'teensy/spray_gun/gimbal/angle/cmd', 1)
+        self.ef_spray_pitch_speed_pub = self._robot_controller.create_publisher(Int32, 'teensy/spray_gun/pitch/speed/cmd', 1)
+        self.ef_spray_pitch_pub = self._robot_controller.create_publisher(Float32MultiArray, 'teensy/spray_gun/pitch/angle/cmd', 1)
         self.ef_spray_led_pub = self._robot_controller.create_publisher(Bool, 'teensy/spray_gun/led/cmd', 1)
         # Stability controller publishers (decoupled force and yaw control)
         self.stability_enable_pub = self._robot_controller.create_publisher(Bool, 'stability_controller/enable/cmd', 1)
@@ -251,9 +254,12 @@ class TeensyController(QObject):
                 'imu_roll': msg.orientation.y,
                 'imu_yaw': msg.orientation.z,
                 'spray_gun_pitch': msg.spray_gun_pitch,
-                'spray_gun_motor_angle': msg.spray_gun_motor_angle,
-                'spray_gun_motor_current': msg.spray_gun_motor_current,
-                'spray_gun_motor_temp': msg.spray_gun_motor_temp,
+                'gimbal_pitch_motor_angle': msg.gimbal_pitch_motor_angle,
+                'gimbal_pitch_motor_current': msg.gimbal_pitch_motor_current,
+                'gimbal_pitch_motor_temp': msg.gimbal_pitch_motor_temp,
+                'gimbal_roll_motor_angle': msg.gimbal_roll_motor_angle,
+                'gimbal_roll_motor_current': msg.gimbal_roll_motor_current,
+                'gimbal_roll_motor_temp': msg.gimbal_roll_motor_temp,
                 'spray_gun_trigger': msg.spray_gun_trigger,
                 'yaw_enabled': msg.yaw_enabled,
                 'yaw_command': msg.yaw_command,
@@ -266,7 +272,7 @@ class TeensyController(QObject):
                 'valve_motor_current': msg.valve_motor_current,
                 'valve_position': msg.valve_position,
                 'valve_rate': msg.valve_rate,
-                'total_volumne': msg.total_volumne,
+                'total_volume': msg.total_volumne,
                 'valve_motor_connected': msg.valve_motor_connected,
                 'flow_meter_connected': msg.flow_meter_connected
             }
@@ -410,11 +416,11 @@ class TeensyController(QObject):
         self.ef_spray_trigger_pub.publish(msg)
     
     @Slot(int)
-    def setSprayGimbalSpeed(self, speed: int):
-        """Set the spray gun gimbal speed"""
+    def setSprayPitchSpeed(self, speed: int):
+        """Set the spray gun pitch speed"""
         msg = Int32()
         msg.data = int(speed)
-        self.ef_spray_gimbal_speed_pub.publish(msg)
+        self.ef_spray_pitch_speed_pub.publish(msg)
 
     @Slot(bool)
     def setSprayGunLevelingEnabled(self, enabled: bool):
@@ -427,17 +433,17 @@ class TeensyController(QObject):
         self.spray_gun_leveling_changed.emit(enabled)
 
     @Slot(float, float)
-    def setSprayGunGimbalAngle(self, angle: float, speed: float):
-        """Set the spray gun gimbal angle and speed"""
-        self._robot_controller.get_logger().info(f'Setting spray gun gimbal angle to {angle} with speed {speed}')
+    def setSprayGunPitchAngle(self, angle: float, speed: float):
+        """Set the spray gun pitch angle and speed"""
+        self._robot_controller.get_logger().info(f'Setting spray gun pitch angle to {angle} with speed {speed}')
         msg = Float32MultiArray()
         msg.data = [float(angle), float(speed)]
-        self.ef_spray_gimbal_pub.publish(msg)
+        self.ef_spray_pitch_pub.publish(msg)
 
     @Slot(float, float, float, float, float)
-    def demoAction(self, gimbal_angle: float, gimbal_speed: float, cable_length: float, cable_speed: float, force_y: float):
+    def demoAction(self, pitch_angle: float, pitch_speed: float, cable_length: float, cable_speed: float, force_y: float):
         """Perform a demo action with the spray gun"""
-        self.setSprayGunGimbalAngle(gimbal_angle, gimbal_speed)
+        self.setSprayGunPitchAngle(pitch_angle, pitch_speed)
         self._robot_controller.winch_controller.move_absolute(cable_length, cable_speed)
         self.set_ef_force(0.0, force_y)
 

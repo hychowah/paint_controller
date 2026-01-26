@@ -107,7 +107,7 @@ Rectangle {
                 }
                 
                 Text {
-                    text: teensyController.all_status.spray_gun_motor_angle.toFixed(1) + "°"
+                    text: teensyController.all_status.gimbal_pitch_motor_angle.toFixed(1) + "°"
                     color: style.valueColor
                     font.pixelSize: style.valueFontSize
                     font.bold: true // Strong emphasis
@@ -340,7 +340,7 @@ Rectangle {
                 }
                 
                 Text {
-                    text: teensyController.all_status.total_volumne.toFixed(2)
+                    text: teensyController.all_status.total_volume.toFixed(2)
                     color: style.valueColor
                     font.pixelSize: style.valueFontSize
                     font.bold: true

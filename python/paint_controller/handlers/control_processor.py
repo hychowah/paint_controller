@@ -86,7 +86,7 @@ class ControlProcessor(QObject):
         self.EF_TRIGGER_UPDATE_INTERVAL = 0.2  # 5Hz
         self.EF_RAIL_UPDATE_INTERVAL = 0.1  # 10Hz
         self.EF_PWM_UPDATE_INTERVAL = 0.1   # 10Hz
-        self.EF_GIMBAL_UPDATE_INTERVAL = 0.2  # 5Hz
+        self.EF_PITCH_UPDATE_INTERVAL = 0.2  # 5Hz
         self.EF_YAW_UPDATE_INTERVAL = 0.1   # 10Hz
         self.EF_FORCE_UPDATE_INTERVAL = 0.1 # 10Hz
         self.VALVE_TURN_UPDATE_INTERVAL = 0.3  # 10Hz
@@ -99,7 +99,7 @@ class ControlProcessor(QObject):
         self.EF_TRIGGER_SCALE = 400 / self.JOYSTICK_MAX_VALUE
         self.EF_RAIL_SCALE = 1000 / self.JOYSTICK_MAX_VALUE
         self.EF_PWM_SCALE = 600 / self.JOYSTICK_MAX_VALUE
-        self.EF_GIMBAL_SCALE = 30 / self.JOYSTICK_MAX_VALUE
+        self.EF_PITCH_SCALE = 30 / self.JOYSTICK_MAX_VALUE
         self.EF_YAW_SCALE = 2 / self.JOYSTICK_MAX_VALUE
         self.EF_FORCE_SCALE = 1.6 / self.JOYSTICK_MAX_VALUE
         self.VALVE_TURN_SCALE = self._valve_turn_max / self.JOYSTICK_MAX_VALUE  # Maps 0-32768 to 0-valve_turn_max
@@ -170,9 +170,9 @@ class ControlProcessor(QObject):
                 min_value=self.EF_PWM_MIN_VALUE,
                 msg_type=Int32
             ),
-            "EF spray gimbal": ControlConfig(
-                scale=self.EF_GIMBAL_SCALE,
-                min_interval=self.EF_GIMBAL_UPDATE_INTERVAL,
+            "EF spray pitch": ControlConfig(
+                scale=self.EF_PITCH_SCALE,
+                min_interval=self.EF_PITCH_UPDATE_INTERVAL,
                 msg_type=Int32
             ),
             "EF Yaw Angle": ControlConfig(
@@ -618,7 +618,7 @@ class ControlProcessor(QObject):
                 "EF spray trigger": self.robot.teensy_controller.ef_spray_trigger_pub,
                 "EF top rail": self.robot.teensy_controller.ef_move_top_rail_speed_pub,
                 "EF prop pwm": [self.robot.teensy_controller.prop_left_pwm_pub, self.robot.teensy_controller.prop_right_pwm_pub],
-                "EF spray gimbal": self.robot.teensy_controller.ef_spray_gimbal_speed_pub,
+                "EF spray pitch": self.robot.teensy_controller.ef_spray_pitch_speed_pub,
             }
             
             if publisher := publishers.get(mode):

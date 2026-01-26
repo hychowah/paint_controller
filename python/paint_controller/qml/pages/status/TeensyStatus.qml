@@ -766,25 +766,40 @@ Rectangle {
                                 text: teensyController.all_status.spray_gun_pitch.toFixed(1) + "°"
                             }
 
-                            Label { text: "Motor Angle:"; font.bold: true }
+                            Label { text: "Pitch Motor Angle:"; font.bold: true }
                             Label { 
-                                text: teensyController.all_status.spray_gun_motor_angle.toFixed(1) + "°"
+                                text: teensyController.all_status.gimbal_pitch_motor_angle.toFixed(1) + "°"
                             }
 
-                            Label { text: "Motor Current:"; font.bold: true }
+                            Label { text: "Pitch Motor Current:"; font.bold: true }
                             Label { 
-                                text: teensyController.all_status.spray_gun_motor_current.toFixed(1) + "°"
+                                text: teensyController.all_status.gimbal_pitch_motor_current.toFixed(1) + " A"
                             }
 
-                            Label { text: "Motor Temperature:"; font.bold: true }
+                            Label { text: "Pitch Motor Temp:"; font.bold: true }
                             Label { 
-                                text: teensyController.all_status.spray_gun_motor_temp.toFixed(1) + "°"
+                                text: teensyController.all_status.gimbal_pitch_motor_temp.toFixed(1) + " °C"
+                            }
+
+                            Label { text: "Roll Motor Angle:"; font.bold: true }
+                            Label { 
+                                text: teensyController.all_status.gimbal_roll_motor_angle.toFixed(1) + "°"
+                            }
+
+                            Label { text: "Roll Motor Current:"; font.bold: true }
+                            Label { 
+                                text: teensyController.all_status.gimbal_roll_motor_current.toFixed(1) + " A"
+                            }
+
+                            Label { text: "Roll Motor Temp:"; font.bold: true }
+                            Label { 
+                                text: teensyController.all_status.gimbal_roll_motor_temp.toFixed(1) + " °C"
                             }
 
                             Label { text: "Trigger:"; font.bold: true }
                             Label { 
-                                text: teensyController.all_status.spray_gun_spray_gun_trigger? "Pressed" : "Released"
-                                color: teensyController.all_status.spray_gun_spray_gun_trigger ? "green" : "gray"
+                                text: teensyController.all_status.spray_gun_trigger ? "Pressed" : "Released"
+                                color: teensyController.all_status.spray_gun_trigger ? "green" : "gray"
                             }
                         }
                     }

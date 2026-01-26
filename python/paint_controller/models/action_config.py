@@ -49,8 +49,8 @@ class ActionConfigPython(QObject):
             },
             "4": {
                 "id": "4",
-                "title": "Gimbal Spray",
-                "prefix": "gimbalSpray",
+                "title": "Pitch Spray",
+                "prefix": "pitchSpray",
                 "fields": [
                     {"label": "Start Angle", "key": "input1"},
                     {"label": "End Angle", "key": "input2"},
@@ -155,7 +155,7 @@ class ActionConfigPython(QObject):
             item["input4"] = "-1"
             item["input5"] = "-1"
             item["input6"] = "-1"
-        elif action_id == "4":  # Gimbal Spray
+        elif action_id == "4":  # Pitch Spray
             item["input1"] = "55"
             item["input2"] = "55"
             item["input3"] = "10"

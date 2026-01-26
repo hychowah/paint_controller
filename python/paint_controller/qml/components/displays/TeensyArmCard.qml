@@ -113,7 +113,7 @@ IndustrialCard {
                     Layout.preferredHeight: 80
                     Layout.alignment: Qt.AlignHCenter
                     
-                    property real heightRatio: maxArmCurrent > 0 ? Math.abs(teensyController.all_status.spray_gun_motor_current || 0) / maxArmCurrent : 0
+                    property real heightRatio: maxArmCurrent > 0 ? Math.abs(teensyController.all_status.gimbal_pitch_motor_current || 0) / maxArmCurrent : 0
                     
                     Rectangle {
                         anchors.bottom: parent.bottom
@@ -129,7 +129,7 @@ IndustrialCard {
                 }
                 
                 Text {
-                    text: (Math.abs(teensyController.all_status.spray_gun_motor_current || 0) / 10).toFixed(0) + " A"
+                    text: (Math.abs(teensyController.all_status.gimbal_pitch_motor_current || 0) / 10).toFixed(0) + " A"
                     font.pixelSize: 14
                     font.family: "Monospace"
                     color: "#3498db"

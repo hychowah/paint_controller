@@ -535,10 +535,10 @@ Item {
                 break
             case "Set Spray Gun Angle":
                 // sprayController.setParameters(parameterValues["Pressure"], parameterValues["Flow Rate"], parameterValues["Pattern Width"])
-                teensyController.setSprayGunGimbalAngle(parameterValues["Angle"], parameterValues["Speed"])
+                teensyController.setSprayGunPitchAngle(parameterValues["Angle"], parameterValues["Speed"])
                 break
             case "Demo":
-                teensyController.demoAction(parameterValues["Gimbal Angle"], parameterValues["Gimbal Speed"], parameterValues["Cable Length"], parameterValues["Cable Speed"], parameterValues["Force Y"])
+                teensyController.demoAction(parameterValues["Pitch Angle"], parameterValues["Pitch Speed"], parameterValues["Cable Length"], parameterValues["Cable Speed"], parameterValues["Force Y"])
                 break
             case "Extend Arm":
                 teensyController.extendArm(parameterValues["Length"])
