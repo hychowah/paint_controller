@@ -81,7 +81,7 @@ class HeartbeatStatus(Enum):
 class RobotConfig:
     """Robot configuration parameters"""
     video_port: int = 5000
-    update_rate: float = 30.0  # Hz
+    update_rate: float = 60.0  # Hz
     joystick_deadzone: float = 0.1
 
 class ConfigLoader:
