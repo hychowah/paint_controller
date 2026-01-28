@@ -148,7 +148,8 @@ class UIInputHandler(QObject):
         left_mode = self.controller.overlayController.get_left_selected_option()
         right_mode = self.controller.overlayController.get_right_selected_option()
         
-        if left_mode == "Wheel Travel" or right_mode == "Wheel Travel":
+        wheel_travel_modes = ["Wheel Travel Left", "Wheel Travel Right"]
+        if left_mode in wheel_travel_modes or right_mode in wheel_travel_modes:
             # Send the accumulated wheel travel command
             self.controller.controlProcessor.send_wheel_travel_command()
             self.controller.show_popup("Wheel Travel", "Position command sent", "info")

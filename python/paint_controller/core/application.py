@@ -513,13 +513,14 @@ class RobotController(Node, QObject):
         If Wheel Travel mode is active on either joystick, sends the position command.
         Otherwise, toggles the LiDAR overlay display.
         """
-        # Check if Wheel Travel mode is active
+        # Check if Wheel Travel mode is active (either Left or Right variant)
         left_mode = self.overlayController.get_left_selected_option()
         right_mode = self.overlayController.get_right_selected_option()
         
-        if left_mode == "Wheel Travel" or right_mode == "Wheel Travel":
+        wheel_travel_modes = ["Wheel Travel Left", "Wheel Travel Right"]
+        if left_mode in wheel_travel_modes or right_mode in wheel_travel_modes:
             # Wheel Travel mode is active - send position command
-            self.inputHandler.on_a_pressed()
+            self.input_handler.on_a_pressed()
             return
         
         # Wheel Travel not active - toggle LiDAR overlay as normal

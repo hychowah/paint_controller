@@ -328,6 +328,246 @@ Item {
                                     }
                                 }
                             }
+                            
+                            // Wheel Travel Max Distance
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+                                
+                                Text {
+                                    text: "Wheel Travel Max Distance (Range: 100 - 1000 mm)"
+                                    color: "#FFFFFF"
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                }
+                                
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
+                                    
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        height: 45
+                                        color: "#1A1A1A"
+                                        border.color: wheelTravelMaxInput.activeFocus ? "#3A5A8C" : "#333333"
+                                        border.width: 1
+                                        radius: 6
+                                        
+                                        TextInput {
+                                            id: wheelTravelMaxInput
+                                            anchors.fill: parent
+                                            anchors.margins: 10
+                                            text: settingsManager ? settingsManager.wheel_travel_max.toFixed(0) : "500"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 14
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            horizontalAlignment: TextInput.AlignRight
+                                            selectByMouse: true
+                                            
+                                            onActiveFocusChanged: {
+                                                if (activeFocus) {
+                                                    numberPad.targetField = wheelTravelMaxInput
+                                                    numberPad.open()
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    Rectangle {
+                                        width: 70
+                                        height: 45
+                                        radius: 6
+                                        color: wheelTravelMaxSaveArea.containsMouse ? "#4CAF50" : "#3A8F3A"
+                                        
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "Save"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 12
+                                            font.bold: true
+                                        }
+                                        
+                                        MouseArea {
+                                            id: wheelTravelMaxSaveArea
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                var num = parseFloat(wheelTravelMaxInput.text)
+                                                if (!isNaN(num) && settingsManager) {
+                                                    settingsManager.wheel_travel_max = num
+                                                    if (settingsManager.saveSetting("wheel_travel_max")) {
+                                                        confirmationPopup.messageTitle = "Saved"
+                                                        confirmationPopup.messageText = "Wheel travel max set to " + num.toFixed(0) + " mm"
+                                                        confirmationPopup.messageType = "info"
+                                                        confirmationPopup.open()
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Wheel Travel Rate
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+                                
+                                Text {
+                                    text: "Wheel Travel Rate (Range: 10 - 500 mm/sec)"
+                                    color: "#FFFFFF"
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                }
+                                
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
+                                    
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        height: 45
+                                        color: "#1A1A1A"
+                                        border.color: wheelTravelRateInput.activeFocus ? "#3A5A8C" : "#333333"
+                                        border.width: 1
+                                        radius: 6
+                                        
+                                        TextInput {
+                                            id: wheelTravelRateInput
+                                            anchors.fill: parent
+                                            anchors.margins: 10
+                                            text: settingsManager ? settingsManager.wheel_travel_rate.toFixed(0) : "100"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 14
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            horizontalAlignment: TextInput.AlignRight
+                                            selectByMouse: true
+                                            
+                                            onActiveFocusChanged: {
+                                                if (activeFocus) {
+                                                    numberPad.targetField = wheelTravelRateInput
+                                                    numberPad.open()
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    Rectangle {
+                                        width: 70
+                                        height: 45
+                                        radius: 6
+                                        color: wheelTravelRateSaveArea.containsMouse ? "#4CAF50" : "#3A8F3A"
+                                        
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "Save"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 12
+                                            font.bold: true
+                                        }
+                                        
+                                        MouseArea {
+                                            id: wheelTravelRateSaveArea
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                var num = parseFloat(wheelTravelRateInput.text)
+                                                if (!isNaN(num) && settingsManager) {
+                                                    settingsManager.wheel_travel_rate = num
+                                                    if (settingsManager.saveSetting("wheel_travel_rate")) {
+                                                        confirmationPopup.messageTitle = "Saved"
+                                                        confirmationPopup.messageText = "Wheel travel rate set to " + num.toFixed(0) + " mm/sec"
+                                                        confirmationPopup.messageType = "info"
+                                                        confirmationPopup.open()
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Wheel Travel RPM
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+                                
+                                Text {
+                                    text: "Wheel Travel Speed (Range: 50 - 600 RPM)"
+                                    color: "#FFFFFF"
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                }
+                                
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
+                                    
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        height: 45
+                                        color: "#1A1A1A"
+                                        border.color: wheelTravelRpmInput.activeFocus ? "#3A5A8C" : "#333333"
+                                        border.width: 1
+                                        radius: 6
+                                        
+                                        TextInput {
+                                            id: wheelTravelRpmInput
+                                            anchors.fill: parent
+                                            anchors.margins: 10
+                                            text: settingsManager ? settingsManager.wheel_travel_rpm.toString() : "300"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 14
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            horizontalAlignment: TextInput.AlignRight
+                                            selectByMouse: true
+                                            
+                                            onActiveFocusChanged: {
+                                                if (activeFocus) {
+                                                    numberPad.targetField = wheelTravelRpmInput
+                                                    numberPad.open()
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    Rectangle {
+                                        width: 70
+                                        height: 45
+                                        radius: 6
+                                        color: wheelTravelRpmSaveArea.containsMouse ? "#4CAF50" : "#3A8F3A"
+                                        
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "Save"
+                                            color: "#FFFFFF"
+                                            font.pixelSize: 12
+                                            font.bold: true
+                                        }
+                                        
+                                        MouseArea {
+                                            id: wheelTravelRpmSaveArea
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                var num = parseInt(wheelTravelRpmInput.text)
+                                                if (!isNaN(num) && settingsManager) {
+                                                    settingsManager.wheel_travel_rpm = num
+                                                    if (settingsManager.saveSetting("wheel_travel_rpm")) {
+                                                        confirmationPopup.messageTitle = "Saved"
+                                                        confirmationPopup.messageText = "Wheel travel speed set to " + num + " RPM"
+                                                        confirmationPopup.messageType = "info"
+                                                        confirmationPopup.open()
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
