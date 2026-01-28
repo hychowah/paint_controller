@@ -508,7 +508,21 @@ class RobotController(Node, QObject):
 
     @Slot()
     def toggle_lidar_overlay(self):
-        """Toggle the LiDAR point cloud overlay"""
+        """Toggle the LiDAR point cloud overlay or send wheel travel command
+        
+        If Wheel Travel mode is active on either joystick, sends the position command.
+        Otherwise, toggles the LiDAR overlay display.
+        """
+        # Check if Wheel Travel mode is active
+        left_mode = self.overlayController.get_left_selected_option()
+        right_mode = self.overlayController.get_right_selected_option()
+        
+        if left_mode == "Wheel Travel" or right_mode == "Wheel Travel":
+            # Wheel Travel mode is active - send position command
+            self.inputHandler.on_a_pressed()
+            return
+        
+        # Wheel Travel not active - toggle LiDAR overlay as normal
         root_objects = self.engine.rootObjects()
         if not root_objects:
             self.get_logger().error('No root QML objects found')
