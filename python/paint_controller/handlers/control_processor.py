@@ -49,6 +49,10 @@ class ControlProcessor(QObject):
         self.winch_speed_deadzone_start_time = 0
         self.winch_speed_should_send = True
         
+        # Wheel travel position tracking (accumulated values, not sent until button press)
+        self._left_wheel_travel_mm = 0.0
+        self._right_wheel_travel_mm = 0.0
+        
         # ===== CONFIGURATION CONSTANTS =====
         
         # Display and messaging
@@ -110,6 +114,12 @@ class ControlProcessor(QObject):
         self.ARM_RAIL_SPEED_DEADZONE_TIMEOUT = 2.0  # seconds
         self.WINCH_SPEED_DEADZONE = 0.05  # 5% deadzone threshold
         self.WINCH_SPEED_DEADZONE_TIMEOUT = 1.0  # 1 second timeout
+        
+        # Wheel travel control parameters
+        self.WHEEL_TRAVEL_MAX = 500.0       # Maximum travel distance ±500mm
+        self.WHEEL_TRAVEL_SCALE = self.WHEEL_TRAVEL_MAX / self.JOYSTICK_MAX_VALUE  # Maps joystick to ±500mm
+        self.WHEEL_TRAVEL_UPDATE_INTERVAL = 0.1  # 10Hz for display updates
+        self.WHEEL_TRAVEL_RPM = 300         # Fixed speed for wheel travel commands
         
         # Control offsets and limits
         self.EF_TRIGGER_OFFSET = 1000
@@ -190,6 +200,13 @@ class ControlProcessor(QObject):
             "Arm Rail Speed": ControlConfig(
                 scale=self.ARM_RAIL_SPEED_SCALE,
                 min_interval=self.EF_RAIL_UPDATE_INTERVAL
+            ),
+            "Wheel Travel": ControlConfig(
+                scale=self.WHEEL_TRAVEL_SCALE,
+                min_interval=self.WHEEL_TRAVEL_UPDATE_INTERVAL,
+                min_value=-self.WHEEL_TRAVEL_MAX,
+                max_value=self.WHEEL_TRAVEL_MAX,
+                bidirectional=True
             )
         }
         
@@ -203,6 +220,7 @@ class ControlProcessor(QObject):
             "EF Yaw Angle": self._process_yaw_control,
             "EF Force": self._process_ef_force_control,
             "Winch Speed": self._process_winch_speed,
+            "Wheel Travel": self._process_wheel_travel,
         }
 
     def _update_display(self):
@@ -222,6 +240,9 @@ class ControlProcessor(QObject):
                 elif left_mode in ["Track Control Left", "Track Control Right"]:
                     # Track Control already returns a formatted string
                     left_part = f"{left_mode} {left_value}" if left_mode else "None"
+                elif left_mode == "Wheel Travel":
+                    # Show wheel travel distance in mm
+                    left_part = f"{left_mode} {left_value:.0f}mm"
                 elif left_mode == "EF Force":
                     # left_value contains a tuple (Fx, Fy) for EF Force
                     if isinstance(left_value, tuple):
@@ -245,6 +266,9 @@ class ControlProcessor(QObject):
                 elif right_mode in ["Track Control Left", "Track Control Right"]:
                     # Track Control already returns a formatted string
                     right_part = f"{right_mode} {right_value}" if right_mode else "None"
+                elif right_mode == "Wheel Travel":
+                    # Show wheel travel distance in mm
+                    right_part = f"{right_mode} {right_value:.0f}mm"
                 elif right_mode == "EF Force":
                     # right_value contains a tuple (Fx, Fy) for EF Force
                     if isinstance(right_value, tuple):
@@ -590,6 +614,34 @@ class ControlProcessor(QObject):
             except Exception as e:
                 print(f"Error commanding winch speed: {str(e)}")
 
+    def _process_wheel_travel(self, input_state: Dict, mode: str, stick: str):
+        """Handle wheel travel position control using joystick Y-axis
+        
+        Accumulates travel distance from joystick input without sending commands.
+        Commands are sent only when trigger button (A button) is pressed.
+        Maps joystick Y-axis to ±500mm range.
+        """
+        config = self.controls[mode]
+        
+        # Get joystick Y-axis input and calculate travel distance
+        value = input_state[f'{stick}_stick']['y'] * config.scale
+        
+        # Clamp value to configured min/max (±500mm)
+        value = max(config.min_value, min(config.max_value, value))
+        
+        # Update accumulated travel value based on which joystick
+        if stick == 'left':
+            self._left_wheel_travel_mm = value
+            self.current_values['left_mode'] = mode
+            self.current_values['left_value'] = value
+        else:
+            self._right_wheel_travel_mm = value
+            self.current_values['right_mode'] = mode
+            self.current_values['right_value'] = value
+        
+        # Note: No ROS command is sent here - only accumulate the value
+        # Command will be sent when A button is pressed (see input.py handler)
+
     def _process_standard_control(self, input_state: Dict, mode: str, stick: str):
         """Handle standard control modes"""
         config = self.controls[mode]
@@ -725,6 +777,47 @@ class ControlProcessor(QObject):
         self.controls["Winch Speed"].min_value = -self._winch_max_speed_mmps
         self.controls["Winch Speed"].max_value = self._winch_max_speed_mmps
         print(f"[ControlProcessor] Winch max speed updated to: {new_value} mm/s")
+
+    def send_wheel_travel_command(self):
+        """Send accumulated wheel travel position command and reset values
+        
+        Called when trigger button (A button) is pressed to execute the wheel travel movement.
+        Uses the accumulated travel values from joystick input and sends position command
+        with fixed RPM of 300.
+        """
+        try:
+            # Get current control modes to determine which values to use
+            left_mode = self.robot.overlayController.get_left_selected_option()
+            right_mode = self.robot.overlayController.get_right_selected_option()
+            
+            # Determine left and right travel distances
+            # If a joystick is in "Wheel Travel" mode, use its accumulated value
+            # Otherwise use 0 for that side
+            left_travel = self._left_wheel_travel_mm if left_mode == "Wheel Travel" else 0.0
+            right_travel = self._right_wheel_travel_mm if right_mode == "Wheel Travel" else 0.0
+            
+            # Only send command if at least one side is in Wheel Travel mode
+            if left_mode == "Wheel Travel" or right_mode == "Wheel Travel":
+                # Send position command with fixed RPM of 300
+                success = self.robot.wheel_controller.command_position(
+                    left_mm=int(left_travel),
+                    right_mm=int(right_travel),
+                    rpm_limit=self.WHEEL_TRAVEL_RPM,
+                    relative=True
+                )
+                
+                if success:
+                    print(f"Wheel travel command sent: left={left_travel:.0f}mm, right={right_travel:.0f}mm, rpm={self.WHEEL_TRAVEL_RPM}")
+                    # Reset travel values after successful command
+                    self._left_wheel_travel_mm = 0.0
+                    self._right_wheel_travel_mm = 0.0
+                else:
+                    print("Failed to send wheel travel command")
+            else:
+                print("Wheel Travel mode not active on any joystick")
+                
+        except Exception as e:
+            print(f"Error sending wheel travel command: {str(e)}")
 
     # Properties for left control info
     @Property(str, notify=left_control_mode_changed)

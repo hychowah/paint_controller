@@ -1,43 +1,56 @@
-## Task: Add position control publisher to wheel.py
+## Task: Add wheel travel position control mode to joystick control
 
-**Understanding**: The user wants to add a publisher in wheel.py to handle position control of the vehicle using the MoveVehiclePos message type. The message has fields: left_travel_mm, right_travel_mm, rpm_limit, and relative. The topic should be 'vehicle/position/cmd'.
+**Understanding**: Add a new joystick control mode called "Wheel Travel" to OverlayLayer.qml menu. This mode allows the joystick to adjust a travel distance value (±500mm range) without immediately sending commands. Commands are only sent when a trigger button (e.g., A button) is pressed. Speed is fixed at 300 RPM.
 
-**Complexity**: Low
+**Complexity**: Medium
 
-**KNOWLEDGE.md Check**: None applicable (straightforward ROS2 publisher implementation)
+**KNOWLEDGE.md Check**: 
+- "Python-to-QML Signal Timing" — Python signals may fire before Qt state updates
+- "ROS2 Tips" — Position control publisher already exists
 
 **File Classification**:
-- [x] ROS2/Hardware → verified controller abstraction
-
-**Current State Analysis**:
-
-After examining the code, I found that **the position control publisher is ALREADY FULLY IMPLEMENTED** in wheel.py:
-
-1. **Line 6**: Imports `MoveVehiclePos` from `paint_interfaces.msg`
-2. **Line 74**: Creates publisher `_pos_cmd_pub` for topic `'vehicle/position/cmd'` in `_setup_publishers()` method
-3. **Lines 199-219**: Implements `command_position()` method that:
-   - Creates a `MoveVehiclePos` message
-   - Sets all four fields: `left_travel_mm`, `right_travel_mm`, `rpm_limit`, `relative`
-   - Publishes the message to the topic
-   - Updates last command time
-4. **Lines 385-388**: Exposes `setPosition()` slot to QML that calls `command_position()`
+- [x] Python signal handler → identified async boundaries
+- [x] ROS2/Hardware → verified controller abstraction (position publisher exists)
 
 **Affected Files**:
-- `python/paint_controller/controllers/wheel.py` — NO CHANGES NEEDED (already implemented)
+1. `python/paint_controller/ui/overlay.py` — Add "Wheel Travel" to control_options list
+   - Callers: OverlayLayer.qml (menu display)
+   - Callees: None
+   
+2. `python/paint_controller/handlers/control_processor.py` — Add ControlConfig and handler for "Wheel Travel"
+   - Callers: Main joystick processing loop
+   - Callees: wheel_controller.command_position()
+   
+3. `python/paint_controller/handlers/input.py` — Add A button handler to send position command
+   - Callers: QML button press signal
+   - Callees: control_processor or wheel_controller
 
-**Cross-Layer Impact**: None - feature already exists
+**Cross-Layer Impact**: Python↔ROS2 (uses existing wheel.py position publisher)
 
-**Approach**: 
-The implementation is already complete and matches exactly what was requested:
-- Message type: MoveVehiclePos ✓
-- Topic: 'vehicle/position/cmd' ✓
-- Message fields: left_travel_mm, right_travel_mm, rpm_limit, relative ✓
-- QML-accessible via setPosition() slot ✓
+**Approach**:
+1. Add "Wheel Travel" option to control_options in overlay.py (line ~31)
+2. Add ControlConfig for "Wheel Travel" in control_processor.py with:
+   - Scale: 500mm / 32768 (joystick max) = ~0.0153
+   - min_interval: 0.1 (10Hz for display updates)
+   - bidirectional: True (±500mm range)
+   - Store accumulated travel value, don't send ROS command yet
+3. Add handler `_process_wheel_travel()` to accumulate joystick input into travel value
+4. Add properties to track left/right wheel travel values separately
+5. Add `on_a_pressed()` handler in input.py to:
+   - Check if Wheel Travel mode is active
+   - Send position command with current travel values
+   - Reset travel values to 0 after sending
 
-**Conclusion**: 
-No code changes are required. The position control publisher is already implemented and ready to use.
+**Implementation Details**:
+- Store travel values: `_left_wheel_travel_mm` and `_right_wheel_travel_mm`
+- Joystick updates these values but doesn't publish
+- A button press publishes via `wheel_controller.command_position(left_mm, right_mm, 300, True)`
+- After publishing, reset travel values to 0
 
-**Recommendation**:
-1. Verify the implementation matches requirements
-2. Confirm with user that this meets their needs
-3. If needed, provide documentation or usage examples
+**Risks**: 
+- Need to handle both left and right joysticks correctly
+- Must reset values after command sent
+- Display should show current travel value
+
+**Rollback Plan**: 
+Revert changes to overlay.py, control_processor.py, and input.py. System will function as before without new control mode.
