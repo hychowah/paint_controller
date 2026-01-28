@@ -23,6 +23,8 @@ class OverlayController(QObject):
             "Winch Speed",
             "Track Control Left",
             "Track Control Right",
+            "Wheel Travel Left",
+            "Wheel Travel Right",
             "EF arm",
             "EF top rail",
             "EF prop pwm",

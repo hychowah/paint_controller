@@ -2,6 +2,67 @@
 
 ---
 
+### 2026-01-28 14:30 - Wheel Travel Settings & Accumulation Fix
+
+**Goal**: Fix wheel travel accumulation logic and add configurable settings
+
+**Issues**:
+- Accumulation was wrong: directly set value instead of `new_value = past_value + (joystick * scale)`
+- Hardcoded constants (max=500mm, rate=20, rpm=300) not configurable
+- Single "Wheel Travel" mode couldn't control left/right wheels independently
+- `inputHandler` typo caused AttributeError on A button press
+
+**Implementation**:
+1. Added settings to `settings.py`:
+   - `wheel_travel_max`: default 500mm, range 100-1000mm
+   - `wheel_travel_rate`: default 100mm/sec, range 10-500mm/sec (NEW - controls adjustment speed)
+   - `wheel_travel_rpm`: default 300, range 50-600 RPM
+2. Added UI controls in SettingsTab.qml (Track Control section)
+3. Fixed accumulation in `_process_wheel_travel()`:
+   - Changed from `value = joystick * scale` to `value += joystick * scale`
+   - Clamps total (not delta) to ±wheel_travel_max
+   - Scale computed dynamically: `(rate * update_interval) / 32768`
+4. Split "Wheel Travel" into "Wheel Travel Left" and "Wheel Travel Right":
+   - Mode name determines which wheel to control (not joystick side)
+   - Both joysticks can control same wheel if both set to same mode
+5. Fixed `inputHandler` → `input_handler` typo in application.py
+6. Updated all mode checks in input.py, application.py, control_processor.py
+
+**Result**: ✅ Proper accumulation, configurable settings, independent left/right control
+
+**Files**: `core/settings.py`, `handlers/control_processor.py`, `handlers/input.py`, `core/application.py`, `ui/overlay.py`, `qml/overlays/systemcontrol/SettingsTab.qml`
+
+---
+
+### 2026-01-28 05:30 - Wheel Travel Position Control Mode
+
+**Goal**: Add joystick control mode for position-based wheel movement with button trigger
+
+**Requirements**:
+- Joystick adjusts travel distance (±500mm) without immediate command send
+- Fixed speed of 300 RPM for movement
+- A button triggers the actual position command
+
+**Implementation**:
+1. Added "Wheel Travel" to control options in `overlay.py`
+2. Added ControlConfig in `control_processor.py`:
+   - Scale: 500mm / 32768 (joystick max) = ~0.0153
+   - Bidirectional with ±500mm range
+   - Created `_process_wheel_travel()` handler to accumulate values
+   - Added `send_wheel_travel_command()` method for button trigger
+3. Modified A button handler in `application.py`:
+   - Checks if Wheel Travel mode active on either joystick
+   - Sends position command if active, else toggles LiDAR overlay
+4. Display formatting shows travel distance in mm
+
+**Pattern**: Similar to Winch Speed bidirectional control, but stores value without immediate publish
+
+**Result**: ✅ Joystick accumulates travel distance, A button sends command via existing position publisher
+
+**Files**: `ui/overlay.py`, `handlers/control_processor.py`, `handlers/input.py`, `core/application.py`
+
+---
+
 ### 2026-01-22 03:00 - Winch Speed Deadzone Timeout
 
 **Goal**: Stop sending winch speed commands when joystick remains in deadzone (speed = 0) for >1 second

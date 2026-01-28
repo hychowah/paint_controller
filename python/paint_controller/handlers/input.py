@@ -140,3 +140,18 @@ class UIInputHandler(QObject):
         self.controller.teensy_controller.set_thrust_force_enabled(new_enabled)
         status = "enabled" if new_enabled else "disabled"
         self.controller.show_popup("Thrust Force", f"Thrust force {status}", "info")
+    
+    @Slot()
+    def on_a_pressed(self):
+        """Send wheel travel position command when A button is pressed"""
+        # Check if Wheel Travel mode is active on either joystick
+        left_mode = self.controller.overlayController.get_left_selected_option()
+        right_mode = self.controller.overlayController.get_right_selected_option()
+        
+        wheel_travel_modes = ["Wheel Travel Left", "Wheel Travel Right"]
+        if left_mode in wheel_travel_modes or right_mode in wheel_travel_modes:
+            # Send the accumulated wheel travel command
+            self.controller.controlProcessor.send_wheel_travel_command()
+            self.controller.show_popup("Wheel Travel", "Position command sent", "info")
+        else:
+            print("A button pressed but Wheel Travel mode not active")

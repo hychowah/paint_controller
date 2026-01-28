@@ -30,6 +30,9 @@ class SettingsManager(QObject):
     valve_turn_max_changed = Signal(float)
     arm_retract_length_changed = Signal(int)
     arm_extend_length_changed = Signal(int)
+    wheel_travel_max_changed = Signal(float)
+    wheel_travel_rate_changed = Signal(float)
+    wheel_travel_rpm_changed = Signal(int)
     
     # Signal for any setting change (key, value)
     setting_changed = Signal(str, object)
@@ -105,6 +108,30 @@ class SettingsManager(QObject):
                 "type": "int",
                 "requires_restart": False,
                 "description": "Arm extended position preset"
+            },
+            "wheel_travel_max": {
+                "default": 500.0,
+                "min": 100.0,
+                "max": 1000.0,
+                "type": "float",
+                "requires_restart": False,
+                "description": "Maximum wheel travel distance (mm)"
+            },
+            "wheel_travel_rate": {
+                "default": 100.0,
+                "min": 10.0,
+                "max": 500.0,
+                "type": "float",
+                "requires_restart": False,
+                "description": "Wheel travel adjustment rate (mm/sec)"
+            },
+            "wheel_travel_rpm": {
+                "default": 300,
+                "min": 50,
+                "max": 600,
+                "type": "int",
+                "requires_restart": False,
+                "description": "Fixed RPM for wheel travel commands"
             }
         }
         
@@ -250,7 +277,10 @@ class SettingsManager(QObject):
             "thrust_ramp_rate": self.thrust_ramp_rate_changed,
             "valve_turn_max": self.valve_turn_max_changed,
             "arm_retract_length": self.arm_retract_length_changed,
-            "arm_extend_length": self.arm_extend_length_changed
+            "arm_extend_length": self.arm_extend_length_changed,
+            "wheel_travel_max": self.wheel_travel_max_changed,
+            "wheel_travel_rate": self.wheel_travel_rate_changed,
+            "wheel_travel_rpm": self.wheel_travel_rpm_changed
         }
         
         if key in signal_map:
@@ -442,6 +472,30 @@ class SettingsManager(QObject):
     @arm_extend_length.setter
     def arm_extend_length(self, value: int):
         self.set("arm_extend_length", value)
+    
+    @Property(float, notify=wheel_travel_max_changed)
+    def wheel_travel_max(self) -> float:
+        return self._values.get("wheel_travel_max", 500.0)
+    
+    @wheel_travel_max.setter
+    def wheel_travel_max(self, value: float):
+        self.set("wheel_travel_max", value)
+    
+    @Property(float, notify=wheel_travel_rate_changed)
+    def wheel_travel_rate(self) -> float:
+        return self._values.get("wheel_travel_rate", 100.0)
+    
+    @wheel_travel_rate.setter
+    def wheel_travel_rate(self, value: float):
+        self.set("wheel_travel_rate", value)
+    
+    @Property(int, notify=wheel_travel_rpm_changed)
+    def wheel_travel_rpm(self) -> int:
+        return self._values.get("wheel_travel_rpm", 300)
+    
+    @wheel_travel_rpm.setter
+    def wheel_travel_rpm(self, value: int):
+        self.set("wheel_travel_rpm", value)
     
     # =====================================================
     # QML Slots for setting values with key
