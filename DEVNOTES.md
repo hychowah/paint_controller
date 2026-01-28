@@ -2,6 +2,35 @@
 
 ---
 
+### 2026-01-28 05:30 - Wheel Travel Position Control Mode
+
+**Goal**: Add joystick control mode for position-based wheel movement with button trigger
+
+**Requirements**:
+- Joystick adjusts travel distance (±500mm) without immediate command send
+- Fixed speed of 300 RPM for movement
+- A button triggers the actual position command
+
+**Implementation**:
+1. Added "Wheel Travel" to control options in `overlay.py`
+2. Added ControlConfig in `control_processor.py`:
+   - Scale: 500mm / 32768 (joystick max) = ~0.0153
+   - Bidirectional with ±500mm range
+   - Created `_process_wheel_travel()` handler to accumulate values
+   - Added `send_wheel_travel_command()` method for button trigger
+3. Modified A button handler in `application.py`:
+   - Checks if Wheel Travel mode active on either joystick
+   - Sends position command if active, else toggles LiDAR overlay
+4. Display formatting shows travel distance in mm
+
+**Pattern**: Similar to Winch Speed bidirectional control, but stores value without immediate publish
+
+**Result**: ✅ Joystick accumulates travel distance, A button sends command via existing position publisher
+
+**Files**: `ui/overlay.py`, `handlers/control_processor.py`, `handlers/input.py`, `core/application.py`
+
+---
+
 ### 2026-01-22 03:00 - Winch Speed Deadzone Timeout
 
 **Goal**: Stop sending winch speed commands when joystick remains in deadzone (speed = 0) for >1 second
