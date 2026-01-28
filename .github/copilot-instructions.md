@@ -24,6 +24,108 @@ paint_controller
 
 ---
 
+## Planning Before Implementation (REQUIRED)
+
+You MUST follow this workflow for ALL tasks. NEVER modify code before completing the Plan phase and receiving user confirmation.
+
+### Phase 1: Understand
+
+1. **Restate the problem** in your own words
+2. **Check KNOWLEDGE.md** for related patterns or gotchas
+3. **Classify the change type**:
+   - UI/Display → extra caution for Qt timing, layout rules
+   - State management → trace full state flow first
+   - Hardware control → verify controller abstraction exists
+4. **Identify all affected files and components**
+5. **Trace dependencies** — list callers/callees for any modified function
+
+### Phase 2: Plan
+
+Create or update `PLANNING.md` in the repository root with this template:
+
+```markdown
+## Task: [Brief title]
+
+**Understanding**: [Restate the problem]
+**Complexity**: Low | Medium | High
+**KNOWLEDGE.md Check**: [Relevant entries found, or "None applicable"]
+
+**File Classification**:
+- [ ] QML component → checked layout rules, property conflicts
+- [ ] Python signal handler → identified async boundaries  
+- [ ] ROS2/Hardware → verified controller abstraction
+
+**Affected Files**:
+- `path/to/file.py` — [what changes needed]
+  - Callers: [functions/components that call this]
+  - Callees: [functions/components this calls]
+
+**Cross-Layer Impact**: [None | QML↔Python | Python↔ROS2 | describe boundary]
+
+**Approach**: [High-level strategy, step by step]
+**Risks**: [Potential issues or breaking changes]
+**Rollback Plan**: [How to revert if broken] *(required for Medium/High complexity)*
+```
+
+### Phase 3: Confirm
+
+MUST ask user: **"Here is my plan in PLANNING.md. Ready to proceed?"**
+
+NEVER start implementation without explicit user approval.
+
+### Phase 4: Implement
+
+Make changes one logical unit at a time. Update DEVNOTES.md if significant debugging or learning occurred.
+
+### Phase 5: Cleanup
+
+Before merging PR, MUST delete `PLANNING.md`. This file is temporary and should not be committed to main branch.
+
+---
+
+### Stop and Ask Triggers
+
+You MUST pause and ask for explicit guidance before:
+
+- **Deleting any file**
+- **Modifying launch files** (`launch/*.py`)
+- **Changing ROS2 message types** or service definitions
+- **Modifying CMakeLists.txt or package.xml**
+- **Any change rated High complexity**
+
+---
+
+### Planning Example
+
+```markdown
+## Task: Fix joystick deadzone not persisting
+
+**Understanding**: Joystick deadzone resets to default when switching controller modes
+**Complexity**: Medium
+**KNOWLEDGE.md Check**: "Signal Timing" — Python signals may fire before Qt state updates
+
+**File Classification**:
+- [x] Python signal handler → identified async boundaries
+
+**Affected Files**:
+- `python/paint_controller/handlers/input.py` — deadzone state management
+  - Callers: MainWindow.qml (mode switch buttons)
+  - Callees: settings.py (persistence layer)
+- `python/paint_controller/core/settings.py` — verify save/load timing
+
+**Cross-Layer Impact**: QML↔Python (mode switch signal triggers Python handler)
+
+**Approach**:
+1. Trace where deadzone is initialized vs loaded from settings
+2. Check if mode switch resets state before settings load completes
+3. Add explicit load after mode switch, or preserve state across switches
+
+**Risks**: Other input settings might have same issue
+**Rollback Plan**: Revert input.py changes; deadzone will reset but app functional
+```
+
+---
+
 ## DEVNOTES.md Rules
 
 Development notes track what was tried, issues encountered, and solutions found.
