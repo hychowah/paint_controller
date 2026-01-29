@@ -1,5 +1,5 @@
 {
-  "winch_max_speed_mmps": 300.0,
+  "winch_max_speed_mmps": 200.0,
   "track_max_speed": 500.0,
   "track_min_speed": 50.0,
   "thrust_force": -1.0,
@@ -11,6 +11,7 @@
   "wheel_travel_rate": 100.0,
   "wheel_travel_rpm": 200,
   "ui_section_states": {
-    "device_winch": true
+    "device_winch": true,
+    "device_wheel": true
   }
 }

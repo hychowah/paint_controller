@@ -265,10 +265,10 @@ class RobotController(Node, QObject):
         self.steam_deck_handler.start()
         self.ssh_controller = UISSHController(self)
         self.system_monitor = SystemMonitor()
-        self.screen_recorder = ScreenRecorder()
-        self.ros_bag_recorder = RosBagRecorder(self)
         self.screen_manager = ScreenManager(self)
         self.screen_manager.node = self  # Give screen manager access to logger
+        self.screen_recorder = ScreenRecorder(parent=self, screen_manager=self.screen_manager)
+        self.ros_bag_recorder = RosBagRecorder(self)
 
         
         self.setup_steam_deck_callbacks()

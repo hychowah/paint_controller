@@ -37,13 +37,15 @@ class ScreenRecorder(QObject):
     
     # Configuration constants
     DISPLAY = ":0.0"
-    RESOLUTION = "1280x800"
     FRAMERATE = 30
     MIN_FREE_SPACE_GB = 5.0
     MAX_RECORDING_DURATION_SECONDS = 3600  # 1 hour
     
-    def __init__(self, parent: Optional[QObject] = None):
+    def __init__(self, parent: Optional[QObject] = None, screen_manager=None):
         super().__init__(parent)
+        
+        # Screen manager for dynamic resolution (optional)
+        self._screen_manager = screen_manager
         
         # Recording state
         self._is_recording = False
@@ -64,6 +66,10 @@ class ScreenRecorder(QObject):
         self._monitor_timer = QTimer(self)
         self._monitor_timer.timeout.connect(self._on_monitor_tick)
         self._monitor_timer.setInterval(1000)
+        
+        # Connect to screen manager for dynamic resolution updates
+        if self._screen_manager:
+            self._screen_manager.screens_changed.connect(self._on_screens_changed)
         
         # Initial disk space check
         self._update_free_space()
@@ -101,12 +107,21 @@ class ScreenRecorder(QObject):
         
         self._current_recording_file = self._generate_filename()
         
+        # Get dynamic resolution from screen manager
+        if self._screen_manager:
+            width, height = self._screen_manager.get_virtual_desktop_size()
+            resolution = f"{width}x{height}"
+            screen_count = self._screen_manager.get_screen_count()
+        else:
+            resolution = "1280x800"  # Fallback to Steam Deck display
+            screen_count = 1
+        
         # Build ffmpeg command
         cmd = [
             "ffmpeg",
             "-y",  # Overwrite output file if exists
             "-f", "x11grab",
-            "-s", self.RESOLUTION,
+            "-s", resolution,
             "-r", str(self.FRAMERATE),
             "-i", self.DISPLAY,
             "-vcodec", "libx264",
@@ -125,7 +140,13 @@ class ScreenRecorder(QObject):
             )
             self._recording_start_time = datetime.now()
             self._recording_duration_seconds = 0
+            
+            # Set status message with recording info
+            screen_text = "screen" if screen_count == 1 else "screens"
+            self._status_message = f"Recording {resolution} ({screen_count} {screen_text})"
+            
             print(f"[ScreenRecorder] Started recording: {self._current_recording_file}")
+            print(f"[ScreenRecorder] Resolution: {resolution} ({screen_count} {screen_text})")
             return True
         except FileNotFoundError:
             print("[ScreenRecorder] ffmpeg not found. Please install ffmpeg.")
@@ -229,6 +250,18 @@ class ScreenRecorder(QObject):
         self.is_recording_changed.emit()
         self.recording_duration_changed.emit()
     
+    def _on_screens_changed(self) -> None:
+        """Handle screen configuration changes during recording.
+        
+        When screens are added/removed, segment the recording to start a new
+        file with updated resolution matching the new screen configuration.
+        """
+        if not self._is_recording:
+            return
+        
+        print("[ScreenRecorder] Screen configuration changed, segmenting recording")
+        self._segment_recording()
+    
     # ===== QML Properties =====
     
     @Property(bool, notify=is_recording_changed)
@@ -284,7 +317,7 @@ class ScreenRecorder(QObject):
         # Start ffmpeg
         if self._start_ffmpeg():
             self._is_recording = True
-            self._status_message = ""
+            # Keep status message from _start_ffmpeg (shows recording info)
             self.is_recording_changed.emit()
             self.status_message_changed.emit()
             

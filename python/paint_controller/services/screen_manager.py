@@ -214,6 +214,32 @@ class ScreenManager(QObject):
             return self._screens[index]
         return None
     
+    @Slot(result=tuple)
+    def get_virtual_desktop_size(self) -> tuple:
+        """Get total virtual desktop size (all screens combined)
+        
+        Returns:
+            Tuple of (width, height) representing the total virtual desktop bounds.
+            Calculates rightmost edge (max virtual_x + width) and bottommost edge
+            (max virtual_y + height) to capture all screen regions.
+            Returns (1280, 800) as fallback if no screens detected.
+        """
+        if not self._screens:
+            return (1280, 800)  # Fallback to Steam Deck display size
+        
+        max_width = 0
+        max_height = 0
+        
+        for screen in self._screens:
+            geometry = screen.geometry()
+            right_edge = geometry.x() + geometry.width()
+            bottom_edge = geometry.y() + geometry.height()
+            
+            max_width = max(max_width, right_edge)
+            max_height = max(max_height, bottom_edge)
+        
+        return (max_width, max_height)
+    
     def cleanup(self) -> None:
         """Clean up resources"""
         if self._monitor_timer:
