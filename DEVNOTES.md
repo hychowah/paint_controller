@@ -2,6 +2,37 @@
 
 ---
 
+### 2026-01-29 16:30 - Fix Mode Switch Crash from Popup Collision
+
+**Goal**: Fix crash when switching control modes immediately after sending wheel travel command
+**Issues**: 
+- Crash occurred when pressing A (wheel travel) then immediately switching modes (base ↔ EF)
+- Error: "QObject::killTimer: Timers cannot be stopped from another thread" followed by emergency shutdown
+- Root cause: Popup tried to render while video overlay Loader was destroying/creating components
+
+**Investigation**:
+1. Initial hypothesis: Threading issue with timers in cleanup
+   - Multiple QTimers created in main thread, stopped from ROS thread during emergency cleanup
+   - Found 8+ components with problematic timer management
+2. Realized popup overlap alone doesn't crash (L5→R5 rapid press works fine)
+3. **Real root cause**: QML scene graph conflict during mode switch:
+   - Mode switch triggers `update_fullscreen_video_source()`
+   - Video overlay Loader destroys old component (BaseFrontOverlay) and creates new (EndEffectorOverlay)
+   - `show_popup()` called during this transition
+   - Popup rendering conflicts with Loader's component destruction/creation
+   - Qt scene graph becomes unstable → crash → emergency shutdown
+
+**Solution**:
+1. Close any existing popup BEFORE mode switch to clear rendering state
+2. Defer new popup by 150ms using `QTimer.singleShot()` to let Loader stabilize
+3. Added try/except around popup closing for safety
+
+**Result**: ✅ No crash when rapidly switching modes after commands. Popup appears with imperceptible 150ms delay.
+
+**Files**: `handlers/input.py` (on_switch_pressed method)
+
+---
+
 ### 2026-01-28 14:30 - Wheel Travel Settings & Accumulation Fix
 
 **Goal**: Fix wheel travel accumulation logic and add configurable settings

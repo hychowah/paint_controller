@@ -6,6 +6,9 @@ Reusable learnings from development. Check here before debugging.
 
 ## QML / Qt Patterns
 
+### QML Loader Component Timing
+When a `Loader`'s `sourceComponent` changes, it immediately destroys the old component and creates the new one. Attempting to show/update popups or render other UI elements during this transition can cause scene graph conflicts and crashes. Solution: Close any existing popups before triggering Loader changes, and defer new popups by 100-150ms using `QTimer.singleShot()` to let the Loader stabilize.
+
 ### Screen Property Access
 Use `screen.width` not `screen.geometry.width`. Qt Screen objects expose dimensions directly.
 

@@ -1,5 +1,5 @@
 
-from PySide6.QtCore import QObject, Slot
+from PySide6.QtCore import QObject, Slot, QTimer, QMetaObject
 import time
 
 class UIInputHandler(QObject):
@@ -57,6 +57,15 @@ class UIInputHandler(QObject):
 
     @Slot()
     def on_switch_pressed(self):
+        # Close any existing popup to prevent rendering conflicts during overlay switch
+        try:
+            root = self.controller.engine.rootObjects()[0]
+            popup = root.findChild(QObject, "messagePopup")
+            if popup:
+                QMetaObject.invokeMethod(popup, "close")
+        except Exception as e:
+            print(f"[UIInputHandler] Warning: Could not close popup: {e}")
+        
         # Save current joystick controls before switching modes
         current_controls = self.controller.overlayController.get_current_joystick_controls()
         
@@ -64,7 +73,7 @@ class UIInputHandler(QObject):
             # Save base mode controls
             self._base_mode_joystick_controls = current_controls
             
-            # Switch to EF mode
+            # Switch to EF mode (triggers video overlay change)
             self.controller.control_mode = "ef"
             
             # Restore EF mode controls or use defaults
@@ -75,12 +84,16 @@ class UIInputHandler(QObject):
                 left_control, right_control = ("None", "Winch Speed")
             
             self.controller.overlayController.set_joystick_controls(left_control, right_control)
-            self.controller.show_popup("Control Mode", "Switched to EF control mode", "info")
+            
+            # Defer popup to let video overlay Loader stabilize (150ms)
+            QTimer.singleShot(150, lambda: self.controller.show_popup(
+                "Control Mode", "Switched to EF control mode", "info"
+            ))
         else:
             # Save EF mode controls
             self._ef_mode_joystick_controls = current_controls
             
-            # Switch to base mode
+            # Switch to base mode (triggers video overlay change)
             self.controller.control_mode = "base"
             
             # Restore base mode controls or use defaults
@@ -91,7 +104,11 @@ class UIInputHandler(QObject):
                 left_control, right_control = ("Track Control Left", "Track Control Right")
             
             self.controller.overlayController.set_joystick_controls(left_control, right_control)
-            self.controller.show_popup("Control Mode", "Switched to Base control mode (Track Control)", "info")
+            
+            # Defer popup to let video overlay Loader stabilize (150ms)
+            QTimer.singleShot(150, lambda: self.controller.show_popup(
+                "Control Mode", "Switched to Base control mode (Track Control)", "info"
+            ))
 
     @Slot()
     def on_up_pressed(self):
