@@ -85,7 +85,7 @@ Rectangle {
         
         // Text with status - using a Rectangle with Column inside to fill available space
         Rectangle {
-            width: parent.width - 36 - 10 - 48 - 5 // parent width minus icon width, spacing, switch width, and extra margin
+            width: parent.width - 36 - 10 - 52 - 5 // parent width minus icon width, spacing, switch width, and extra margin
             height: parent.height - 20
             color: "transparent" // Make this visible for debugging: "#550000"
             anchors.verticalCenter: parent.verticalCenter
@@ -103,7 +103,7 @@ Rectangle {
                 
                 Text {
                     text: controlPanel.controlStatus
-                    font.pixelSize: 13
+                    font.pixelSize: 14
                     color: enabledState ? "#90CAF9" : "#999999"
                     
                     // Color transition
@@ -116,16 +116,16 @@ Rectangle {
         
         // Toggle switch - simple Rectangle with fixed width
         Rectangle {
-            width: 48
-            height: 24
-            radius: 12
+            width: 52
+            height: 28
+            radius: 14
             color: enabledState ? "#3A5A8C" : "#444444"
             anchors.verticalCenter: parent.verticalCenter
             
             Rectangle {
-                width: 18
-                height: 18
-                radius: 9
+                width: 22
+                height: 22
+                radius: 11
                 color: "#FFFFFF"
                 anchors.verticalCenter: parent.verticalCenter
                 x: enabledState ? parent.width - width - 3 : 3

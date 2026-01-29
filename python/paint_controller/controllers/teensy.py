@@ -23,6 +23,7 @@ class TeensyController(QObject):
     thrust_force_changed = Signal(float)
     thrust_force_enabled_changed = Signal(bool)
     valve_turn_changed = Signal(float)
+    roller_steering_enabled_changed = Signal(bool)
     
     def __init__(self, robot_controller):
         super().__init__()
@@ -101,6 +102,7 @@ class TeensyController(QObject):
         self._auto_correction_enabled = False
         self._spray_gun_led_on = False
         self._target_yaw = 0.0
+        self._roller_steering_enabled = False
         # Get thrust_force from settings_manager if available, otherwise use default
         if hasattr(robot_controller, 'settings_manager'):
             self._thrust_force = robot_controller.settings_manager.get('thrust_force') or -1.0
@@ -166,6 +168,7 @@ class TeensyController(QObject):
         self.ef_tap_once_pub = self._robot_controller.create_publisher(Int32, 'teensy/tapper/tap_once/cmd', 1)
         self.ef_tap_stop_pub = self._robot_controller.create_publisher(Bool, 'teensy/tapper/stop/cmd', 1)
         self.teensy_valve_turn_pub = self._robot_controller.create_publisher(Float32, 'teensy/valve/turn/cmd', 1)
+        self.roller_steering_enable_pub = self._robot_controller.create_publisher(Bool, 'teensy/roller/steering/enable/cmd', 1)
 
 
     def _setup_subscribers(self):
@@ -502,6 +505,21 @@ class TeensyController(QObject):
         self.auto_correction_enabled_changed.emit(enabled)
         self.status_changed.emit(self._status)
 
+    @Slot(bool)
+    def setRollerSteeringEnabled(self, enabled: bool):
+        """Enable/disable roller steering"""
+        self._roller_steering_enabled = enabled
+        self._status['roller_steering_enabled'] = enabled
+        
+        msg = Bool()
+        msg.data = enabled
+        self.roller_steering_enable_pub.publish(msg)
+        self._robot_controller.get_logger().info(f'Roller steering {"enabled" if enabled else "disabled"}')
+        
+        # Emit signals for UI updates
+        self.roller_steering_enabled_changed.emit(enabled)
+        self.status_changed.emit(self._status)
+
     @Slot(float)
     def setYawAngle(self, angle: float):
         """Set the yaw angle"""
@@ -614,6 +632,7 @@ class TeensyController(QObject):
     spray_gun_led_on = Property(bool, lambda self: self._spray_gun_led_on, notify=spray_gun_led_changed)
     auto_correction_enabled = Property(bool, lambda self: self._auto_correction_enabled, notify=auto_correction_enabled_changed)
     stability_enabled = Property(bool, lambda self: self._stability_enabled, notify=stability_enabled_changed)
+    roller_steering_enabled = Property(bool, lambda self: self._roller_steering_enabled, notify=roller_steering_enabled_changed)
     
     def get_thrust_force(self) -> float:
         """Get current thrust force value"""

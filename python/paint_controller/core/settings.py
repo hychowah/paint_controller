@@ -132,6 +132,12 @@ class SettingsManager(QObject):
                 "type": "int",
                 "requires_restart": False,
                 "description": "Fixed RPM for wheel travel commands"
+            },
+            "ui_section_states": {
+                "default": {},
+                "type": "dict",
+                "requires_restart": False,
+                "description": "Collapsed/expanded state of UI sections"
             }
         }
         
@@ -211,6 +217,12 @@ class SettingsManager(QObject):
                 typed_value = float(value)
             elif schema["type"] == "int":
                 typed_value = int(value)
+            elif schema["type"] == "dict":
+                # Dict type doesn't need conversion, just validate it's a dict
+                if isinstance(value, dict):
+                    return value
+                else:
+                    return None
             else:
                 typed_value = value
             
@@ -552,3 +564,25 @@ class SettingsManager(QObject):
         """Check if a setting requires restart from QML"""
         schema = self.get_schema(key)
         return schema.get("requires_restart", False) if schema else False
+    
+    # =====================================================
+    # UI Section State Persistence (for collapsible sections)
+    # =====================================================
+    
+    @Slot(str, bool)
+    def setSectionExpanded(self, sectionId: str, expanded: bool):
+        """Save the expanded state of a UI section (QML callable)"""
+        states = self._values.get("ui_section_states", {})
+        if not isinstance(states, dict):
+            states = {}
+        states[sectionId] = expanded
+        self._values["ui_section_states"] = states
+        self.save_all()
+    
+    @Slot(str, result=bool)
+    def getSectionExpanded(self, sectionId: str) -> bool:
+        """Get the expanded state of a UI section (QML callable). Returns True by default."""
+        states = self._values.get("ui_section_states", {})
+        if not isinstance(states, dict):
+            return True
+        return states.get(sectionId, True)

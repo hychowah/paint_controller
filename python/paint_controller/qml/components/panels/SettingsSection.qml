@@ -9,11 +9,26 @@ Rectangle {
     // Properties
     property string title: "Section Title"
     property string description: ""
+    property string sectionId: ""  // Unique ID for state persistence
     property bool expanded: true
     property alias contentItem: contentLoader.sourceComponent
     
     // Calculate content height from loaded item
     property real contentHeight: contentLoader.item ? contentLoader.item.implicitHeight + 30 : 100
+    
+    // Load persisted state on component completion
+    Component.onCompleted: {
+        if (sectionId !== "" && typeof settingsManager !== "undefined" && settingsManager) {
+            expanded = settingsManager.getSectionExpanded(sectionId)
+        }
+    }
+    
+    // Save state when expanded changes
+    onExpandedChanged: {
+        if (sectionId !== "" && typeof settingsManager !== "undefined" && settingsManager) {
+            settingsManager.setSectionExpanded(sectionId, expanded)
+        }
+    }
     
     // Sizing
     width: parent ? parent.width : 400
@@ -41,7 +56,7 @@ Rectangle {
     Rectangle {
         id: headerContainer
         width: parent.width
-        height: 50
+        height: 52  // Slightly taller for better Steam Deck touch targets
         color: "transparent"
         radius: parent.radius
         
@@ -56,7 +71,7 @@ Rectangle {
                 id: chevron
                 text: expanded ? "▼" : "▶"
                 color: "#AAAAAA"
-                font.pixelSize: 12
+                font.pixelSize: 14  // Larger for Steam Deck
             }
             
             // Title and description
@@ -67,7 +82,7 @@ Rectangle {
                 Text {
                     text: settingsSection.title
                     color: "#FFFFFF"
-                    font.pixelSize: 14
+                    font.pixelSize: 16  // Larger for Steam Deck
                     font.bold: true
                 }
                 
@@ -75,7 +90,7 @@ Rectangle {
                     visible: settingsSection.description !== ""
                     text: settingsSection.description
                     color: "#888888"
-                    font.pixelSize: 11
+                    font.pixelSize: 13  // Larger for Steam Deck readability
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                 }
