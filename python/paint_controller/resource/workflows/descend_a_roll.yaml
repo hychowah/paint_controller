@@ -12,8 +12,8 @@ actions:
   name: winch_move
   type: winch_absolute
   params:
-    length: 2000
-    speed: 100
+    length: 2200
+    speed: 200
     acceleration: 10
   wait_for_completion: true
 - id: close_valve
@@ -24,6 +24,6 @@ actions:
   trigger:
     reference_action: main_winch_descent
     timing_mode: before_complete
-    offset_ms: 8000
+    offset_ms: 500
   estimated_duration: 1000
   wait_for_completion: true

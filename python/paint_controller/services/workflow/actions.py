@@ -73,7 +73,7 @@ class WinchAbsoluteHandler(ActionHandler):
     def execute(self, params: Dict[str, Any]) -> None:
         length = params.get("length", 0)
         speed = params.get("speed", 1)
-        acceleration = params.get("acceleration", 30)  # Default 30 RPM/s
+        acceleration = params.get("acceleration", 10)  # Default 10 RPM/s
         
         if not self.hardware.winch:
             raise ControllerNotAvailable("Winch controller not available")

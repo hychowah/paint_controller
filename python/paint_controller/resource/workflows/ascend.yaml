@@ -5,6 +5,6 @@ actions:
   name: winch_move
   type: winch_absolute
   params:
-    length: 2500
-    speed: 80
+    length: 7639
+    speed: 200
   wait_for_completion: true
