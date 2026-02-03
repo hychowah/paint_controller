@@ -1,0 +1,41 @@
+name: spray_cycle
+description: Complete spray cycle with descent and ascent
+actions:
+- id: open_valve
+  name: open_valve
+  type: valve_turn
+  params:
+    turn_value: 3
+  estimated_duration: 500
+- id: descend
+  name: descend_to_target
+  type: winch_absolute
+  params:
+    length: 1860
+    speed: 200
+    acceleration: 10
+  trigger:
+    reference_action: open_valve
+    timing_mode: after_start
+    offset_ms: 2000
+- id: ascend
+  name: ascend_to_top
+  type: winch_absolute
+  params:
+    length: 7300
+    speed: 200
+    acceleration: 10
+  trigger:
+    reference_action: descend
+    timing_mode: on_complete
+    offset_ms: 2500
+- id: close_valve
+  name: close_valve
+  type: valve_turn
+  params:
+    turn_value: 0
+  trigger:
+    reference_action: ascend
+    timing_mode: at_position
+    position_mm: 4200
+  estimated_duration: 500

@@ -10,6 +10,11 @@ from typing import Dict, Any, Optional, Callable
 from .hardware import HardwareControllers, ControllerNotAvailable
 
 
+def _clamp_acceleration(acceleration: int) -> int:
+    """Clamp acceleration to safe range (5-30 RPM/s)."""
+    return max(5, min(30, acceleration))
+
+
 class ActionHandler(ABC):
     """Base class for action handlers."""
 
@@ -38,7 +43,14 @@ class ActionHandler(ABC):
 
 
 class WinchIncrementHandler(ActionHandler):
-    """Handler for incremental winch movement."""
+    """
+    Handler for incremental winch movement.
+    
+    Parameters:
+        length (int): Distance to move in mm
+        speed (int): Speed in mm/s
+        acceleration (int, optional): Acceleration in RPM/s (default: 10, range: 5-30)
+    """
 
     def __init__(self, hardware: HardwareControllers, logger=None):
         self.hardware = hardware
@@ -47,7 +59,7 @@ class WinchIncrementHandler(ActionHandler):
     def execute(self, params: Dict[str, Any]) -> None:
         length = params.get("length", 0)
         speed = params.get("speed", 1)
-        acceleration = params.get("acceleration", 30)  # Default 30 RPM/s
+        acceleration = _clamp_acceleration(params.get("acceleration", 10))  # Default 10 RPM/s, clamped to 5-30
         
         if not self.hardware.winch:
             raise ControllerNotAvailable("Winch controller not available")
@@ -63,7 +75,14 @@ class WinchIncrementHandler(ActionHandler):
 
 
 class WinchAbsoluteHandler(ActionHandler):
-    """Handler for absolute winch positioning."""
+    """
+    Handler for absolute winch positioning.
+    
+    Parameters:
+        length (int): Target position in mm
+        speed (int): Speed in mm/s
+        acceleration (int, optional): Acceleration in RPM/s (default: 10, range: 5-30)
+    """
 
     def __init__(self, hardware: HardwareControllers, logger=None):
         self.hardware = hardware
@@ -73,7 +92,7 @@ class WinchAbsoluteHandler(ActionHandler):
     def execute(self, params: Dict[str, Any]) -> None:
         length = params.get("length", 0)
         speed = params.get("speed", 1)
-        acceleration = params.get("acceleration", 10)  # Default 10 RPM/s
+        acceleration = _clamp_acceleration(params.get("acceleration", 10))  # Default 10 RPM/s, clamped to 5-30
         
         if not self.hardware.winch:
             raise ControllerNotAvailable("Winch controller not available")

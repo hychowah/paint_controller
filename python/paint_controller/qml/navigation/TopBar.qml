@@ -49,6 +49,7 @@ Rectangle {
         Button {
             id: warningButton
             Layout.preferredHeight: 36
+            focusPolicy: Qt.NoFocus  // Prevent gamepad A button from triggering this
             
             contentItem: Row {
                 spacing: 8

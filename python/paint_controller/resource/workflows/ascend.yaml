@@ -7,4 +7,5 @@ actions:
   params:
     length: 7639
     speed: 200
+    acceleration: 10
   wait_for_completion: true

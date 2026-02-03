@@ -15,6 +15,7 @@ class TimingMode(Enum):
     AFTER_START = "after_start"
     BEFORE_COMPLETE = "before_complete"
     ON_COMPLETE = "on_complete"
+    AT_POSITION = "at_position"  # Position-based trigger (runtime evaluated)
 
 
 @dataclass
@@ -23,8 +24,15 @@ class ScheduledAction:
     action_index: int
     action_id: str
     action_config: Dict[str, Any]
-    scheduled_time: float  # Absolute time in seconds when action should execute
+    scheduled_time: float  # Absolute time in seconds when action should execute (None for position triggers)
     estimated_duration: float  # Estimated duration in seconds
+    # Position trigger fields (optional)
+    position_trigger_mm: Optional[float] = None  # Target position to trigger at
+    position_reference_action: Optional[str] = None  # Reference action ID for position trigger
+    is_position_triggered: bool = False  # True if this action uses position-based triggering
+    # Winch completion tracking (optional)
+    winch_target_mm: Optional[float] = None  # Target position for winch actions
+    is_winch_action: bool = False  # True if this is a winch movement action
 
 
 class ActionScheduler:
@@ -66,10 +74,27 @@ class ActionScheduler:
             # Calculate duration
             duration = self._calculate_duration(action)
             
-            # Calculate scheduled time
+            # Calculate scheduled time and check for position triggers
             trigger = action.get("trigger")
+            position_trigger_mm = None
+            position_reference_action = None
+            is_position_triggered = False
+            
             if trigger:
-                scheduled_time = self._calculate_trigger_time(trigger, action_map)
+                timing_mode_str = trigger.get("timing_mode", "after_start")
+                if timing_mode_str == "at_position":
+                    # Position-triggered action
+                    is_position_triggered = True
+                    position_trigger_mm = trigger.get("position_mm")
+                    position_reference_action = trigger.get("reference_action")
+                    scheduled_time = -1.0  # Sentinel - will be evaluated at runtime
+                    
+                    if position_trigger_mm is None:
+                        raise ValueError(f"Position trigger for '{action_id}' missing 'position_mm'")
+                    if not position_reference_action:
+                        raise ValueError(f"Position trigger for '{action_id}' missing 'reference_action'")
+                else:
+                    scheduled_time = self._calculate_trigger_time(trigger, action_map)
             else:
                 # Sequential: check for delay_before (legacy support)
                 delay_before = action.get("delay_before", 0)
@@ -80,15 +105,29 @@ class ActionScheduler:
                 else:
                     scheduled_time = current_time
 
-            # Ensure non-negative time
-            scheduled_time = max(0.0, scheduled_time)
+            # Ensure non-negative time (except for position triggers which use -1 sentinel)
+            if not is_position_triggered:
+                scheduled_time = max(0.0, scheduled_time)
+
+            # Check if this is a winch action and extract target position
+            action_type = action.get("type")
+            is_winch_action = action_type in ("winch_absolute", "winch_move_absolute")
+            winch_target_mm = None
+            if is_winch_action:
+                params = action.get("params", {})
+                winch_target_mm = params.get("length")
 
             sched = ScheduledAction(
                 action_index=idx,
                 action_id=action_id,
                 action_config=action,
                 scheduled_time=scheduled_time,
-                estimated_duration=duration
+                estimated_duration=duration,
+                position_trigger_mm=position_trigger_mm,
+                position_reference_action=position_reference_action,
+                is_position_triggered=is_position_triggered,
+                winch_target_mm=winch_target_mm,
+                is_winch_action=is_winch_action
             )
 
             scheduled.append(sched)
@@ -195,6 +234,10 @@ class ActionScheduler:
         elif timing_mode == TimingMode.ON_COMPLETE:
             completion_time = ref_action.scheduled_time + ref_action.estimated_duration
             return completion_time + offset_seconds
+        elif timing_mode == TimingMode.AT_POSITION:
+            # Position triggers are evaluated at runtime, not scheduled
+            # Return a sentinel value - executor will handle these specially
+            return -1.0  # Sentinel for position-triggered actions
         else:
             raise ValueError(f"Unknown timing mode: {timing_mode}")
 
