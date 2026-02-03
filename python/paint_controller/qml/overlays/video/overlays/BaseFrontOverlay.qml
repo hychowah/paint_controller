@@ -227,4 +227,74 @@ Rectangle {
             }
         }
     }
+    
+    // BIRD VIEW - Right side middle display
+    Rectangle {
+        id: birdViewWidget
+        width: 200  // Scaled down from 300 to fit better
+        height: 267  // Maintain aspect ratio (300/400 = 0.75, so 200*4/3 = 267)
+        
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.rightMargin: 20
+        
+        color: "#1a1a1a"
+        border.color: style.borderColor
+        border.width: 2
+        radius: 8
+        
+        z: 100  // Above data panels but below top bar
+        
+        Image {
+            id: birdViewDisplay
+            anchors.fill: parent
+            anchors.margins: 2
+            source: "image://bird_view/frame"
+            fillMode: Image.PreserveAspectFit
+            cache: false
+            asynchronous: false
+        }
+        
+        // Label overlay
+        Text {
+            text: "BIRD VIEW"
+            color: style.labelColor
+            font.pixelSize: 10
+            font.bold: true
+            font.letterSpacing: 1
+            anchors.top: parent.top
+            anchors.topMargin: 5
+            anchors.horizontalCenter: parent.horizontalCenter
+            z: 1
+        }
+        
+        // Point editor overlay (shown when in edit mode)
+        PointEditorOverlay {
+            id: pointEditor
+            anchors.fill: parent
+            z: 200
+        }
+        
+        // Tap to open settings (only when not in edit mode)
+        MouseArea {
+            anchors.fill: parent
+            enabled: !birdViewController.editMode
+            cursorShape: Qt.PointingHandCursor
+            onClicked: birdViewSettingsPopup.open()
+        }
+    }
+    
+    // Bird View Settings Popup
+    BirdViewSettingsPopup {
+        id: birdViewSettingsPopup
+    }
+    
+    // Connections to refresh bird view when new frame is ready
+    Connections {
+        target: birdViewController
+        function onFrameReady() {
+            birdViewDisplay.source = ""
+            birdViewDisplay.source = "image://bird_view/frame"
+        }
+    }
 }

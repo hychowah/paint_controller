@@ -2,6 +2,121 @@
 
 ---
 
+### 2026-02-03 18:30 - Add Click-and-Drag Point Editor for Perspective Tuning
+
+**Goal**: Add visual point editor with drag-and-drop for the four trapezoid source points
+**Issues**: Sliders inadequate for tuning perspective coordinates—need visual feedback
+**Approach**: Overlay with Canvas trapezoid + draggable corner handles
+
+**Implementation**:
+1. **BirdViewService additions**:
+   - `sourcePoints` Property exposing src_points_normalized array
+   - `updateSourcePoint(index, x, y)` Slot updates individual points
+   - `editMode` Property toggles point editor visibility
+   - Points stored as normalized coords (0.0-1.0), auto-scaled to pixels when initialized
+   - Increased crop_width_ratio default from 0.656 → 0.9 (270px vs 197px wide output)
+
+2. **PointEditorOverlay.qml**: Interactive visual editor
+   - Canvas draws trapezoid connecting 4 points with dashed lines
+   - 4 draggable circular handles (20px) with labels (BL/BR/TR/TL)
+   - Real-time coordinate display next to each point
+   - Active point highlighted in red vs green
+   - Constrained dragging within bounds
+   - ESC or "Done Editing" button exits mode
+   - Semi-transparent dark overlay for contrast
+
+3. **BirdViewSettingsPopup**: Added "Edit Source Points" button
+   - Opens point editor and closes settings popup
+   - Prominent placement at top with pencil icon
+
+4. **BaseFrontOverlay layout changes**:
+   - PointEditorOverlay inside birdViewWidget
+   - MouseArea disabled during edit mode
+   - Moved widget from bottom-center to right-middle (anchored to right edge, verticalCenter)
+   - z-index 200 keeps editor above video
+
+**Result**: ✅ Can visually adjust perspective by dragging trapezoid corners, see effect immediately. Wider output for better usability.
+**Files**: 
+- `services/bird_view_service.py` (sourcePoints property + updateSourcePoint slot + wider crop)
+- `qml/overlays/video/overlays/PointEditorOverlay.qml` (new)
+- `qml/overlays/video/overlays/BirdViewSettingsPopup.qml` (edit button)
+- `qml/overlays/video/overlays/BaseFrontOverlay.qml` (integrated editor + repositioned)
+
+---
+
+### 2026-02-03 18:00 - Add Bird View Transformation Parameter UI
+
+**Goal**: Add popup interface to adjust bird view transformation parameters in real-time
+**Approach**:
+- Expose all BirdViewTransformer parameters as Qt Properties
+- Create settings popup with sliders for real-time adjustment
+- Open popup by tapping bird view widget
+
+**Implementation**:
+1. **BirdViewService Properties**: Added Qt Properties with signal emission:
+   - zoom, offsetX, offsetY (pan control)
+   - cropEnabled, cropWidthRatio, cropCenterX
+   - k1, k2 (fisheye distortion coefficients)
+   - `resetToDefaults()` Slot restores default values
+   - Property setters trigger `_calculate_destination_points()` for immediate effect
+   - Distortion changes reinitialize undistortion maps
+
+2. **BirdViewSettingsPopup.qml**: Created popup with 8 sliders + toggle
+   - Custom `SettingSlider` component for consistency
+   - Real-time binding to `birdViewController` properties
+   - Reset and Close buttons in bottom bar
+   - 500x650px modal popup
+
+3. **Tap handler**: Added MouseArea to birdViewWidget
+   - Opens popup on click
+   - Cursor changes to pointing hand for discoverability
+
+**Result**: ✅ Can adjust bird view transformation live while viewing camera
+**Files**: 
+- `services/bird_view_service.py` (Qt Properties added)
+- `qml/overlays/video/overlays/BirdViewSettingsPopup.qml` (new)
+- `qml/overlays/video/overlays/BaseFrontOverlay.qml` (MouseArea + popup)
+
+---
+
+### 2026-02-03 15:30 - Bird View Integration with QThread
+
+**Goal**: Integrate bird_view transform feature from /bird_view into main GUI with minimal CPU overhead
+**Approach**: 
+- Created `BirdViewService` following `VideoStreamHandler` pattern
+- Reuses BASE_FRONT camera stream (no duplicate ROS2 subscription)
+- QThread worker pattern prevents UI blocking
+- Downscales 640x480→320x240 before transformation to reduce CPU load
+- Frame skipping when processing exceeds 33ms to stay realtime
+
+**Implementation**:
+1. **BirdViewTransformer**: Extracted core logic from bird_view_transform.py
+   - Fisheye undistortion with cached maps (k1=0.32, k2=0.272)
+   - Perspective transform with default parameters (zoom=0.606, pan=0.026/0.474)
+   - Vertical crop enabled (ratio=0.656)
+   - Source points scaled for 320x240 input
+   - Output: 200x267px for GUI display
+
+2. **BirdViewWorker**: QThread worker for async processing
+   - Converts QImage→numpy→cv2 processing→QImage
+   - Downscales before transformation (2x reduction)
+   - `_processing` flag skips frames if previous transform still running
+   - Thread-safe image provider updates with QMutex
+
+3. **Integration**:
+   - Service connects to `video_handler.camera_streams[BASE_FRONT].frameReady` signal
+   - ImageProvider registered as "bird_view" in QML engine
+   - Display in BaseFrontOverlay.qml bottom center (above wheel panels)
+   - Connections block refreshes on frameReady signal
+
+**Result**: ✅ Bird view displays in overlay without blocking UI, minimal CPU impact
+**Files**: 
+- `services/bird_view_service.py` (new)
+- `core/application.py` (registration)
+- `qml/overlays/video/overlays/BaseFrontOverlay.qml` (UI display)
+
+---
+
 ### 2026-01-29 16:30 - Fix Mode Switch Crash from Popup Collision
 
 **Goal**: Fix crash when switching control modes immediately after sending wheel travel command

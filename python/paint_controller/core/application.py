@@ -27,6 +27,7 @@ from paint_controller.handlers.steam_deck import SteamDeckHandler
 from paint_controller.services.workflow_legacy import WorkFlowHandler  # Keep for backwards compatibility
 from paint_controller.handlers.warnings import WarningHandler
 from paint_controller.services.video_stream import VideoStreamHandler
+from paint_controller.services.bird_view_service import BirdViewService
 from paint_controller.controllers.wheel import WheelController
 from paint_controller.controllers.winch import WinchController
 from paint_controller.controllers.wind_monitor import WindMonitor
@@ -238,6 +239,9 @@ class RobotController(Node, QObject):
 
         # Initialize unified video stream handler with ROS2 integration
         self.video_stream_handler = VideoStreamHandler(config.video_port, ros_node=self)
+        
+        # Initialize bird view service (must be after video_stream_handler)
+        self.bird_view_service = BirdViewService(self.video_stream_handler, parent=self)
         
         self.current_status = HeartbeatStatus.IDLE
         self.config = config
@@ -647,6 +651,13 @@ class RobotController(Node, QObject):
         try:
             self.get_logger().info('Starting controller cleanup...')
             
+            # Clean up bird view service
+            if hasattr(self, 'bird_view_service') and self.bird_view_service:
+                try:
+                    self.bird_view_service.cleanup()
+                except Exception as e:
+                    self.get_logger().error(f"Error cleaning up bird view service: {e}")
+            
             # Clean up video streams
             if hasattr(self, 'video_stream_handler') and self.video_stream_handler:
                 try:
@@ -787,6 +798,7 @@ def main():
     engine.addImageProvider("ef_live", controller.video_stream_handler.ef_image_provider)
     engine.addImageProvider("base_front_live", controller.video_stream_handler.front_image_provider)
     engine.addImageProvider("base_rear_live", controller.video_stream_handler.rear_image_provider)
+    engine.addImageProvider("bird_view", controller.bird_view_service.image_provider)
     
     # Add QML import path for relative imports to resolve
     qml_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'qml')
@@ -816,6 +828,7 @@ def main():
     engine.rootContext().setContextProperty("rosBagRecorder", controller.ros_bag_recorder)
     engine.rootContext().setContextProperty("settingsManager", controller.settings_manager)
     engine.rootContext().setContextProperty("screenManager", controller.screen_manager)
+    engine.rootContext().setContextProperty("birdViewController", controller.bird_view_service)
     controller.engine = engine
     
     # Load QML interface AFTER setting context properties
