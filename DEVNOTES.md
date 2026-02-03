@@ -2,6 +2,33 @@
 
 ---
 
+### 2026-02-03 19:15 - Stop Bird View Processing When Not Visible
+
+**Goal**: Prevent bird view transformation from running in background when not needed
+**Issues**: Continuous frame processing wastes CPU even when bird view widget not visible
+**Approach**: Add enabled property controlled by Python based on control mode and overlay state
+
+**Implementation**:
+1. **BirdViewService changes** (`services/bird_view_service.py`):
+   - Added `enabled` Property (bool) with `enabledChanged` signal
+   - Store `_base_front_stream` reference without immediately connecting
+   - `enabled` setter connects/disconnects `frameReady` signal dynamically
+   - Start with `_enabled = False` by default to save resources
+
+2. **Application.py integration** (`core/application.py`):
+   - `toggle_fullscreen()`: Enable bird view only when `control_mode == "base"` and overlay active
+   - Disable bird view when overlay closes
+   - `update_fullscreen_video_source()`: Update bird view enabled state when switching control modes
+   - Bird view automatically disabled when switching to End Effector view
+
+**Result**: ✅ Bird view transformation only runs when viewing base_front camera in fullscreen. Automatically pauses when switching to end effector or closing video overlay.
+**Files**: 
+- `services/bird_view_service.py` (enabled property + signal connection control)
+- `core/application.py` (toggle_fullscreen + update_fullscreen_video_source)
+- `qml/overlays/video/overlays/BaseFrontOverlay.qml` (removed lifecycle hooks)
+
+---
+
 ### 2026-02-03 19:00 - Persist Bird View Settings to settings.json
 
 **Goal**: Save/load bird view transformation parameters across app restarts using SettingsManager

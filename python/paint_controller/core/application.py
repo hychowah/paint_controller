@@ -499,6 +499,10 @@ class RobotController(Node, QObject):
                 # If already active, deactivate it
                 QQmlProperty.write(video_overlay, "active", False)
                 self.get_logger().info('Deactivated fullscreen overlay')
+                
+                # Disable bird view processing when overlay closes
+                if hasattr(self, 'bird_view_service'):
+                    self.bird_view_service.enabled = False
             else:
                 # If not active, activate it with the appropriate video source
                 # Determine video source based on control mode
@@ -507,6 +511,10 @@ class RobotController(Node, QObject):
                 QQmlProperty.write(video_overlay, "videoSource", video_source)
                 QQmlProperty.write(video_overlay, "active", True)
                 self.get_logger().info(f'Activated fullscreen overlay with source: {video_source}')
+                
+                # Enable bird view only if control mode is base
+                if hasattr(self, 'bird_view_service'):
+                    self.bird_view_service.enabled = (self._control_mode == "base")
         else:
             self.get_logger().error('VideoFullscreenOverlay not found in QML')
 
@@ -589,6 +597,10 @@ class RobotController(Node, QObject):
                 video_source = "image://ef_live/frame" if self._control_mode == "ef" else "image://base_front_live/frame"
                 QQmlProperty.write(video_overlay, "videoSource", video_source)
                 self.get_logger().info(f'Updated fullscreen video source to: {video_source}')
+                
+                # Update bird view enabled state based on control mode
+                if hasattr(self, 'bird_view_service'):
+                    self.bird_view_service.enabled = (self._control_mode == "base")
 
 
     def _timer_callback(self):

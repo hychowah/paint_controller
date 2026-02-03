@@ -314,6 +314,7 @@ class BirdViewService(QObject):
     k2Changed = Signal(float)
     editModeChanged = Signal(bool)
     sourcePointsChanged = Signal()
+    enabledChanged = Signal(bool)
     
     def __init__(self, video_handler: VideoStreamHandler, settings_manager=None, parent: Optional[QObject] = None):
         super().__init__(parent)
@@ -322,6 +323,8 @@ class BirdViewService(QObject):
         self.image_provider = BirdViewImageProvider()
         self.logger = logging.getLogger(__name__)
         self._edit_mode = False
+        self._enabled = False  # Start disabled to save resources
+        self._base_front_stream = None
         
         # Create worker and thread
         self.worker = BirdViewWorker(self.image_provider)
@@ -333,11 +336,10 @@ class BirdViewService(QObject):
         # Connect signals
         self.worker.frameReady.connect(self.frameReady.emit)
         
-        # Connect to BASE_FRONT camera stream
-        base_front_stream = video_handler.camera_streams.get(CameraType.BASE_FRONT)
-        if base_front_stream:
-            base_front_stream.frameReady.connect(self.worker.process_frame)
-            self.logger.info("Bird view service connected to BASE_FRONT camera stream")
+        # Store reference to BASE_FRONT camera stream but don't connect yet
+        self._base_front_stream = video_handler.camera_streams.get(CameraType.BASE_FRONT)
+        if self._base_front_stream:
+            self.logger.info("Bird view service found BASE_FRONT camera stream")
         else:
             self.logger.warning("BASE_FRONT camera stream not found")
         
@@ -546,3 +548,28 @@ class BirdViewService(QObject):
         if self._edit_mode != value:
             self._edit_mode = value
             self.editModeChanged.emit(value)
+    
+    # ========== Enabled Property (for pausing processing) ==========
+    
+    @Property(bool, notify=enabledChanged)
+    def enabled(self) -> bool:
+        """Whether bird view processing is active"""
+        return self._enabled
+    
+    @enabled.setter
+    def enabled(self, value: bool):
+        if self._enabled != value:
+            self._enabled = value
+            self.enabledChanged.emit(value)
+            
+            # Connect/disconnect signal based on enabled state
+            if value and self._base_front_stream:
+                self._base_front_stream.frameReady.connect(self.worker.process_frame)
+                self.logger.info("Bird view processing enabled")
+            elif not value and self._base_front_stream:
+                try:
+                    self._base_front_stream.frameReady.disconnect(self.worker.process_frame)
+                    self.logger.info("Bird view processing disabled")
+                except RuntimeError:
+                    # Already disconnected
+                    pass
