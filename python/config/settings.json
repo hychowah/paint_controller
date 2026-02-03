@@ -13,5 +13,31 @@
   "ui_section_states": {
     "device_winch": true,
     "device_wheel": true
-  }
+  },
+  "bird_view_zoom": 0.6268181818181818,
+  "bird_view_offset_x": 0.08181818181818179,
+  "bird_view_offset_y": 0.6545454545454545,
+  "bird_view_crop_enabled": true,
+  "bird_view_crop_width_ratio": 1.0,
+  "bird_view_crop_center_x": 0.4909090909090909,
+  "bird_view_k1": 0.19545454545454546,
+  "bird_view_k2": 0.0,
+  "bird_view_src_points": [
+    [
+      0.012,
+      1.0
+    ],
+    [
+      0.988,
+      1.0
+    ],
+    [
+      0.6270000000000004,
+      0.5322434456928838
+    ],
+    [
+      0.34200000000000047,
+      0.5284981273408239
+    ]
+  ]
 }

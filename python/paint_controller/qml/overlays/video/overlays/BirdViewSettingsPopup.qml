@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../../../components/popups"
 
 Popup {
     id: settingsPopup
@@ -227,6 +228,64 @@ Popup {
                 spacing: 20
                 
                 Button {
+                    text: "Save Settings"
+                    Layout.preferredWidth: 140
+                    Layout.preferredHeight: 40
+                    
+                    background: Rectangle {
+                        color: parent.pressed ? "#1565C0" : (parent.hovered ? "#1976D2" : "#2196F3")
+                        radius: 6
+                    }
+                    
+                    contentItem: Text {
+                        text: parent.text
+                        color: "white"
+                        font.pixelSize: 14
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    
+                    onClicked: {
+                        if (settingsManager && birdViewController) {
+                            // Copy current bird view values to settings manager
+                            settingsManager.bird_view_zoom = birdViewController.zoom
+                            settingsManager.bird_view_offset_x = birdViewController.offsetX
+                            settingsManager.bird_view_offset_y = birdViewController.offsetY
+                            settingsManager.bird_view_crop_enabled = birdViewController.cropEnabled
+                            settingsManager.bird_view_crop_width_ratio = birdViewController.cropWidthRatio
+                            settingsManager.bird_view_crop_center_x = birdViewController.cropCenterX
+                            settingsManager.bird_view_k1 = birdViewController.k1
+                            settingsManager.bird_view_k2 = birdViewController.k2
+                            settingsManager.bird_view_src_points = birdViewController.sourcePoints
+                            
+                            // Save all bird view settings to file
+                            var success = true
+                            success = success && settingsManager.saveSetting("bird_view_zoom")
+                            success = success && settingsManager.saveSetting("bird_view_offset_x")
+                            success = success && settingsManager.saveSetting("bird_view_offset_y")
+                            success = success && settingsManager.saveSetting("bird_view_crop_enabled")
+                            success = success && settingsManager.saveSetting("bird_view_crop_width_ratio")
+                            success = success && settingsManager.saveSetting("bird_view_crop_center_x")
+                            success = success && settingsManager.saveSetting("bird_view_k1")
+                            success = success && settingsManager.saveSetting("bird_view_k2")
+                            success = success && settingsManager.saveSetting("bird_view_src_points")
+                            
+                            if (success) {
+                                confirmationPopup.messageTitle = "Saved"
+                                confirmationPopup.messageText = "Bird view settings saved successfully"
+                                confirmationPopup.messageType = "info"
+                                confirmationPopup.open()
+                            } else {
+                                confirmationPopup.messageTitle = "Error"
+                                confirmationPopup.messageText = "Failed to save settings"
+                                confirmationPopup.messageType = "error"
+                                confirmationPopup.open()
+                            }
+                        }
+                    }
+                }
+                
+                Button {
                     text: "Reset to Defaults"
                     Layout.preferredWidth: 180
                     Layout.preferredHeight: 40
@@ -349,5 +408,13 @@ Popup {
                 border.width: 2
             }
         }
+    }
+    
+    // Confirmation popup for save operations
+    CustomPopup {
+        id: confirmationPopup
+        width: 400
+        height: 180
+        dismissDelay: 2000
     }
 }

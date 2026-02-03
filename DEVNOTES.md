@@ -2,6 +2,55 @@
 
 ---
 
+### 2026-02-03 19:00 - Persist Bird View Settings to settings.json
+
+**Goal**: Save/load bird view transformation parameters across app restarts using SettingsManager
+**Issues**: All 9 parameters (zoom, pan, crop, distortion, source points) reset to defaults on restart
+**Approach**: Extend SettingsManager with bool/list types, add schema entries, connect BirdViewService
+
+**Implementation**:
+1. **SettingsManager extensions** (`core/settings.py`):
+   - Added "bool" and "list" type support to `_validate_and_convert()` method
+   - Added 9 bird view schema entries with proper min/max/defaults
+   - Added 9 Qt Property definitions with getters/setters
+   - Added 9 signal definitions for property changes
+   - Updated `_emit_setting_signal()` to handle bird view signals
+
+2. **BirdViewService modifications** (`services/bird_view_service.py`):
+   - Constructor now accepts `settings_manager` parameter
+   - Loads all 9 settings after worker thread initialization using `settings_manager.get()`
+   - `resetToDefaults()` updated to include `src_points_normalized` and persist all defaults via `settings_manager.save()`
+
+3. **QML Save Button** (`qml/overlays/video/overlays/BirdViewSettingsPopup.qml`):
+   - Added "Save Settings" button with blue styling before Reset button
+   - Copies all bird view properties from birdViewController to settingsManager
+   - Calls `saveSetting()` for each parameter individually
+   - Shows CustomPopup with "Saved" or "Failed to save settings" message
+   - Added CustomPopup import and component
+
+4. **Application integration** (`core/application.py`):
+   - Passed `settings_manager` to BirdViewService constructor during initialization
+
+**Settings Persisted** (9 parameters):
+- `bird_view_zoom` (float, 0.606, 0.1-2.0)
+- `bird_view_offset_x` (float, 0.026, -1.0-1.0)
+- `bird_view_offset_y` (float, 0.474, -1.0-1.0)
+- `bird_view_crop_enabled` (bool, True)
+- `bird_view_crop_width_ratio` (float, 0.9, 0.1-1.0)
+- `bird_view_crop_center_x` (float, 0.5, 0.0-1.0)
+- `bird_view_k1` (float, 0.32, 0.0-1.0)
+- `bird_view_k2` (float, 0.272, 0.0-1.0)
+- `bird_view_src_points` (list, [[0.012,1.0], [0.988,1.0], [0.837,0.727], [0.372,0.727]])
+
+**Result**: ✅ Bird view settings persist across restarts. Manual save button consistent with existing UI patterns (SettingsTab.qml). Settings auto-load on BirdViewService init.
+**Files**: 
+- `core/settings.py` (schema + properties + signals + validation)
+- `services/bird_view_service.py` (load settings + save on reset)
+- `qml/overlays/video/overlays/BirdViewSettingsPopup.qml` (save button + popup)
+- `core/application.py` (pass settings_manager to BirdViewService)
+
+---
+
 ### 2026-02-03 18:30 - Add Click-and-Drag Point Editor for Perspective Tuning
 
 **Goal**: Add visual point editor with drag-and-drop for the four trapezoid source points

@@ -34,6 +34,17 @@ class SettingsManager(QObject):
     wheel_travel_rate_changed = Signal(float)
     wheel_travel_rpm_changed = Signal(int)
     
+    # Bird view setting signals
+    bird_view_zoom_changed = Signal(float)
+    bird_view_offset_x_changed = Signal(float)
+    bird_view_offset_y_changed = Signal(float)
+    bird_view_crop_enabled_changed = Signal(bool)
+    bird_view_crop_width_ratio_changed = Signal(float)
+    bird_view_crop_center_x_changed = Signal(float)
+    bird_view_k1_changed = Signal(float)
+    bird_view_k2_changed = Signal(float)
+    bird_view_src_points_changed = Signal(object)
+    
     # Signal for any setting change (key, value)
     setting_changed = Signal(str, object)
     
@@ -138,6 +149,74 @@ class SettingsManager(QObject):
                 "type": "dict",
                 "requires_restart": False,
                 "description": "Collapsed/expanded state of UI sections"
+            },
+            "bird_view_zoom": {
+                "default": 0.606,
+                "min": 0.1,
+                "max": 2.0,
+                "type": "float",
+                "requires_restart": False,
+                "description": "Bird's eye view zoom factor"
+            },
+            "bird_view_offset_x": {
+                "default": 0.026,
+                "min": -1.0,
+                "max": 1.0,
+                "type": "float",
+                "requires_restart": False,
+                "description": "Bird's eye view horizontal offset"
+            },
+            "bird_view_offset_y": {
+                "default": 0.474,
+                "min": -1.0,
+                "max": 1.0,
+                "type": "float",
+                "requires_restart": False,
+                "description": "Bird's eye view vertical offset"
+            },
+            "bird_view_crop_enabled": {
+                "default": True,
+                "type": "bool",
+                "requires_restart": False,
+                "description": "Enable bird view cropping"
+            },
+            "bird_view_crop_width_ratio": {
+                "default": 0.9,
+                "min": 0.1,
+                "max": 1.0,
+                "type": "float",
+                "requires_restart": False,
+                "description": "Bird view crop width ratio"
+            },
+            "bird_view_crop_center_x": {
+                "default": 0.5,
+                "min": 0.0,
+                "max": 1.0,
+                "type": "float",
+                "requires_restart": False,
+                "description": "Bird view crop center X position"
+            },
+            "bird_view_k1": {
+                "default": 0.32,
+                "min": 0.0,
+                "max": 1.0,
+                "type": "float",
+                "requires_restart": False,
+                "description": "Bird view fisheye distortion coefficient k1"
+            },
+            "bird_view_k2": {
+                "default": 0.272,
+                "min": 0.0,
+                "max": 1.0,
+                "type": "float",
+                "requires_restart": False,
+                "description": "Bird view fisheye distortion coefficient k2"
+            },
+            "bird_view_src_points": {
+                "default": [[0.012, 1.0], [0.988, 1.0], [0.837, 0.727], [0.372, 0.727]],
+                "type": "list",
+                "requires_restart": False,
+                "description": "Bird view source trapezoid points (normalized coordinates)"
             }
         }
         
@@ -217,9 +296,18 @@ class SettingsManager(QObject):
                 typed_value = float(value)
             elif schema["type"] == "int":
                 typed_value = int(value)
+            elif schema["type"] == "bool":
+                typed_value = bool(value)
+                return typed_value  # Bool doesn't have min/max
             elif schema["type"] == "dict":
                 # Dict type doesn't need conversion, just validate it's a dict
                 if isinstance(value, dict):
+                    return value
+                else:
+                    return None
+            elif schema["type"] == "list":
+                # List type doesn't need conversion, just validate it's a list
+                if isinstance(value, list):
                     return value
                 else:
                     return None
@@ -292,7 +380,16 @@ class SettingsManager(QObject):
             "arm_extend_length": self.arm_extend_length_changed,
             "wheel_travel_max": self.wheel_travel_max_changed,
             "wheel_travel_rate": self.wheel_travel_rate_changed,
-            "wheel_travel_rpm": self.wheel_travel_rpm_changed
+            "wheel_travel_rpm": self.wheel_travel_rpm_changed,
+            "bird_view_zoom": self.bird_view_zoom_changed,
+            "bird_view_offset_x": self.bird_view_offset_x_changed,
+            "bird_view_offset_y": self.bird_view_offset_y_changed,
+            "bird_view_crop_enabled": self.bird_view_crop_enabled_changed,
+            "bird_view_crop_width_ratio": self.bird_view_crop_width_ratio_changed,
+            "bird_view_crop_center_x": self.bird_view_crop_center_x_changed,
+            "bird_view_k1": self.bird_view_k1_changed,
+            "bird_view_k2": self.bird_view_k2_changed,
+            "bird_view_src_points": self.bird_view_src_points_changed
         }
         
         if key in signal_map:
@@ -508,6 +605,79 @@ class SettingsManager(QObject):
     @wheel_travel_rpm.setter
     def wheel_travel_rpm(self, value: int):
         self.set("wheel_travel_rpm", value)
+    
+    # Bird view properties
+    @Property(float, notify=bird_view_zoom_changed)
+    def bird_view_zoom(self) -> float:
+        return self._values.get("bird_view_zoom", 0.606)
+    
+    @bird_view_zoom.setter
+    def bird_view_zoom(self, value: float):
+        self.set("bird_view_zoom", value)
+    
+    @Property(float, notify=bird_view_offset_x_changed)
+    def bird_view_offset_x(self) -> float:
+        return self._values.get("bird_view_offset_x", 0.026)
+    
+    @bird_view_offset_x.setter
+    def bird_view_offset_x(self, value: float):
+        self.set("bird_view_offset_x", value)
+    
+    @Property(float, notify=bird_view_offset_y_changed)
+    def bird_view_offset_y(self) -> float:
+        return self._values.get("bird_view_offset_y", 0.474)
+    
+    @bird_view_offset_y.setter
+    def bird_view_offset_y(self, value: float):
+        self.set("bird_view_offset_y", value)
+    
+    @Property(bool, notify=bird_view_crop_enabled_changed)
+    def bird_view_crop_enabled(self) -> bool:
+        return self._values.get("bird_view_crop_enabled", True)
+    
+    @bird_view_crop_enabled.setter
+    def bird_view_crop_enabled(self, value: bool):
+        self.set("bird_view_crop_enabled", value)
+    
+    @Property(float, notify=bird_view_crop_width_ratio_changed)
+    def bird_view_crop_width_ratio(self) -> float:
+        return self._values.get("bird_view_crop_width_ratio", 0.9)
+    
+    @bird_view_crop_width_ratio.setter
+    def bird_view_crop_width_ratio(self, value: float):
+        self.set("bird_view_crop_width_ratio", value)
+    
+    @Property(float, notify=bird_view_crop_center_x_changed)
+    def bird_view_crop_center_x(self) -> float:
+        return self._values.get("bird_view_crop_center_x", 0.5)
+    
+    @bird_view_crop_center_x.setter
+    def bird_view_crop_center_x(self, value: float):
+        self.set("bird_view_crop_center_x", value)
+    
+    @Property(float, notify=bird_view_k1_changed)
+    def bird_view_k1(self) -> float:
+        return self._values.get("bird_view_k1", 0.32)
+    
+    @bird_view_k1.setter
+    def bird_view_k1(self, value: float):
+        self.set("bird_view_k1", value)
+    
+    @Property(float, notify=bird_view_k2_changed)
+    def bird_view_k2(self) -> float:
+        return self._values.get("bird_view_k2", 0.272)
+    
+    @bird_view_k2.setter
+    def bird_view_k2(self, value: float):
+        self.set("bird_view_k2", value)
+    
+    @Property('QVariantList', notify=bird_view_src_points_changed)
+    def bird_view_src_points(self) -> list:
+        return self._values.get("bird_view_src_points", [[0.012, 1.0], [0.988, 1.0], [0.837, 0.727], [0.372, 0.727]])
+    
+    @bird_view_src_points.setter
+    def bird_view_src_points(self, value: list):
+        self.set("bird_view_src_points", value)
     
     # =====================================================
     # QML Slots for setting values with key

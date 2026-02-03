@@ -315,9 +315,10 @@ class BirdViewService(QObject):
     editModeChanged = Signal(bool)
     sourcePointsChanged = Signal()
     
-    def __init__(self, video_handler: VideoStreamHandler, parent: Optional[QObject] = None):
+    def __init__(self, video_handler: VideoStreamHandler, settings_manager=None, parent: Optional[QObject] = None):
         super().__init__(parent)
         self.video_handler = video_handler
+        self.settings_manager = settings_manager
         self.image_provider = BirdViewImageProvider()
         self.logger = logging.getLogger(__name__)
         self._edit_mode = False
@@ -343,6 +344,20 @@ class BirdViewService(QObject):
         # Start thread
         self.worker_thread.start()
         self.logger.info("Bird view worker thread started")
+        
+        # Load settings from settings_manager if available
+        if self.settings_manager:
+            self.zoom = self.settings_manager.get("bird_view_zoom", 0.606)
+            self.offsetX = self.settings_manager.get("bird_view_offset_x", 0.026)
+            self.offsetY = self.settings_manager.get("bird_view_offset_y", 0.474)
+            self.cropEnabled = self.settings_manager.get("bird_view_crop_enabled", True)
+            self.cropWidthRatio = self.settings_manager.get("bird_view_crop_width_ratio", 0.9)
+            self.cropCenterX = self.settings_manager.get("bird_view_crop_center_x", 0.5)
+            self.k1 = self.settings_manager.get("bird_view_k1", 0.32)
+            self.k2 = self.settings_manager.get("bird_view_k2", 0.272)
+            src_points = self.settings_manager.get("bird_view_src_points", [[0.012, 1.0], [0.988, 1.0], [0.837, 0.727], [0.372, 0.727]])
+            self.worker.transformer.src_points_normalized = src_points
+            self.logger.info("Bird view settings loaded from SettingsManager")
     
     def cleanup(self):
         """Clean up thread resources"""
@@ -479,6 +494,25 @@ class BirdViewService(QObject):
         self.cropCenterX = 0.5
         self.k1 = 0.32
         self.k2 = 0.272
+        
+        # Reset source points to default
+        default_src_points = [[0.012, 1.0], [0.988, 1.0], [0.837, 0.727], [0.372, 0.727]]
+        self.worker.transformer.src_points_normalized = default_src_points
+        self.sourcePointsChanged.emit()
+        
+        # Save all defaults to settings_manager if available
+        if self.settings_manager:
+            self.settings_manager.set("bird_view_zoom", 0.606)
+            self.settings_manager.set("bird_view_offset_x", 0.026)
+            self.settings_manager.set("bird_view_offset_y", 0.474)
+            self.settings_manager.set("bird_view_crop_enabled", True)
+            self.settings_manager.set("bird_view_crop_width_ratio", 0.9)
+            self.settings_manager.set("bird_view_crop_center_x", 0.5)
+            self.settings_manager.set("bird_view_k1", 0.32)
+            self.settings_manager.set("bird_view_k2", 0.272)
+            self.settings_manager.set("bird_view_src_points", default_src_points)
+            self.settings_manager.save()
+            self.logger.info("Bird view settings reset to defaults and saved")
     
     # ========== Source Points Properties ==========
     

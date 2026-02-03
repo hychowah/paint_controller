@@ -241,7 +241,7 @@ class RobotController(Node, QObject):
         self.video_stream_handler = VideoStreamHandler(config.video_port, ros_node=self)
         
         # Initialize bird view service (must be after video_stream_handler)
-        self.bird_view_service = BirdViewService(self.video_stream_handler, parent=self)
+        self.bird_view_service = BirdViewService(self.video_stream_handler, settings_manager=self.settings_manager, parent=self)
         
         self.current_status = HeartbeatStatus.IDLE
         self.config = config
