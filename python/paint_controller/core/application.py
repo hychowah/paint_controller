@@ -13,6 +13,9 @@ import yaml
 if 'QT_QPA_PLATFORM' not in os.environ:
     os.environ['QT_QPA_PLATFORM'] = 'xcb'
 
+# Disable Linux native virtual keyboard (on-screen keyboard) for text input fields
+os.environ['QT_IM_MODULE'] = 'none'
+
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import UInt8
