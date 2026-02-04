@@ -5,18 +5,18 @@
   "thrust_force": -1.0,
   "thrust_ramp_rate": 1.0,
   "valve_turn_max": 3.2,
-  "arm_retract_length": 650,
+  "arm_retract_length": 550,
   "arm_extend_length": 800,
   "wheel_travel_max": 500.0,
   "wheel_travel_rate": 100.0,
-  "wheel_travel_rpm": 200,
+  "wheel_travel_rpm": 220,
   "ui_section_states": {
     "device_winch": true,
     "device_wheel": true
   },
-  "bird_view_zoom": 0.6268181818181818,
-  "bird_view_offset_x": 0.08181818181818179,
-  "bird_view_offset_y": 0.6545454545454545,
+  "bird_view_zoom": 0.553409090909091,
+  "bird_view_offset_x": 0.20454545454545459,
+  "bird_view_offset_y": 0.7181818181818183,
   "bird_view_crop_enabled": true,
   "bird_view_crop_width_ratio": 1.0,
   "bird_view_crop_center_x": 0.4909090909090909,
@@ -32,12 +32,12 @@
       1.0
     ],
     [
-      0.6270000000000004,
-      0.5322434456928838
+      0.6770000000000005,
+      0.5659513108614231
     ],
     [
-      0.34200000000000047,
-      0.5284981273408239
+      0.27700000000000047,
+      0.5846779026217228
     ]
   ]
 }

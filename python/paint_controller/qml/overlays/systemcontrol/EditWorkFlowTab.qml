@@ -12,6 +12,7 @@ Item {
     property var actions: []
     property int selectedActionIndex: -1
     property var actionIdList: []
+    property int paramFieldHeight: 55
 
     ColumnLayout {
         anchors.fill: parent
@@ -20,7 +21,7 @@ Item {
         // Top toolbar
         Rectangle {
             Layout.fillWidth: true
-            height: 50
+            height: 65
             color: "#252525"
             radius: 8
             border.color: "#333333"
@@ -41,11 +42,15 @@ Item {
 
                 CustomButton {
                     text: "Load"
+                    buttonWidth: 100
+                    buttonHeight: 50
                     onClicked: workflowSelector.open()
                 }
 
                 CustomButton {
                     text: "Save"
+                    buttonWidth: 100
+                    buttonHeight: 50
                     enabled: workflowName !== "" && actions.length > 0
                     onClicked: saveWorkflow()
                 }
@@ -233,7 +238,7 @@ Item {
                         // Parameters section
                         Rectangle {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: paramsLayout.implicitHeight + 20
+                            Layout.preferredHeight: paramsLayout.implicitHeight + 80
                             color: "#252525"
                             radius: 6
                             border.color: "#404040"
@@ -257,7 +262,7 @@ Item {
                                 Loader {
                                     id: paramFieldsLoader
                                     Layout.fillWidth: true
-                                    Layout.preferredHeight: item ? item.implicitHeight : 50
+                                    Layout.preferredHeight: item ? item.implicitHeight + 40 : 100
                                     sourceComponent: null
                                 }
                             }
@@ -266,7 +271,7 @@ Item {
                         // Timing section
                         Rectangle {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: timingLayout.implicitHeight + 20
+                            Layout.preferredHeight: timingLayout.implicitHeight + 80
                             color: "#252525"
                             radius: 6
                             border.color: "#404040"
@@ -302,6 +307,7 @@ Item {
                                         id: estimatedDurationField
                                         Layout.fillWidth: true
                                         Layout.preferredWidth: 200
+                                        Layout.preferredHeight: paramFieldHeight
                                         readOnly: true
                                         color: "#FFFFFF"
                                         background: Rectangle {
@@ -340,6 +346,7 @@ Item {
                                         id: offsetMsField
                                         Layout.fillWidth: true
                                         Layout.preferredWidth: 200
+                                        Layout.preferredHeight: paramFieldHeight
                                         readOnly: true
                                         color: "#FFFFFF"
                                         visible: selectedActionIndex >= 0 && actions[selectedActionIndex] && actions[selectedActionIndex].trigger
@@ -385,10 +392,12 @@ Item {
     component CustomButton: Rectangle {
         property string text: ""
         property bool enabled: true
+        property int buttonWidth: text.length > 3 ? 80 : 40
+        property int buttonHeight: 32
         signal clicked()
 
-        width: text.length > 3 ? 80 : 40
-        height: 32
+        width: buttonWidth
+        height: buttonHeight
         color: enabled ? (buttonMouseArea.containsMouse ? "#3A5A8C" : "#2A3040") : "#1A1A1A"
         border.color: enabled ? "#3A5A8C" : "#333333"
         border.width: 1
@@ -593,6 +602,7 @@ Item {
                 id: lengthField
                 Layout.fillWidth: true
                 Layout.preferredWidth: 200
+                Layout.preferredHeight: editWorkFlowTab.paramFieldHeight
                 readOnly: true
                 color: "#FFFFFF"
                 background: Rectangle {
@@ -626,6 +636,7 @@ Item {
                 id: speedField
                 Layout.fillWidth: true
                 Layout.preferredWidth: 200
+                Layout.preferredHeight: editWorkFlowTab.paramFieldHeight
                 readOnly: true
                 color: "#FFFFFF"
                 background: Rectangle {
@@ -672,6 +683,7 @@ Item {
                 id: turnValueField
                 Layout.fillWidth: true
                 Layout.preferredWidth: 200
+                Layout.preferredHeight: editWorkFlowTab.paramFieldHeight
                 readOnly: true
                 color: "#FFFFFF"
                 background: Rectangle {
@@ -718,6 +730,7 @@ Item {
                 id: angleField
                 Layout.fillWidth: true
                 Layout.preferredWidth: 200
+                Layout.preferredHeight: editWorkFlowTab.paramFieldHeight
                 readOnly: true
                 color: "#FFFFFF"
                 background: Rectangle {
@@ -751,6 +764,7 @@ Item {
                 id: gimbalSpeedField
                 Layout.fillWidth: true
                 Layout.preferredWidth: 200
+                Layout.preferredHeight: editWorkFlowTab.paramFieldHeight
                 readOnly: true
                 color: "#FFFFFF"
                 background: Rectangle {
@@ -797,6 +811,7 @@ Item {
                 id: distanceField
                 Layout.fillWidth: true
                 Layout.preferredWidth: 200
+                Layout.preferredHeight: editWorkFlowTab.paramFieldHeight
                 readOnly: true
                 color: "#FFFFFF"
                 background: Rectangle {
@@ -843,6 +858,7 @@ Item {
                 id: fxField
                 Layout.fillWidth: true
                 Layout.preferredWidth: 200
+                Layout.preferredHeight: editWorkFlowTab.paramFieldHeight
                 readOnly: true
                 color: "#FFFFFF"
                 background: Rectangle {
@@ -876,6 +892,7 @@ Item {
                 id: fyField
                 Layout.fillWidth: true
                 Layout.preferredWidth: 200
+                Layout.preferredHeight: editWorkFlowTab.paramFieldHeight
                 readOnly: true
                 color: "#FFFFFF"
                 background: Rectangle {

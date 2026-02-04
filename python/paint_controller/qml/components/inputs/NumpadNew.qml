@@ -6,13 +6,13 @@ import "../buttons"
 
 Popup {
     id: numpad
-    width: 300
-    height: 500
+    width: 400
+    height: 600
     modal: true
     clip: true
     
     property var targetField
-    property int buttonFontSize: 16
+    property int buttonFontSize: 60
     property color buttonColor: "#2A3040"
     property color buttonPressedColor: "#3A5A8C"
     property color buttonBorderColor: "#3A5A8C"

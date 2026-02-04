@@ -2,6 +2,43 @@
 
 ---
 
+### 2026-02-03 21:30 - Extract Reusable SettingInputField Component
+
+**Goal**: Eliminate 800+ lines of repeated code in SettingsTab.qml
+**Issues**: Each setting (winch speed, track speed, arm position, etc.) used identical 60-70 line pattern for label + input + save button
+**Tried**: Created reusable SettingInputField.qml component with configurable properties
+**Result**: ✅ Reduced SettingsTab.qml from 1048 → 412 lines (~60% reduction). Component is reusable across all settings.
+
+**Pattern Identified**:
+Every setting repeated:
+- ColumnLayout container
+- Label Text with range description  
+- RowLayout with input Rectangle + TextInput + Save button
+- Identical focus handling, hover states, save logic
+
+**Solution**:
+Created `components/inputs/SettingInputField.qml` (109 lines) with properties:
+- `label`: Display text + range
+- `settingKey`: Python property name (e.g., "winch_max_speed_mmps")
+- `decimalPlaces`: 0 for integers, 1-2 for floats
+- `unitSuffix`: For confirmation messages (e.g., " mm/s", " RPM")
+- `numberPadTarget`: Reference to NumpadNew popup
+- `confirmationPopup`: Reference to CustomPopup
+
+**Key Design Choice**:
+Uses global `settingsManager` context property (exposed from Python) instead of passing as prop. This matches Qt's pattern for context-injected objects.
+
+**Exceptions**:
+Kept 2 settings inline due to special logic:
+- `thrust_force`: Updates `teensyController` immediately
+- `thrust_ramp_rate`: Clamps value to 0.1-10.0 range
+
+**Files**: 
+- `qml/components/inputs/SettingInputField.qml` (NEW - reusable component)
+- `qml/overlays/systemcontrol/SettingsTab.qml` (refactored to use component 8x)
+
+---
+
 ### 2026-02-03 19:15 - Stop Bird View Processing When Not Visible
 
 **Goal**: Prevent bird view transformation from running in background when not needed

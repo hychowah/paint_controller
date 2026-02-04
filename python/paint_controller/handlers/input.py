@@ -8,6 +8,7 @@ class UIInputHandler(QObject):
         self.controller = controller
         self._r1_last_press_time = 0.0
         self._l1_last_press_time = 0.0
+        self._a_last_press_time = 0.0
         
         # Get arm extension presets from settings_manager if available
         if hasattr(controller, 'settings_manager'):
@@ -160,15 +161,12 @@ class UIInputHandler(QObject):
     
     @Slot()
     def on_a_pressed(self):
-        """Send wheel travel position command when A button is pressed"""
-        # Check if Wheel Travel mode is active on either joystick
-        left_mode = self.controller.overlayController.get_left_selected_option()
-        right_mode = self.controller.overlayController.get_right_selected_option()
-        
-        wheel_travel_modes = ["Wheel Travel Left", "Wheel Travel Right"]
-        if left_mode in wheel_travel_modes or right_mode in wheel_travel_modes:
-            # Send the accumulated wheel travel command
+        """Send wheel travel position command when A button is double-pressed"""
+        current_time = time.time()
+        time_since_last_press = current_time - self._a_last_press_time
+        self._a_last_press_time = current_time
+
+        self.controller.show_popup("Wheel Travel", "Press again to send position command", "info")
+        if time_since_last_press <= 1:
             self.controller.controlProcessor.send_wheel_travel_command()
             self.controller.show_popup("Wheel Travel", "Position command sent", "info")
-        else:
-            print("A button pressed but Wheel Travel mode not active")

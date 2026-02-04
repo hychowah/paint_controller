@@ -11,7 +11,7 @@ actions:
   name: descend_to_target
   type: winch_absolute
   params:
-    length: 1860
+    length: 2084
     speed: 200
     acceleration: 10
   trigger:
@@ -22,7 +22,7 @@ actions:
   name: ascend_to_top
   type: winch_absolute
   params:
-    length: 7300
+    length: 7542
     speed: 200
     acceleration: 10
   trigger:

@@ -33,7 +33,8 @@ Item {
             anchors.fill: parent
             enabled: showSystemMenu
             // Consume all mouse/touch events to prevent propagation
-            onClicked: overlayController.hide_menu()
+            // Menu will only close via close button, not by touching outside
+            onClicked: {} // Do nothing - prevents closing on background click
         }
     }
 

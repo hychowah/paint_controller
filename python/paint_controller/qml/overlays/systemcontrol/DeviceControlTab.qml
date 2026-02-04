@@ -21,14 +21,47 @@ Item {
             // =====================================================
             // Hardware Power Section
             // =====================================================
-            SettingsSection {
+            Rectangle {
                 Layout.fillWidth: true
-                sectionId: "device_hardware_power"
-                title: "Hardware Power"
-                description: "Core power controls for system components"
+                color: "#1E2433"
+                border.color: "#3A5A8C"
+                border.width: 1
+                radius: 8
+                height: childrenRect.height + 30
                 
-                contentItem: ColumnLayout {
+                ColumnLayout {
+                    width: parent.width - 30
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.top
+                    anchors.topMargin: 15
                     spacing: 8
+                    
+                    // Section Header
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+                        
+                        Text {
+                            text: "Hardware Power"
+                            color: "#FFFFFF"
+                            font.pixelSize: 16
+                            font.bold: true
+                        }
+                        
+                        Text {
+                            text: "Core power controls for system components"
+                            color: "#888888"
+                            font.pixelSize: 13
+                        }
+                        
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 1
+                            color: "#333333"
+                            Layout.topMargin: 5
+                            Layout.bottomMargin: 5
+                        }
+                    }
                     
                     // Teensy Relay Control
                     ControlPanel {
@@ -57,14 +90,47 @@ Item {
             // =====================================================
             // Winch Section
             // =====================================================
-            SettingsSection {
+            Rectangle {
                 Layout.fillWidth: true
-                sectionId: "device_winch"
-                title: "Winch"
-                description: "Winch motor and load controls"
+                color: "#1E2433"
+                border.color: "#3A5A8C"
+                border.width: 1
+                radius: 8
+                height: childrenRect.height + 30
                 
-                contentItem: ColumnLayout {
+                ColumnLayout {
+                    width: parent.width - 30
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.top
+                    anchors.topMargin: 15
                     spacing: 8
+                    
+                    // Section Header
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+                        
+                        Text {
+                            text: "Winch"
+                            color: "#FFFFFF"
+                            font.pixelSize: 16
+                            font.bold: true
+                        }
+                        
+                        Text {
+                            text: "Winch motor and load controls"
+                            color: "#888888"
+                            font.pixelSize: 13
+                        }
+                        
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 1
+                            color: "#333333"
+                            Layout.topMargin: 5
+                            Layout.bottomMargin: 5
+                        }
+                    }
                     
                     // Winch Enable Control
                     ControlPanel {
@@ -93,14 +159,47 @@ Item {
             // =====================================================
             // Wheel Section
             // =====================================================
-            SettingsSection {
+            Rectangle {
                 Layout.fillWidth: true
-                sectionId: "device_wheel"
-                title: "Wheel"
-                description: "Wheel motor controls"
+                color: "#1E2433"
+                border.color: "#3A5A8C"
+                border.width: 1
+                radius: 8
+                height: childrenRect.height + 30
                 
-                contentItem: ColumnLayout {
+                ColumnLayout {
+                    width: parent.width - 30
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.top
+                    anchors.topMargin: 15
                     spacing: 8
+                    
+                    // Section Header
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+                        
+                        Text {
+                            text: "Wheel"
+                            color: "#FFFFFF"
+                            font.pixelSize: 16
+                            font.bold: true
+                        }
+                        
+                        Text {
+                            text: "Wheel motor controls"
+                            color: "#888888"
+                            font.pixelSize: 13
+                        }
+                        
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 1
+                            color: "#333333"
+                            Layout.topMargin: 5
+                            Layout.bottomMargin: 5
+                        }
+                    }
                     
                     // Wheel Enable Control
                     ControlPanel {
@@ -142,14 +241,47 @@ Item {
             // =====================================================
             // Recording & Monitoring Section
             // =====================================================
-            SettingsSection {
+            Rectangle {
                 Layout.fillWidth: true
-                sectionId: "device_recording"
-                title: "Recording & Monitoring"
-                description: "Camera, screen, and data recording"
+                color: "#1E2433"
+                border.color: "#3A5A8C"
+                border.width: 1
+                radius: 8
+                height: childrenRect.height + 30
                 
-                contentItem: ColumnLayout {
+                ColumnLayout {
+                    width: parent.width - 30
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.top
+                    anchors.topMargin: 15
                     spacing: 8
+                    
+                    // Section Header
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+                        
+                        Text {
+                            text: "Recording & Monitoring"
+                            color: "#FFFFFF"
+                            font.pixelSize: 16
+                            font.bold: true
+                        }
+                        
+                        Text {
+                            text: "Camera, screen, and data recording"
+                            color: "#888888"
+                            font.pixelSize: 13
+                        }
+                        
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 1
+                            color: "#333333"
+                            Layout.topMargin: 5
+                            Layout.bottomMargin: 5
+                        }
+                    }
                     
                     // Camera Recording Control
                     ControlPanel {
@@ -213,14 +345,47 @@ Item {
             // =====================================================
             // Stabilization Section
             // =====================================================
-            SettingsSection {
+            Rectangle {
                 Layout.fillWidth: true
-                sectionId: "device_stabilization"
-                title: "Stabilization"
-                description: "Stability, yaw, and leveling controls"
+                color: "#1E2433"
+                border.color: "#3A5A8C"
+                border.width: 1
+                radius: 8
+                height: childrenRect.height + 30
                 
-                contentItem: ColumnLayout {
+                ColumnLayout {
+                    width: parent.width - 30
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.top
+                    anchors.topMargin: 15
                     spacing: 8
+                    
+                    // Section Header
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+                        
+                        Text {
+                            text: "Stabilization"
+                            color: "#FFFFFF"
+                            font.pixelSize: 16
+                            font.bold: true
+                        }
+                        
+                        Text {
+                            text: "Stability, yaw, and leveling controls"
+                            color: "#888888"
+                            font.pixelSize: 13
+                        }
+                        
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 1
+                            color: "#333333"
+                            Layout.topMargin: 5
+                            Layout.bottomMargin: 5
+                        }
+                    }
                     
                     // Stability Controller (Master Enable)
                     ControlPanel {
@@ -282,14 +447,47 @@ Item {
             // =====================================================
             // Other Controls Section
             // =====================================================
-            SettingsSection {
+            Rectangle {
                 Layout.fillWidth: true
-                sectionId: "device_other"
-                title: "Other Controls"
-                description: "LED, lidar, and homing actions"
+                color: "#1E2433"
+                border.color: "#3A5A8C"
+                border.width: 1
+                radius: 8
+                height: childrenRect.height + 30
                 
-                contentItem: ColumnLayout {
+                ColumnLayout {
+                    width: parent.width - 30
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.top
+                    anchors.topMargin: 15
                     spacing: 8
+                    
+                    // Section Header
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+                        
+                        Text {
+                            text: "Other Controls"
+                            color: "#FFFFFF"
+                            font.pixelSize: 16
+                            font.bold: true
+                        }
+                        
+                        Text {
+                            text: "LED, lidar, and homing actions"
+                            color: "#888888"
+                            font.pixelSize: 13
+                        }
+                        
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 1
+                            color: "#333333"
+                            Layout.topMargin: 5
+                            Layout.bottomMargin: 5
+                        }
+                    }
 
                     // SprayGun Led Control
                     ControlPanel {

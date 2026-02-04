@@ -523,45 +523,8 @@ class RobotController(Node, QObject):
 
     @Slot()
     def toggle_lidar_overlay(self):
-        """Toggle the LiDAR point cloud overlay or send wheel travel command
-        
-        If Wheel Travel mode is active on either joystick, sends the position command.
-        Otherwise, toggles the LiDAR overlay display.
-        """
-        # Check if Wheel Travel mode is active (either Left or Right variant)
-        left_mode = self.overlayController.get_left_selected_option()
-        right_mode = self.overlayController.get_right_selected_option()
-        
-        wheel_travel_modes = ["Wheel Travel Left", "Wheel Travel Right"]
-        if left_mode in wheel_travel_modes or right_mode in wheel_travel_modes:
-            # Wheel Travel mode is active - send position command
-            self.input_handler.on_a_pressed()
-            return
-        
-        # Wheel Travel not active - toggle LiDAR overlay as normal
-        root_objects = self.engine.rootObjects()
-        if not root_objects:
-            self.get_logger().error('No root QML objects found')
-            return
-            
-        root = root_objects[0]
-        # Find the LiDAR overlay by object name (matches QML objectName: "lidarOverlay")
-        lidar_overlay = root.findChild(QObject, "lidarOverlay")
-        
-        if lidar_overlay:
-            # Get current active state
-            is_active = QQmlProperty.read(lidar_overlay, "active")
-            
-            if is_active:
-                # Deactivate it
-                QQmlProperty.write(lidar_overlay, "active", False)
-                self.get_logger().info('Deactivated LiDAR overlay')
-            else:
-                # Activate it
-                QQmlProperty.write(lidar_overlay, "active", True)
-                self.get_logger().info('Activated LiDAR overlay')
-        else:
-            self.get_logger().error('LidarOverlay not found in QML')
+        """Handle A button press - triggers wheel travel double-press logic"""
+        self.input_handler.on_a_pressed()
     
     # Note: The LiDAR overlay automatically updates via QML signal connections
     # when lidar_controller emits points_ready signal, so no manual update methods needed
