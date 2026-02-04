@@ -164,7 +164,8 @@ Rectangle {
             Layout.preferredHeight: 60
             
             // IMPORTANT: Prevent keyboard focus to avoid accidental activation from other windows
-            focusPolicy: Qt.NoFocus
+            // But still allow mouse clicks
+            focusPolicy: Qt.ClickFocus  // Only get focus on mouse click, not keyboard navigation
             activeFocusOnTab: false
             
             background: Rectangle {
@@ -184,9 +185,11 @@ Rectangle {
                 verticalAlignment: Text.AlignVCenter
             }
             
-            // Block all keyboard events to prevent accidental activation
-            Keys.onPressed: {
-                event.accepted = false  // Don't handle keyboard events
+            // Block keyboard activation (Space/Enter) but allow mouse clicks
+            Keys.onPressed: function(event) {
+                if (event.key === Qt.Key_Space || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                    event.accepted = true  // Block Space and Enter keys
+                }
             }
             
             onClicked: {
