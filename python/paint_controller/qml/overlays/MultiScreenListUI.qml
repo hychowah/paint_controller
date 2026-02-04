@@ -27,6 +27,9 @@ Window {
     property bool fullscreenMode: false
     visibility: fullscreenMode ? Window.FullScreen : Window.Hidden
     
+    // Prevent keyboard events from leaking to this window
+    flags: Qt.Window
+    
     // Function to show the window (avoids visible/visibility conflict)
     function showWindow() {
         visibility = fullscreenMode ? Window.FullScreen : Window.Windowed

@@ -163,6 +163,10 @@ Rectangle {
             Layout.preferredWidth: 120
             Layout.preferredHeight: 60
             
+            // IMPORTANT: Prevent keyboard focus to avoid accidental activation from other windows
+            focusPolicy: Qt.NoFocus
+            activeFocusOnTab: false
+            
             background: Rectangle {
                 color: exitButton.pressed ? "#c0392b" : "#FF5733"
                 radius: 8
@@ -180,7 +184,13 @@ Rectangle {
                 verticalAlignment: Text.AlignVCenter
             }
             
+            // Block all keyboard events to prevent accidental activation
+            Keys.onPressed: {
+                event.accepted = false  // Don't handle keyboard events
+            }
+            
             onClicked: {
+                console.log("EXIT button clicked - starting shutdown timer")
                 exitTimer.start()
             }
         }
@@ -188,7 +198,10 @@ Rectangle {
         Timer {
             id: exitTimer
             interval: 1000
-            onTriggered: Qt.quit()
+            onTriggered: {
+                console.log("Exiting application via EXIT button")
+                Qt.quit()
+            }
         }
     }
 }

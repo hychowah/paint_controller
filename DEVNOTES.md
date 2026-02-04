@@ -2,6 +2,39 @@
 
 ---
 
+### 2026-02-04 14:45 - Fix Multi-Monitor Crash on A Button Press
+
+**Goal**: Prevent application crash when pressing A button (wheel travel command) in multi-monitor mode
+**Issues**: A button triggered emergency shutdown only when secondary display (MultiScreenListUI) was active. App exited via Qt.quit() unexpectedly.
+**Tried**: Added extensive debug logging to trace event flow
+**Result**: ✅ Keyboard events from main window were triggering EXIT button on secondary display. Fixed by disabling keyboard focus on EXIT button.
+
+**Root Cause**:
+Qt Buttons accept keyboard activation (Space/Enter) when focused. In multi-monitor setup, keyboard events from Steam Deck controller leaked across windows, causing the EXIT button in MonitorHeader (secondary display) to be triggered by the A button press.
+
+**Evidence from debug logs**:
+```
+[DEBUG] EXIT BUTTON CLICKED IN MONITOR HEADER!
+[DEBUG] EXIT TIMER TRIGGERED - CALLING Qt.quit()!
+```
+
+**Solution**:
+1. **MonitorHeader.qml EXIT button**:
+   - Added `focusPolicy: Qt.NoFocus` to prevent keyboard focus
+   - Added `activeFocusOnTab: false` to prevent Tab navigation
+   - Added `Keys.onPressed` handler that rejects all keyboard events
+   - Button now only responds to actual mouse clicks
+
+2. **MultiScreenListUI.qml debugging**:
+   - Added focused Item to log keyboard events reaching secondary window
+   - Helps diagnose future cross-window event issues
+
+**Files**: 
+- `qml/components/displays/MonitorHeader.qml` (EXIT button keyboard blocking)
+- `qml/overlays/MultiScreenListUI.qml` (keyboard event debugging)
+
+---
+
 ### 2026-02-03 21:30 - Extract Reusable SettingInputField Component
 
 **Goal**: Eliminate 800+ lines of repeated code in SettingsTab.qml

@@ -830,6 +830,8 @@ def main():
         sys.exit(app.exec())
     except Exception as e:
         print(f"Application error: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         print("Starting emergency shutdown sequence...")
         

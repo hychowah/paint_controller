@@ -27,6 +27,9 @@ Inside `RowLayout`/`ColumnLayout`, children must NOT reference `parent.width * 0
 ### QQuickView vs QQmlApplicationEngine
 `QQmlApplicationEngine` requires `Window` or `ApplicationWindow` as QML root. For `Rectangle`-based components, use `QQuickView` with `SizeRootObjectToView` resize mode instead.
 
+### Qt Button Keyboard Activation in Multi-Window Apps
+Qt Buttons respond to Space/Enter keys when focused, even in secondary windows. In multi-monitor or multi-window setups, keyboard events can leak across windows causing unintended button activation. For critical buttons (EXIT, DELETE, etc.), always set `focusPolicy: Qt.NoFocus` and `activeFocusOnTab: false` to prevent accidental keyboard triggering. Use `Keys.onPressed { event.accepted = false }` to explicitly reject keyboard events if needed.
+
 ---
 
 ## ROS2 Tips
