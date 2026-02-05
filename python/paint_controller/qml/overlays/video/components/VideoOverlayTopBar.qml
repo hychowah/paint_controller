@@ -1,7 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import "."
-import "../../components/displays"
+import "../../../components/displays"
 
 
 

@@ -2,6 +2,25 @@
 
 ---
 
+### 2026-02-05 10:30 - Fix QML Import Paths After Structure Reorganization
+
+**Goal**: Fix broken QML component imports after directory structure reorganization
+**Issues**: Components in `pages/status/components/` and `overlays/video/components/` using outdated relative paths that don't resolve correctly; PageWorkFlow importing from wrong location
+**Tried**: Updated relative paths to account for additional nesting level in all affected subdirectories
+**Result**: ✅ Fixed import paths in status components (TeensyStatus, WheelStatus), video overlay components (EndEffectorOverlay, BirdViewSettingsPopup, VideoOverlayTopBar), and PageWorkFlow
+
+**Root Cause**:
+After moving components into subdirectories (`pages/status/` → `pages/status/components/`, `overlays/video/overlays/` → `overlays/video/components/`), files were one level deeper but imports still used `../../` instead of `../../../`. PageWorkFlow was importing `../status` instead of `../status/components/`.
+
+**Solution**:
+- Status components: `../../core` → `../../../core`, `../../components/*` → `../../../components/*`
+- Video overlay components: `../../components/*` → `../../../components/*`
+- PageWorkFlow.qml: `../status` → `../status/components`
+
+**Files**: TeensyStatus.qml, WheelStatus.qml, EndEffectorOverlay.qml, BirdViewSettingsPopup.qml, VideoOverlayTopBar.qml, PageWorkFlow.qml
+
+---
+
 ### 2026-02-05 00:45 - QML Structure Reorganization
 
 **Goal**: Reorganize 91 QML files into clearer directory structure with better separation of concerns

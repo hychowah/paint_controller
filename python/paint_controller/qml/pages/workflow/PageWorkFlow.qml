@@ -8,7 +8,7 @@ import "../../components/inputs"
 import "../../components/displays"
 import "../../components/panels"
 import "../../widgets/actions"
-import "../status"
+import "../status/components"
 import "."  
 
 Rectangle {

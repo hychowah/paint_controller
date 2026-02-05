@@ -1,11 +1,11 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import "../../core"
-import "../../components/buttons"
-import "../../components/inputs"
-import "../../components/displays"
-import "../../components/panels"
+import "../../../core"
+import "../../../components/buttons"
+import "../../../components/inputs"
+import "../../../components/displays"
+import "../../../components/panels"
 
 Rectangle {
     id: teensyStatusRect
