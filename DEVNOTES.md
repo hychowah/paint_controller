@@ -2,6 +2,48 @@
 
 ---
 
+### 2026-02-05 10:30 - Fix QML Import Paths After Structure Reorganization
+
+**Goal**: Fix broken QML component imports after directory structure reorganization
+**Issues**: Components in `pages/status/components/` and `overlays/video/components/` using outdated relative paths that don't resolve correctly; PageWorkFlow importing from wrong location
+**Tried**: Updated relative paths to account for additional nesting level in all affected subdirectories
+**Result**: ✅ Fixed import paths in status components (TeensyStatus, WheelStatus), video overlay components (EndEffectorOverlay, BirdViewSettingsPopup, VideoOverlayTopBar), and PageWorkFlow
+
+**Root Cause**:
+After moving components into subdirectories (`pages/status/` → `pages/status/components/`, `overlays/video/overlays/` → `overlays/video/components/`), files were one level deeper but imports still used `../../` instead of `../../../`. PageWorkFlow was importing `../status` instead of `../status/components/`.
+
+**Solution**:
+- Status components: `../../core` → `../../../core`, `../../components/*` → `../../../components/*`
+- Video overlay components: `../../components/*` → `../../../components/*`
+- PageWorkFlow.qml: `../status` → `../status/components`
+
+**Files**: TeensyStatus.qml, WheelStatus.qml, EndEffectorOverlay.qml, BirdViewSettingsPopup.qml, VideoOverlayTopBar.qml, PageWorkFlow.qml
+
+---
+
+### 2026-02-05 00:45 - QML Structure Reorganization
+
+**Goal**: Reorganize 91 QML files into clearer directory structure with better separation of concerns
+**Issues**: Confusing nested directories (overlays/video/overlays/), mixed pages and components in same directories, unclear naming (Page5.qml), complex relative import paths requiring depth awareness
+**Tried**: Systematic reorganization with git mv to preserve file history, updated all import paths
+**Result**: ✅ Flattened video overlay structure, separated settings/status pages from components, reduced import complexity from `../../../` to `../../` paths
+
+**Changes Made**:
+1. **Video overlays**: `overlays/video/overlays/` → `overlays/video/components/` (9 files)
+2. **Settings**: Split into `pages/settings/pages/` (5 files) and `pages/settings/components/` (5 files)
+3. **Status**: Moved components to `pages/status/components/` (4 files)
+4. **Renamed**: `Page5.qml` → `PageSensors.qml` (descriptive name for Wind/Lidar visualization)
+
+**Import Path Updates**:
+- Video overlay components: `../../../components/` → `../../components/`
+- Settings pages: `import "."` → `import "../components"`
+- Settings main: `import "."` → `import "pages"`
+- Status main: `import "."` → `import "components"`
+
+**Files**: 24 files moved, 11 import statements updated across VideoFullscreenOverlay.qml, PageSettings.qml, PageStatus.qml, and all moved component files
+
+---
+
 ### 2026-02-04 14:45 - Fix Multi-Monitor Crash on A Button Press
 
 **Goal**: Prevent application crash when pressing A button (wheel travel command) in multi-monitor mode

@@ -6,7 +6,7 @@ import "../../components/buttons"
 import "../../components/inputs"
 import "../../components/displays"
 import "../../components/panels"
-import "."
+import "components"
 
 Rectangle {
     id: page3Rect
