@@ -51,8 +51,14 @@ class SettingsManager(QObject):
     # Signal for save/reset feedback (success, message)
     operation_result = Signal(bool, str)
     
-    def __init__(self, parent=None):
+    # Signal emitted when a setting is successfully saved (key, value, display_name)
+    setting_saved = Signal(str, object, str)
+    
+    def __init__(self, parent=None, robot_controller=None):
         super().__init__(parent)
+        
+        # Store reference to robot controller for popup notifications
+        self._robot_controller = robot_controller
         
         # Define settings schema with metadata
         self._settings_schema: Dict[str, Dict[str, Any]] = {
@@ -408,6 +414,18 @@ class SettingsManager(QObject):
         """
         success, message = self.save_setting(key)
         self.operation_result.emit(success, message)
+        
+        # Show popup notification if save was successful
+        if success and key in self._settings_schema:
+            value = self._values.get(key)
+            description = self._settings_schema[key].get("description", key)
+            self.setting_saved.emit(key, value, description)
+            
+            # Show popup via robot_controller
+            if self._robot_controller and hasattr(self._robot_controller, 'show_popup'):
+                popup_message = f"{description}: {value}"
+                self._robot_controller.show_popup("Setting Saved", popup_message, "info", 2000)
+        
         return success
     
     def save_setting(self, key: str) -> Tuple[bool, str]:

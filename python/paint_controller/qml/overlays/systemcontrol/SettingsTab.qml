@@ -4,10 +4,12 @@ import QtQuick.Layouts 1.15
 import "../../components/buttons"
 import "../../components/panels"
 import "../../components/inputs"
-import "../../components/popups"
 
 Item {
     id: settingsTab
+    
+    // Popup reference passed from parent
+    property var confirmationPopup: null
     
     // Helper function to create setting input field
     function createSettingRow(key, label, currentValue, minVal, maxVal, isFloat) {
@@ -235,12 +237,7 @@ Item {
                                                     if (teensyController) {
                                                         teensyController.thrust_force = num
                                                     }
-                                                    if (settingsManager.saveSetting("thrust_force")) {
-                                                        confirmationPopup.messageTitle = "Saved"
-                                                        confirmationPopup.messageText = "Thrust force set to " + num.toFixed(2)
-                                                        confirmationPopup.messageType = "info"
-                                                        confirmationPopup.open()
-                                                    }
+                                                    settingsManager.saveSetting("thrust_force")
                                                 }
                                             }
                                         }
@@ -326,12 +323,7 @@ Item {
                                                     num = Math.max(0.1, Math.min(10.0, num))
                                                     settingsManager.thrust_ramp_rate = num
                                                     thrustRampRateInput.text = num.toFixed(2)  // Update display with clamped value
-                                                    if (settingsManager.saveSetting("thrust_ramp_rate")) {
-                                                        confirmationPopup.messageTitle = "Saved"
-                                                        confirmationPopup.messageText = "Thrust ramp rate set to " + num.toFixed(2)
-                                                        confirmationPopup.messageType = "info"
-                                                        confirmationPopup.open()
-                                                    }
+                                                    settingsManager.saveSetting("thrust_ramp_rate")
                                                 }
                                             }
                                         }
@@ -399,13 +391,5 @@ Item {
     // Numpad component for number input
     NumpadNew {
         id: numberPad
-    }
-    
-    // Confirmation popup for settings
-    CustomPopup {
-        id: confirmationPopup
-        width: 400
-        height: 180
-        dismissDelay: 2000
     }
 }

@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "../../components/panels"
+import "../../components/popups"
 import "../../navigation"
 
 Item {
@@ -180,6 +181,7 @@ Item {
                 // Settings Tab Content
                 SettingsTab {
                     id: settingsTabContent
+                    confirmationPopup: sharedConfirmationPopup
                 }
 
                 // WorkFlow Tab Content
@@ -245,5 +247,13 @@ Item {
                 ColorAnimation { duration: 200 }
             }
         }
+    }
+
+    // Shared confirmation popup for all tabs
+    CustomPopup {
+        id: sharedConfirmationPopup
+        width: 400
+        height: 180
+        dismissDelay: 2000
     }
 }

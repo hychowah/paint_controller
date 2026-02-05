@@ -97,16 +97,7 @@ ColumnLayout {
                     
                     if (!isNaN(num) && settingsManager) {
                         settingsManager[root.settingKey] = num
-                        if (settingsManager.saveSetting(root.settingKey)) {
-                            if (root.confirmationPopup) {
-                                root.confirmationPopup.messageTitle = "Saved"
-                                root.confirmationPopup.messageText = root.label.split("(")[0].trim() + " set to " + 
-                                    (root.decimalPlaces === 0 ? num.toString() : num.toFixed(root.decimalPlaces)) + 
-                                    root.unitSuffix
-                                root.confirmationPopup.messageType = "info"
-                                root.confirmationPopup.open()
-                            }
-                        }
+                        settingsManager.saveSetting(root.settingKey)
                     }
                 }
             }

@@ -235,7 +235,7 @@ class RobotController(Node, QObject):
         self._cleanup_complete = False
         
         # Initialize settings manager first (before sub-controllers)
-        self.settings_manager = SettingsManager(self)
+        self.settings_manager = SettingsManager(self, robot_controller=self)
         
         # Initialize components
         self.warningHandler = WarningHandler()
