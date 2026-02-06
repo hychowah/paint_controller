@@ -9,6 +9,7 @@ Item {
     // Properties for workflow editing
     property var currentWorkflow: null
     property string workflowName: ""
+    property bool workflowLoop: false
     property var actions: []
     property int selectedActionIndex: -1
     property var actionIdList: []
@@ -32,12 +33,61 @@ Item {
                 anchors.margins: 10
                 spacing: 10
 
-                Text {
-                    text: "Edit WorkFlow: " + (workflowName || "None")
-                    color: "#FFFFFF"
-                    font.pixelSize: 16
-                    font.bold: true
+                ColumnLayout {
                     Layout.fillWidth: true
+                    spacing: 2
+
+                    Text {
+                        text: "Edit WorkFlow: " + (workflowName || "None")
+                        color: "#FFFFFF"
+                        font.pixelSize: 16
+                        font.bold: true
+                    }
+
+                    RowLayout {
+                        spacing: 10
+
+                        CheckBox {
+                            id: loopCheckbox
+                            checked: workflowLoop
+                            onCheckedChanged: workflowLoop = checked
+
+                            contentItem: Text {
+                                text: "Enable Loop"
+                                color: "#FFFFFF"
+                                font.pixelSize: 13
+                                leftPadding: loopCheckbox.indicator.width + 8
+                                verticalAlignment: Text.AlignVCenter
+                            }
+
+                            indicator: Rectangle {
+                                width: 20
+                                height: 20
+                                x: loopCheckbox.leftPadding
+                                y: parent.height / 2 - height / 2
+                                radius: 3
+                                color: loopCheckbox.checked ? "#3A5A8C" : "#2A2A2A"
+                                border.color: "#3A5A8C"
+                                border.width: 1
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "✓"
+                                    color: "#FFFFFF"
+                                    font.pixelSize: 14
+                                    font.bold: true
+                                    visible: loopCheckbox.checked
+                                }
+                            }
+                        }
+
+                        Text {
+                            text: "(Workflow will restart after completion)"
+                            color: workflowLoop ? "#AAFFAA" : "#777777"
+                            font.pixelSize: 11
+                            font.italic: true
+                        }
+                    }
                 }
 
                 CustomButton {
@@ -1043,9 +1093,10 @@ Item {
             workflowName = workflow.name || name
             currentWorkflow = workflow
             actions = workflow.actions || []
+            workflowLoop = workflow.loop === true
             selectedActionIndex = -1
             
-            console.log("Loaded workflow with", actions.length, "actions")
+            console.log("Loaded workflow with", actions.length, "actions, loop:", workflowLoop)
         } catch (e) {
             console.log("Error parsing workflow JSON:", e)
         }
@@ -1066,6 +1117,7 @@ Item {
         var workflow = {
             "name": workflowName,
             "description": currentWorkflow ? (currentWorkflow.description || "") : "",
+            "loop": workflowLoop,
             "actions": actions
         }
         

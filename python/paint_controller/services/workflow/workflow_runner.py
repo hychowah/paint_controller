@@ -32,6 +32,7 @@ class WorkFlowRunner(QObject):
     current_workflow_changed = Signal(str)  # WorkFlow name
     current_action_index_changed = Signal(int)  # Current action index during execution
     loop_iteration_changed = Signal(int)  # Loop iteration number
+    loop_enabled_changed = Signal(bool)  # Loop enabled state changed
     error_occurred = Signal(str)  # Error message
 
     def __init__(self, ros_node, logger=None):
@@ -131,7 +132,7 @@ class WorkFlowRunner(QObject):
         """Get current execution state (ExecutionState enum value)."""
         return self.executor.current_state.value
 
-    @Property(bool, constant=False)
+    @Property(bool, notify=loop_enabled_changed)
     def is_loop_enabled(self) -> bool:
         """Check if current workflow has looping enabled."""
         return self.executor.is_loop_enabled()
@@ -175,6 +176,8 @@ class WorkFlowRunner(QObject):
         if success:
             self._current_workflow_name = workflow_name
             self.current_workflow_changed.emit(workflow_name)
+            self.loop_enabled_changed.emit(self.executor.is_loop_enabled())
+            self.loop_iteration_changed.emit(0)  # Reset loop iteration on new load
 
         return success
 

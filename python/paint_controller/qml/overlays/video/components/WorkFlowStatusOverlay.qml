@@ -106,7 +106,7 @@ Item {
             RowLayout {
                 Layout.alignment: Qt.AlignLeft
                 spacing: 8
-                visible: workFlowRunner && workFlowRunner.is_loop_enabled && workFlowRunner.loop_iteration > 0
+                visible: workFlowRunner && workFlowRunner.is_loop_enabled
                 
                 Rectangle {
                     width: 12
@@ -116,7 +116,9 @@ Item {
                 }
                 
                 Text {
-                    text: "Loop Iteration: " + (workFlowRunner ? workFlowRunner.loop_iteration : 0)
+                    text: workFlowRunner && workFlowRunner.loop_iteration > 0 
+                          ? "Loop Iteration: " + workFlowRunner.loop_iteration
+                          : "Loop: Enabled"
                     color: "#FFD700"
                     font.family: "Helvetica"
                     font.pixelSize: 14

@@ -1,5 +1,6 @@
 name: spray_cycle
 description: Complete spray cycle with descent and ascent
+loop: true
 actions:
 - id: open_valve
   name: open_valve
@@ -11,7 +12,7 @@ actions:
   name: descend_to_target
   type: winch_absolute
   params:
-    length: 2084
+    length: 2360
     speed: 200
     acceleration: 10
   trigger:
@@ -32,7 +33,7 @@ actions:
   name: ascend_to_top
   type: winch_absolute
   params:
-    length: 7450
+    length: 7790
     speed: 200
     acceleration: 10
   trigger:
