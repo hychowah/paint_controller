@@ -9,6 +9,32 @@ Item {
     // Only visible when workflow is running
     visible: workFlowRunner && workFlowRunner.execution_state === 1
     
+    // Timer to update runtime display
+    Timer {
+        running: root.visible
+        interval: 1000  // Update every second
+        repeat: true
+        onTriggered: {
+            // Force property re-evaluation
+            runtimeText.text = formatRuntime(workFlowRunner ? workFlowRunner.workflow_runtime : 0)
+        }
+    }
+    
+    // Runtime formatter function
+    function formatRuntime(seconds) {
+        var hrs = Math.floor(seconds / 3600)
+        var mins = Math.floor((seconds % 3600) / 60)
+        var secs = seconds % 60
+        
+        if (hrs > 0) {
+            return hrs + "h " + mins + "m " + secs + "s"
+        } else if (mins > 0) {
+            return mins + "m " + secs + "s"
+        } else {
+            return secs + "s"
+        }
+    }
+    
     // Blinking border animation
     Rectangle {
         id: blinkingBorder
@@ -120,6 +146,28 @@ Item {
                           ? "Loop Iteration: " + workFlowRunner.loop_iteration
                           : "Loop: Enabled"
                     color: "#FFD700"
+                    font.family: "Helvetica"
+                    font.pixelSize: 14
+                    font.bold: true
+                }
+            }
+            
+            // Runtime display
+            RowLayout {
+                Layout.alignment: Qt.AlignLeft
+                spacing: 8
+                
+                Rectangle {
+                    width: 12
+                    height: 12
+                    radius: 6
+                    color: "#00BFFF"  // Deep sky blue for runtime
+                }
+                
+                Text {
+                    id: runtimeText
+                    text: "Runtime: " + formatRuntime(workFlowRunner ? workFlowRunner.workflow_runtime : 0)
+                    color: "#00BFFF"
                     font.family: "Helvetica"
                     font.pixelSize: 14
                     font.bold: true

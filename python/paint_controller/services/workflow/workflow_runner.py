@@ -8,6 +8,7 @@ Provides QML-accessible interface for workflow management (play, pause, stop, li
 import os
 import yaml
 import json
+import time
 from typing import List, Optional
 from pathlib import Path
 
@@ -53,6 +54,7 @@ class WorkFlowRunner(QObject):
         self._current_action_index = -1
         self._last_execution_state = -1  # Track last emitted state
         self._last_loop_iteration = 0  # Track last emitted loop iteration
+        self._workflow_start_time = 0.0  # Track when workflow started running
         self._workflows_dir = self._find_workflows_dir()
 
         # Set up file system watcher to monitor workflow directory
@@ -141,6 +143,13 @@ class WorkFlowRunner(QObject):
     def loop_iteration(self) -> int:
         """Get current loop iteration number (1-indexed, 0 if not looping)."""
         return self.executor.get_loop_iteration()
+
+    @Property(int, constant=False)
+    def workflow_runtime(self) -> int:
+        """Get workflow runtime in seconds (returns 0 if not running)."""
+        if self.executor.current_state.value == 1:  # RUNNING
+            return int(time.time() - self._workflow_start_time)
+        return 0
 
     @Slot(str)
     def load_workflow(self, workflow_name: str) -> bool:
@@ -329,6 +338,7 @@ class WorkFlowRunner(QObject):
         success = self.executor.play()
 
         if success:
+            self._workflow_start_time = time.time()
             self.execution_state_changed.emit(self.executor.current_state.value)
         else:
             error_msg = "Failed to start workflow execution"
@@ -364,6 +374,7 @@ class WorkFlowRunner(QObject):
         if success:
             # Emergency shutdown: stop winch and close valve
             self._emergency_shutdown()
+            self._workflow_start_time = 0.0
             self.execution_state_changed.emit(self.executor.current_state.value)
 
         return success

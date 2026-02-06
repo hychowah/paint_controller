@@ -86,6 +86,9 @@ class UIInputHandler(QObject):
             
             self.controller.overlayController.set_joystick_controls(left_control, right_control)
             
+            # Reset winch activation to prevent spurious commands from centered joystick
+            self.controller.control_processor.reset_winch_activation()
+            
             # Defer popup to let video overlay Loader stabilize (150ms)
             QTimer.singleShot(150, lambda: self.controller.show_popup(
                 "Control Mode", "Switched to EF control mode", "info"

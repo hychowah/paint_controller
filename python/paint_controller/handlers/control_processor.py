@@ -48,6 +48,7 @@ class ControlProcessor(QObject):
         self.winch_speed_in_deadzone = False
         self.winch_speed_deadzone_start_time = 0
         self.winch_speed_should_send = True
+        self.winch_speed_has_been_active = False  # Only send commands after joystick moves outside deadzone
         
         # Wheel travel position tracking (accumulated values, not sent until button press)
         self._left_wheel_travel_mm = 0.0
@@ -610,9 +611,10 @@ class ControlProcessor(QObject):
             # Outside deadzone - reset and allow sending
             self.winch_speed_in_deadzone = False
             self.winch_speed_should_send = True
+            self.winch_speed_has_been_active = True  # Mark as active when joystick moves
         
-        # Only send command if we should send and conditions are met
-        if self.winch_speed_should_send:
+        # Only send command if we should send, conditions are met, and joystick has been activated
+        if self.winch_speed_should_send and self.winch_speed_has_been_active:
             try:
                 if not self.robot.winch_controller.get_available():
                     print("Winch not available")
@@ -760,6 +762,12 @@ class ControlProcessor(QObject):
     def set_winch_speed_limit(self, limit):
         """Set the winch speed limit"""
         self.controls["Winch Speed"].scale = abs(limit) / 32768
+    
+    def reset_winch_activation(self):
+        """Reset winch activation state - call when switching to EF mode to prevent spurious commands"""
+        self.winch_speed_has_been_active = False
+        self.winch_speed_in_deadzone = False
+        self.winch_speed_should_send = True
 
     def _is_winch_control_locked(self) -> bool:
         """
@@ -847,19 +855,6 @@ class ControlProcessor(QObject):
         with configured RPM.
         """
         try:
-            # Get current control modes to determine which values to use
-            left_mode = self.robot.overlayController.get_left_selected_option()
-            right_mode = self.robot.overlayController.get_right_selected_option()
-            
-            # Check if any Wheel Travel mode is active on either joystick
-            wheel_travel_modes = ["Wheel Travel Left", "Wheel Travel Right"]
-            left_has_wheel_travel = left_mode in wheel_travel_modes
-            right_has_wheel_travel = right_mode in wheel_travel_modes
-            
-            if not (left_has_wheel_travel or right_has_wheel_travel):
-                print("Wheel Travel mode not active on any joystick")
-                return
-            
             # Get accumulated travel values - these are set by whichever joystick is controlling each wheel
             left_travel = self._left_wheel_travel_mm
             right_travel = self._right_wheel_travel_mm

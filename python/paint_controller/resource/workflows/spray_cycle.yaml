@@ -13,7 +13,7 @@ actions:
   type: winch_absolute
   params:
     length: 2360
-    speed: 200
+    speed: 250
     acceleration: 10
   trigger:
     reference_action: open_valve
@@ -39,4 +39,4 @@ actions:
   trigger:
     reference_action: descend
     timing_mode: on_complete
-    offset_ms: 2500
+    offset_ms: 1500
