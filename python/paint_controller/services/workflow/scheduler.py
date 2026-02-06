@@ -33,6 +33,8 @@ class ScheduledAction:
     # Winch completion tracking (optional)
     winch_target_mm: Optional[float] = None  # Target position for winch actions
     is_winch_action: bool = False  # True if this is a winch movement action
+    # Completion dependency tracking
+    must_complete_before_workflow_end: bool = False  # True if workflow must wait for this action to complete
 
 
 class ActionScheduler:
@@ -146,6 +148,10 @@ class ActionScheduler:
 
         # Sort by scheduled time (important for triggered actions)
         scheduled.sort(key=lambda x: x.scheduled_time)
+
+        # Mark reference actions that must complete before workflow ends
+        # (Industry pattern: implicit dependency tracking)
+        self._mark_must_complete_actions(scheduled, action_map)
 
         if self.logger:
             self.logger.info(f"Built schedule with {len(scheduled)} actions")
@@ -279,3 +285,36 @@ class ActionScheduler:
                 return current_time + delay_seconds
         else:
             return current_time
+
+    def _mark_must_complete_actions(
+        self,
+        scheduled: List[ScheduledAction],
+        action_map: Dict[str, ScheduledAction]
+    ) -> None:
+        """
+        Mark reference actions that must complete before workflow ends.
+        
+        Industry pattern: Actions referenced by position triggers create
+        implicit dependencies - they must finish before workflow completes.
+        
+        Args:
+            scheduled: List of all scheduled actions
+            action_map: Map of action_id to ScheduledAction
+        """
+        for action in scheduled:
+            if action.is_position_triggered and action.position_reference_action:
+                ref_id = action.position_reference_action
+                
+                # Check for optional override in trigger config
+                trigger = action.action_config.get("trigger", {})
+                wait_for_ref = trigger.get("wait_for_reference_complete", True)
+                
+                if wait_for_ref and ref_id in action_map:
+                    ref_action = action_map[ref_id]
+                    ref_action.must_complete_before_workflow_end = True
+                    
+                    if self.logger:
+                        self.logger.debug(
+                            f"Marked '{ref_id}' as must-complete "
+                            f"(referenced by position trigger '{action.action_id}')"
+                        )

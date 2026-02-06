@@ -2,6 +2,83 @@
 
 ---
 
+### 2026-02-05 17:30 - Fix Position Triggers Not Firing on Loop Iterations
+
+**Goal**: Fix position-triggered actions not firing after first loop iteration
+**Issues**: `close_valve` only fired on iteration 1, never on iterations 2+. Position triggers cleared but never rebuilt during loop restart.
+**Tried**: Store all_scheduled actions in thread, rebuild _pending_position_triggers on each loop iteration
+**Result**: ✅ Position triggers now properly reset and fire on every loop iteration
+
+**Root Cause**: 
+- `play()` separated position-triggered actions into `_pending_position_triggers`
+- Loop restart cleared `_pending_position_triggers = []` 
+- But never rebuilt the list from the original schedule
+- Position triggers only worked on first iteration
+
+**Fix**:
+1. Store both `scheduled_actions` (time-based) and `all_scheduled` (complete list) in WorkFlowExecutionThread
+2. On loop restart, rebuild `_pending_position_triggers` from `all_scheduled` by filtering `is_position_triggered`
+3. This ensures position triggers are properly reset for each iteration
+
+**Files**: workflow_executor.py
+
+---
+
+### 2026-02-05 17:00 - Industry-Pattern Workflow Completion (Implicit Dependencies)
+
+**Goal**: Fix premature workflow completion when position triggers fire before reference actions finish
+**Issues**: In `spray_cycle`, `close_valve` fires at 4200mm during `ascend` (2084→7542mm), finishes in 500ms, but `ascend` still has 15+ seconds remaining. Workflow incorrectly restarts loop while `ascend` is running.
+**Tried**: Implemented industry-standard implicit dependency tracking - reference actions automatically marked as "must complete"
+**Result**: ✅ Workflow now waits for all must-complete actions before finishing/looping
+
+**Implementation (Industry Pattern 3)**:
+1. **Scheduler**: Added `must_complete_before_workflow_end` flag to `ScheduledAction`
+2. **Scheduler**: Automatically marks reference actions when building schedule (via `_mark_must_complete_actions()`)
+3. **Executor**: Tracks must-complete actions in `_must_complete_actions` dict during execution
+4. **Executor**: Waits for all must-complete actions via `_wait_for_must_complete_actions()` before workflow end
+5. **Completion Logic**: Uses position-based completion for winch actions (within 50mm tolerance)
+
+**Benefits**: Matches Kubernetes/Airflow patterns, no YAML changes needed, automatic and safe
+
+**Files**: scheduler.py, workflow_executor.py
+
+---
+
+### 2026-02-05 15:45 - Add Workflow Loop Support
+
+**Goal**: Enable workflows to loop back to first action after completion for continuous operation
+**Issues**: None - feature addition
+**Tried**: Added `loop: true` flag to YAML schema, implemented restart logic in execution thread
+**Result**: ✅ Workflows with `loop: true` now restart automatically after completion
+
+**Implementation**:
+1. **Executor**: Added `_loop_enabled` flag and `_loop_iteration` counter
+2. **Execution Loop**: Modified `_execute_scheduled_actions()` with outer loop that checks loop flag and restarts
+3. **State Reset**: Clear position triggers, winch tracking, must-complete actions, and action index between iterations
+4. **QML**: Added loop iteration display in WorkFlowStatusOverlay.qml
+5. **Runner**: Exposed `is_loop_enabled` and `loop_iteration` properties to QML
+
+**YAML Example**:
+```yaml
+name: spray_cycle
+loop: true  # Optional flag at root level
+actions: [...]
+```
+
+**Files**: workflow_executor.py, workflow_runner.py, WorkFlowStatusOverlay.qml, spray_cycle.yaml
+4. **QML Exposure**: Added `is_loop_enabled` and `loop_iteration` properties to WorkFlowRunner
+5. **UI Display**: WorkFlowStatusOverlay shows gold loop iteration indicator when looping
+
+**Files**: 
+- workflow_executor.py (loop logic, state tracking)
+- workflow_runner.py (QML properties, loop_iteration_changed signal)
+- WorkFlowStatusOverlay.qml (loop iteration display)
+- spray_cycle.yaml (example with `loop: true`)
+
+**Usage**: Add `loop: true` at root level of workflow YAML. Iteration count starts at 1, increments each cycle.
+
+---
+
 ### 2026-02-05 10:30 - Fix QML Import Paths After Structure Reorganization
 
 **Goal**: Fix broken QML component imports after directory structure reorganization

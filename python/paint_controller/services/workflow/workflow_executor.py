@@ -38,10 +38,11 @@ class WorkFlowExecutionThread(QThread):
     execution_finished = Signal()
     execution_error = Signal(str)
     
-    def __init__(self, executor, scheduled_actions: List[ScheduledAction]):
+    def __init__(self, executor, scheduled_actions: List[ScheduledAction], all_scheduled: List[ScheduledAction]):
         super().__init__()
         self.executor = executor
         self.scheduled_actions = scheduled_actions
+        self.all_scheduled = all_scheduled  # Store all actions for loop rebuilding
         self._stop_requested = False
     
     def run(self):
@@ -95,6 +96,8 @@ class WorkFlowExecutor:
         self.current_action_index = -1
         self.execution_thread: Optional[WorkFlowExecutionThread] = None
         self._stop_requested = False
+        self._loop_enabled = False
+        self._loop_iteration = 0
         
         # Position trigger tracking
         self._pending_position_triggers: List[ScheduledAction] = []  # Not yet activated
@@ -104,6 +107,9 @@ class WorkFlowExecutor:
         # Winch completion tracking
         self._active_winch_action: Optional[ScheduledAction] = None  # Currently executing winch action
         self._winch_position_tolerance: float = 50.0  # mm tolerance for position-based completion
+        
+        # Must-complete action tracking (industry pattern: implicit dependencies)
+        self._must_complete_actions: Dict[str, ScheduledAction] = {}  # action_id -> action (currently running and must finish)
 
     def load_workflow(self, yaml_path: str) -> bool:
         """
@@ -120,7 +126,11 @@ class WorkFlowExecutor:
                 self.current_workflow = yaml.safe_load(f)
             
             name = self.current_workflow.get('name', 'unknown')
-            self.logger.info(f"Loaded workflow: {name}")
+            self._loop_enabled = self.current_workflow.get('loop', False)
+            self._loop_iteration = 0
+            
+            loop_status = " (looping enabled)" if self._loop_enabled else ""
+            self.logger.info(f"Loaded workflow: {name}{loop_status}")
             return True
             
         except Exception as e:
@@ -156,6 +166,7 @@ class WorkFlowExecutor:
             self._pending_position_triggers = []
             self._active_position_triggers = {}
             self._fired_position_triggers = set()
+            self._must_complete_actions = {}
             
             for action in all_scheduled:
                 if action.is_position_triggered:
@@ -170,8 +181,9 @@ class WorkFlowExecutor:
             # Start execution thread
             self.current_state = ExecutionState.RUNNING
             self._stop_requested = False
+            self._loop_iteration = 1
             
-            self.execution_thread = WorkFlowExecutionThread(self, scheduled_actions)
+            self.execution_thread = WorkFlowExecutionThread(self, scheduled_actions, all_scheduled)
             self.execution_thread.execution_finished.connect(self._on_execution_finished)
             self.execution_thread.execution_error.connect(self._on_execution_error)
             self.execution_thread.start()
@@ -213,6 +225,7 @@ class WorkFlowExecutor:
         
         self.current_state = ExecutionState.IDLE
         self.current_action_index = -1
+        self._loop_iteration = 0
         self.logger.info("WorkFlow stopped")
         return True
 
@@ -239,41 +252,84 @@ class WorkFlowExecutor:
         start_time = time.time()
         action_index = 0
 
-        while action_index < len(scheduled_actions) and not self._stop_requested:
-            # Handle pause
-            while self.current_state == ExecutionState.PAUSED and not self._stop_requested:
-                time.sleep(0.1)
+        while True:  # Outer loop for workflow restarts
+            while action_index < len(scheduled_actions) and not self._stop_requested:
+                # Handle pause
+                while self.current_state == ExecutionState.PAUSED and not self._stop_requested:
+                    time.sleep(0.1)
 
-            if self._stop_requested:
-                break
+                if self._stop_requested:
+                    break
 
-            scheduled = scheduled_actions[action_index]
-            current_time = time.time() - start_time
+                scheduled = scheduled_actions[action_index]
+                current_time = time.time() - start_time
 
-            # Wait until scheduled time
-            wait_time = scheduled.scheduled_time - current_time
-            if wait_time > 0:
-                time.sleep(min(wait_time, 0.1))
-                continue
+                # Wait until scheduled time
+                wait_time = scheduled.scheduled_time - current_time
+                if wait_time > 0:
+                    time.sleep(min(wait_time, 0.1))
+                    continue
 
-            # Execute action
-            self.current_action_index = action_index
-            self._execute_action(scheduled)
-
-            # Determine wait time until next action or completion
-            wait_until = self._calculate_wait_until(
-                scheduled, 
-                action_index, 
-                scheduled_actions,
-                start_time
-            )
+                # Execute action
+                self.current_action_index = action_index
+                self._execute_action(scheduled)
             
-            # Wait (pass current action ID for position trigger completion handling)
-            self._wait_with_pause(wait_until, start_time, scheduled.action_id)
+                # Track must-complete actions
+                if scheduled.must_complete_before_workflow_end:
+                    self._must_complete_actions[scheduled.action_id] = scheduled
+                    self.logger.debug(
+                        f"Tracking must-complete action '{scheduled.action_id}' "
+                        f"(will wait for completion before workflow ends)"
+                    )
 
-            action_index += 1
+                # Determine wait time until next action or completion
+                wait_until = self._calculate_wait_until(
+                    scheduled, 
+                    action_index, 
+                    scheduled_actions,
+                    start_time
+                )
+                
+                # Wait (pass current action ID for position trigger completion handling)
+                self._wait_with_pause(wait_until, start_time, scheduled.action_id)
 
-        # Reset state
+                action_index += 1
+
+            # Wait for must-complete actions before finishing workflow
+            # (Industry pattern: implicit dependency completion)
+            self._wait_for_must_complete_actions(start_time)
+            
+            # Check if we should loop
+            if self._loop_enabled and not self._stop_requested:
+                self._loop_iteration += 1
+                self.logger.info(f"Starting loop iteration {self._loop_iteration}")
+                
+                # Reset state for next iteration and rebuild position trigger lists
+                self._active_position_triggers = {}
+                self._fired_position_triggers = set()
+                self._active_winch_action = None
+                self._must_complete_actions = {}
+                
+                # Rebuild position trigger list from all_scheduled_actions
+                # Access via current thread
+                self._pending_position_triggers = []
+                if hasattr(self.execution_thread, 'all_scheduled'):
+                    for action in self.execution_thread.all_scheduled:
+                        if action.is_position_triggered:
+                            self._pending_position_triggers.append(action)
+                
+                self.logger.debug(
+                    f"Loop {self._loop_iteration}: Reset {len(self._pending_position_triggers)} position triggers"
+                )
+                
+                # Restart from beginning
+                action_index = 0
+                start_time = time.time()
+                continue
+            
+            break  # Exit loop if not looping or stop requested
+
+        # Reset state (only reached when exiting)
         self.current_action_index = -1
 
     def _execute_action(self, scheduled: ScheduledAction) -> None:
@@ -546,9 +602,90 @@ class WorkFlowExecutor:
         # Clear active winch action when done
         self._active_winch_action = None
         
+        # Mark must-complete action as finished
+        if current_action_id and current_action_id in self._must_complete_actions:
+            del self._must_complete_actions[current_action_id]
+            self.logger.debug(f"Must-complete action '{current_action_id}' finished")
+        
         # When we finish waiting for an action, check if any position triggers referenced it
         if current_action_id:
             self._handle_reference_action_complete(current_action_id)
+
+    def _wait_for_must_complete_actions(self, start_time: float) -> None:
+        """
+        Wait for all must-complete actions to finish before ending workflow.
+        
+        Industry pattern: Actions referenced by position triggers must complete
+        before the workflow is considered done. This prevents premature completion
+        when position triggers fire early.
+        
+        Args:
+            start_time: Execution start time for logging
+        """
+        if not self._must_complete_actions:
+            return
+        
+        action_names = [a.action_config.get("name", a.action_id) 
+                       for a in self._must_complete_actions.values()]
+        self.logger.info(
+            f"Waiting for {len(self._must_complete_actions)} must-complete actions: "
+            f"{', '.join(action_names)}"
+        )
+        
+        last_check = 0.0
+        check_interval = 0.1
+        
+        while self._must_complete_actions and not self._stop_requested:
+            # Handle pause
+            while self.current_state == ExecutionState.PAUSED and not self._stop_requested:
+                time.sleep(0.1)
+            
+            if self._stop_requested:
+                break
+            
+            current_time = time.time()
+            if current_time - last_check >= check_interval:
+                # Check winch completion for must-complete winch actions
+                actions_to_remove = []
+                for action_id, action in self._must_complete_actions.items():
+                    if action.is_winch_action and action.winch_target_mm is not None:
+                        try:
+                            current_position = self.hardware.winch.get_cable_length()
+                            distance = abs(current_position - action.winch_target_mm)
+                            
+                            if distance <= self._winch_position_tolerance:
+                                self.logger.info(
+                                    f"Must-complete winch action '{action_id}' reached target "
+                                    f"({current_position:.0f}mm, target={action.winch_target_mm:.0f}mm)"
+                                )
+                                actions_to_remove.append(action_id)
+                        except Exception as e:
+                            self.logger.warn(f"Failed to check winch position for '{action_id}': {e}")
+                
+                for action_id in actions_to_remove:
+                    del self._must_complete_actions[action_id]
+                
+                last_check = current_time
+            
+            time.sleep(0.05)
+        
+        if self._must_complete_actions and not self._stop_requested:
+            remaining = [a.action_config.get("name", a.action_id) 
+                        for a in self._must_complete_actions.values()]
+            self.logger.warn(
+                f"Workflow ending with {len(remaining)} incomplete must-complete actions: "
+                f"{', '.join(remaining)}"
+            )
+        elif not self._stop_requested:
+            self.logger.info("All must-complete actions finished")
+
+    def is_loop_enabled(self) -> bool:
+        """Check if current workflow has looping enabled."""
+        return self._loop_enabled
+    
+    def get_loop_iteration(self) -> int:
+        """Get current loop iteration number (1-indexed, 0 if not looping)."""
+        return self._loop_iteration
 
     def cleanup(self) -> None:
         """Clean up executor resources."""

@@ -88,8 +88,8 @@ class SettingsManager(QObject):
             },
             "thrust_force": {
                 "default": -1.0,
-                "min": -1.0,
-                "max": 1.0,
+                "min": -1.5,
+                "max": 1.5,
                 "type": "float",
                 "requires_restart": False,
                 "description": "Thrust force for vertical movement"

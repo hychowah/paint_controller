@@ -31,6 +31,7 @@ class WorkFlowRunner(QObject):
     execution_state_changed = Signal(int)  # ExecutionState enum value
     current_workflow_changed = Signal(str)  # WorkFlow name
     current_action_index_changed = Signal(int)  # Current action index during execution
+    loop_iteration_changed = Signal(int)  # Loop iteration number
     error_occurred = Signal(str)  # Error message
 
     def __init__(self, ros_node, logger=None):
@@ -50,6 +51,7 @@ class WorkFlowRunner(QObject):
         self._current_workflow_name = ""
         self._current_action_index = -1
         self._last_execution_state = -1  # Track last emitted state
+        self._last_loop_iteration = 0  # Track last emitted loop iteration
         self._workflows_dir = self._find_workflows_dir()
 
         # Set up file system watcher to monitor workflow directory
@@ -128,6 +130,16 @@ class WorkFlowRunner(QObject):
     def execution_state(self) -> int:
         """Get current execution state (ExecutionState enum value)."""
         return self.executor.current_state.value
+
+    @Property(bool, constant=False)
+    def is_loop_enabled(self) -> bool:
+        """Check if current workflow has looping enabled."""
+        return self.executor.is_loop_enabled()
+
+    @Property(int, notify=loop_iteration_changed)
+    def loop_iteration(self) -> int:
+        """Get current loop iteration number (1-indexed, 0 if not looping)."""
+        return self.executor.get_loop_iteration()
 
     @Slot(str)
     def load_workflow(self, workflow_name: str) -> bool:
@@ -381,6 +393,12 @@ class WorkFlowRunner(QObject):
         if new_index != self._current_action_index:
             self._current_action_index = new_index
             self.current_action_index_changed.emit(new_index)
+        
+        # Update loop iteration
+        new_loop_iteration = self.executor.get_loop_iteration()
+        if new_loop_iteration != self._last_loop_iteration:
+            self._last_loop_iteration = new_loop_iteration
+            self.loop_iteration_changed.emit(new_loop_iteration)
         
         # Update execution state
         current_state = self.executor.current_state.value

@@ -102,6 +102,28 @@ Item {
                 }
             }
             
+            // Loop iteration indicator (only shown when looping)
+            RowLayout {
+                Layout.alignment: Qt.AlignLeft
+                spacing: 8
+                visible: workFlowRunner && workFlowRunner.is_loop_enabled && workFlowRunner.loop_iteration > 0
+                
+                Rectangle {
+                    width: 12
+                    height: 12
+                    radius: 6
+                    color: "#FFD700"  // Gold color for loop indicator
+                }
+                
+                Text {
+                    text: "Loop Iteration: " + (workFlowRunner ? workFlowRunner.loop_iteration : 0)
+                    color: "#FFD700"
+                    font.family: "Helvetica"
+                    font.pixelSize: 14
+                    font.bold: true
+                }
+            }
+            
             // WorkFlow name
             Text {
                 Layout.alignment: Qt.AlignLeft
