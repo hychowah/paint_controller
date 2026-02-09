@@ -65,38 +65,40 @@ class IWinchController(ABC):
 class TeensyControllerAdapter(ITeensyController):
     """Adapter for actual Teensy controller implementation."""
 
-    def __init__(self, controller):
+    def __init__(self, teensy_controller, valve_controller=None):
         """
         Initialize adapter.
         
         Args:
-            controller: Actual Teensy controller instance
+            teensy_controller: Actual Teensy controller instance
+            valve_controller: Valve controller instance (ESP32ValveController)
         """
-        self._controller = controller
+        self._teensy_controller = teensy_controller
+        self._valve_controller = valve_controller
 
     def set_valve_turn(self, turn_value: float) -> None:
         """Set valve turn position."""
-        if not self._controller:
-            raise ControllerNotAvailable("Teensy controller not available")
-        self._controller.setValveTurn(float(turn_value))
+        if not self._valve_controller:
+            raise ControllerNotAvailable("ESP32 valve controller not available")
+        self._valve_controller.setValveTurn(float(turn_value))
 
     def set_spray_gun_gimbal_angle(self, angle: float, speed: float) -> None:
         """Set spray gun gimbal angle and speed."""
-        if not self._controller:
+        if not self._teensy_controller:
             raise ControllerNotAvailable("Teensy controller not available")
-        self._controller.setSprayGunGimbalAngle(float(angle), float(speed))
+        self._teensy_controller.setSprayGunGimbalAngle(float(angle), float(speed))
 
     def extend_arm(self, distance: int) -> None:
         """Extend arm to specified distance."""
-        if not self._controller:
+        if not self._teensy_controller:
             raise ControllerNotAvailable("Teensy controller not available")
-        self._controller.extendArm(int(distance))
+        self._teensy_controller.extendArm(int(distance))
 
     def set_ef_force(self, fx: float, fy: float) -> None:
         """Set end effector force."""
-        if not self._controller:
+        if not self._teensy_controller:
             raise ControllerNotAvailable("Teensy controller not available")
-        self._controller.set_ef_force(float(fx), float(fy))
+        self._teensy_controller.set_ef_force(float(fx), float(fy))
 
 
 class WinchControllerAdapter(IWinchController):
@@ -154,7 +156,7 @@ class HardwareControllers:
         Create HardwareControllers from robot controller instance.
         
         Args:
-            robot_controller: ROS2 robot controller with teensy_controller and winch_controller
+            robot_controller: ROS2 robot controller with teensy_controller, esp32_valve_controller, and winch_controller
             
         Returns:
             HardwareControllers instance
@@ -163,7 +165,8 @@ class HardwareControllers:
         winch = None
 
         if hasattr(robot_controller, 'teensy_controller') and robot_controller.teensy_controller:
-            teensy = TeensyControllerAdapter(robot_controller.teensy_controller)
+            valve_controller = getattr(robot_controller, 'esp32_valve_controller', None)
+            teensy = TeensyControllerAdapter(robot_controller.teensy_controller, valve_controller)
 
         if hasattr(robot_controller, 'winch_controller') and robot_controller.winch_controller:
             winch = WinchControllerAdapter(robot_controller.winch_controller)

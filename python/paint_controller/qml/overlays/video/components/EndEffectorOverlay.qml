@@ -234,7 +234,7 @@ Rectangle {
                         width: 8
                         height: 8
                         radius: 4
-                        color: teensyController.all_status.valve_motor_connected ? "#00FF00" : "#FF3333"
+                        color: esp32ValveController.valve_motor_connected ? "#00FF00" : "#FF3333"
                         anchors.verticalCenter: parent.verticalCenter
                     }
                     
@@ -256,7 +256,7 @@ Rectangle {
                         width: 8
                         height: 8
                         radius: 4
-                        color: teensyController.all_status.flow_meter_connected ? "#00FF00" : "#FF3333"
+                        color: esp32ValveController.flow_meter_connected ? "#00FF00" : "#FF3333"
                         anchors.verticalCenter: parent.verticalCenter
                     }
                     
@@ -286,7 +286,7 @@ Rectangle {
                 }
                 
                 Text {
-                    text: teensyController.all_status.valve_position.toFixed(1)
+                    text: esp32ValveController.valve_position.toFixed(1)
                     color: style.valueColor
                     font.pixelSize: style.valueFontSize
                     font.bold: true
@@ -313,7 +313,7 @@ Rectangle {
                 }
                 
                 Text {
-                    text: teensyController.all_status.valve_rate.toFixed(2)
+                    text: esp32ValveController.valve_rate.toFixed(2)
                     color: style.valueColor
                     font.pixelSize: style.valueFontSize
                     font.bold: true
@@ -340,7 +340,7 @@ Rectangle {
                 }
                 
                 Text {
-                    text: teensyController.all_status.total_volume.toFixed(2)
+                    text: esp32ValveController.total_volume.toFixed(2)
                     color: style.valueColor
                     font.pixelSize: style.valueFontSize
                     font.bold: true

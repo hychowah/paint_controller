@@ -22,7 +22,6 @@ class TeensyController(QObject):
     stability_enabled_changed = Signal(bool)
     thrust_force_changed = Signal(float)
     thrust_force_enabled_changed = Signal(bool)
-    valve_turn_changed = Signal(float)
     roller_steering_enabled_changed = Signal(bool)
     
     def __init__(self, robot_controller):
@@ -111,7 +110,6 @@ class TeensyController(QObject):
         else:
             self._thrust_force = -1.0
         self._thrust_force_enabled = False
-        self._valve_turn = 0.0
         
         # Thrust force ramping state
         self._current_thrust_force = 0.0  # Current ramped thrust value
@@ -167,7 +165,6 @@ class TeensyController(QObject):
         self.ef_tap_freq_pub = self._robot_controller.create_publisher(Int32MultiArray, 'teensy/tapper/tap_freq/cmd', 1)
         self.ef_tap_once_pub = self._robot_controller.create_publisher(Int32, 'teensy/tapper/tap_once/cmd', 1)
         self.ef_tap_stop_pub = self._robot_controller.create_publisher(Bool, 'teensy/tapper/stop/cmd', 1)
-        self.teensy_valve_turn_pub = self._robot_controller.create_publisher(Float32, 'teensy/valve/turn/cmd', 1)
         self.roller_steering_enable_pub = self._robot_controller.create_publisher(Bool, 'teensy/roller/steering/enable/cmd', 1)
 
 
@@ -179,21 +176,6 @@ class TeensyController(QObject):
             self._status_callback,
             10
         )
-        self._robot_controller.create_subscription(
-            Float32,
-            'teensy/valve/turn/cmd',
-            self._valve_turn_callback,
-            10
-        )
-    
-    def _valve_turn_callback(self, msg: Float32):
-        """Process incoming valve turn commands from ROS"""
-        try:
-            self._valve_turn = msg.data
-            self._status['valve_turn'] = self._valve_turn
-            self.valve_turn_changed.emit(self._valve_turn)
-        except Exception as e:
-            print(f"Error in valve turn callback: {e}")
     
     def _check_availability(self):
         """Check if the Teensy is still connected"""
@@ -270,14 +252,7 @@ class TeensyController(QObject):
                 'yaw_pid_i': msg.yaw_pid_i,
                 'yaw_pid_d': msg.yaw_pid_d,
                 # Add member state variables for QML access
-                'target_yaw': msg.yaw_command,
-                # Valve status
-                'valve_motor_current': msg.valve_motor_current,
-                'valve_position': msg.valve_position,
-                'valve_rate': msg.valve_rate,
-                'total_volume': msg.total_volumne,
-                'valve_motor_connected': msg.valve_motor_connected,
-                'flow_meter_connected': msg.flow_meter_connected
+                'target_yaw': msg.yaw_command
             }
 
             current_time = time.time()
@@ -569,19 +544,6 @@ class TeensyController(QObject):
         msg.data = True
         self.ef_tap_stop_pub.publish(msg)
 
-    @Slot(float)
-    def setValveTurn(self, turn_value: float):
-        """Set the valve turn command"""
-        self._valve_turn = turn_value
-        self._status['valve_turn'] = turn_value
-        
-        msg = Float32()
-        msg.data = float(turn_value)
-        self.teensy_valve_turn_pub.publish(msg)
-        
-        # Emit signal for UI updates
-        self.valve_turn_changed.emit(self._valve_turn)
-    
     @Slot(bool)
     def setThrustForceEnabled(self, enabled: bool):
         """Toggle thrust force on/off with ramping (QML callable)"""
@@ -730,22 +692,6 @@ class TeensyController(QObject):
             if abs(self._current_thrust_force - self._last_published_thrust) > 0.001:
                 self.set_ef_force(0.0, self._current_thrust_force)
                 self._last_published_thrust = self._current_thrust_force
-    
-    def get_valve_turn(self) -> float:
-        """Get current valve turn value"""
-        return self._valve_turn
-    
-    def set_valve_turn(self, value: float) -> None:
-        """Set valve turn value and publish to ROS"""
-        self._valve_turn = value
-        self._status['valve_turn'] = value
-        
-        msg = Float32()
-        msg.data = float(value)
-        self.teensy_valve_turn_pub.publish(msg)
-        self.valve_turn_changed.emit(self._valve_turn)
-    
-    valve_turn = Property(float, get_valve_turn, set_valve_turn, notify=valve_turn_changed)
     
     def cleanup(self):
         """Clean up resources when shutting down"""

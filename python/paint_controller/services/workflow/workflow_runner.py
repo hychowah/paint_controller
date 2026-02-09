@@ -388,8 +388,8 @@ class WorkFlowRunner(QObject):
                 self.logger.info("Emergency stop: Winch speed set to 0")
             
             # Close valve immediately
-            if hasattr(self.ros_node, 'teensy_controller') and self.ros_node.teensy_controller:
-                self.ros_node.teensy_controller.setValveTurn(0.0)
+            if hasattr(self.ros_node, 'esp32_valve_controller') and self.ros_node.esp32_valve_controller:
+                self.ros_node.esp32_valve_controller.setValveTurn(0.0)
                 self.logger.info("Emergency stop: Valve closed")
                 
         except Exception as e:

@@ -692,18 +692,19 @@ class WorkFlowExecutor:
         self.stop()
 
     # Legacy compatibility methods
-    def set_controllers(self, teensy_controller, winch_controller) -> None:
+    def set_controllers(self, teensy_controller, winch_controller, valve_controller=None) -> None:
         """
         Set controller references (legacy compatibility).
         
         Args:
             teensy_controller: Teensy controller instance
             winch_controller: Winch controller instance
+            valve_controller: ESP32 valve controller instance (optional)
         """
         # Update hardware controllers
         from .hardware import TeensyControllerAdapter, WinchControllerAdapter
         
         if teensy_controller:
-            self.hardware.teensy = TeensyControllerAdapter(teensy_controller)
+            self.hardware.teensy = TeensyControllerAdapter(teensy_controller, valve_controller)
         if winch_controller:
             self.hardware.winch = WinchControllerAdapter(winch_controller)

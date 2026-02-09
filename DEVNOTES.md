@@ -2,6 +2,36 @@
 
 ---
 
+### 2026-02-09 - Migrate Valve Control from Teensy to ESP32
+
+**Goal**: Separate valve control from TeensyStatus, integrate ESP32 UDP valve controller directly into paint_controller
+**Issues**: 
+- Valve status embedded in TeensyStatus message - couples unrelated hardware
+- Teensy topic `teensy/valve/turn/cmd` doesn't match actual ESP32 hardware
+- Range confusion: ESP32 feedback is 0-10000 (0.01%), command is 0-1000 (0.1%)
+**Tried**: 
+- Created ESP32ValveController with UDP client (ports 8888/8889), ARP-based discovery
+- Used QThread for non-blocking UDP receive to avoid blocking Qt event loop
+- Implemented conditional keepalive (resend only if idle >1s)
+**Result**: ✅ Valve control now independent, publishes to `valve/status` at 5Hz, subscribes to `valve/turn/cmd`
+
+**Key Implementation**:
+```python
+# Command: 0-100% ROS → multiply by 10 → 0-1000 ESP32
+position_raw = int(position_pct * 10.0)
+
+# Feedback: 0-10000 ESP32 → divide by 100 → 0-100% ROS  
+valve_position = valve_pos / 100.0
+```
+
+**Files**: 
+- `controllers/esp32_valve.py` (new), `controllers/teensy.py` (removed valve code)
+- `core/application.py`, `services/workflow/hardware.py`
+- `handlers/control_processor.py`, `services/workflow/workflow_runner.py`
+- `qml/components/displays/ValvesCard.qml`, `qml/overlays/video/components/EndEffectorOverlay.qml`
+
+---
+
 ### 2026-02-05 17:30 - Fix Position Triggers Not Firing on Loop Iterations
 
 **Goal**: Fix position-triggered actions not firing after first loop iteration

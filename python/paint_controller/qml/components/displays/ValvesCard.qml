@@ -27,7 +27,7 @@ IndustrialCard {
             // Flow Rate
             MetricValue {
                 label: "Flow Rate"
-                value: (teensyController.all_status.valve_rate || 0).toFixed(1)
+                value: (esp32ValveController.valve_rate || 0).toFixed(1)
                 unit: "L/min"
                 valueColor: "#3498db"
                 valueFontSize: valvesCard.metricValueSize
@@ -40,7 +40,7 @@ IndustrialCard {
             // Motor Current
             MetricValue {
                 label: "Motor Current"
-                value: (teensyController.all_status.valve_motor_current || 0).toFixed(1)
+                value: (esp32ValveController.valve_motor_current || 0).toFixed(1)
                 unit: "A"
                 valueColor: "#3498db"
                 valueFontSize: valvesCard.metricValueSize
@@ -53,7 +53,7 @@ IndustrialCard {
             // Total Volume
             MetricValue {
                 label: "Total Volume"
-                value: (teensyController.all_status.total_volume || 0).toFixed(1)
+                value: (esp32ValveController.total_volume || 0).toFixed(1)
                 unit: "L"
                 valueColor: "#3498db"
                 valueFontSize: valvesCard.metricValueSize
@@ -71,7 +71,7 @@ IndustrialCard {
             Layout.fillWidth: true
             spacing: 6
             
-            property real valvePositionPercent: (teensyController.all_status.valve_position || 0)
+            property real valvePositionPercent: (esp32ValveController.valve_position || 0)
             
             Text {
                 text: "Position: " + parent.valvePositionPercent.toFixed(0) + "%"

@@ -520,7 +520,7 @@ class ControlProcessor(QObject):
         # Only send command if we should send
         if self.valve_turn_should_send:
             try:
-                self.robot.teensy_controller.setValveTurn(valve_turn_value)
+                self.robot.esp32_valve_controller.setValveTurn(valve_turn_value)
                 # print(f"Commanding valve turn: {valve_turn_value}")
             except Exception as e:
                 print(f"Error commanding valve turn: {str(e)}")

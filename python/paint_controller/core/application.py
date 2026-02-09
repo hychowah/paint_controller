@@ -35,6 +35,7 @@ from paint_controller.controllers.wheel import WheelController
 from paint_controller.controllers.winch import WinchController
 from paint_controller.controllers.wind_monitor import WindMonitor
 from paint_controller.controllers.teensy import TeensyController
+from paint_controller.controllers.esp32_valve import ESP32ValveController
 from paint_controller.controllers.lidar import LidarController
 from paint_controller.models.action_config import ActionConfigPython
 from paint_controller.handlers.heartbeat import UIHeartbeatHandler
@@ -262,6 +263,7 @@ class RobotController(Node, QObject):
         self.wheel_controller = WheelController(self)
         self.overlayController = OverlayController(self)
         self.teensy_controller = TeensyController(self)
+        self.esp32_valve_controller = ESP32ValveController(self)
         self.lidar_controller = LidarController(self)
         self.wind_monitor = WindMonitor(self)    
         self.controlProcessor = ControlProcessor(self)
@@ -795,6 +797,7 @@ def main():
     engine.rootContext().setContextProperty("steamDeckHandler", controller.steam_deck_handler)
     engine.rootContext().setContextProperty("windMonitor", controller.wind_monitor)
     engine.rootContext().setContextProperty("teensyController", controller.teensy_controller)
+    engine.rootContext().setContextProperty("esp32ValveController", controller.esp32_valve_controller)
     engine.rootContext().setContextProperty("lidarController", controller.lidar_controller)
     engine.rootContext().setContextProperty("actionConfig", controller.action_config)
     engine.rootContext().setContextProperty("heartbeatHandler", controller.heartbeat_handler)
