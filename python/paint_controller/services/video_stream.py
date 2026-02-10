@@ -229,6 +229,7 @@ class VideoStreamHandler(QObject):
     
     # ROS2 signals for status and recording
     recordingStatusChanged = Signal(str)  # Emits recording status ("recording", "stopped", "failed")
+    baseRecordingStatusChanged = Signal(str)  # Emits base camera recording status
     cameraStatusChanged = Signal(str)    # Emits camera status ("streaming", "idle", "error")
     
     def __init__(self, configurable_port: int = 5000, ros_node: Optional[Node] = None):
@@ -248,6 +249,7 @@ class VideoStreamHandler(QObject):
         self._ros_node = ros_node
         self._ros_initialized = False
         self._recording_state = False
+        self._base_recording_state = False
         
         # Setup ROS2 publishers and subscribers if node is provided
         if ROS2_AVAILABLE and ros_node is not None:
@@ -310,7 +312,22 @@ class VideoStreamHandler(QObject):
             10
         )
         
-        self._log("ROS2 interface setup complete: /ef/camera/record/cmd (pub), /ef/camera/status (sub)")
+        # Publisher for recording commands to base camera
+        self._base_record_cmd_pub = self._ros_node.create_publisher(
+            Bool,
+            '/base/camera/record/cmd',
+            10
+        )
+        
+        # Subscriber for status updates from base camera node
+        self._base_status_sub = self._ros_node.create_subscription(
+            String,
+            '/base/camera/status',
+            self._base_status_callback,
+            10
+        )
+        
+        self._log("ROS2 interface setup complete: /ef/camera/record/cmd (pub), /ef/camera/status (sub), /base/camera/record/cmd (pub), /base/camera/status (sub)")
     
     def _record_cmd_callback(self, msg: Bool):
         """
@@ -377,6 +394,57 @@ class VideoStreamHandler(QObject):
         """Qt Property to check if currently recording."""
         return self._recording_state
     
+    @Slot()
+    def start_base_recording(self):
+        """
+        Qt Slot to start recording video from base camera.
+        Publishes recording command to ROS2.
+        """
+        if self._base_recording_state:
+            self._log("Base camera already recording", level="warning")
+            return
+        
+        self._base_recording_state = True
+        self._log("Base camera recording started - publishing command to /base/camera/record/cmd")
+        self.baseRecordingStatusChanged.emit("recording")
+        
+        if self._ros_initialized:
+            self._publish_base_record_command(True)
+    
+    @Slot()
+    def stop_base_recording(self):
+        """
+        Qt Slot to stop recording video from base camera.
+        Publishes recording stop command to ROS2.
+        """
+        if not self._base_recording_state:
+            self._log("Base camera not currently recording", level="warning")
+            return
+        
+        self._base_recording_state = False
+        self._log("Base camera recording stopped - publishing command to /base/camera/record/cmd")
+        self.baseRecordingStatusChanged.emit("stopped")
+        
+        if self._ros_initialized:
+            self._publish_base_record_command(False)
+    
+    @Slot()
+    def toggleBaseRecording(self):
+        """
+        Qt Slot to toggle base camera recording state.
+        Starts recording if not recording, stops if recording.
+        """
+        self._log("Toggling base camera recording state")
+        if self._base_recording_state:
+            self.stop_base_recording()
+        else:
+            self.start_base_recording()
+    
+    @Property(bool, notify=baseRecordingStatusChanged)
+    def is_base_recording(self) -> bool:
+        """Qt Property to check if base camera is currently recording."""
+        return self._base_recording_state
+    
     def _status_callback(self, msg: String):
         """
         ROS2 callback to receive camera status from remote camera node.
@@ -386,6 +454,16 @@ class VideoStreamHandler(QObject):
         """
         status = msg.data
         self.cameraStatusChanged.emit(status)
+    
+    def _base_status_callback(self, msg: String):
+        """
+        ROS2 callback to receive base camera status from remote camera node.
+        
+        Args:
+            msg: String message with camera status (e.g., "STREAMING", "RECORDING", "ERROR")
+        """
+        status = msg.data
+        self.baseRecordingStatusChanged.emit(status)
     
     def _publish_record_command(self, start_recording: bool):
         """
@@ -405,6 +483,25 @@ class VideoStreamHandler(QObject):
             self._log(f"Published recording command: {cmd_str}")
         except Exception as e:
             self._log(f"Failed to publish recording command: {e}", level="error")
+    
+    def _publish_base_record_command(self, start_recording: bool):
+        """
+        Publish recording command to base camera node.
+        
+        Args:
+            start_recording: True to start recording, False to stop recording
+        """
+        if not self._ros_initialized or self._base_record_cmd_pub is None:
+            return
+        
+        try:
+            msg = Bool()
+            msg.data = start_recording
+            self._base_record_cmd_pub.publish(msg)
+            cmd_str = "START" if start_recording else "STOP"
+            self._log(f"Published base camera recording command: {cmd_str}")
+        except Exception as e:
+            self._log(f"Failed to publish base camera recording command: {e}", level="error")
     
     def _publish_status(self, status: str):
         """

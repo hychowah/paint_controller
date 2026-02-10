@@ -484,7 +484,7 @@ class ControlProcessor(QObject):
     def _process_valve_turn(self, input_state: Dict):
         """Handle valve turn control using right analog trigger
         
-        Maps the right trigger (0-32767) to valve turn range (0.0-6.0)
+        Maps the right trigger (0-32767) to valve turn range 
         Stops sending commands after 2 seconds in deadzone until trigger moves beyond deadzone
         """
         # Get right trigger value (0-32767)

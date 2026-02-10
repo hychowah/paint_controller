@@ -33,7 +33,7 @@ actions:
   name: ascend_to_top
   type: winch_absolute
   params:
-    length: 7790
+    length: 7670
     speed: 200
     acceleration: 10
   trigger:

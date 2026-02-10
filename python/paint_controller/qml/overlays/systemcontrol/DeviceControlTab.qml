@@ -283,15 +283,26 @@ Item {
                         }
                     }
                     
-                    // Camera Recording Control
+                    // Camera Recording Control (End Effector)
                     ControlPanel {
                         Layout.fillWidth: true
-                        controlName: "Camera Recording"
+                        controlName: "EF Camera Recording"
                         controlStatus: videoStreamer.is_recording ? "Recording" : "Streaming"
                         enabledState: videoStreamer.is_recording
                         iconText: "REC"
                         
                         onClicked: videoStreamer.toggleRecording()
+                    }
+
+                    // Base Camera Recording Control
+                    ControlPanel {
+                        Layout.fillWidth: true
+                        controlName: "Base Camera Recording"
+                        controlStatus: videoStreamer.is_base_recording ? "Recording" : "Streaming"
+                        enabledState: videoStreamer.is_base_recording
+                        iconText: "BASE"
+                        
+                        onClicked: videoStreamer.toggleBaseRecording()
                     }
 
                     // Screen Recording Control

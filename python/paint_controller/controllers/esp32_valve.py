@@ -36,7 +36,7 @@ class UDPReceiveThread(QThread):
         super().__init__(parent)
         self.sock = sock
         self._running = True
-        self._last_receive_time = 0
+        self._last_receive_time = time.time()
         
     def run(self):
         """Main thread loop for receiving UDP messages"""
@@ -46,6 +46,11 @@ class UDPReceiveThread(QThread):
         
         while self._running:
             try:
+                # Check for connection timeout before attempting receive
+                if self._last_receive_time > 0 and (time.time() - self._last_receive_time) > 2.0:
+                    self.connection_lost.emit()
+                    self._last_receive_time = 0
+                
                 # Non-blocking receive with short timeout
                 data, addr = self.sock.recvfrom(1024)
                 
@@ -82,10 +87,7 @@ class UDPReceiveThread(QThread):
                 self.status_received.emit(status)
                 
             except socket.timeout:
-                # Check for connection timeout
-                if self._last_receive_time > 0 and (time.time() - self._last_receive_time) > 1.0:
-                    self.connection_lost.emit()
-                    self._last_receive_time = 0
+                # Timeout is normal for non-blocking socket
                 continue
             except Exception as e:
                 print(f"UDP receive error: {e}")
@@ -315,6 +317,16 @@ class ESP32ValveController(QObject):
         if self._esp32_connected:
             self._esp32_connected = False
             self.esp32_connected_changed.emit()
+            
+            # Reset device connection flags
+            if self._valve_motor_connected:
+                self._valve_motor_connected = False
+                self.valve_motor_connected_changed.emit()
+            
+            if self._flow_meter_connected:
+                self._flow_meter_connected = False
+                self.flow_meter_connected_changed.emit()
+            
             print("ESP32 connection lost")
     
     def _check_reconnect(self):
