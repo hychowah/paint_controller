@@ -900,5 +900,46 @@ def main():
         print("Forcing application exit...")
         os._exit(0)
 
+def main_new():
+    """
+    New main entry point using PaintControllerApplication architecture.
+    
+    This is the recommended entry point that uses dependency injection
+    and better separation of concerns.
+    """
+    from paint_controller.core.app import PaintControllerApplication
+    
+    app = PaintControllerApplication()
+    app.initialize()
+    return app.run()
+
+def main_old():
+    """
+    Old main entry point (deprecated).
+    
+    Kept for backward compatibility. Will be removed in future versions.
+    Use main_new() instead.
+    """
+    # This is the original main() function renamed
+    # The implementation above (lines 745-901) is main_old()
+    return main()
+
+# Default to new architecture
+def main_wrapper():
+    """
+    Main entry point wrapper.
+    
+    By default, uses the new architecture. Set environment variable
+    USE_OLD_MAIN=1 to use the old implementation.
+    """
+    use_old = os.environ.get('USE_OLD_MAIN', '0') == '1'
+    
+    if use_old:
+        print("Using old main() implementation (deprecated)")
+        return main()
+    else:
+        print("Using new PaintControllerApplication architecture")
+        return main_new()
+
 if __name__ == '__main__':
     main()
