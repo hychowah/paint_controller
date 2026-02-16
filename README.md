@@ -158,3 +158,64 @@ pip install -e .
 1. Ensure Steam Deck is in desktop mode
 2. Check USB connection
 3. Verify udev rules are configured (see Prerequisites)
+
+## Development
+
+### Architecture (Phase 1 - New)
+
+The application now uses a modern architecture with dependency injection and separation of concerns:
+
+- **ServiceContainer** (`python/paint_controller/core/service_container.py`) - Dependency injection container
+- **ROSManager** (`python/paint_controller/core/ros_manager.py`) - ROS2 lifecycle management
+- **QtManager** (`python/paint_controller/core/qt_manager.py`) - Qt/QML lifecycle management
+- **PaintControllerApplication** (`python/paint_controller/core/app.py`) - Main application class
+- **ViewModels** (`python/paint_controller/viewmodels/`) - MVVM pattern for UI separation
+
+The new architecture uses `main_new()` by default. To use the legacy implementation:
+```bash
+USE_OLD_MAIN=1 paint_controller
+```
+
+### Testing
+
+#### Install Test Dependencies
+
+```bash
+cd ~/ros2_ws/src/paint_controller_ros2
+source python/paint_controller/venv/bin/activate
+pip install -r python/paint_controller/requirements-dev.txt
+```
+
+#### Run Tests
+
+```bash
+# Run all tests
+pytest tests/
+
+# Run unit tests only
+pytest tests/unit/
+
+# Run with coverage
+pytest tests/ --cov=paint_controller --cov-report=html
+
+# Run specific test file
+pytest tests/unit/test_service_container.py -v
+```
+
+#### Test Structure
+
+- `tests/unit/` - Unit tests for individual components
+- `tests/integration/` - Integration tests for component interactions
+- `tests/conftest.py` - Shared pytest fixtures
+
+### Migration to New Architecture
+
+The new architecture is backward compatible. The old `main()` function still works, but the new `PaintControllerApplication` class is recommended for new development.
+
+Key improvements:
+- Better testability through dependency injection
+- Clear separation of concerns (ROS, Qt, Application logic)
+- Easier to extend and maintain
+- Example ViewModel pattern for UI components
+
+Future phases will continue extracting services from `RobotController` and adding more ViewModels.

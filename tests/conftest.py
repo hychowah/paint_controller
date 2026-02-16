@@ -7,16 +7,29 @@ Provides common fixtures and setup for all tests.
 import pytest
 import sys
 import os
+import importlib.util
+from pathlib import Path
 
 # Add the paint_controller module to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'python'))
 
 
+def load_module_from_file(module_name, file_path):
+    """Load a Python module directly from a file path"""
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 @pytest.fixture
 def service_container():
     """Fixture for ServiceContainer"""
-    from paint_controller.core.service_container import ServiceContainer
-    container = ServiceContainer()
+    # Load service_container module directly to avoid ROS dependencies
+    base_path = Path(__file__).parent.parent / 'python' / 'paint_controller' / 'core'
+    module = load_module_from_file('service_container', base_path / 'service_container.py')
+    
+    container = module.ServiceContainer()
     yield container
     container.cleanup_all()
 

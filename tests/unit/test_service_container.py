@@ -2,10 +2,28 @@
 Unit tests for ServiceContainer
 
 Tests service registration, retrieval, lifecycle management, and cleanup.
+
+Note: This test imports the ServiceContainer module directly to avoid ROS dependencies.
 """
 
 import pytest
-from paint_controller.core.service_container import ServiceContainer, ServiceLifetime
+import sys
+from pathlib import Path
+
+# Add paint_controller to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'python'))
+
+# Import the module directly, not through package
+import importlib.util
+spec = importlib.util.spec_from_file_location(
+    "service_container",
+    Path(__file__).parent.parent.parent / 'python' / 'paint_controller' / 'core' / 'service_container.py'
+)
+service_container = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(service_container)
+
+ServiceContainer = service_container.ServiceContainer
+ServiceLifetime = service_container.ServiceLifetime
 
 
 class TestServiceContainer:
