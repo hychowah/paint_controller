@@ -129,9 +129,9 @@ class ServiceContainer:
             return descriptor.instance
         else:
             # Create new instance for transient services
-            instance = descriptor.factory()
-            self._creation_order.append(name)
-            return instance
+            # Note: Transient services are not tracked for cleanup
+            # since we don't hold references to them
+            return descriptor.factory()
     
     def try_get(self, name: str) -> Optional[Any]:
         """

@@ -5,6 +5,7 @@ ROS Manager
 Encapsulates ROS2 context lifecycle and thread management.
 """
 
+import time
 import rclpy
 from rclpy.node import Node
 from threading import Lock
@@ -59,12 +60,10 @@ class RosThread(QThread):
                     error_msg = "ROS context is not valid - network may be disconnected"
                     self.error_occurred.emit(error_msg)
                     # Don't break - try to recover by waiting a bit
-                    import time
                     time.sleep(0.5)
                     continue
                 
                 try:
-                    import time
                     self._last_spin_time = time.time()
                     # Use smaller timeout to prevent long hangs on bad network
                     rclpy.spin_once(self.node, timeout_sec=0.05)
@@ -75,7 +74,6 @@ class RosThread(QThread):
                     self.error_occurred.emit(error_msg)
                     
                     # Sleep briefly to avoid CPU spinning on errors
-                    import time
                     time.sleep(0.1)
             
             self._cleanup()

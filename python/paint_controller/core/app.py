@@ -9,6 +9,8 @@ the paint controller application using dependency injection.
 import os
 import sys
 import signal
+import time
+import threading
 from typing import Optional
 
 from paint_controller.core.service_container import ServiceContainer
@@ -260,7 +262,6 @@ class PaintControllerApplication:
         # Step 3: Cleanup controller with timeout
         if self._controller:
             try:
-                import threading
                 cleanup_done = threading.Event()
                 
                 def do_cleanup():
@@ -309,9 +310,7 @@ class PaintControllerApplication:
             self._qt_manager.quit()
         
         # If shutdown doesn't happen quickly, force exit
-        import threading
         def force_exit():
-            import time
             time.sleep(2)
             print("Forcing immediate shutdown...")
             os._exit(1)

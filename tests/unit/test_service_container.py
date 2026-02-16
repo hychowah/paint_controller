@@ -133,13 +133,18 @@ class TestServiceContainer:
         service_container.register_singleton('b', lambda: ServiceB())
         service_container.register_singleton('c', lambda: ServiceC())
         
-        service_container.get('a')
-        service_container.get('b')
-        service_container.get('c')
+        service_a = service_container.get('a')
+        service_b = service_container.get('b')
+        service_c = service_container.get('c')
         
         # Cleanup should happen in reverse order: C, B, A
         service_container.cleanup_all()
         assert cleanup_order == ['C', 'B', 'A']
+        
+        # Verify instances are cleared
+        # Re-getting should create new instances (not same as before)
+        service_a2 = service_container.get('a')
+        assert service_a2 is not service_a  # New instance after cleanup
     
     def test_cleanup_handles_exceptions(self, service_container):
         """Test that cleanup continues even if one service fails"""
