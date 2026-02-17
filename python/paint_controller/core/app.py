@@ -161,11 +161,23 @@ class PaintControllerApplication:
             lambda: self._controller.wheel_controller
         )
         
+        self._service_container.register_singleton(
+            'teensy_controller',
+            lambda: self._controller.teensy_controller
+        )
+        
+        self._service_container.register_singleton(
+            'esp32_valve_controller',
+            lambda: self._controller.esp32_valve_controller
+        )
+        
         print("Robot controller created and services registered")
     
     def _create_viewmodels(self) -> None:
         """Create ViewModels using dependency injection"""
-        from paint_controller.viewmodels import WinchViewModel, WheelViewModel
+        from paint_controller.viewmodels import (
+            WinchViewModel, WheelViewModel, TeensyViewModel, ESP32ValveViewModel
+        )
         
         # Create ViewModels with injected dependencies
         winch_vm = WinchViewModel(
@@ -176,11 +188,21 @@ class PaintControllerApplication:
             self._service_container.get('wheel_controller')
         )
         
+        teensy_vm = TeensyViewModel(
+            self._service_container.get('teensy_controller')
+        )
+        
+        esp32_valve_vm = ESP32ValveViewModel(
+            self._service_container.get('esp32_valve_controller')
+        )
+        
         # Register ViewModels in container
         self._service_container.register_singleton('winch_view_model', lambda: winch_vm)
         self._service_container.register_singleton('wheel_view_model', lambda: wheel_vm)
+        self._service_container.register_singleton('teensy_view_model', lambda: teensy_vm)
+        self._service_container.register_singleton('esp32_valve_view_model', lambda: esp32_valve_vm)
         
-        print("ViewModels created and registered")
+        print(f"Created and registered {4} ViewModels")
     
     def _start_ros_thread(self) -> None:
         """Start ROS spinning in separate thread"""
@@ -258,6 +280,8 @@ class PaintControllerApplication:
             # Phase 2: Add ViewModels as alternative interface
             "winchViewModel": self._service_container.get('winch_view_model'),
             "wheelViewModel": self._service_container.get('wheel_view_model'),
+            "teensyViewModel": self._service_container.get('teensy_view_model'),
+            "esp32ValveViewModel": self._service_container.get('esp32_valve_view_model'),
         }
         
         self._qt_manager.register_multiple_context_properties(properties)
