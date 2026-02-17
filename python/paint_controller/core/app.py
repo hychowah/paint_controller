@@ -91,6 +91,9 @@ class PaintControllerApplication:
         # Create controller (still using RobotController for now)
         self._setup_controller()
         
+        # Create ViewModels
+        self._create_viewmodels()
+        
         # Start ROS thread
         self._start_ros_thread()
         
@@ -108,16 +111,76 @@ class PaintControllerApplication:
     
     def _register_services(self) -> None:
         """Register services in the dependency injection container"""
-        # For Phase 1, we keep the existing RobotController pattern
-        # Future phases will extract more services here
-        pass
+        # Phase 2: Start registering services in the container
+        # For now, we'll register config and managers as they're created
+        
+        # Register configuration as singleton
+        self._service_container.register_singleton(
+            'config',
+            lambda: self._config
+        )
+        
+        # Register managers as singletons
+        self._service_container.register_singleton(
+            'ros_manager',
+            lambda: self._ros_manager
+        )
+        
+        self._service_container.register_singleton(
+            'qt_manager',
+            lambda: self._qt_manager
+        )
+        
+        print(f"Registered {len(self._service_container._services)} services in container")
     
     def _setup_controller(self) -> None:
         """Create and setup the robot controller"""
         # For Phase 1, we still create RobotController directly
-        # Future phases will use dependency injection more extensively
+        # Phase 2: Start registering controller's services
         self._controller = RobotController(self._config)
-        print("Robot controller created")
+        
+        # Register controller and its services in container
+        self._service_container.register_singleton(
+            'robot_controller',
+            lambda: self._controller
+        )
+        
+        # Register individual controller services for future use
+        self._service_container.register_singleton(
+            'settings_manager',
+            lambda: self._controller.settings_manager
+        )
+        
+        self._service_container.register_singleton(
+            'winch_controller',
+            lambda: self._controller.winch_controller
+        )
+        
+        self._service_container.register_singleton(
+            'wheel_controller',
+            lambda: self._controller.wheel_controller
+        )
+        
+        print("Robot controller created and services registered")
+    
+    def _create_viewmodels(self) -> None:
+        """Create ViewModels using dependency injection"""
+        from paint_controller.viewmodels import WinchViewModel, WheelViewModel
+        
+        # Create ViewModels with injected dependencies
+        winch_vm = WinchViewModel(
+            self._service_container.get('winch_controller')
+        )
+        
+        wheel_vm = WheelViewModel(
+            self._service_container.get('wheel_controller')
+        )
+        
+        # Register ViewModels in container
+        self._service_container.register_singleton('winch_view_model', lambda: winch_vm)
+        self._service_container.register_singleton('wheel_view_model', lambda: wheel_vm)
+        
+        print("ViewModels created and registered")
     
     def _start_ros_thread(self) -> None:
         """Start ROS spinning in separate thread"""
@@ -191,6 +254,10 @@ class PaintControllerApplication:
             "settingsManager": self._controller.settings_manager,
             "screenManager": self._controller.screen_manager,
             "birdViewController": self._controller.bird_view_service,
+            
+            # Phase 2: Add ViewModels as alternative interface
+            "winchViewModel": self._service_container.get('winch_view_model'),
+            "wheelViewModel": self._service_container.get('wheel_view_model'),
         }
         
         self._qt_manager.register_multiple_context_properties(properties)
