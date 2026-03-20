@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 from dataclasses import dataclass
-from typing import Dict, Optional, Any, Union
+from typing import Dict, Optional, Any, TypedDict, Union
 import time
+import threading
 
 from rclpy.node import Node
 from std_msgs.msg import Bool, Float32, Float32MultiArray, Int32, Int32MultiArray
@@ -10,6 +11,81 @@ from geometry_msgs.msg import Twist, Vector3
 from paint_interfaces.msg import TeensyStatus, TeensyYaw, MoveWinchLength
 
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
+
+
+class TeensyStatusDict(TypedDict, total=False):
+    """Type hints for Teensy status dict. All fields optional (populated incrementally)."""
+    # ROS-driven fields (from TeensyStatus message)
+    available: bool
+    top_rail_position: float
+    top_rail_speed: float
+    top_rail_current: float
+    arm_rail_position: float
+    arm_rail_speed: float
+    arm_rail_current: float
+    arm_extension_dist: float
+    arm_sensor_dist: float
+    voltage: float
+    temperature: float
+    current: float
+    run_time: int
+    loop_time: float
+    loop_time_counter: int
+    relay_on: bool
+    enabled: bool
+    left_prop_position: float
+    left_prop_pwm: int
+    right_prop_position: float
+    right_prop_pwm: int
+    imu_acc_x: float
+    imu_acc_y: float
+    imu_acc_z: float
+    imu_angular_acc_x: float
+    imu_angular_acc_y: float
+    imu_angular_acc_z: float
+    imu_pitch: float
+    imu_roll: float
+    imu_yaw: float
+    spray_gun_pitch: float
+    gimbal_pitch_motor_angle: float
+    gimbal_pitch_motor_current: float
+    gimbal_pitch_motor_temp: float
+    gimbal_roll_motor_angle: float
+    gimbal_roll_motor_current: float
+    gimbal_roll_motor_temp: float
+    spray_gun_trigger: bool
+    yaw_enabled: bool
+    yaw_command: float
+    yaw_pid_p: float
+    yaw_pid_i: float
+    yaw_pid_d: float
+    yaw_pwm: int
+    target_yaw: float
+    valve_turn: float
+    valve_motor_current: int
+    valve_position: float
+    valve_rate: float
+    total_volume: float
+    valve_motor_connected: bool
+    flow_meter_connected: bool
+    # User-controlled fields (set locally, NOT from ROS message)
+    relay_enabled: bool
+    stability_enabled: bool
+    auto_correction_enabled: bool
+    roller_steering_enabled: bool
+    swing_damping_enabled: bool
+    spray_gun_leveling_enabled: bool
+
+
+# Fields set locally by UI actions that must survive ROS status updates
+_USER_CONTROLLED_FIELDS = (
+    'relay_enabled',
+    'stability_enabled',
+    'auto_correction_enabled',
+    'roller_steering_enabled',
+    'swing_damping_enabled',
+    'spray_gun_leveling_enabled',
+)
 
 
 class TeensyController(QObject):
@@ -30,7 +106,7 @@ class TeensyController(QObject):
         self._robot_controller = robot_controller  # Store reference to the robot controller
         
         # Initialize status variables with default values instead of empty dictionary
-        self._status = {
+        self._status: TeensyStatusDict = {
             'available': False,
             'top_rail_position': 0.0,
             'top_rail_speed': 0.0,
@@ -88,6 +164,7 @@ class TeensyController(QObject):
             'flow_meter_connected': False
         }
         
+        self._status_lock = threading.Lock()
         self._last_status_update_time = 0
         self._last_ui_update_time = 0
         self._last_ui_update_interval = 0.1  # seconds
@@ -180,6 +257,23 @@ class TeensyController(QObject):
             10
         )
     
+    # --- Publish helpers to reduce boilerplate ---
+    
+    def _publish_float32(self, publisher, value: float):
+        msg = Float32()
+        msg.data = float(value)
+        publisher.publish(msg)
+    
+    def _publish_int32(self, publisher, value: int):
+        msg = Int32()
+        msg.data = int(value)
+        publisher.publish(msg)
+    
+    def _publish_bool(self, publisher, value: bool):
+        msg = Bool()
+        msg.data = value
+        publisher.publish(msg)
+    
     def _check_availability(self):
         """Check if the Teensy is still connected"""
         current_time = time.time()
@@ -209,8 +303,8 @@ class TeensyController(QObject):
             
             formatted_runtime = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
-            # Store values with original types (not as strings)
-            self._status = {
+            # Build new status dict, then swap atomically under lock
+            new_status = {
                 'available': True,
                 'top_rail_position': msg.top_rail_position,
                 'top_rail_speed': msg.top_rail_speed,
@@ -258,26 +352,35 @@ class TeensyController(QObject):
                 'target_yaw': msg.yaw_command
             }
 
+            with self._status_lock:
+                # Preserve user-controlled fields that aren't in the ROS message
+                for field in _USER_CONTROLLED_FIELDS:
+                    new_status[field] = self._status.get(field, False)
+                self._status = new_status
+
             current_time = time.time()
             self._last_status_update_time = current_time
 
             # Throttle UI updates to avoid overwhelming the UI
+            # Emit signal OUTSIDE lock to prevent deadlock
             time_since_last_update = current_time - self._last_ui_update_time
             if time_since_last_update > self._last_ui_update_interval:
                 self._last_ui_update_time = current_time
-                self.status_changed.emit(self._status)
+                self.status_changed.emit(new_status)
             
         except Exception as e:
             print(f"Error in Teensy status callback: {e}")
     
-    def get_status(self) -> Dict:
+    def get_status(self) -> TeensyStatusDict:
         """Get current Teensy status"""
-        return self._status.copy()
+        with self._status_lock:
+            return self._status.copy()
     
     @Slot(str, result='QVariant')
     def get_status_value(self, key: str) -> Any:
         """Get a specific status value by key"""
-        return self._status.get(key)
+        with self._status_lock:
+            return self._status.get(key)
     
     @Slot(str, result=str)
     def get_formatted_value(self, key: str) -> str:
@@ -303,12 +406,8 @@ class TeensyController(QObject):
     @Slot(bool)
     def setEnabled(self, enabled: bool):
         """Enable/disable Teensy control"""
-        msg = Bool()
-        msg.data = enabled
-        self.teensy_enable_pub.publish(msg)
+        self._publish_bool(self.teensy_enable_pub, enabled)
         self._robot_controller.get_logger().info(f'Teensy {"enabled" if enabled else "disabled"}')
-        
-        # Emit status changed signal for UI updates
         self.status_changed.emit(self._status)
     
     @Slot(bool)
@@ -316,100 +415,71 @@ class TeensyController(QObject):
         """Enable/disable Teensy relay"""
         self._relay_enabled = enabled
         self._status['relay_enabled'] = enabled
-        
-        msg = Bool()
-        msg.data = enabled
-        self.teensy_relay_pub.publish(msg)
+        self._publish_bool(self.teensy_relay_pub, enabled)
         self._robot_controller.get_logger().info(f'Teensy relay {"enabled" if enabled else "disabled"}')
-        
-        # Emit status changed signal for UI updates
         self.status_changed.emit(self._status)
     
     @Slot(float)
     def setTopRailSpeed(self, speed: float):
         """Set the top rail speed"""
-        msg = Float32()
-        msg.data = float(speed)
-        self.ef_move_top_rail_speed_pub.publish(msg)
+        self._publish_float32(self.ef_move_top_rail_speed_pub, speed)
 
     @Slot(bool)
     def homeTopRail(self, home: bool):
         """Home the top rail"""
-        msg = Bool()
-        msg.data = True
-        self.ef_home_top_rail_pub.publish(msg)
+        self._publish_bool(self.ef_home_top_rail_pub, True)
         self._robot_controller.show_popup("Homing Top Rail", "Homing top rail", "info")
     
     @Slot(float)
     def setArmRailSpeed(self, speed: float):
         """Set the arm rail speed"""
-        msg = Float32()
-        msg.data = float(speed)
-        self.ef_move_arm_rail_speed_pub.publish(msg)
+        self._publish_float32(self.ef_move_arm_rail_speed_pub, speed)
 
     @Slot(int)
     def extendArm(self, dist: int):
-        msg = Int32()
-        msg.data = int(dist)
-        self.ef_move_arm_rail_pos_pub.publish(msg)
+        self._publish_int32(self.ef_move_arm_rail_pos_pub, dist)
         self._robot_controller.show_popup("Extending Arm", f"Extending arm to {dist} mm", "info")
 
     @Slot(bool)
     def homeArm(self, home: bool):
         """Home the arm rail"""
-        msg = Bool()
-        msg.data = home
-        self.ef_home_arm_rail_pub.publish(msg)
+        self._publish_bool(self.ef_home_arm_rail_pub, home)
 
     @Slot(int)
     def setLeftPropPWM(self, pwm: int):
         """Set the left propeller PWM"""
-        msg = Int32()
-        msg.data = int(pwm)
-        self.prop_left_pwm_pub.publish(msg)
+        self._publish_int32(self.prop_left_pwm_pub, pwm)
     
     @Slot(int)
     def setRightPropPWM(self, pwm: int):
         """Set the right propeller PWM"""
-        msg = Int32()
-        msg.data = int(pwm)
-        self.prop_right_pwm_pub.publish(msg)
+        self._publish_int32(self.prop_right_pwm_pub, pwm)
     
     @Slot(float)
     def setLeftPropJoint(self, position: float):
         """Set the left propeller joint position"""
-        msg = Float32()
-        msg.data = float(position)
-        self.prop_left_joint_pub.publish(msg)
+        self._publish_float32(self.prop_left_joint_pub, position)
     
     @Slot(float)
     def setRightPropJoint(self, position: float):
         """Set the right propeller joint position"""
-        msg = Float32()
-        msg.data = float(position)
-        self.prop_right_joint_pub.publish(msg)
+        self._publish_float32(self.prop_right_joint_pub, position)
     
     @Slot(int)
     def setSprayTrigger(self, value: int):
         """Set the spray gun trigger value"""
-        msg = Int32()
-        msg.data = int(value)
-        self.ef_spray_trigger_pub.publish(msg)
+        self._publish_int32(self.ef_spray_trigger_pub, value)
     
     @Slot(int)
     def setSprayPitchSpeed(self, speed: int):
         """Set the spray gun pitch speed"""
-        msg = Int32()
-        msg.data = int(speed)
-        self.ef_spray_pitch_speed_pub.publish(msg)
+        self._publish_int32(self.ef_spray_pitch_speed_pub, speed)
 
     @Slot(bool)
     def setSprayGunLevelingEnabled(self, enabled: bool):
         """Enable/disable spray gun leveling"""
         self._robot_controller.get_logger().info(f'Spray gun leveling {"enabled" if enabled else "disabled"}')
-        msg = Bool()
-        msg.data = enabled
-        self.ef_spray_level_enable_pub.publish(msg)
+        self._publish_bool(self.ef_spray_level_enable_pub, enabled)
         self._spray_gun_leveling_enabled = enabled
         self.spray_gun_leveling_changed.emit(enabled)
 
@@ -432,9 +502,7 @@ class TeensyController(QObject):
     def setSprayGunLED(self, on: bool):
         """Turn the spray gun LED on/off"""
         self._robot_controller.get_logger().info(f'Spray gun LED {"on" if on else "off"}')
-        msg = Bool()
-        msg.data = on
-        self.ef_spray_led_pub.publish(msg)
+        self._publish_bool(self.ef_spray_led_pub, on)
         self._spray_gun_led_on = on
         self.spray_gun_led_changed.emit(on)
 
@@ -442,44 +510,30 @@ class TeensyController(QObject):
     def setLidarPower(self, on: bool):
         """Turn the Lidar power on/off"""
         self._robot_controller.get_logger().info(f'Lidar power {"on" if on else "off"}')
-        msg = Bool()
-        msg.data = on
-        self.ef_lidar_power_pub.publish(msg)
+        self._publish_bool(self.ef_lidar_power_pub, on)
 
     @Slot(bool)
     def setStabilityEnabled(self, enabled: bool):
         """Enable/disable stability controller (master enable for force and yaw control)"""
         self._stability_enabled = enabled
         self._status['stability_enabled'] = enabled
-        
-        msg = Bool()
-        msg.data = enabled
-        self.stability_enable_pub.publish(msg)
+        self._publish_bool(self.stability_enable_pub, enabled)
         self._robot_controller.get_logger().info(f'Stability controller {"enabled" if enabled else "disabled"}')
-        
-        # Emit signals for UI updates
         self.stability_enabled_changed.emit(enabled)
         self.status_changed.emit(self._status)
 
     @Slot(bool)
     def setYawEnabled(self, enabled: bool):
         """Enable/disable yaw control"""
-        msg = Bool()
-        msg.data = enabled
-        self.stability_yaw_enable_pub.publish(msg)
+        self._publish_bool(self.stability_yaw_enable_pub, enabled)
 
     @Slot(bool)
     def setAutoCorrectonEnabled(self, enabled: bool):
         """Enable/disable yaw auto correction"""
         self._auto_correction_enabled = enabled
         self._status['auto_correction_enabled'] = enabled
-        
-        msg = Bool()
-        msg.data = enabled
-        self.stability_auto_correction_enable_pub.publish(msg)
+        self._publish_bool(self.stability_auto_correction_enable_pub, enabled)
         self._robot_controller.get_logger().info(f'Auto correction {"enabled" if enabled else "disabled"}')
-        
-        # Emit both signals for UI updates
         self.auto_correction_enabled_changed.emit(enabled)
         self.status_changed.emit(self._status)
 
@@ -488,13 +542,8 @@ class TeensyController(QObject):
         """Enable/disable roller steering"""
         self._roller_steering_enabled = enabled
         self._status['roller_steering_enabled'] = enabled
-        
-        msg = Bool()
-        msg.data = enabled
-        self.roller_steering_enable_pub.publish(msg)
+        self._publish_bool(self.roller_steering_enable_pub, enabled)
         self._robot_controller.get_logger().info(f'Roller steering {"enabled" if enabled else "disabled"}')
-        
-        # Emit signals for UI updates
         self.roller_steering_enabled_changed.emit(enabled)
         self.status_changed.emit(self._status)
 
@@ -503,22 +552,15 @@ class TeensyController(QObject):
         """Enable/disable swing damping"""
         self._swing_damping_enabled = enabled
         self._status['swing_damping_enabled'] = enabled
-        
-        msg = Bool()
-        msg.data = enabled
-        self.swing_damping_enable_pub.publish(msg)
+        self._publish_bool(self.swing_damping_enable_pub, enabled)
         self._robot_controller.get_logger().info(f'Swing damping {"enabled" if enabled else "disabled"}')
-        
-        # Emit signals for UI updates
         self.swing_damping_enabled_changed.emit(enabled)
         self.status_changed.emit(self._status)
 
     @Slot(float)
     def setYawAngle(self, angle: float):
         """Set the yaw angle"""
-        msg = Float32()
-        msg.data = float(angle)
-        self.stability_yaw_angle_pub.publish(msg)
+        self._publish_float32(self.stability_yaw_angle_pub, angle)
 
     @Slot(float, float, float)
     def setShortParams(self, p: float, i: float, d: float):
@@ -550,17 +592,13 @@ class TeensyController(QObject):
     def tapOnce(self, power: float):
         """ Tap once"""
         self._robot_controller.get_logger().info(f'Tapping once with Power: {power}')
-        msg = Int32()
-        msg.data = int(power)
-        self.ef_tap_once_pub.publish(msg)
+        self._publish_int32(self.ef_tap_once_pub, int(power))
 
     @Slot(float)
     def tapStop(self, power: float):
         """ Stop tapping"""
         self._robot_controller.get_logger().info(f'Stopping tap with Power: {power}')
-        msg = Bool()
-        msg.data = True
-        self.ef_tap_stop_pub.publish(msg)
+        self._publish_bool(self.ef_tap_stop_pub, True)
 
     @Slot(bool)
     def setThrustForceEnabled(self, enabled: bool):
@@ -598,7 +636,7 @@ class TeensyController(QObject):
             self._robot_controller.get_logger().error("Stability force publisher not initialized. Cannot send force values.")
     
     # Define a property to expose the entire status dictionary
-    def get_all_status(self) -> Dict:
+    def get_all_status(self) -> TeensyStatusDict:
         return self._status
     
     # Define a property for availability

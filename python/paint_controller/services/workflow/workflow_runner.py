@@ -380,20 +380,26 @@ class WorkFlowRunner(QObject):
         return success
     
     def _emergency_shutdown(self) -> None:
-        """Perform emergency shutdown of critical systems."""
+        """Perform emergency shutdown of critical systems.
+        
+        Each controller is stopped independently so a failure in one
+        does not prevent the others from being stopped.
+        """
+        # Stop winch immediately
         try:
-            # Stop winch immediately
             if hasattr(self.ros_node, 'winch_controller') and self.ros_node.winch_controller:
                 self.ros_node.winch_controller.setSpeed(0.0)
                 self.logger.info("Emergency stop: Winch speed set to 0")
-            
-            # Close valve immediately
+        except Exception as e:
+            self.logger.error(f"Emergency stop: Failed to stop winch: {e}")
+        
+        # Close valve immediately
+        try:
             if hasattr(self.ros_node, 'esp32_valve_controller') and self.ros_node.esp32_valve_controller:
                 self.ros_node.esp32_valve_controller.setValveTurn(0.0)
                 self.logger.info("Emergency stop: Valve closed")
-                
         except Exception as e:
-            self.logger.error(f"Error during emergency shutdown: {e}")
+            self.logger.error(f"Emergency stop: Failed to close valve: {e}")
 
     @Property(int, notify=current_action_index_changed)
     def current_action_index(self) -> int:

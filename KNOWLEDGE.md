@@ -40,7 +40,20 @@ Qt Buttons respond to Space/Enter keys when focused, even in secondary windows. 
 
 ## Python Patterns
 
-*(Add entries as discovered)*
+### Circular Import via Package `__init__.py`
+If `core/__init__.py` re-exports from `application.py`, and `application.py` imports from `handlers/`, then any module in `handlers/` that imports from `core.something` will trigger the full `core/__init__.py` → `application.py` → `handlers/` chain before `handlers/` is ready. **Fix**: Place shared constants/utilities in a lightweight package (e.g. `utils/`) whose `__init__.py` is empty or has no cross-package imports.
+
+### Thread Lock + Signal Pattern
+When using `threading.Lock` to protect shared state in PySide6, **always emit signals OUTSIDE the lock**. Copy the needed values inside the lock, release it, then emit. Emitting inside a lock risks deadlock if the slot tries to acquire the same lock.
+
+### `_make_setting_pair()` Factory for PySide6 Properties
+To eliminate repetitive `@Property`/getter/setter boilerplate, define a schema dict and a factory function that returns `(Signal, Property)` tuples. Assign them as class attributes in one line per setting: `foo_changed, foo = _make_setting_pair("foo")`. Reduces ~200 lines to ~22 one-liners.
+
+### TypedDict for QML-Compatible Typed Status
+When QML accesses Python data via dict-style access (e.g., `model.all_status["field"]`), use `TypedDict` instead of `@dataclass` for type hints. TypedDict gives IDE autocomplete and type checking with zero runtime change — the underlying dict stays a plain dict that QML can consume.
+
+### Test Imports: Namespace-Only Module Pre-Registration
+When `package/__init__.py` re-exports heavy dependencies (PySide6, rclpy, hid), tests fail on import. Fix: In `conftest.py`, pre-register the package as a namespace-only module via `types.ModuleType` + `sys.modules` before any test imports. This lets tests import submodules directly without triggering the full `__init__.py` chain.
 
 ---
 

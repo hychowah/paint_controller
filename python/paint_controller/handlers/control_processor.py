@@ -4,6 +4,8 @@ from std_msgs.msg import Float32, Int32
 from geometry_msgs.msg import Twist, Vector3
 import time
 from paint_controller.handlers.heartbeat import HeartbeatStatus
+from paint_controller.utils.constants import JoystickControl
+from paint_controller.utils.input import DeadzoneTracker
 from PySide6.QtCore import QObject, Signal, Property
 
 @dataclass
@@ -29,73 +31,86 @@ class ControlProcessor(QObject):
         self.last_message_time = 0
         
         # Initialize control info properties
-        self._left_control_mode = "None"
+        self._left_control_mode = JoystickControl.NONE
         self._left_control_value = ""
-        self._right_control_mode = "None"
+        self._right_control_mode = JoystickControl.NONE
         self._right_control_value = ""
         
-        # Valve turn deadzone tracking
-        self.valve_turn_in_deadzone = False
-        self.valve_turn_deadzone_start_time = 0
-        self.valve_turn_should_send = True
-        
-        # Arm rail speed deadzone tracking
-        self.arm_rail_speed_in_deadzone = False
-        self.arm_rail_speed_deadzone_start_time = 0
-        self.arm_rail_speed_should_send = True
-        
-        # Winch speed deadzone tracking
-        self.winch_speed_in_deadzone = False
-        self.winch_speed_deadzone_start_time = 0
-        self.winch_speed_should_send = True
+        # Deadzone trackers for controls that need timed suppression
+        self._valve_turn_deadzone = DeadzoneTracker(timeout=2.0)
+        self._arm_rail_speed_deadzone = DeadzoneTracker(timeout=2.0)
+        self._winch_speed_deadzone = DeadzoneTracker(timeout=1.0)
         self.winch_speed_has_been_active = False  # Only send commands after joystick moves outside deadzone
         
         # Wheel travel position tracking (accumulated values, not sent until button press)
         self._left_wheel_travel_mm = 0.0
         self._right_wheel_travel_mm = 0.0
         
-        # ===== CONFIGURATION CONSTANTS =====
+        self.current_values = {
+            'left_mode': '',
+            'left_value': 0.0,
+            'right_mode': '',
+            'right_value': 0.0
+        }
         
-        # Display and messaging
+        self._setup_settings(robot_controller)
+        self._setup_constants()
+        self._setup_controls()
+
+    def _setup_settings(self, robot_controller):
+        """Load settings from settings_manager and subscribe to changes."""
         self.MESSAGE_UPDATE_INTERVAL = 0.2  # seconds, 5Hz display update rate
-        
-        # Track control parameters - get from settings_manager if available
+
         if hasattr(robot_controller, 'settings_manager'):
-            self.TRACK_MAX_SPEED = robot_controller.settings_manager.get('track_max_speed') or 500.0
-            self.TRACK_MIN_SPEED = robot_controller.settings_manager.get('track_min_speed') or 50.0
-            self._valve_turn_max = robot_controller.settings_manager.get('valve_turn_max') or 20.0
-            self._winch_max_speed_mmps = robot_controller.settings_manager.get('winch_max_speed_mmps') or 400.0
+            sm = robot_controller.settings_manager
+            self.TRACK_MAX_SPEED = sm.get('track_max_speed') or 500.0
+            self.TRACK_MIN_SPEED = sm.get('track_min_speed') or 50.0
+            self._valve_turn_max = sm.get('valve_turn_max') or 20.0
+            self._winch_max_speed_mmps = sm.get('winch_max_speed_mmps') or 400.0
+            self._wheel_travel_max = sm.get('wheel_travel_max') or 500.0
+            self._wheel_travel_rate = sm.get('wheel_travel_rate') or 100.0
+            self._wheel_travel_rpm = sm.get('wheel_travel_rpm') or 200
             # Subscribe to settings changes
-            robot_controller.settings_manager.track_max_speed_changed.connect(self._on_track_max_speed_changed)
-            robot_controller.settings_manager.track_min_speed_changed.connect(self._on_track_min_speed_changed)
-            robot_controller.settings_manager.valve_turn_max_changed.connect(self._on_valve_turn_max_changed)
-            robot_controller.settings_manager.winch_max_speed_mmps_changed.connect(self._on_winch_max_speed_mmps_changed)
+            sm.track_max_speed_changed.connect(self._on_track_max_speed_changed)
+            sm.track_min_speed_changed.connect(self._on_track_min_speed_changed)
+            sm.valve_turn_max_changed.connect(self._on_valve_turn_max_changed)
+            sm.winch_max_speed_mmps_changed.connect(self._on_winch_max_speed_mmps_changed)
+            sm.wheel_travel_max_changed.connect(self._on_wheel_travel_max_changed)
+            sm.wheel_travel_rate_changed.connect(self._on_wheel_travel_rate_changed)
+            sm.wheel_travel_rpm_changed.connect(self._on_wheel_travel_rpm_changed)
         else:
-            self.TRACK_MAX_SPEED = 500.0         # Maximum track speed
-            self.TRACK_MIN_SPEED = 50.0         # Minimum speed to overcome friction
-            self._valve_turn_max = 6.0          # Maximum valve turn value
-            self._winch_max_speed_mmps = 400.0        # Maximum winch speed (mm/s)
-        self.TRACK_DEAD_ZONE = 0.05         # 5% joystick dead zone
-        self.TRACK_FINE_CONTROL_THRESHOLD = 0.6  # 60% of joystick for fine control (10-30 speed)
-        self.TRACK_FINE_CURVE_FACTOR = 2.0  # Exponential curve for fine control range
-        self.TRACK_COARSE_CURVE_FACTOR = 0.8  # Exponential curve for coarse control range
-        
-        # Joystick input constants
-        self.JOYSTICK_MAX_VALUE = 32768.0   # Maximum joystick input value
-        
-        # Control command intervals (Hz rates)
-        self.WINCH_UPDATE_INTERVAL = 0.1    # 10Hz
-        self.TRACK_UPDATE_INTERVAL = 0.1    # 10Hz  
-        self.EF_ARM_UPDATE_INTERVAL = 0.1   # 10Hz
-        self.EF_JOINT_UPDATE_INTERVAL = 0.1 # 10Hz
-        self.EF_TRIGGER_UPDATE_INTERVAL = 0.2  # 5Hz
-        self.EF_RAIL_UPDATE_INTERVAL = 0.1  # 10Hz
-        self.EF_PWM_UPDATE_INTERVAL = 0.1   # 10Hz
-        self.EF_PITCH_UPDATE_INTERVAL = 0.2  # 5Hz
-        self.EF_YAW_UPDATE_INTERVAL = 0.1   # 10Hz
-        self.EF_FORCE_UPDATE_INTERVAL = 0.1 # 10Hz
-        self.VALVE_TURN_UPDATE_INTERVAL = 0.3  # 10Hz
-        
+            self.TRACK_MAX_SPEED = 500.0
+            self.TRACK_MIN_SPEED = 50.0
+            self._valve_turn_max = 6.0
+            self._winch_max_speed_mmps = 400.0
+            self._wheel_travel_max = 500.0
+            self._wheel_travel_rate = 100.0
+            self._wheel_travel_rpm = 300
+
+    def _setup_constants(self):
+        """Initialize control constants and scaling factors."""
+        self.JOYSTICK_MAX_VALUE = 32768.0
+
+        # Track control
+        self.TRACK_DEAD_ZONE = 0.05
+        self.TRACK_FINE_CONTROL_THRESHOLD = 0.6
+        self.TRACK_FINE_CURVE_FACTOR = 2.0
+        self.TRACK_COARSE_CURVE_FACTOR = 0.8
+
+        # Command update intervals (seconds)
+        self.WINCH_UPDATE_INTERVAL = 0.1
+        self.TRACK_UPDATE_INTERVAL = 0.1
+        self.EF_ARM_UPDATE_INTERVAL = 0.1
+        self.EF_JOINT_UPDATE_INTERVAL = 0.1
+        self.EF_TRIGGER_UPDATE_INTERVAL = 0.2
+        self.EF_RAIL_UPDATE_INTERVAL = 0.1
+        self.EF_PWM_UPDATE_INTERVAL = 0.1
+        self.EF_PITCH_UPDATE_INTERVAL = 0.2
+        self.EF_YAW_UPDATE_INTERVAL = 0.1
+        self.EF_FORCE_UPDATE_INTERVAL = 0.1
+        self.VALVE_TURN_UPDATE_INTERVAL = 0.3
+        self.WHEEL_TRAVEL_UPDATE_INTERVAL = 0.1
+
         # Control scaling factors
         self.WINCH_SCALE = self._winch_max_speed_mmps / self.JOYSTICK_MAX_VALUE
         self.TRACK_SCALE = self.TRACK_MAX_SPEED / self.JOYSTICK_MAX_VALUE
@@ -107,47 +122,26 @@ class ControlProcessor(QObject):
         self.EF_PITCH_SCALE = 30 / self.JOYSTICK_MAX_VALUE
         self.EF_YAW_SCALE = 2 / self.JOYSTICK_MAX_VALUE
         self.EF_FORCE_SCALE = 1.6 / self.JOYSTICK_MAX_VALUE
-        self.VALVE_TURN_SCALE = self._valve_turn_max / self.JOYSTICK_MAX_VALUE  # Maps 0-32768 to 0-valve_turn_max
-        self.VALVE_TURN_DEADZONE = 0.05  # 5% deadzone threshold
-        self.VALVE_TURN_DEADZONE_TIMEOUT = 2.0  # seconds
-        self.ARM_RAIL_SPEED_SCALE = 50.0 / self.JOYSTICK_MAX_VALUE  # Maps 0-32768 to 0-50.0
-        self.ARM_RAIL_SPEED_DEADZONE = 0.05  # 5% deadzone threshold
-        self.ARM_RAIL_SPEED_DEADZONE_TIMEOUT = 2.0  # seconds
-        self.WINCH_SPEED_DEADZONE = 0.05  # 5% deadzone threshold
-        self.WINCH_SPEED_DEADZONE_TIMEOUT = 1.0  # 1 second timeout
-        
-        # Wheel travel control parameters - get from settings_manager if available
-        if hasattr(robot_controller, 'settings_manager'):
-            self._wheel_travel_max = robot_controller.settings_manager.get('wheel_travel_max') or 500.0
-            self._wheel_travel_rate = robot_controller.settings_manager.get('wheel_travel_rate') or 100.0
-            self._wheel_travel_rpm = robot_controller.settings_manager.get('wheel_travel_rpm') or 200
-            # Subscribe to settings changes
-            robot_controller.settings_manager.wheel_travel_max_changed.connect(self._on_wheel_travel_max_changed)
-            robot_controller.settings_manager.wheel_travel_rate_changed.connect(self._on_wheel_travel_rate_changed)
-            robot_controller.settings_manager.wheel_travel_rpm_changed.connect(self._on_wheel_travel_rpm_changed)
-        else:
-            self._wheel_travel_max = 500.0       # Maximum travel distance ±500mm
-            self._wheel_travel_rate = 100.0      # Adjustment rate (mm/sec)
-            self._wheel_travel_rpm = 300         # Fixed speed for wheel travel commands
-        self.WHEEL_TRAVEL_UPDATE_INTERVAL = 0.1  # 10Hz for display updates (local constant)
-        
-        # Control offsets and limits
+        self.VALVE_TURN_SCALE = self._valve_turn_max / self.JOYSTICK_MAX_VALUE
+        self.ARM_RAIL_SPEED_SCALE = 50.0 / self.JOYSTICK_MAX_VALUE
+
+        # Deadzone thresholds
+        self.VALVE_TURN_DEADZONE = 0.05
+        self.VALVE_TURN_DEADZONE_TIMEOUT = 2.0
+        self.ARM_RAIL_SPEED_DEADZONE = 0.05
+        self.ARM_RAIL_SPEED_DEADZONE_TIMEOUT = 2.0
+        self.WINCH_SPEED_DEADZONE = 0.05
+        self.WINCH_SPEED_DEADZONE_TIMEOUT = 1.0
+
+        # EF offsets and limits
         self.EF_TRIGGER_OFFSET = 1000
         self.EF_TRIGGER_MIN_VALUE = 1000
         self.EF_PWM_OFFSET = 1000
         self.EF_PWM_MIN_VALUE = 1000
-        self.EF_YAW_IMU_SCALE = 100.0       # Scale factor for IMU yaw conversion
-        
-        # ===== END CONFIGURATION =====
-        
-        self.current_values = {
-            'left_mode': '',
-            'left_value': 0.0,
-            'right_mode': '',
-            'right_value': 0.0
-        }
-        
-        # Control configurations
+        self.EF_YAW_IMU_SCALE = 100.0
+
+    def _setup_controls(self):
+        """Initialize control configurations and handler dispatch table."""
         self.controls = {
             "Winch Speed": ControlConfig(
                 scale=self.WINCH_SCALE,
@@ -499,26 +493,11 @@ class ControlProcessor(QObject):
         # Normalize to 0-1 range for deadzone check
         normalized_value = valve_turn_value / self._valve_turn_max if self._valve_turn_max > 0 else 0
         
-        current_time = time.monotonic()
-        
-        # Check if we're in deadzone
-        if normalized_value <= self.VALVE_TURN_DEADZONE:
-            if not self.valve_turn_in_deadzone:
-                # Just entered deadzone
-                self.valve_turn_in_deadzone = True
-                self.valve_turn_deadzone_start_time = current_time
-                self.valve_turn_should_send = True
-            else:
-                # Already in deadzone - check if timeout has elapsed
-                if current_time - self.valve_turn_deadzone_start_time >= self.VALVE_TURN_DEADZONE_TIMEOUT:
-                    self.valve_turn_should_send = False
-        else:
-            # Outside deadzone - reset and allow sending
-            self.valve_turn_in_deadzone = False
-            self.valve_turn_should_send = True
+        # Update deadzone tracker
+        should_send = self._valve_turn_deadzone.update(normalized_value, self.VALVE_TURN_DEADZONE)
         
         # Only send command if we should send
-        if self.valve_turn_should_send:
+        if should_send:
             try:
                 self.robot.esp32_valve_controller.setValveTurn(valve_turn_value)
                 # print(f"Commanding valve turn: {valve_turn_value}")
@@ -543,26 +522,11 @@ class ControlProcessor(QObject):
         # Normalize to 0-1 range for deadzone check
         normalized_value = arm_rail_speed_value / 50.0
         
-        current_time = time.monotonic()
-        
-        # Check if we're in deadzone
-        if normalized_value <= self.ARM_RAIL_SPEED_DEADZONE:
-            if not self.arm_rail_speed_in_deadzone:
-                # Just entered deadzone
-                self.arm_rail_speed_in_deadzone = True
-                self.arm_rail_speed_deadzone_start_time = current_time
-                self.arm_rail_speed_should_send = True
-            else:
-                # Already in deadzone - check if timeout has elapsed
-                if current_time - self.arm_rail_speed_deadzone_start_time >= self.ARM_RAIL_SPEED_DEADZONE_TIMEOUT:
-                    self.arm_rail_speed_should_send = False
-        else:
-            # Outside deadzone - reset and allow sending
-            self.arm_rail_speed_in_deadzone = False
-            self.arm_rail_speed_should_send = True
+        # Update deadzone tracker
+        should_send = self._arm_rail_speed_deadzone.update(normalized_value, self.ARM_RAIL_SPEED_DEADZONE)
         
         # Only send command if we should send
-        if self.arm_rail_speed_should_send:
+        if should_send:
             try:
                 self.robot.teensy_controller.setArmRailSpeed(arm_rail_speed_value)
                 # print(f"Commanding arm rail speed: {arm_rail_speed_value}")
@@ -594,27 +558,14 @@ class ControlProcessor(QObject):
         # Normalize to 0-1 range for deadzone check (handling bidirectional range)
         normalized_value = abs(value) / config.max_value if config.max_value > 0 else 0
         
-        current_time = time.monotonic()
+        # Update deadzone tracker
+        should_send = self._winch_speed_deadzone.update(normalized_value, self.WINCH_SPEED_DEADZONE)
         
-        # Check if we're in deadzone
-        if normalized_value <= self.WINCH_SPEED_DEADZONE:
-            if not self.winch_speed_in_deadzone:
-                # Just entered deadzone
-                self.winch_speed_in_deadzone = True
-                self.winch_speed_deadzone_start_time = current_time
-                self.winch_speed_should_send = True
-            else:
-                # Already in deadzone - check if timeout has elapsed
-                if current_time - self.winch_speed_deadzone_start_time >= self.WINCH_SPEED_DEADZONE_TIMEOUT:
-                    self.winch_speed_should_send = False
-        else:
-            # Outside deadzone - reset and allow sending
-            self.winch_speed_in_deadzone = False
-            self.winch_speed_should_send = True
+        if not self._winch_speed_deadzone.in_deadzone:
             self.winch_speed_has_been_active = True  # Mark as active when joystick moves
         
         # Only send command if we should send, conditions are met, and joystick has been activated
-        if self.winch_speed_should_send and self.winch_speed_has_been_active:
+        if should_send and self.winch_speed_has_been_active:
             try:
                 if not self.robot.winch_controller.get_available():
                     print("Winch not available")
@@ -766,8 +717,7 @@ class ControlProcessor(QObject):
     def reset_winch_activation(self):
         """Reset winch activation state - call when switching to EF mode to prevent spurious commands"""
         self.winch_speed_has_been_active = False
-        self.winch_speed_in_deadzone = False
-        self.winch_speed_should_send = True
+        self._winch_speed_deadzone.reset()
 
     def _is_winch_control_locked(self) -> bool:
         """
@@ -804,6 +754,7 @@ class ControlProcessor(QObject):
         """Handle valve_turn_max change from SettingsManager"""
         self._valve_turn_max = new_value
         self.VALVE_TURN_SCALE = self._valve_turn_max / self.JOYSTICK_MAX_VALUE
+        self.controls["Valve Turn"].scale = self.VALVE_TURN_SCALE
         print(f"[ControlProcessor] Valve turn max updated to: {new_value}")
     
     def _on_winch_max_speed_mmps_changed(self, new_value: float):

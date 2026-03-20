@@ -1,0 +1,6 @@
+{
+  "mac_address": "1c:db:d4:40:30:c8",
+  "ip_fallback": "192.168.101.102",
+  "receive_port": 8888,
+  "send_port": 8889
+}

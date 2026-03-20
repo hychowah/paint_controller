@@ -2,6 +2,41 @@
 
 ---
 
+### 2026-03-20 - B2: Teensy Status TypedDict + User-Field Bug Fix
+
+**Goal**: Add type safety to Teensy status dict and fix data loss bug
+**Issues**: `_status_callback()` created a new dict on every ROS message, overwriting user-controlled fields (relay_enabled, stability_enabled, auto_correction_enabled, roller_steering_enabled, swing_damping_enabled, spray_gun_leveling_enabled)
+**Tried**: Considered dataclass (QML can't dot-access), custom container class (over-engineered). TypedDict gives IDE autocomplete with zero runtime change.
+**Result**: ✅ Added `TeensyStatusDict(TypedDict)` for type hints, `_USER_CONTROLLED_FIELDS` tuple, and field preservation loop in `_status_callback`
+**Files**: `controllers/teensy.py`
+
+---
+
+### 2026-07-17 - Phase 2 Refactoring: Thread Safety, Settings Auto-gen, Tests
+
+**Goal**: Complete Phase 2 refactoring — thread safety, settings property boilerplate, test infra, config externalization
+**Issues**:
+- ESP32 socket could close while `recvfrom()` was active (race condition)
+- `settings._values` and `teensy._status` had no thread synchronization
+- ~195 lines of repetitive `@Property`/getter/setter boilerplate in settings.py
+- Test imports triggered PySide6/ROS2 dependency chain via `__init__.py` re-exports
+- ControlProcessor `_on_valve_turn_max_changed` missing scale propagation
+**Tried**:
+- `threading.Lock` for socket, settings values, teensy status — emit signals OUTSIDE lock
+- `_make_setting_pair()` factory to auto-generate (Signal, Property) from schema — 1 line per setting
+- Pre-register `paint_controller` as namespace-only module in conftest.py to bypass heavy imports
+- MagicMock stubs for PySide6 → failed with `typing.ForwardRef` errors
+**Result**: ✅ All completed: A1/A2/A3/B1/B2/B3/C1/C2 done. B2 implemented as TypedDict + user-field preservation bug fix (not dataclass — QML needs dict for `all_status`)
+**Files**:
+- `controllers/esp32_valve.py` — socket lock, QueuedConnection, JSON config loading
+- `controllers/teensy.py` — status lock with atomic swap
+- `core/settings.py` — values lock, `_SETTINGS_SCHEMA` at module level, `_make_setting_pair()` auto-gen (829→634 lines)
+- `handlers/control_processor.py` — valve_turn scale fix, init extracted to 3 setup methods
+- `python/config/esp32_valve.json` — externalized ESP32 MAC/IP/ports
+- `tests/` — conftest.py, test_crc.py (8), test_input_utils.py (14), test_settings_schema.py (6) = 28 tests
+
+---
+
 ### 2026-02-09 - Migrate Valve Control from Teensy to ESP32
 
 **Goal**: Separate valve control from TeensyStatus, integrate ESP32 UDP valve controller directly into paint_controller

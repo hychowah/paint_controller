@@ -11,14 +11,38 @@ import struct
 import subprocess
 import re
 import time
+import json
 import logging
+import threading
+from pathlib import Path
 from typing import Optional, Dict
 from enum import IntEnum
 
 from rclpy.node import Node
 from std_msgs.msg import Float32
 from paint_interfaces.msg import ValveStatus
-from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer, QThread
+from paint_controller.utils.crc import crc8
+from PySide6.QtCore import Qt, QObject, Signal, Property, Slot, QTimer, QThread
+
+
+def _load_esp32_config() -> Dict:
+    """Load ESP32 network config from json file, falling back to defaults."""
+    config_path = Path(__file__).parent.parent.parent / "config" / "esp32_valve.json"
+    defaults = {
+        "mac_address": "1c:db:d4:40:30:c8",
+        "ip_fallback": "192.168.101.102",
+        "receive_port": 8888,
+        "send_port": 8889,
+    }
+    try:
+        with open(config_path, "r") as f:
+            loaded = json.load(f)
+        defaults.update(loaded)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logging.warning(f"ESP32 config not found or invalid ({config_path}), using defaults: {e}")
+    return defaults
+
+_ESP32_CONFIG = _load_esp32_config()
 
 
 class MessageType(IntEnum):
@@ -33,17 +57,16 @@ class UDPReceiveThread(QThread):
     status_received = Signal(dict)
     connection_lost = Signal()
     
-    def __init__(self, sock: socket.socket, parent=None):
+    def __init__(self, sock: socket.socket, sock_lock: threading.Lock, parent=None):
         super().__init__(parent)
         self.sock = sock
+        self._sock_lock = sock_lock
         self._running = True
         self._last_receive_time = time.time()
         
     def run(self):
         """Main thread loop for receiving UDP messages"""
         START_BYTE = 0xAA
-        CRC_POLYNOMIAL = 0x07
-        CRC_INIT = 0xFF
         
         while self._running:
             try:
@@ -53,10 +76,13 @@ class UDPReceiveThread(QThread):
                     self._last_receive_time = 0
                 
                 # Non-blocking receive with short timeout
-                data, addr = self.sock.recvfrom(1024)
+                with self._sock_lock:
+                    if not self._running:
+                        break
+                    data, addr = self.sock.recvfrom(1024)
                 
                 # Validate message
-                if not self._validate_message(data, START_BYTE, CRC_POLYNOMIAL, CRC_INIT):
+                if not self._validate_message(data, START_BYTE):
                     continue
                 
                 if data[1] != MessageType.VALVE_STATUS:
@@ -94,22 +120,12 @@ class UDPReceiveThread(QThread):
                 print(f"UDP receive error: {e}")
                 time.sleep(0.1)
     
-    def _validate_message(self, data: bytes, start_byte: int, polynomial: int, init: int) -> bool:
+    def _validate_message(self, data: bytes, start_byte: int) -> bool:
         """Validate message structure and CRC"""
         if len(data) < 3 or data[0] != start_byte:
             return False
         
-        # Calculate CRC
-        crc = init
-        for byte in data[:-1]:
-            crc ^= byte
-            for _ in range(8):
-                if crc & 0x80:
-                    crc = ((crc << 1) ^ polynomial) & 0xFF
-                else:
-                    crc = (crc << 1) & 0xFF
-        
-        return crc == data[-1]
+        return crc8(data[:-1]) == data[-1]
     
     def stop(self):
         """Stop the receive thread"""
@@ -135,14 +151,12 @@ class ESP32ValveController(QObject):
     
     # UDP protocol constants
     START_BYTE = 0xAA
-    CRC_POLYNOMIAL = 0x07
-    CRC_INIT = 0xFF
-    RECEIVE_PORT = 8888  # ESP32 receives commands
-    SEND_PORT = 8889     # ESP32 sends status
+    RECEIVE_PORT = _ESP32_CONFIG["receive_port"]
+    SEND_PORT = _ESP32_CONFIG["send_port"]
     
     # Network configuration
-    ESP32_MAC = "1c:db:d4:40:30:c8"
-    ESP32_IP_FALLBACK = "192.168.101.102"
+    ESP32_MAC = _ESP32_CONFIG["mac_address"]
+    ESP32_IP_FALLBACK = _ESP32_CONFIG["ip_fallback"]
     
     def __init__(self, node: Node):
         super().__init__()
@@ -164,6 +178,7 @@ class ESP32ValveController(QObject):
         # Network state
         self._esp32_ip = None
         self._sock = None
+        self._sock_lock = threading.Lock()
         self._udp_thread = None
         
         # Throttle variables
@@ -279,9 +294,9 @@ class ESP32ValveController(QObject):
                 self._sock.bind(('', 0))
             
             # Start receive thread
-            self._udp_thread = UDPReceiveThread(self._sock, self)
-            self._udp_thread.status_received.connect(self._handle_status)
-            self._udp_thread.connection_lost.connect(self._handle_connection_lost)
+            self._udp_thread = UDPReceiveThread(self._sock, self._sock_lock, self)
+            self._udp_thread.status_received.connect(self._handle_status, Qt.QueuedConnection)
+            self._udp_thread.connection_lost.connect(self._handle_connection_lost, Qt.QueuedConnection)
             self._udp_thread.start()
             
             logging.debug(f"ESP32 Valve Controller connected to {self._esp32_ip}")
@@ -368,15 +383,7 @@ class ESP32ValveController(QObject):
     
     def _calculate_crc8(self, data: bytes) -> int:
         """Calculate CRC8 checksum"""
-        crc = self.CRC_INIT
-        for byte in data:
-            crc ^= byte
-            for _ in range(8):
-                if crc & 0x80:
-                    crc = ((crc << 1) ^ self.CRC_POLYNOMIAL) & 0xFF
-                else:
-                    crc = (crc << 1) & 0xFF
-        return crc
+        return crc8(data)
     
     def _build_message(self, msg_type: MessageType, payload: bytes) -> bytes:
         """Build complete UDP message with CRC"""
@@ -386,7 +393,7 @@ class ESP32ValveController(QObject):
     
     def _send_turn_valve(self, position: int):
         """Send TURN_VALVE command to ESP32"""
-        if not self._sock or not self._esp32_ip:
+        if not self._esp32_ip:
             return
         
         try:
@@ -397,8 +404,10 @@ class ESP32ValveController(QObject):
             payload = struct.pack('<i', position)
             message = self._build_message(MessageType.TURN_VALVE, payload)
             
-            # Send to ESP32
-            self._sock.sendto(message, (self._esp32_ip, self.RECEIVE_PORT))
+            # Send to ESP32 (lock protects against socket close during send)
+            with self._sock_lock:
+                if self._sock:
+                    self._sock.sendto(message, (self._esp32_ip, self.RECEIVE_PORT))
             
         except Exception as e:
             print(f"Failed to send valve command: {e}")
@@ -428,12 +437,16 @@ class ESP32ValveController(QObject):
         """Disconnect and cleanup resources"""
         if self._udp_thread:
             self._udp_thread.stop()
+            # Acquire lock to ensure recvfrom has exited before closing socket
+            with self._sock_lock:
+                pass  # Forces wait for any in-flight recvfrom
             self._udp_thread.wait(1000)
             self._udp_thread = None
         
-        if self._sock:
-            self._sock.close()
-            self._sock = None
+        with self._sock_lock:
+            if self._sock:
+                self._sock.close()
+                self._sock = None
         
         self._esp32_ip = None
     

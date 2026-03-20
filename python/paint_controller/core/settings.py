@@ -8,9 +8,214 @@ to ~/ros2_ws/src/paint_controller_ros2/python/config/settings.json and can be mo
 
 import os
 import json
+import threading
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from PySide6.QtCore import QObject, Signal, Slot, Property
+
+
+# Settings schema — defines metadata for all settings (default, min, max, type, etc.)
+_SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
+    "winch_max_speed_mmps": {
+        "default": 200.0,
+        "min": 0.0,
+        "max": 400.0,
+        "type": "float",
+        "requires_restart": False,
+        "description": "Maximum winch speed limit (mm/s)"
+    },
+    "track_max_speed": {
+        "default": 500.0,
+        "min": 5.0,
+        "max": 500.0,
+        "type": "float",
+        "requires_restart": False,
+        "description": "Maximum track/wheel speed"
+    },
+    "track_min_speed": {
+        "default": 50.0,
+        "min": 0.0,
+        "max": 50.0,
+        "type": "float",
+        "requires_restart": False,
+        "description": "Minimum track speed to overcome friction"
+    },
+    "thrust_force": {
+        "default": -1.0,
+        "min": -1.5,
+        "max": 1.5,
+        "type": "float",
+        "requires_restart": False,
+        "description": "Thrust force for vertical movement"
+    },
+    "thrust_ramp_rate": {
+        "default": 1.0,
+        "min": 0.1,
+        "max": 10.0,
+        "type": "float",
+        "requires_restart": False,
+        "description": "Thrust force ramp rate (thrust/second)"
+    },
+    "valve_turn_max": {
+        "default": 6.0,
+        "min": 0.0,
+        "max": 10.0,
+        "type": "float",
+        "requires_restart": False,
+        "description": "Maximum valve turn value"
+    },
+    "arm_retract_length": {
+        "default": 250,
+        "min": 0,
+        "max": 1000,
+        "type": "int",
+        "requires_restart": False,
+        "description": "Arm retracted position preset"
+    },
+    "arm_extend_length": {
+        "default": 800,
+        "min": 0,
+        "max": 1500,
+        "type": "int",
+        "requires_restart": False,
+        "description": "Arm extended position preset"
+    },
+    "wheel_travel_max": {
+        "default": 500.0,
+        "min": 100.0,
+        "max": 1000.0,
+        "type": "float",
+        "requires_restart": False,
+        "description": "Maximum wheel travel distance (mm)"
+    },
+    "wheel_travel_rate": {
+        "default": 100.0,
+        "min": 10.0,
+        "max": 500.0,
+        "type": "float",
+        "requires_restart": False,
+        "description": "Wheel travel adjustment rate (mm/sec)"
+    },
+    "wheel_travel_rpm": {
+        "default": 300,
+        "min": 50,
+        "max": 600,
+        "type": "int",
+        "requires_restart": False,
+        "description": "Fixed RPM for wheel travel commands"
+    },
+    "ui_section_states": {
+        "default": {},
+        "type": "dict",
+        "requires_restart": False,
+        "description": "Collapsed/expanded state of UI sections"
+    },
+    "base_top_view_zoom": {
+        "default": 0.51,
+        "min": 0.1,
+        "max": 2.0,
+        "type": "float",
+        "requires_restart": False,
+        "description": "Base top view zoom factor"
+    },
+    "base_top_view_offset_x": {
+        "default": 0.026,
+        "min": -1.0,
+        "max": 1.0,
+        "type": "float",
+        "requires_restart": False,
+        "description": "Base top view horizontal offset"
+    },
+    "base_top_view_offset_y": {
+        "default": 0.474,
+        "min": -1.0,
+        "max": 1.0,
+        "type": "float",
+        "requires_restart": False,
+        "description": "Base top view vertical offset"
+    },
+    "base_top_view_crop_enabled": {
+        "default": True,
+        "type": "bool",
+        "requires_restart": False,
+        "description": "Enable base top view cropping"
+    },
+    "base_top_view_crop_width_ratio": {
+        "default": 0.9,
+        "min": 0.1,
+        "max": 1.0,
+        "type": "float",
+        "requires_restart": False,
+        "description": "Base top view crop width ratio"
+    },
+    "base_top_view_crop_center_x": {
+        "default": 0.5,
+        "min": 0.0,
+        "max": 1.0,
+        "type": "float",
+        "requires_restart": False,
+        "description": "Base top view crop center X position"
+    },
+    "base_top_view_k1": {
+        "default": -0.389,
+        "min": -2.0,
+        "max": 2.0,
+        "type": "float",
+        "requires_restart": False,
+        "description": "Base top view fisheye distortion coefficient k1"
+    },
+    "base_top_view_k2": {
+        "default": 0.142,
+        "min": -2.0,
+        "max": 2.0,
+        "type": "float",
+        "requires_restart": False,
+        "description": "Base top view fisheye distortion coefficient k2"
+    },
+    "base_top_view_k3": {
+        "default": 0.0,
+        "min": -2.0,
+        "max": 2.0,
+        "type": "float",
+        "requires_restart": False,
+        "description": "Base top view fisheye distortion coefficient k3"
+    },
+    "base_top_view_k4": {
+        "default": 0.0,
+        "min": -2.0,
+        "max": 2.0,
+        "type": "float",
+        "requires_restart": False,
+        "description": "Base top view fisheye distortion coefficient k4"
+    },
+    "base_top_view_src_points": {
+        "default": [[0.012, 1.0], [0.988, 1.0], [0.837, 0.727], [0.372, 0.727]],
+        "type": "list",
+        "requires_restart": False,
+        "description": "Base top view source trapezoid points (normalized coordinates)"
+    }
+}
+
+_SIGNAL_TYPES = {"float": float, "int": int, "bool": bool, "list": object}
+_PROPERTY_TYPES = {"float": float, "int": int, "bool": bool, "list": "QVariantList"}
+
+
+def _make_setting_pair(key):
+    """Create a (Signal, Property) pair for a setting key from the schema."""
+    schema = _SETTINGS_SCHEMA[key]
+    sig_type = _SIGNAL_TYPES[schema["type"]]
+    prop_type = _PROPERTY_TYPES[schema["type"]]
+    default = schema["default"]
+
+    signal = Signal(sig_type)
+
+    def getter(self):
+        return self.get(key, default)
+
+    def setter(self, value):
+        self.set(key, value)
+
+    return signal, Property(prop_type, getter, setter, notify=signal)
 
 
 class SettingsManager(QObject):
@@ -21,238 +226,46 @@ class SettingsManager(QObject):
     Each setting has metadata including: value, default, min, max, type, requires_restart, description
     """
     
-    # Signals for individual setting changes
-    winch_max_speed_mmps_changed = Signal(float)
-    track_max_speed_changed = Signal(float)
-    track_min_speed_changed = Signal(float)
-    thrust_force_changed = Signal(float)
-    thrust_ramp_rate_changed = Signal(float)
-    valve_turn_max_changed = Signal(float)
-    arm_retract_length_changed = Signal(int)
-    arm_extend_length_changed = Signal(int)
-    wheel_travel_max_changed = Signal(float)
-    wheel_travel_rate_changed = Signal(float)
-    wheel_travel_rpm_changed = Signal(int)
-    
-    # Base top view setting signals
-    base_top_view_zoom_changed = Signal(float)
-    base_top_view_offset_x_changed = Signal(float)
-    base_top_view_offset_y_changed = Signal(float)
-    base_top_view_crop_enabled_changed = Signal(bool)
-    base_top_view_crop_width_ratio_changed = Signal(float)
-    base_top_view_crop_center_x_changed = Signal(float)
-    base_top_view_k1_changed = Signal(float)
-    base_top_view_k2_changed = Signal(float)
-    base_top_view_k3_changed = Signal(float)
-    base_top_view_k4_changed = Signal(float)
-    base_top_view_src_points_changed = Signal(object)
-    
-    # Signal for any setting change (key, value)
+    _settings_schema = _SETTINGS_SCHEMA
+
+    # Setting signals and properties (auto-generated from schema via _make_setting_pair)
+    winch_max_speed_mmps_changed, winch_max_speed_mmps = _make_setting_pair("winch_max_speed_mmps")
+    track_max_speed_changed, track_max_speed = _make_setting_pair("track_max_speed")
+    track_min_speed_changed, track_min_speed = _make_setting_pair("track_min_speed")
+    thrust_force_changed, thrust_force = _make_setting_pair("thrust_force")
+    thrust_ramp_rate_changed, thrust_ramp_rate = _make_setting_pair("thrust_ramp_rate")
+    valve_turn_max_changed, valve_turn_max = _make_setting_pair("valve_turn_max")
+    arm_retract_length_changed, arm_retract_length = _make_setting_pair("arm_retract_length")
+    arm_extend_length_changed, arm_extend_length = _make_setting_pair("arm_extend_length")
+    wheel_travel_max_changed, wheel_travel_max = _make_setting_pair("wheel_travel_max")
+    wheel_travel_rate_changed, wheel_travel_rate = _make_setting_pair("wheel_travel_rate")
+    wheel_travel_rpm_changed, wheel_travel_rpm = _make_setting_pair("wheel_travel_rpm")
+    base_top_view_zoom_changed, base_top_view_zoom = _make_setting_pair("base_top_view_zoom")
+    base_top_view_offset_x_changed, base_top_view_offset_x = _make_setting_pair("base_top_view_offset_x")
+    base_top_view_offset_y_changed, base_top_view_offset_y = _make_setting_pair("base_top_view_offset_y")
+    base_top_view_crop_enabled_changed, base_top_view_crop_enabled = _make_setting_pair("base_top_view_crop_enabled")
+    base_top_view_crop_width_ratio_changed, base_top_view_crop_width_ratio = _make_setting_pair("base_top_view_crop_width_ratio")
+    base_top_view_crop_center_x_changed, base_top_view_crop_center_x = _make_setting_pair("base_top_view_crop_center_x")
+    base_top_view_k1_changed, base_top_view_k1 = _make_setting_pair("base_top_view_k1")
+    base_top_view_k2_changed, base_top_view_k2 = _make_setting_pair("base_top_view_k2")
+    base_top_view_k3_changed, base_top_view_k3 = _make_setting_pair("base_top_view_k3")
+    base_top_view_k4_changed, base_top_view_k4 = _make_setting_pair("base_top_view_k4")
+    base_top_view_src_points_changed, base_top_view_src_points = _make_setting_pair("base_top_view_src_points")
+
+    # Generic signals
     setting_changed = Signal(str, object)
-    
-    # Signal for save/reset feedback (success, message)
     operation_result = Signal(bool, str)
-    
-    # Signal emitted when a setting is successfully saved (key, value, display_name)
     setting_saved = Signal(str, object, str)
     
     def __init__(self, parent=None, robot_controller=None):
         super().__init__(parent)
-        
-        # Store reference to robot controller for popup notifications
         self._robot_controller = robot_controller
-        
-        # Define settings schema with metadata
-        self._settings_schema: Dict[str, Dict[str, Any]] = {
-            "winch_max_speed_mmps": {
-                "default": 200.0,
-                "min": 0.0,
-                "max": 400.0,
-                "type": "float",
-                "requires_restart": False,
-                "description": "Maximum winch speed limit (mm/s)"
-            },
-            "track_max_speed": {
-                "default": 500.0,
-                "min": 5.0,
-                "max": 500.0,
-                "type": "float",
-                "requires_restart": False,
-                "description": "Maximum track/wheel speed"
-            },
-            "track_min_speed": {
-                "default": 50.0,
-                "min": 0.0,
-                "max": 50.0,
-                "type": "float",
-                "requires_restart": False,
-                "description": "Minimum track speed to overcome friction"
-            },
-            "thrust_force": {
-                "default": -1.0,
-                "min": -1.5,
-                "max": 1.5,
-                "type": "float",
-                "requires_restart": False,
-                "description": "Thrust force for vertical movement"
-            },
-            "thrust_ramp_rate": {
-                "default": 1.0,
-                "min": 0.1,
-                "max": 10.0,
-                "type": "float",
-                "requires_restart": False,
-                "description": "Thrust force ramp rate (thrust/second)"
-            },
-            "valve_turn_max": {
-                "default": 6.0,
-                "min": 0.0,
-                "max": 10.0,
-                "type": "float",
-                "requires_restart": False,
-                "description": "Maximum valve turn value"
-            },
-            "arm_retract_length": {
-                "default": 250,
-                "min": 0,
-                "max": 1000,
-                "type": "int",
-                "requires_restart": False,
-                "description": "Arm retracted position preset"
-            },
-            "arm_extend_length": {
-                "default": 800,
-                "min": 0,
-                "max": 1500,
-                "type": "int",
-                "requires_restart": False,
-                "description": "Arm extended position preset"
-            },
-            "wheel_travel_max": {
-                "default": 500.0,
-                "min": 100.0,
-                "max": 1000.0,
-                "type": "float",
-                "requires_restart": False,
-                "description": "Maximum wheel travel distance (mm)"
-            },
-            "wheel_travel_rate": {
-                "default": 100.0,
-                "min": 10.0,
-                "max": 500.0,
-                "type": "float",
-                "requires_restart": False,
-                "description": "Wheel travel adjustment rate (mm/sec)"
-            },
-            "wheel_travel_rpm": {
-                "default": 300,
-                "min": 50,
-                "max": 600,
-                "type": "int",
-                "requires_restart": False,
-                "description": "Fixed RPM for wheel travel commands"
-            },
-            "ui_section_states": {
-                "default": {},
-                "type": "dict",
-                "requires_restart": False,
-                "description": "Collapsed/expanded state of UI sections"
-            },
-            "base_top_view_zoom": {
-                "default": 0.51,
-                "min": 0.1,
-                "max": 2.0,
-                "type": "float",
-                "requires_restart": False,
-                "description": "Base top view zoom factor"
-            },
-            "base_top_view_offset_x": {
-                "default": 0.026,
-                "min": -1.0,
-                "max": 1.0,
-                "type": "float",
-                "requires_restart": False,
-                "description": "Base top view horizontal offset"
-            },
-            "base_top_view_offset_y": {
-                "default": 0.474,
-                "min": -1.0,
-                "max": 1.0,
-                "type": "float",
-                "requires_restart": False,
-                "description": "Base top view vertical offset"
-            },
-            "base_top_view_crop_enabled": {
-                "default": True,
-                "type": "bool",
-                "requires_restart": False,
-                "description": "Enable base top view cropping"
-            },
-            "base_top_view_crop_width_ratio": {
-                "default": 0.9,
-                "min": 0.1,
-                "max": 1.0,
-                "type": "float",
-                "requires_restart": False,
-                "description": "Base top view crop width ratio"
-            },
-            "base_top_view_crop_center_x": {
-                "default": 0.5,
-                "min": 0.0,
-                "max": 1.0,
-                "type": "float",
-                "requires_restart": False,
-                "description": "Base top view crop center X position"
-            },
-            "base_top_view_k1": {
-                "default": -0.389,
-                "min": -2.0,
-                "max": 2.0,
-                "type": "float",
-                "requires_restart": False,
-                "description": "Base top view fisheye distortion coefficient k1"
-            },
-            "base_top_view_k2": {
-                "default": 0.142,
-                "min": -2.0,
-                "max": 2.0,
-                "type": "float",
-                "requires_restart": False,
-                "description": "Base top view fisheye distortion coefficient k2"
-            },
-            "base_top_view_k3": {
-                "default": 0.0,
-                "min": -2.0,
-                "max": 2.0,
-                "type": "float",
-                "requires_restart": False,
-                "description": "Base top view fisheye distortion coefficient k3"
-            },
-            "base_top_view_k4": {
-                "default": 0.0,
-                "min": -2.0,
-                "max": 2.0,
-                "type": "float",
-                "requires_restart": False,
-                "description": "Base top view fisheye distortion coefficient k4"
-            },
-            "base_top_view_src_points": {
-                "default": [[0.012, 1.0], [0.988, 1.0], [0.837, 0.727], [0.372, 0.727]],
-                "type": "list",
-                "requires_restart": False,
-                "description": "Base top view source trapezoid points (normalized coordinates)"
-            }
-        }
-        
-        # Current values (will be loaded from file or defaults)
         self._values: Dict[str, Any] = {}
-        
-        # Config directory and file path
+        self._values_lock = threading.Lock()
+
         package_dir = Path(__file__).parent.parent.parent
         self._config_dir = package_dir / "config"
         self._config_file = self._config_dir / "settings.json"
-        
-        # Load settings from file (or use defaults)
         self.load()
     
     def _get_config_path(self) -> Path:
@@ -268,8 +281,9 @@ class SettingsManager(QObject):
             bool: True if loaded successfully, False if using defaults
         """
         # Initialize with defaults first
-        for key, schema in self._settings_schema.items():
-            self._values[key] = schema["default"]
+        with self._values_lock:
+            for key, schema in self._settings_schema.items():
+                self._values[key] = schema["default"]
         
         config_path = self._get_config_path()
         
@@ -282,11 +296,12 @@ class SettingsManager(QObject):
                 saved_values = json.load(f)
             
             # Merge saved values with defaults (validate each)
-            for key, value in saved_values.items():
-                if key in self._settings_schema:
-                    validated = self._validate_value(key, value)
-                    if validated is not None:
-                        self._values[key] = validated
+            with self._values_lock:
+                for key, value in saved_values.items():
+                    if key in self._settings_schema:
+                        validated = self._validate_value(key, value)
+                        if validated is not None:
+                            self._values[key] = validated
             
             print(f"[SettingsManager] Loaded settings from {config_path}")
             return True
@@ -360,7 +375,8 @@ class SettingsManager(QObject):
         Returns:
             Setting value or default if key doesn't exist
         """
-        return self._values.get(key, default)
+        with self._values_lock:
+            return self._values.get(key, default)
     
     def set(self, key: str, value: Any) -> Tuple[bool, str]:
         """
@@ -380,46 +396,21 @@ class SettingsManager(QObject):
         if validated is None:
             return (False, f"Invalid value for {key}: {value}")
         
-        old_value = self._values.get(key)
-        self._values[key] = validated
+        with self._values_lock:
+            old_value = self._values.get(key)
+            self._values[key] = validated
         
-        # Emit specific signal for this setting
+        # Emit signals OUTSIDE lock to prevent deadlock
         self._emit_setting_signal(key, validated)
-        
-        # Emit generic setting changed signal
         self.setting_changed.emit(key, validated)
         
         return (True, f"Setting {key} updated to {validated}")
     
     def _emit_setting_signal(self, key: str, value: Any):
         """Emit the specific signal for a setting change"""
-        signal_map = {
-            "winch_max_speed_mmps": self.winch_max_speed_mmps_changed,
-            "track_max_speed": self.track_max_speed_changed,
-            "track_min_speed": self.track_min_speed_changed,
-            "thrust_force": self.thrust_force_changed,
-            "thrust_ramp_rate": self.thrust_ramp_rate_changed,
-            "valve_turn_max": self.valve_turn_max_changed,
-            "arm_retract_length": self.arm_retract_length_changed,
-            "arm_extend_length": self.arm_extend_length_changed,
-            "wheel_travel_max": self.wheel_travel_max_changed,
-            "wheel_travel_rate": self.wheel_travel_rate_changed,
-            "wheel_travel_rpm": self.wheel_travel_rpm_changed,
-            "base_top_view_zoom": self.base_top_view_zoom_changed,
-            "base_top_view_offset_x": self.base_top_view_offset_x_changed,
-            "base_top_view_offset_y": self.base_top_view_offset_y_changed,
-            "base_top_view_crop_enabled": self.base_top_view_crop_enabled_changed,
-            "base_top_view_crop_width_ratio": self.base_top_view_crop_width_ratio_changed,
-            "base_top_view_crop_center_x": self.base_top_view_crop_center_x_changed,
-            "base_top_view_k1": self.base_top_view_k1_changed,
-            "base_top_view_k2": self.base_top_view_k2_changed,
-            "base_top_view_k3": self.base_top_view_k3_changed,
-            "base_top_view_k4": self.base_top_view_k4_changed,
-            "base_top_view_src_points": self.base_top_view_src_points_changed
-        }
-        
-        if key in signal_map:
-            signal_map[key].emit(value)
+        signal = getattr(self, f"{key}_changed", None)
+        if signal is not None:
+            signal.emit(value)
     
     @Slot(str, result=bool)
     def saveSetting(self, key: str) -> bool:
@@ -473,8 +464,11 @@ class SettingsManager(QObject):
         config_path = self._get_config_path()
         
         try:
+            with self._values_lock:
+                values_snapshot = self._values.copy()
+            
             with open(config_path, 'w') as f:
-                json.dump(self._values, f, indent=2)
+                json.dump(values_snapshot, f, indent=2)
             
             print(f"[SettingsManager] Saved settings to {config_path}")
             return (True, "Settings saved successfully")
@@ -513,9 +507,10 @@ class SettingsManager(QObject):
             return (False, f"Unknown setting: {key}")
         
         default_value = self._settings_schema[key]["default"]
-        self._values[key] = default_value
+        with self._values_lock:
+            self._values[key] = default_value
         
-        # Emit signals
+        # Emit signals outside lock
         self._emit_setting_signal(key, default_value)
         self.setting_changed.emit(key, default_value)
         
@@ -529,10 +524,16 @@ class SettingsManager(QObject):
         Returns:
             Tuple of (success, message)
         """
-        for key, schema in self._settings_schema.items():
-            self._values[key] = schema["default"]
-            self._emit_setting_signal(key, schema["default"])
-            self.setting_changed.emit(key, schema["default"])
+        defaults = {}
+        with self._values_lock:
+            for key, schema in self._settings_schema.items():
+                self._values[key] = schema["default"]
+                defaults[key] = schema["default"]
+        
+        # Emit signals outside lock
+        for key, value in defaults.items():
+            self._emit_setting_signal(key, value)
+            self.setting_changed.emit(key, value)
         
         return self.save_all()
     
@@ -551,187 +552,6 @@ class SettingsManager(QObject):
     def get_all_schemas(self) -> Dict[str, Dict[str, Any]]:
         """Get all setting schemas"""
         return self._settings_schema.copy()
-    
-    # =====================================================
-    # Qt Properties for QML binding
-    # =====================================================
-    
-    @Property(float, notify=winch_max_speed_mmps_changed)
-    def winch_max_speed_mmps(self) -> float:
-        return self._values.get("winch_max_speed_mmps", 400.0)
-    
-    @winch_max_speed_mmps.setter
-    def winch_max_speed_mmps(self, value: float):
-        self.set("winch_max_speed_mmps", value)
-    
-    @Property(float, notify=track_max_speed_changed)
-    def track_max_speed(self) -> float:
-        return self._values.get("track_max_speed", 500.0)
-    
-    @track_max_speed.setter
-    def track_max_speed(self, value: float):
-        self.set("track_max_speed", value)
-    
-    @Property(float, notify=track_min_speed_changed)
-    def track_min_speed(self) -> float:
-        return self._values.get("track_min_speed", 50.0)
-    
-    @track_min_speed.setter
-    def track_min_speed(self, value: float):
-        self.set("track_min_speed", value)
-    
-    @Property(float, notify=thrust_force_changed)
-    def thrust_force(self) -> float:
-        return self._values.get("thrust_force", -1.0)
-    
-    @thrust_force.setter
-    def thrust_force(self, value: float):
-        self.set("thrust_force", value)
-    
-    @Property(float, notify=thrust_ramp_rate_changed)
-    def thrust_ramp_rate(self) -> float:
-        return self._values.get("thrust_ramp_rate", 1.0)
-    
-    @thrust_ramp_rate.setter
-    def thrust_ramp_rate(self, value: float):
-        self.set("thrust_ramp_rate", value)
-    
-    @Property(float, notify=valve_turn_max_changed)
-    def valve_turn_max(self) -> float:
-        return self._values.get("valve_turn_max", 6.0)
-    
-    @valve_turn_max.setter
-    def valve_turn_max(self, value: float):
-        self.set("valve_turn_max", value)
-    
-    @Property(int, notify=arm_retract_length_changed)
-    def arm_retract_length(self) -> int:
-        return self._values.get("arm_retract_length", 250)
-    
-    @arm_retract_length.setter
-    def arm_retract_length(self, value: int):
-        self.set("arm_retract_length", value)
-    
-    @Property(int, notify=arm_extend_length_changed)
-    def arm_extend_length(self) -> int:
-        return self._values.get("arm_extend_length", 800)
-    
-    @arm_extend_length.setter
-    def arm_extend_length(self, value: int):
-        self.set("arm_extend_length", value)
-    
-    @Property(float, notify=wheel_travel_max_changed)
-    def wheel_travel_max(self) -> float:
-        return self._values.get("wheel_travel_max", 500.0)
-    
-    @wheel_travel_max.setter
-    def wheel_travel_max(self, value: float):
-        self.set("wheel_travel_max", value)
-    
-    @Property(float, notify=wheel_travel_rate_changed)
-    def wheel_travel_rate(self) -> float:
-        return self._values.get("wheel_travel_rate", 100.0)
-    
-    @wheel_travel_rate.setter
-    def wheel_travel_rate(self, value: float):
-        self.set("wheel_travel_rate", value)
-    
-    @Property(int, notify=wheel_travel_rpm_changed)
-    def wheel_travel_rpm(self) -> int:
-        return self._values.get("wheel_travel_rpm", 300)
-    
-    @wheel_travel_rpm.setter
-    def wheel_travel_rpm(self, value: int):
-        self.set("wheel_travel_rpm", value)
-    
-    # Base top view properties
-    @Property(float, notify=base_top_view_zoom_changed)
-    def base_top_view_zoom(self) -> float:
-        return self._values.get("base_top_view_zoom", 0.51)
-    
-    @base_top_view_zoom.setter
-    def base_top_view_zoom(self, value: float):
-        self.set("base_top_view_zoom", value)
-    
-    @Property(float, notify=base_top_view_offset_x_changed)
-    def base_top_view_offset_x(self) -> float:
-        return self._values.get("base_top_view_offset_x", 0.026)
-    
-    @base_top_view_offset_x.setter
-    def base_top_view_offset_x(self, value: float):
-        self.set("base_top_view_offset_x", value)
-    
-    @Property(float, notify=base_top_view_offset_y_changed)
-    def base_top_view_offset_y(self) -> float:
-        return self._values.get("base_top_view_offset_y", 0.474)
-    
-    @base_top_view_offset_y.setter
-    def base_top_view_offset_y(self, value: float):
-        self.set("base_top_view_offset_y", value)
-    
-    @Property(bool, notify=base_top_view_crop_enabled_changed)
-    def base_top_view_crop_enabled(self) -> bool:
-        return self._values.get("base_top_view_crop_enabled", True)
-    
-    @base_top_view_crop_enabled.setter
-    def base_top_view_crop_enabled(self, value: bool):
-        self.set("base_top_view_crop_enabled", value)
-    
-    @Property(float, notify=base_top_view_crop_width_ratio_changed)
-    def base_top_view_crop_width_ratio(self) -> float:
-        return self._values.get("base_top_view_crop_width_ratio", 0.9)
-    
-    @base_top_view_crop_width_ratio.setter
-    def base_top_view_crop_width_ratio(self, value: float):
-        self.set("base_top_view_crop_width_ratio", value)
-    
-    @Property(float, notify=base_top_view_crop_center_x_changed)
-    def base_top_view_crop_center_x(self) -> float:
-        return self._values.get("base_top_view_crop_center_x", 0.5)
-    
-    @base_top_view_crop_center_x.setter
-    def base_top_view_crop_center_x(self, value: float):
-        self.set("base_top_view_crop_center_x", value)
-    
-    @Property(float, notify=base_top_view_k1_changed)
-    def base_top_view_k1(self) -> float:
-        return self._values.get("base_top_view_k1", -0.389)
-    
-    @base_top_view_k1.setter
-    def base_top_view_k1(self, value: float):
-        self.set("base_top_view_k1", value)
-    
-    @Property(float, notify=base_top_view_k2_changed)
-    def base_top_view_k2(self) -> float:
-        return self._values.get("base_top_view_k2", 0.142)
-    
-    @base_top_view_k2.setter
-    def base_top_view_k2(self, value: float):
-        self.set("base_top_view_k2", value)
-    
-    @Property(float, notify=base_top_view_k3_changed)
-    def base_top_view_k3(self) -> float:
-        return self._values.get("base_top_view_k3", 0.0)
-    
-    @base_top_view_k3.setter
-    def base_top_view_k3(self, value: float):
-        self.set("base_top_view_k3", value)
-    
-    @Property(float, notify=base_top_view_k4_changed)
-    def base_top_view_k4(self) -> float:
-        return self._values.get("base_top_view_k4", 0.0)
-    
-    @base_top_view_k4.setter
-    def base_top_view_k4(self, value: float):
-        self.set("base_top_view_k4", value)
-    
-    @Property('QVariantList', notify=base_top_view_src_points_changed)
-    def base_top_view_src_points(self) -> list:
-        return self._values.get("base_top_view_src_points", [[0.012, 1.0], [0.988, 1.0], [0.837, 0.727], [0.372, 0.727]])
-    
-    @base_top_view_src_points.setter
-    def base_top_view_src_points(self, value: list):
-        self.set("base_top_view_src_points", value)
     
     # =====================================================
     # QML Slots for setting values with key
@@ -796,17 +616,19 @@ class SettingsManager(QObject):
     @Slot(str, bool)
     def setSectionExpanded(self, sectionId: str, expanded: bool):
         """Save the expanded state of a UI section (QML callable)"""
-        states = self._values.get("ui_section_states", {})
-        if not isinstance(states, dict):
-            states = {}
-        states[sectionId] = expanded
-        self._values["ui_section_states"] = states
+        with self._values_lock:
+            states = self._values.get("ui_section_states", {})
+            if not isinstance(states, dict):
+                states = {}
+            states[sectionId] = expanded
+            self._values["ui_section_states"] = states
         self.save_all()
     
     @Slot(str, result=bool)
     def getSectionExpanded(self, sectionId: str) -> bool:
         """Get the expanded state of a UI section (QML callable). Returns True by default."""
-        states = self._values.get("ui_section_states", {})
-        if not isinstance(states, dict):
-            return True
-        return states.get(sectionId, True)
+        with self._values_lock:
+            states = self._values.get("ui_section_states", {})
+            if not isinstance(states, dict):
+                return True
+            return states.get(sectionId, True)
