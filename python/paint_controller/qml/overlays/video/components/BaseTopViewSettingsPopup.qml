@@ -34,7 +34,7 @@ Popup {
             }
             
             Text {
-                text: "Bird View Settings"
+                text: "Base Top View Settings"
                 font.pixelSize: 18
                 font.bold: true
                 color: "white"
@@ -60,13 +60,15 @@ Popup {
                 width: parent.width
                 spacing: 15
                 
-                // Edit Points button
+                // Edit Points button (disabled)
                 Button {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 50
+                    enabled: false
+                    opacity: 0.3
                     
                     background: Rectangle {
-                        color: parent.pressed ? "#303F9F" : (parent.hovered ? "#3949AB" : "#3F51B5")
+                        color: "#3F51B5"
                         radius: 6
                         border.color: "#FFFFFF"
                         border.width: 2
@@ -82,17 +84,12 @@ Popup {
                         }
                         
                         Text {
-                            text: "Edit Source Points (Click & Drag)"
+                            text: "Edit Source Points (Disabled)"
                             color: "white"
                             font.pixelSize: 14
                             font.bold: true
                             Layout.fillWidth: true
                         }
-                    }
-                    
-                    onClicked: {
-                        birdViewController.editMode = true
-                        settingsPopup.close()
                     }
                 }
                 
@@ -107,10 +104,10 @@ Popup {
                     title: "Zoom"
                     minValue: 0.1
                     maxValue: 2.0
-                    currentValue: birdViewController.zoom
+                    currentValue: baseTopViewController.zoom
                     stepSize: 0.01
                     decimals: 2
-                    onValueChanged: birdViewController.zoom = value
+                    onValueChanged: function(value) { baseTopViewController.zoom = value }
                 }
                 
                 // Horizontal offset slider
@@ -118,10 +115,10 @@ Popup {
                     title: "Horizontal Pan"
                     minValue: -1.0
                     maxValue: 1.0
-                    currentValue: birdViewController.offsetX
+                    currentValue: baseTopViewController.offsetX
                     stepSize: 0.01
                     decimals: 3
-                    onValueChanged: birdViewController.offsetX = value
+                    onValueChanged: function(value) { baseTopViewController.offsetX = value }
                 }
                 
                 // Vertical offset slider
@@ -129,10 +126,10 @@ Popup {
                     title: "Vertical Pan"
                     minValue: -1.0
                     maxValue: 1.0
-                    currentValue: birdViewController.offsetY
+                    currentValue: baseTopViewController.offsetY
                     stepSize: 0.01
                     decimals: 3
-                    onValueChanged: birdViewController.offsetY = value
+                    onValueChanged: function(value) { baseTopViewController.offsetY = value }
                 }
                 
                 // Crop enabled toggle
@@ -153,8 +150,8 @@ Popup {
                         
                         Switch {
                             id: cropToggle
-                            checked: birdViewController.cropEnabled
-                            onCheckedChanged: birdViewController.cropEnabled = checked
+                            checked: baseTopViewController.cropEnabled
+                            onCheckedChanged: baseTopViewController.cropEnabled = checked
                         }
                     }
                 }
@@ -164,11 +161,11 @@ Popup {
                     title: "Crop Width"
                     minValue: 0.1
                     maxValue: 1.0
-                    currentValue: birdViewController.cropWidthRatio
+                    currentValue: baseTopViewController.cropWidthRatio
                     stepSize: 0.01
                     decimals: 3
-                    enabled: birdViewController.cropEnabled
-                    onValueChanged: birdViewController.cropWidthRatio = value
+                    enabled: baseTopViewController.cropEnabled
+                    onValueChanged: function(value) { baseTopViewController.cropWidthRatio = value }
                 }
                 
                 // Crop center X slider
@@ -176,33 +173,55 @@ Popup {
                     title: "Crop Center"
                     minValue: 0.0
                     maxValue: 1.0
-                    currentValue: birdViewController.cropCenterX
+                    currentValue: baseTopViewController.cropCenterX
                     stepSize: 0.01
                     decimals: 3
-                    enabled: birdViewController.cropEnabled
-                    onValueChanged: birdViewController.cropCenterX = value
+                    enabled: baseTopViewController.cropEnabled
+                    onValueChanged: function(value) { baseTopViewController.cropCenterX = value }
                 }
                 
                 // Distortion coefficient k1
                 SettingSlider {
                     title: "Distortion K1"
-                    minValue: 0.0
+                    minValue: -1.0
                     maxValue: 1.0
-                    currentValue: birdViewController.k1
+                    currentValue: baseTopViewController.k1
                     stepSize: 0.01
                     decimals: 3
-                    onValueChanged: birdViewController.k1 = value
+                    onValueChanged: function(value) { baseTopViewController.k1 = value }
                 }
                 
                 // Distortion coefficient k2
                 SettingSlider {
                     title: "Distortion K2"
-                    minValue: 0.0
+                    minValue: -1.0
                     maxValue: 1.0
-                    currentValue: birdViewController.k2
+                    currentValue: baseTopViewController.k2
                     stepSize: 0.01
                     decimals: 3
-                    onValueChanged: birdViewController.k2 = value
+                    onValueChanged: function(value) { baseTopViewController.k2 = value }
+                }
+                
+                // Distortion coefficient k3
+                SettingSlider {
+                    title: "Distortion K3"
+                    minValue: -2.0
+                    maxValue: 2.0
+                    currentValue: baseTopViewController.k3
+                    stepSize: 0.01
+                    decimals: 3
+                    onValueChanged: function(value) { baseTopViewController.k3 = value }
+                }
+                
+                // Distortion coefficient k4
+                SettingSlider {
+                    title: "Distortion K4"
+                    minValue: -2.0
+                    maxValue: 2.0
+                    currentValue: baseTopViewController.k4
+                    stepSize: 0.01
+                    decimals: 3
+                    onValueChanged: function(value) { baseTopViewController.k4 = value }
                 }
             }
         }
@@ -246,33 +265,12 @@ Popup {
                     }
                     
                     onClicked: {
-                        if (settingsManager && birdViewController) {
-                            // Copy current bird view values to settings manager
-                            settingsManager.bird_view_zoom = birdViewController.zoom
-                            settingsManager.bird_view_offset_x = birdViewController.offsetX
-                            settingsManager.bird_view_offset_y = birdViewController.offsetY
-                            settingsManager.bird_view_crop_enabled = birdViewController.cropEnabled
-                            settingsManager.bird_view_crop_width_ratio = birdViewController.cropWidthRatio
-                            settingsManager.bird_view_crop_center_x = birdViewController.cropCenterX
-                            settingsManager.bird_view_k1 = birdViewController.k1
-                            settingsManager.bird_view_k2 = birdViewController.k2
-                            settingsManager.bird_view_src_points = birdViewController.sourcePoints
-                            
-                            // Save all bird view settings to file
-                            var success = true
-                            success = success && settingsManager.saveSetting("bird_view_zoom")
-                            success = success && settingsManager.saveSetting("bird_view_offset_x")
-                            success = success && settingsManager.saveSetting("bird_view_offset_y")
-                            success = success && settingsManager.saveSetting("bird_view_crop_enabled")
-                            success = success && settingsManager.saveSetting("bird_view_crop_width_ratio")
-                            success = success && settingsManager.saveSetting("bird_view_crop_center_x")
-                            success = success && settingsManager.saveSetting("bird_view_k1")
-                            success = success && settingsManager.saveSetting("bird_view_k2")
-                            success = success && settingsManager.saveSetting("bird_view_src_points")
+                        if (baseTopViewController) {
+                            var success = baseTopViewController.saveSettings()
                             
                             if (success) {
                                 confirmationPopup.messageTitle = "Saved"
-                                confirmationPopup.messageText = "Bird view settings saved successfully"
+                                confirmationPopup.messageText = "Base top view settings saved successfully"
                                 confirmationPopup.messageType = "info"
                                 confirmationPopup.open()
                             } else {
@@ -303,7 +301,7 @@ Popup {
                         verticalAlignment: Text.AlignVCenter
                     }
                     
-                    onClicked: birdViewController.resetToDefaults()
+                    onClicked: baseTopViewController.resetToDefaults()
                 }
                 
                 Button {

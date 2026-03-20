@@ -34,16 +34,18 @@ class SettingsManager(QObject):
     wheel_travel_rate_changed = Signal(float)
     wheel_travel_rpm_changed = Signal(int)
     
-    # Bird view setting signals
-    bird_view_zoom_changed = Signal(float)
-    bird_view_offset_x_changed = Signal(float)
-    bird_view_offset_y_changed = Signal(float)
-    bird_view_crop_enabled_changed = Signal(bool)
-    bird_view_crop_width_ratio_changed = Signal(float)
-    bird_view_crop_center_x_changed = Signal(float)
-    bird_view_k1_changed = Signal(float)
-    bird_view_k2_changed = Signal(float)
-    bird_view_src_points_changed = Signal(object)
+    # Base top view setting signals
+    base_top_view_zoom_changed = Signal(float)
+    base_top_view_offset_x_changed = Signal(float)
+    base_top_view_offset_y_changed = Signal(float)
+    base_top_view_crop_enabled_changed = Signal(bool)
+    base_top_view_crop_width_ratio_changed = Signal(float)
+    base_top_view_crop_center_x_changed = Signal(float)
+    base_top_view_k1_changed = Signal(float)
+    base_top_view_k2_changed = Signal(float)
+    base_top_view_k3_changed = Signal(float)
+    base_top_view_k4_changed = Signal(float)
+    base_top_view_src_points_changed = Signal(object)
     
     # Signal for any setting change (key, value)
     setting_changed = Signal(str, object)
@@ -156,73 +158,89 @@ class SettingsManager(QObject):
                 "requires_restart": False,
                 "description": "Collapsed/expanded state of UI sections"
             },
-            "bird_view_zoom": {
-                "default": 0.606,
+            "base_top_view_zoom": {
+                "default": 0.51,
                 "min": 0.1,
                 "max": 2.0,
                 "type": "float",
                 "requires_restart": False,
-                "description": "Bird's eye view zoom factor"
+                "description": "Base top view zoom factor"
             },
-            "bird_view_offset_x": {
+            "base_top_view_offset_x": {
                 "default": 0.026,
                 "min": -1.0,
                 "max": 1.0,
                 "type": "float",
                 "requires_restart": False,
-                "description": "Bird's eye view horizontal offset"
+                "description": "Base top view horizontal offset"
             },
-            "bird_view_offset_y": {
+            "base_top_view_offset_y": {
                 "default": 0.474,
                 "min": -1.0,
                 "max": 1.0,
                 "type": "float",
                 "requires_restart": False,
-                "description": "Bird's eye view vertical offset"
+                "description": "Base top view vertical offset"
             },
-            "bird_view_crop_enabled": {
+            "base_top_view_crop_enabled": {
                 "default": True,
                 "type": "bool",
                 "requires_restart": False,
-                "description": "Enable bird view cropping"
+                "description": "Enable base top view cropping"
             },
-            "bird_view_crop_width_ratio": {
+            "base_top_view_crop_width_ratio": {
                 "default": 0.9,
                 "min": 0.1,
                 "max": 1.0,
                 "type": "float",
                 "requires_restart": False,
-                "description": "Bird view crop width ratio"
+                "description": "Base top view crop width ratio"
             },
-            "bird_view_crop_center_x": {
+            "base_top_view_crop_center_x": {
                 "default": 0.5,
                 "min": 0.0,
                 "max": 1.0,
                 "type": "float",
                 "requires_restart": False,
-                "description": "Bird view crop center X position"
+                "description": "Base top view crop center X position"
             },
-            "bird_view_k1": {
-                "default": 0.32,
-                "min": 0.0,
-                "max": 1.0,
+            "base_top_view_k1": {
+                "default": -0.389,
+                "min": -2.0,
+                "max": 2.0,
                 "type": "float",
                 "requires_restart": False,
-                "description": "Bird view fisheye distortion coefficient k1"
+                "description": "Base top view fisheye distortion coefficient k1"
             },
-            "bird_view_k2": {
-                "default": 0.272,
-                "min": 0.0,
-                "max": 1.0,
+            "base_top_view_k2": {
+                "default": 0.142,
+                "min": -2.0,
+                "max": 2.0,
                 "type": "float",
                 "requires_restart": False,
-                "description": "Bird view fisheye distortion coefficient k2"
+                "description": "Base top view fisheye distortion coefficient k2"
             },
-            "bird_view_src_points": {
+            "base_top_view_k3": {
+                "default": 0.0,
+                "min": -2.0,
+                "max": 2.0,
+                "type": "float",
+                "requires_restart": False,
+                "description": "Base top view fisheye distortion coefficient k3"
+            },
+            "base_top_view_k4": {
+                "default": 0.0,
+                "min": -2.0,
+                "max": 2.0,
+                "type": "float",
+                "requires_restart": False,
+                "description": "Base top view fisheye distortion coefficient k4"
+            },
+            "base_top_view_src_points": {
                 "default": [[0.012, 1.0], [0.988, 1.0], [0.837, 0.727], [0.372, 0.727]],
                 "type": "list",
                 "requires_restart": False,
-                "description": "Bird view source trapezoid points (normalized coordinates)"
+                "description": "Base top view source trapezoid points (normalized coordinates)"
             }
         }
         
@@ -387,15 +405,17 @@ class SettingsManager(QObject):
             "wheel_travel_max": self.wheel_travel_max_changed,
             "wheel_travel_rate": self.wheel_travel_rate_changed,
             "wheel_travel_rpm": self.wheel_travel_rpm_changed,
-            "bird_view_zoom": self.bird_view_zoom_changed,
-            "bird_view_offset_x": self.bird_view_offset_x_changed,
-            "bird_view_offset_y": self.bird_view_offset_y_changed,
-            "bird_view_crop_enabled": self.bird_view_crop_enabled_changed,
-            "bird_view_crop_width_ratio": self.bird_view_crop_width_ratio_changed,
-            "bird_view_crop_center_x": self.bird_view_crop_center_x_changed,
-            "bird_view_k1": self.bird_view_k1_changed,
-            "bird_view_k2": self.bird_view_k2_changed,
-            "bird_view_src_points": self.bird_view_src_points_changed
+            "base_top_view_zoom": self.base_top_view_zoom_changed,
+            "base_top_view_offset_x": self.base_top_view_offset_x_changed,
+            "base_top_view_offset_y": self.base_top_view_offset_y_changed,
+            "base_top_view_crop_enabled": self.base_top_view_crop_enabled_changed,
+            "base_top_view_crop_width_ratio": self.base_top_view_crop_width_ratio_changed,
+            "base_top_view_crop_center_x": self.base_top_view_crop_center_x_changed,
+            "base_top_view_k1": self.base_top_view_k1_changed,
+            "base_top_view_k2": self.base_top_view_k2_changed,
+            "base_top_view_k3": self.base_top_view_k3_changed,
+            "base_top_view_k4": self.base_top_view_k4_changed,
+            "base_top_view_src_points": self.base_top_view_src_points_changed
         }
         
         if key in signal_map:
@@ -624,78 +644,94 @@ class SettingsManager(QObject):
     def wheel_travel_rpm(self, value: int):
         self.set("wheel_travel_rpm", value)
     
-    # Bird view properties
-    @Property(float, notify=bird_view_zoom_changed)
-    def bird_view_zoom(self) -> float:
-        return self._values.get("bird_view_zoom", 0.606)
+    # Base top view properties
+    @Property(float, notify=base_top_view_zoom_changed)
+    def base_top_view_zoom(self) -> float:
+        return self._values.get("base_top_view_zoom", 0.51)
     
-    @bird_view_zoom.setter
-    def bird_view_zoom(self, value: float):
-        self.set("bird_view_zoom", value)
+    @base_top_view_zoom.setter
+    def base_top_view_zoom(self, value: float):
+        self.set("base_top_view_zoom", value)
     
-    @Property(float, notify=bird_view_offset_x_changed)
-    def bird_view_offset_x(self) -> float:
-        return self._values.get("bird_view_offset_x", 0.026)
+    @Property(float, notify=base_top_view_offset_x_changed)
+    def base_top_view_offset_x(self) -> float:
+        return self._values.get("base_top_view_offset_x", 0.026)
     
-    @bird_view_offset_x.setter
-    def bird_view_offset_x(self, value: float):
-        self.set("bird_view_offset_x", value)
+    @base_top_view_offset_x.setter
+    def base_top_view_offset_x(self, value: float):
+        self.set("base_top_view_offset_x", value)
     
-    @Property(float, notify=bird_view_offset_y_changed)
-    def bird_view_offset_y(self) -> float:
-        return self._values.get("bird_view_offset_y", 0.474)
+    @Property(float, notify=base_top_view_offset_y_changed)
+    def base_top_view_offset_y(self) -> float:
+        return self._values.get("base_top_view_offset_y", 0.474)
     
-    @bird_view_offset_y.setter
-    def bird_view_offset_y(self, value: float):
-        self.set("bird_view_offset_y", value)
+    @base_top_view_offset_y.setter
+    def base_top_view_offset_y(self, value: float):
+        self.set("base_top_view_offset_y", value)
     
-    @Property(bool, notify=bird_view_crop_enabled_changed)
-    def bird_view_crop_enabled(self) -> bool:
-        return self._values.get("bird_view_crop_enabled", True)
+    @Property(bool, notify=base_top_view_crop_enabled_changed)
+    def base_top_view_crop_enabled(self) -> bool:
+        return self._values.get("base_top_view_crop_enabled", True)
     
-    @bird_view_crop_enabled.setter
-    def bird_view_crop_enabled(self, value: bool):
-        self.set("bird_view_crop_enabled", value)
+    @base_top_view_crop_enabled.setter
+    def base_top_view_crop_enabled(self, value: bool):
+        self.set("base_top_view_crop_enabled", value)
     
-    @Property(float, notify=bird_view_crop_width_ratio_changed)
-    def bird_view_crop_width_ratio(self) -> float:
-        return self._values.get("bird_view_crop_width_ratio", 0.9)
+    @Property(float, notify=base_top_view_crop_width_ratio_changed)
+    def base_top_view_crop_width_ratio(self) -> float:
+        return self._values.get("base_top_view_crop_width_ratio", 0.9)
     
-    @bird_view_crop_width_ratio.setter
-    def bird_view_crop_width_ratio(self, value: float):
-        self.set("bird_view_crop_width_ratio", value)
+    @base_top_view_crop_width_ratio.setter
+    def base_top_view_crop_width_ratio(self, value: float):
+        self.set("base_top_view_crop_width_ratio", value)
     
-    @Property(float, notify=bird_view_crop_center_x_changed)
-    def bird_view_crop_center_x(self) -> float:
-        return self._values.get("bird_view_crop_center_x", 0.5)
+    @Property(float, notify=base_top_view_crop_center_x_changed)
+    def base_top_view_crop_center_x(self) -> float:
+        return self._values.get("base_top_view_crop_center_x", 0.5)
     
-    @bird_view_crop_center_x.setter
-    def bird_view_crop_center_x(self, value: float):
-        self.set("bird_view_crop_center_x", value)
+    @base_top_view_crop_center_x.setter
+    def base_top_view_crop_center_x(self, value: float):
+        self.set("base_top_view_crop_center_x", value)
     
-    @Property(float, notify=bird_view_k1_changed)
-    def bird_view_k1(self) -> float:
-        return self._values.get("bird_view_k1", 0.32)
+    @Property(float, notify=base_top_view_k1_changed)
+    def base_top_view_k1(self) -> float:
+        return self._values.get("base_top_view_k1", -0.389)
     
-    @bird_view_k1.setter
-    def bird_view_k1(self, value: float):
-        self.set("bird_view_k1", value)
+    @base_top_view_k1.setter
+    def base_top_view_k1(self, value: float):
+        self.set("base_top_view_k1", value)
     
-    @Property(float, notify=bird_view_k2_changed)
-    def bird_view_k2(self) -> float:
-        return self._values.get("bird_view_k2", 0.272)
+    @Property(float, notify=base_top_view_k2_changed)
+    def base_top_view_k2(self) -> float:
+        return self._values.get("base_top_view_k2", 0.142)
     
-    @bird_view_k2.setter
-    def bird_view_k2(self, value: float):
-        self.set("bird_view_k2", value)
+    @base_top_view_k2.setter
+    def base_top_view_k2(self, value: float):
+        self.set("base_top_view_k2", value)
     
-    @Property('QVariantList', notify=bird_view_src_points_changed)
-    def bird_view_src_points(self) -> list:
-        return self._values.get("bird_view_src_points", [[0.012, 1.0], [0.988, 1.0], [0.837, 0.727], [0.372, 0.727]])
+    @Property(float, notify=base_top_view_k3_changed)
+    def base_top_view_k3(self) -> float:
+        return self._values.get("base_top_view_k3", 0.0)
     
-    @bird_view_src_points.setter
-    def bird_view_src_points(self, value: list):
-        self.set("bird_view_src_points", value)
+    @base_top_view_k3.setter
+    def base_top_view_k3(self, value: float):
+        self.set("base_top_view_k3", value)
+    
+    @Property(float, notify=base_top_view_k4_changed)
+    def base_top_view_k4(self) -> float:
+        return self._values.get("base_top_view_k4", 0.0)
+    
+    @base_top_view_k4.setter
+    def base_top_view_k4(self, value: float):
+        self.set("base_top_view_k4", value)
+    
+    @Property('QVariantList', notify=base_top_view_src_points_changed)
+    def base_top_view_src_points(self) -> list:
+        return self._values.get("base_top_view_src_points", [[0.012, 1.0], [0.988, 1.0], [0.837, 0.727], [0.372, 0.727]])
+    
+    @base_top_view_src_points.setter
+    def base_top_view_src_points(self, value: list):
+        self.set("base_top_view_src_points", value)
     
     # =====================================================
     # QML Slots for setting values with key

@@ -28,6 +28,7 @@ class CameraType(Enum):
     END_EFFECTOR = "end_effector"
     BASE_FRONT = "base_front"
     BASE_REAR = "base_rear"
+    BASE_TOP = "base_top"
     CONFIGURABLE = "configurable"
 
 @dataclass
@@ -277,9 +278,15 @@ class VideoStreamHandler(QObject):
                 name="Base Front Camera", 
                 enabled=True
             ),
+            CameraType.BASE_TOP: CameraConfig(
+                camera_type=CameraType.BASE_TOP,
+                port=5003,
+                name="Base Top Camera",
+                enabled=True
+            ),
             CameraType.BASE_REAR: CameraConfig(
                 camera_type=CameraType.BASE_REAR,
-                port=5003,
+                port=5004,
                 name="Base Rear Camera",
                 enabled=True
             ),

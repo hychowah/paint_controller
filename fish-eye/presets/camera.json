@@ -1,0 +1,13 @@
+{
+    "center_x": 966,
+    "center_y": 540,
+    "radius": 599,
+    "fov_h": 93.75,
+    "fov_v": 67.5,
+    "k1": -0.389,
+    "k2": 0.142,
+    "zoom": 0.51,
+    "rotation": 0.0,
+    "focal_length": 450.0,
+    "name": "real"
+}

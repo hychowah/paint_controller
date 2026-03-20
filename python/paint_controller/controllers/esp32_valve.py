@@ -11,6 +11,7 @@ import struct
 import subprocess
 import re
 import time
+import logging
 from typing import Optional, Dict
 from enum import IntEnum
 
@@ -246,15 +247,15 @@ class ESP32ValveController(QObject):
                 match = re.search(pattern, line, re.IGNORECASE)
                 if match:
                     ip = match.group(1)
-                    print(f"Found ESP32 at {ip} via ARP")
+                    logging.debug(f"Found ESP32 at {ip} via ARP")
                     return ip
             
             # Not found in ARP table, use fallback
-            print(f"ESP32 MAC not found in ARP, using fallback IP {self.ESP32_IP_FALLBACK}")
+            logging.debug(f"ESP32 MAC not found in ARP, using fallback IP {self.ESP32_IP_FALLBACK}")
             return self.ESP32_IP_FALLBACK
             
         except Exception as e:
-            print(f"ARP discovery failed: {e}, using fallback IP")
+            logging.debug(f"ARP discovery failed: {e}, using fallback IP")
             return self.ESP32_IP_FALLBACK
     
     def _discover_and_connect(self):
@@ -283,10 +284,10 @@ class ESP32ValveController(QObject):
             self._udp_thread.connection_lost.connect(self._handle_connection_lost)
             self._udp_thread.start()
             
-            print(f"ESP32 Valve Controller connected to {self._esp32_ip}")
+            logging.debug(f"ESP32 Valve Controller connected to {self._esp32_ip}")
             
         except Exception as e:
-            print(f"Failed to create UDP socket: {e}")
+            logging.warning(f"Failed to create UDP socket: {e}")
             self._sock = None
     
     def _handle_status(self, status: Dict):
@@ -327,12 +328,12 @@ class ESP32ValveController(QObject):
                 self._flow_meter_connected = False
                 self.flow_meter_connected_changed.emit()
             
-            print("ESP32 connection lost")
+            logging.debug("ESP32 connection lost")
     
     def _check_reconnect(self):
         """Periodically check and attempt reconnection"""
         if not self._esp32_connected:
-            print("Attempting to reconnect to ESP32...")
+            logging.debug("Attempting to reconnect to ESP32...")
             self._disconnect()
             self._discover_and_connect()
     

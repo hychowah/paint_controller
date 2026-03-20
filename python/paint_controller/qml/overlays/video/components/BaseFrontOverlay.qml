@@ -228,11 +228,11 @@ Rectangle {
         }
     }
     
-    // BIRD VIEW - Right side middle display
+    // BASE TOP VIEW - Right side middle display (square — fisheye circle content)
     Rectangle {
-        id: birdViewWidget
-        width: 200  // Scaled down from 300 to fit better
-        height: 267  // Maintain aspect ratio (300/400 = 0.75, so 200*4/3 = 267)
+        id: baseTopViewWidget
+        width: 200
+        height: 200  // Square — lens projects a circle, sensor aspect ratio is irrelevant
         
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
@@ -246,10 +246,10 @@ Rectangle {
         z: 100  // Above data panels but below top bar
         
         Image {
-            id: birdViewDisplay
+            id: baseTopViewDisplay
             anchors.fill: parent
             anchors.margins: 2
-            source: "image://bird_view/frame"
+            source: "image://base_top_view/frame"
             fillMode: Image.PreserveAspectFit
             cache: false
             asynchronous: false
@@ -257,7 +257,7 @@ Rectangle {
         
         // Label overlay
         Text {
-            text: "BIRD VIEW"
+            text: "BASE TOP VIEW"
             color: style.labelColor
             font.pixelSize: 10
             font.bold: true
@@ -268,33 +268,35 @@ Rectangle {
             z: 1
         }
         
-        // Point editor overlay (shown when in edit mode)
+        // Point editor overlay (disabled)
         PointEditorOverlay {
             id: pointEditor
             anchors.fill: parent
             z: 200
+            visible: false
+            enabled: false
         }
         
         // Tap to open settings (only when not in edit mode)
         MouseArea {
             anchors.fill: parent
-            enabled: !birdViewController.editMode
+            enabled: !baseTopViewController.editMode
             cursorShape: Qt.PointingHandCursor
-            onClicked: birdViewSettingsPopup.open()
+            onClicked: baseTopViewSettingsPopup.open()
         }
     }
     
-    // Bird View Settings Popup
-    BirdViewSettingsPopup {
-        id: birdViewSettingsPopup
+    // Base Top View Settings Popup
+    BaseTopViewSettingsPopup {
+        id: baseTopViewSettingsPopup
     }
     
-    // Connections to refresh bird view when new frame is ready
+    // Connections to refresh base top view when new frame is ready
     Connections {
-        target: birdViewController
+        target: baseTopViewController
         function onFrameReady() {
-            birdViewDisplay.source = ""
-            birdViewDisplay.source = "image://bird_view/frame"
+            baseTopViewDisplay.source = ""
+            baseTopViewDisplay.source = "image://base_top_view/frame"
         }
     }
 }

@@ -14,15 +14,17 @@
     "device_winch": true,
     "device_wheel": true
   },
-  "bird_view_zoom": 0.553409090909091,
-  "bird_view_offset_x": 0.20454545454545459,
-  "bird_view_offset_y": 0.7181818181818183,
-  "bird_view_crop_enabled": true,
-  "bird_view_crop_width_ratio": 1.0,
-  "bird_view_crop_center_x": 0.4909090909090909,
-  "bird_view_k1": 0.19545454545454546,
-  "bird_view_k2": 0.0,
-  "bird_view_src_points": [
+  "base_top_view_zoom": 0.46704545454545454,
+  "base_top_view_offset_x": 0.013636363636363669,
+  "base_top_view_offset_y": 0.3090909090909091,
+  "base_top_view_crop_enabled": true,
+  "base_top_view_crop_width_ratio": 0.8793181818181819,
+  "base_top_view_crop_center_x": 0.5,
+  "base_top_view_k1": -0.1863636363636364,
+  "base_top_view_k2": 0.15454545454545454,
+  "base_top_view_k3": -0.027272727272727337,
+  "base_top_view_k4": 0.0,
+  "base_top_view_src_points": [
     [
       0.012,
       1.0
@@ -32,12 +34,12 @@
       1.0
     ],
     [
-      0.6770000000000005,
-      0.5659513108614231
+      0.837,
+      0.727
     ],
     [
-      0.27700000000000047,
-      0.5846779026217228
+      0.372,
+      0.727
     ]
   ]
 }

@@ -452,6 +452,17 @@ Item {
                         
                         onClicked: teensyController.setRollerSteeringEnabled(!teensyController.roller_steering_enabled)
                     }
+
+                    // Swing Damping Control
+                    ControlPanel {
+                        Layout.fillWidth: true
+                        controlName: "Swing Damping"
+                        controlStatus: teensyController.swing_damping_enabled ? "Active" : "Inactive"
+                        enabledState: teensyController.swing_damping_enabled
+                        iconText: "SD"
+                        
+                        onClicked: teensyController.setSwingDampingEnabled(!teensyController.swing_damping_enabled)
+                    }
                 }
             }
 
