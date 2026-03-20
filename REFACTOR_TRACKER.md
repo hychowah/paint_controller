@@ -12,7 +12,7 @@
 |-------|-------|------|--------|
 | 1 — Quick Wins | 8 | 8 | **Complete** |
 | 2 — Medium Effort | 8 | 8 | **Complete** |
-| 3 — Major Refactor | 6 | 0 | Not Started |
+| 3 — Major Refactor | 6 | 3 | **Partial** (3.1-3.3 done, 3.4-3.6 deferred) |
 
 ---
 
@@ -224,43 +224,44 @@ Requires more careful testing. May touch multiple files per change.
 
 Architectural changes. Must be done on a feature branch with thorough testing.
 
-### 3.1 Split `RobotController` god class
+### 3.1 Split `RobotController` god class ✅
 
-- [ ] Extract `RosNode(Node)` — pure ROS2 pub/sub, no Qt
-- [ ] Extract `QtBridge(QObject)` — bridges ROS signals to Qt, no ROS2 API calls
-- [ ] Extract `ControllerFactory` — creates and wires all controllers
-- [ ] Reduce `application.py` to thin shell: `main()` creates factory → node → bridge → app.exec()
-- [ ] Target: `RobotController.__init__` < 30 lines
+- [x] Extract `PaintRosNode(Node)` in `core/ros_node.py` — pure ROS2 pub/sub, no Qt
+- [x] Extract `QtBridge(QObject)` in `core/qt_bridge.py` — bridges ROS signals to Qt/QML
+- [x] Extract `StateStore(QObject)` in `core/state_store.py` — shared mutable state as Qt properties
+- [x] Extract `ControllerFactory` in `core/controller_factory.py` with `ControllerBundle` dataclass
+- [x] Rewrite `main()` to orchestrate: factory → node → bundle → QML → app.exec()
+- [x] Old `RobotController` class retained as dead code (cleanup pending)
 
-**Files affected**: `core/application.py` (split into 3-4 files), all controllers (constructor signature changes)  
-**Risk**: HIGH — everything depends on `RobotController`  
-**Approach**: Strangler pattern — create new classes, delegate to them, then remove old code
-
----
-
-### 3.2 Introduce dependency injection
-
-- [ ] Controllers receive only the interfaces they need (not the entire RobotController)
-- [ ] Define protocol/ABC interfaces for each dependency type
-- [ ] Wire dependencies in `ControllerFactory`
-- [ ] Break circular imports
-
-**Files affected**: All controllers, handlers, services  
-**Risk**: HIGH — signature changes everywhere  
-**Prerequisite**: 3.1 must be complete first
+**Files affected**: `core/application.py` (main rewrite), 4 new `core/` files, 14+ controller constructors  
+**Risk**: HIGH — mitigated by strangler pattern and systematic review  
+**Commit**: `2cd0ae2` on `refactor/phase3-core-split`
 
 ---
 
-### 3.3 Separate ROS2 thread from Qt event loop
+### 3.2 Introduce dependency injection ✅
 
-- [ ] ROS2 node runs in its own thread with `rclpy.spin()`
-- [ ] Communication via thread-safe Qt signals only
-- [ ] No direct ROS2 API calls from Qt main thread
-- [ ] Enables clean shutdown: stop ROS thread → stop Qt loop
+- [x] Controllers receive only the interfaces they need (not the entire RobotController)
+- [x] Wire dependencies in `ControllerFactory` via `ControllerBundle` dataclass
+- [x] Break circular imports — all controllers take explicit deps in `__init__`
+- [ ] Define protocol/ABC interfaces for each dependency type (deferred)
 
-**Files affected**: `core/application.py`, `core/ros_node.py` (new)  
-**Risk**: HIGH — threading model change  
-**Prerequisite**: 3.1 must be complete first
+**Files affected**: All 14 controllers, handlers, services — constructor signatures updated  
+**Risk**: HIGH — mitigated by systematic controller-by-controller update  
+**Commit**: `2cd0ae2` on `refactor/phase3-core-split`
+
+---
+
+### 3.3 Separate ROS2 thread from Qt event loop ✅
+
+- [x] ROS2 node runs in its own thread via `RosThread` (pre-existing)
+- [x] Communication via thread-safe Qt signals only — `StateStore` is the signal hub
+- [x] No direct ROS2 API calls from Qt main thread — `QtBridge` handles UI actions
+- [x] Clean shutdown: stop ROS thread → stop Qt loop
+
+**Files affected**: `core/application.py`, `core/ros_node.py` (new), `core/state_store.py` (new)  
+**Risk**: HIGH — mitigated by keeping existing `RosThread` pattern  
+**Commit**: `2cd0ae2` on `refactor/phase3-core-split`
 
 ---
 

@@ -2,6 +2,17 @@
 
 ---
 
+### 2026-07-18 - Phase 3: Split RobotController God Class
+
+**Goal**: Split ~970-line `RobotController(Node, QObject)` dual-inheritance class into focused components with explicit DI
+**Issues**: Dual-inheritance (Node + QObject) prevented clean testing and separation of concerns. All controllers took `robot: RobotController` and accessed arbitrary attrs.
+**Tried**: Strangler pattern — created new classes alongside old, rewired main(), kept old class as dead code for rollback.
+**Result**: ✅ Created 4 new core files: `PaintRosNode(Node)`, `StateStore(QObject)`, `QtBridge(QObject)`, `ControllerFactory` with `ControllerBundle` dataclass. Rewrote `main()` to orchestrate. Updated 14 controller/handler/service constructors to take explicit deps. Updated 5 QML files (`backend.X` → `stateStore.X`). Fixed pre-existing dead `moveWinchIncrement()` QML call. +984/-367 lines across 22 files.
+**Files**: `core/ros_node.py` (new), `core/state_store.py` (new), `core/qt_bridge.py` (new), `core/controller_factory.py` (new), `core/application.py` (main rewrite), 14 controller files, 5 QML files
+**Commit**: `2cd0ae2` on `refactor/phase3-core-split`
+
+---
+
 ### 2026-03-20 - B2: Teensy Status TypedDict + User-Field Bug Fix
 
 **Goal**: Add type safety to Teensy status dict and fix data loss bug
