@@ -101,9 +101,12 @@ class TeensyController(QObject):
     roller_steering_enabled_changed = Signal(bool)
     swing_damping_enabled_changed = Signal(bool)
     
-    def __init__(self, robot_controller):
+    def __init__(self, node, settings_manager=None, winch_controller=None, show_popup_fn=None):
         super().__init__()
-        self._robot_controller = robot_controller  # Store reference to the robot controller
+        self._node = node
+        self._settings_manager = settings_manager
+        self._winch_controller = winch_controller
+        self._show_popup_fn = show_popup_fn
         
         # Initialize status variables with default values instead of empty dictionary
         self._status: TeensyStatusDict = {
@@ -182,10 +185,9 @@ class TeensyController(QObject):
         self._roller_steering_enabled = False
         self._swing_damping_enabled = False
         # Get thrust_force from settings_manager if available, otherwise use default
-        if hasattr(robot_controller, 'settings_manager'):
-            self._thrust_force = robot_controller.settings_manager.get('thrust_force') or -1.0
-            # Subscribe to settings changes
-            robot_controller.settings_manager.thrust_force_changed.connect(self._on_thrust_force_setting_changed)
+        if self._settings_manager is not None:
+            self._thrust_force = self._settings_manager.get('thrust_force') or -1.0
+            self._settings_manager.thrust_force_changed.connect(self._on_thrust_force_setting_changed)
         else:
             self._thrust_force = -1.0
         self._thrust_force_enabled = False
@@ -194,9 +196,9 @@ class TeensyController(QObject):
         self._current_thrust_force = 0.0  # Current ramped thrust value
         self._target_thrust_force = 0.0   # Target thrust value (either 0 or _thrust_force)
         self._last_published_thrust = 0.0  # Last published value to avoid redundant messages
-        if hasattr(robot_controller, 'settings_manager'):
-            self._thrust_ramp_rate = robot_controller.settings_manager.get('thrust_ramp_rate', 1.0)
-            robot_controller.settings_manager.thrust_ramp_rate_changed.connect(self._on_thrust_ramp_rate_changed)
+        if self._settings_manager is not None:
+            self._thrust_ramp_rate = self._settings_manager.get('thrust_ramp_rate', 1.0)
+            self._settings_manager.thrust_ramp_rate_changed.connect(self._on_thrust_ramp_rate_changed)
         else:
             self._thrust_ramp_rate = 1.0
         
@@ -216,41 +218,41 @@ class TeensyController(QObject):
         
     def _setup_publishers(self):
         """Set up ROS publishers for Teensy control"""
-        self.teensy_relay_pub = self._robot_controller.create_publisher(Bool, 'teensy/relay/cmd', 1)
-        self.teensy_enable_pub = self._robot_controller.create_publisher(Bool, 'teensy/enable/cmd', 1)
-        self.ef_move_top_rail_speed_pub = self._robot_controller.create_publisher(Float32, 'teensy/top_rail/speed/cmd', 1)
-        self.ef_home_top_rail_pub = self._robot_controller.create_publisher(Bool, 'teensy/top_rail/home/cmd', 1)
-        self.ef_move_arm_rail_speed_pub = self._robot_controller.create_publisher(Float32, 'teensy/arm_rail/speed/cmd', 1)
-        self.ef_move_arm_rail_pos_pub = self._robot_controller.create_publisher(Int32, 'teensy/arm/extend/cmd', 1)
-        self.ef_home_arm_rail_pub = self._robot_controller.create_publisher(Bool, 'teensy/arm/home/cmd', 1)
-        self.prop_left_pwm_pub = self._robot_controller.create_publisher(Int32, 'teensy/prop/left/pwm/cmd', 1)
-        self.prop_right_pwm_pub = self._robot_controller.create_publisher(Int32, 'teensy/prop/right/pwm/cmd', 1)
-        self.prop_left_joint_pub = self._robot_controller.create_publisher(Float32, 'teensy/prop/left/joint/cmd', 1)
-        self.prop_right_joint_pub = self._robot_controller.create_publisher(Float32, 'teensy/prop/right/joint/cmd', 1)
-        self.ef_spray_trigger_pub = self._robot_controller.create_publisher(Int32, 'teensy/spray_gun/trigger/cmd', 1)
-        self.ef_spray_pitch_speed_pub = self._robot_controller.create_publisher(Int32, 'teensy/spray_gun/pitch/speed/cmd', 1)
-        self.ef_spray_pitch_pub = self._robot_controller.create_publisher(Float32MultiArray, 'teensy/spray_gun/pitch/angle/cmd', 1)
-        self.ef_spray_led_pub = self._robot_controller.create_publisher(Bool, 'teensy/spray_gun/led/cmd', 1)
+        self.teensy_relay_pub = self._node.create_publisher(Bool, 'teensy/relay/cmd', 1)
+        self.teensy_enable_pub = self._node.create_publisher(Bool, 'teensy/enable/cmd', 1)
+        self.ef_move_top_rail_speed_pub = self._node.create_publisher(Float32, 'teensy/top_rail/speed/cmd', 1)
+        self.ef_home_top_rail_pub = self._node.create_publisher(Bool, 'teensy/top_rail/home/cmd', 1)
+        self.ef_move_arm_rail_speed_pub = self._node.create_publisher(Float32, 'teensy/arm_rail/speed/cmd', 1)
+        self.ef_move_arm_rail_pos_pub = self._node.create_publisher(Int32, 'teensy/arm/extend/cmd', 1)
+        self.ef_home_arm_rail_pub = self._node.create_publisher(Bool, 'teensy/arm/home/cmd', 1)
+        self.prop_left_pwm_pub = self._node.create_publisher(Int32, 'teensy/prop/left/pwm/cmd', 1)
+        self.prop_right_pwm_pub = self._node.create_publisher(Int32, 'teensy/prop/right/pwm/cmd', 1)
+        self.prop_left_joint_pub = self._node.create_publisher(Float32, 'teensy/prop/left/joint/cmd', 1)
+        self.prop_right_joint_pub = self._node.create_publisher(Float32, 'teensy/prop/right/joint/cmd', 1)
+        self.ef_spray_trigger_pub = self._node.create_publisher(Int32, 'teensy/spray_gun/trigger/cmd', 1)
+        self.ef_spray_pitch_speed_pub = self._node.create_publisher(Int32, 'teensy/spray_gun/pitch/speed/cmd', 1)
+        self.ef_spray_pitch_pub = self._node.create_publisher(Float32MultiArray, 'teensy/spray_gun/pitch/angle/cmd', 1)
+        self.ef_spray_led_pub = self._node.create_publisher(Bool, 'teensy/spray_gun/led/cmd', 1)
         # Stability controller publishers (decoupled force and yaw control)
-        self.stability_enable_pub = self._robot_controller.create_publisher(Bool, 'stability_controller/enable/cmd', 1)
-        self.stability_yaw_enable_pub = self._robot_controller.create_publisher(Bool, 'stability_controller/yaw_control/enable/cmd', 1)
-        self.stability_yaw_angle_pub = self._robot_controller.create_publisher(Float32, 'stability_controller/yaw_control/angle/cmd', 1)
-        self.stability_short_param_pub = self._robot_controller.create_publisher(TeensyYaw, 'stability_controller/yaw_control/short_params/cmd', 1)
-        self.stability_long_param_pub = self._robot_controller.create_publisher(TeensyYaw, 'stability_controller/yaw_control/long_params/cmd', 1)
-        self.stability_auto_correction_enable_pub = self._robot_controller.create_publisher(Bool, 'stability_controller/yaw_control/auto_correction/cmd', 1)
-        self.stability_force_pub = self._robot_controller.create_publisher(Twist, 'stability_controller/force/cmd', 1)
-        self.ef_spray_level_enable_pub = self._robot_controller.create_publisher(Bool, 'teensy/spray_gun/leveling_enable/cmd', 1)
-        self.ef_lidar_power_pub = self._robot_controller.create_publisher(Bool, 'unilidar/power', 1)
-        self.ef_tap_freq_pub = self._robot_controller.create_publisher(Int32MultiArray, 'teensy/tapper/tap_freq/cmd', 1)
-        self.ef_tap_once_pub = self._robot_controller.create_publisher(Int32, 'teensy/tapper/tap_once/cmd', 1)
-        self.ef_tap_stop_pub = self._robot_controller.create_publisher(Bool, 'teensy/tapper/stop/cmd', 1)
-        self.roller_steering_enable_pub = self._robot_controller.create_publisher(Bool, 'teensy/roller/steering/enable/cmd', 1)
-        self.swing_damping_enable_pub = self._robot_controller.create_publisher(Bool, 'stability_controller/swing_damping/enable/cmd', 1)
+        self.stability_enable_pub = self._node.create_publisher(Bool, 'stability_controller/enable/cmd', 1)
+        self.stability_yaw_enable_pub = self._node.create_publisher(Bool, 'stability_controller/yaw_control/enable/cmd', 1)
+        self.stability_yaw_angle_pub = self._node.create_publisher(Float32, 'stability_controller/yaw_control/angle/cmd', 1)
+        self.stability_short_param_pub = self._node.create_publisher(TeensyYaw, 'stability_controller/yaw_control/short_params/cmd', 1)
+        self.stability_long_param_pub = self._node.create_publisher(TeensyYaw, 'stability_controller/yaw_control/long_params/cmd', 1)
+        self.stability_auto_correction_enable_pub = self._node.create_publisher(Bool, 'stability_controller/yaw_control/auto_correction/cmd', 1)
+        self.stability_force_pub = self._node.create_publisher(Twist, 'stability_controller/force/cmd', 1)
+        self.ef_spray_level_enable_pub = self._node.create_publisher(Bool, 'teensy/spray_gun/leveling_enable/cmd', 1)
+        self.ef_lidar_power_pub = self._node.create_publisher(Bool, 'unilidar/power', 1)
+        self.ef_tap_freq_pub = self._node.create_publisher(Int32MultiArray, 'teensy/tapper/tap_freq/cmd', 1)
+        self.ef_tap_once_pub = self._node.create_publisher(Int32, 'teensy/tapper/tap_once/cmd', 1)
+        self.ef_tap_stop_pub = self._node.create_publisher(Bool, 'teensy/tapper/stop/cmd', 1)
+        self.roller_steering_enable_pub = self._node.create_publisher(Bool, 'teensy/roller/steering/enable/cmd', 1)
+        self.swing_damping_enable_pub = self._node.create_publisher(Bool, 'stability_controller/swing_damping/enable/cmd', 1)
 
 
     def _setup_subscribers(self):
         """Set up ROS subscribers"""
-        self._robot_controller.create_subscription(
+        self._node.create_subscription(
             TeensyStatus,
             'teensy/status',
             self._status_callback,
@@ -407,7 +409,7 @@ class TeensyController(QObject):
     def setEnabled(self, enabled: bool):
         """Enable/disable Teensy control"""
         self._publish_bool(self.teensy_enable_pub, enabled)
-        self._robot_controller.get_logger().info(f'Teensy {"enabled" if enabled else "disabled"}')
+        self._node.get_logger().info(f'Teensy {"enabled" if enabled else "disabled"}')
         self.status_changed.emit(self._status)
     
     @Slot(bool)
@@ -416,7 +418,7 @@ class TeensyController(QObject):
         self._relay_enabled = enabled
         self._status['relay_enabled'] = enabled
         self._publish_bool(self.teensy_relay_pub, enabled)
-        self._robot_controller.get_logger().info(f'Teensy relay {"enabled" if enabled else "disabled"}')
+        self._node.get_logger().info(f'Teensy relay {"enabled" if enabled else "disabled"}')
         self.status_changed.emit(self._status)
     
     @Slot(float)
@@ -428,7 +430,8 @@ class TeensyController(QObject):
     def homeTopRail(self, home: bool):
         """Home the top rail"""
         self._publish_bool(self.ef_home_top_rail_pub, True)
-        self._robot_controller.show_popup("Homing Top Rail", "Homing top rail", "info")
+        if self._show_popup_fn:
+            self._show_popup_fn("Homing Top Rail", "Homing top rail", "info")
     
     @Slot(float)
     def setArmRailSpeed(self, speed: float):
@@ -438,7 +441,8 @@ class TeensyController(QObject):
     @Slot(int)
     def extendArm(self, dist: int):
         self._publish_int32(self.ef_move_arm_rail_pos_pub, dist)
-        self._robot_controller.show_popup("Extending Arm", f"Extending arm to {dist} mm", "info")
+        if self._show_popup_fn:
+            self._show_popup_fn("Extending Arm", f"Extending arm to {dist} mm", "info")
 
     @Slot(bool)
     def homeArm(self, home: bool):
@@ -478,7 +482,7 @@ class TeensyController(QObject):
     @Slot(bool)
     def setSprayGunLevelingEnabled(self, enabled: bool):
         """Enable/disable spray gun leveling"""
-        self._robot_controller.get_logger().info(f'Spray gun leveling {"enabled" if enabled else "disabled"}')
+        self._node.get_logger().info(f'Spray gun leveling {"enabled" if enabled else "disabled"}')
         self._publish_bool(self.ef_spray_level_enable_pub, enabled)
         self._spray_gun_leveling_enabled = enabled
         self.spray_gun_leveling_changed.emit(enabled)
@@ -486,7 +490,7 @@ class TeensyController(QObject):
     @Slot(float, float)
     def setSprayGunPitchAngle(self, angle: float, speed: float):
         """Set the spray gun pitch angle and speed"""
-        self._robot_controller.get_logger().info(f'Setting spray gun pitch angle to {angle} with speed {speed}')
+        self._node.get_logger().info(f'Setting spray gun pitch angle to {angle} with speed {speed}')
         msg = Float32MultiArray()
         msg.data = [float(angle), float(speed)]
         self.ef_spray_pitch_pub.publish(msg)
@@ -495,13 +499,14 @@ class TeensyController(QObject):
     def demoAction(self, pitch_angle: float, pitch_speed: float, cable_length: float, cable_speed: float, force_y: float):
         """Perform a demo action with the spray gun"""
         self.setSprayGunPitchAngle(pitch_angle, pitch_speed)
-        self._robot_controller.winch_controller.move_absolute(cable_length, cable_speed)
+        if self._winch_controller:
+            self._winch_controller.move_absolute(cable_length, cable_speed)
         self.set_ef_force(0.0, force_y)
 
     @Slot(bool)
     def setSprayGunLED(self, on: bool):
         """Turn the spray gun LED on/off"""
-        self._robot_controller.get_logger().info(f'Spray gun LED {"on" if on else "off"}')
+        self._node.get_logger().info(f'Spray gun LED {"on" if on else "off"}')
         self._publish_bool(self.ef_spray_led_pub, on)
         self._spray_gun_led_on = on
         self.spray_gun_led_changed.emit(on)
@@ -509,7 +514,7 @@ class TeensyController(QObject):
     @Slot(bool)
     def setLidarPower(self, on: bool):
         """Turn the Lidar power on/off"""
-        self._robot_controller.get_logger().info(f'Lidar power {"on" if on else "off"}')
+        self._node.get_logger().info(f'Lidar power {"on" if on else "off"}')
         self._publish_bool(self.ef_lidar_power_pub, on)
 
     @Slot(bool)
@@ -518,7 +523,7 @@ class TeensyController(QObject):
         self._stability_enabled = enabled
         self._status['stability_enabled'] = enabled
         self._publish_bool(self.stability_enable_pub, enabled)
-        self._robot_controller.get_logger().info(f'Stability controller {"enabled" if enabled else "disabled"}')
+        self._node.get_logger().info(f'Stability controller {"enabled" if enabled else "disabled"}')
         self.stability_enabled_changed.emit(enabled)
         self.status_changed.emit(self._status)
 
@@ -533,7 +538,7 @@ class TeensyController(QObject):
         self._auto_correction_enabled = enabled
         self._status['auto_correction_enabled'] = enabled
         self._publish_bool(self.stability_auto_correction_enable_pub, enabled)
-        self._robot_controller.get_logger().info(f'Auto correction {"enabled" if enabled else "disabled"}')
+        self._node.get_logger().info(f'Auto correction {"enabled" if enabled else "disabled"}')
         self.auto_correction_enabled_changed.emit(enabled)
         self.status_changed.emit(self._status)
 
@@ -543,7 +548,7 @@ class TeensyController(QObject):
         self._roller_steering_enabled = enabled
         self._status['roller_steering_enabled'] = enabled
         self._publish_bool(self.roller_steering_enable_pub, enabled)
-        self._robot_controller.get_logger().info(f'Roller steering {"enabled" if enabled else "disabled"}')
+        self._node.get_logger().info(f'Roller steering {"enabled" if enabled else "disabled"}')
         self.roller_steering_enabled_changed.emit(enabled)
         self.status_changed.emit(self._status)
 
@@ -553,7 +558,7 @@ class TeensyController(QObject):
         self._swing_damping_enabled = enabled
         self._status['swing_damping_enabled'] = enabled
         self._publish_bool(self.swing_damping_enable_pub, enabled)
-        self._robot_controller.get_logger().info(f'Swing damping {"enabled" if enabled else "disabled"}')
+        self._node.get_logger().info(f'Swing damping {"enabled" if enabled else "disabled"}')
         self.swing_damping_enabled_changed.emit(enabled)
         self.status_changed.emit(self._status)
 
@@ -583,7 +588,7 @@ class TeensyController(QObject):
     @Slot(float, float)
     def startTapFreq(self, power: float, period: float):
         """Start tapping the frequency"""
-        self._robot_controller.get_logger().info(f'Starting tap frequency with Power: {power} Period: {period}')
+        self._node.get_logger().info(f'Starting tap frequency with Power: {power} Period: {period}')
         msg = Int32MultiArray()
         msg.data = [int(power), int(period*1000)]
         self.ef_tap_freq_pub.publish(msg)
@@ -591,13 +596,13 @@ class TeensyController(QObject):
     @Slot(float)
     def tapOnce(self, power: float):
         """ Tap once"""
-        self._robot_controller.get_logger().info(f'Tapping once with Power: {power}')
+        self._node.get_logger().info(f'Tapping once with Power: {power}')
         self._publish_int32(self.ef_tap_once_pub, int(power))
 
     @Slot(float)
     def tapStop(self, power: float):
         """ Stop tapping"""
-        self._robot_controller.get_logger().info(f'Stopping tap with Power: {power}')
+        self._node.get_logger().info(f'Stopping tap with Power: {power}')
         self._publish_bool(self.ef_tap_stop_pub, True)
 
     @Slot(bool)
@@ -620,7 +625,7 @@ class TeensyController(QObject):
         msg.yaw_pid_d = d
         msg.yaw_pwm = pwm
         self.ef_yaw_control_pub.publish(msg)
-        self._robot_controller.get_logger().info(f'Yaw control {"enabled" if enabled else "disabled"} with Target: {target} P:{p} I:{i} D:{d} PWM:{pwm}')
+        self._node.get_logger().info(f'Yaw control {"enabled" if enabled else "disabled"} with Target: {target} P:{p} I:{i} D:{d} PWM:{pwm}')
 
     def set_ef_force(self, Fx: float, Fy: float):
         """Internal method to send EF force values"""
@@ -631,9 +636,9 @@ class TeensyController(QObject):
         # Publish to the appropriate topic
         if hasattr(self, 'stability_force_pub'):
             self.stability_force_pub.publish(msg)
-            self._robot_controller.get_logger().info(f'Sent EF force: Fx={Fx}, Fy={Fy}')
+            self._node.get_logger().info(f'Sent EF force: Fx={Fx}, Fy={Fy}')
         else:
-            self._robot_controller.get_logger().error("Stability force publisher not initialized. Cannot send force values.")
+            self._node.get_logger().error("Stability force publisher not initialized. Cannot send force values.")
     
     # Define a property to expose the entire status dictionary
     def get_all_status(self) -> TeensyStatusDict:
@@ -665,7 +670,7 @@ class TeensyController(QObject):
         if self._thrust_force != clamped_value:
             self._thrust_force = clamped_value
             self.thrust_force_changed.emit(self._thrust_force)
-            self._robot_controller.get_logger().info(f'Thrust force set to {self._thrust_force:.2f}')
+            self._node.get_logger().info(f'Thrust force set to {self._thrust_force:.2f}')
     
     def get_thrust_force_enabled(self) -> bool:
         """Get current thrust force enabled state"""
@@ -680,11 +685,11 @@ class TeensyController(QObject):
             if enabled:
                 # Set target to current thrust force, ramping will handle the rest
                 self._target_thrust_force = self._thrust_force
-                self._robot_controller.get_logger().info(f'Thrust force enabled: ramping to {self._thrust_force:.2f}')
+                self._node.get_logger().info(f'Thrust force enabled: ramping to {self._thrust_force:.2f}')
             else:
                 # Set target to 0, ramping will handle the rest
                 self._target_thrust_force = 0.0
-                self._robot_controller.get_logger().info('Thrust force disabled: ramping to 0.0')
+                self._node.get_logger().info('Thrust force disabled: ramping to 0.0')
     
     def set_thrust_force_instant(self, enabled: bool) -> None:
         """Toggle thrust force on/off instantly (without ramping)"""
@@ -697,12 +702,12 @@ class TeensyController(QObject):
                 self._current_thrust_force = self._thrust_force
                 self._target_thrust_force = self._thrust_force
                 self.set_ef_force(0.0, self._thrust_force)
-                self._robot_controller.get_logger().info(f'Thrust force enabled instantly: {self._thrust_force:.2f}')
+                self._node.get_logger().info(f'Thrust force enabled instantly: {self._thrust_force:.2f}')
             else:
                 self._current_thrust_force = 0.0
                 self._target_thrust_force = 0.0
                 self.set_ef_force(0.0, 0.0)
-                self._robot_controller.get_logger().info('Thrust force disabled instantly')
+                self._node.get_logger().info('Thrust force disabled instantly')
     
     thrust_force = Property(float, get_thrust_force, set_thrust_force, notify=thrust_force_changed)
     thrust_force_enabled = Property(bool, get_thrust_force_enabled, set_thrust_force_enabled, notify=thrust_force_enabled_changed)

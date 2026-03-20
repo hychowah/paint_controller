@@ -19,16 +19,15 @@ class WinchController(QObject):
     load_detection_changed = Signal()  
     unusual_load_detected_changed = Signal()  
 
-    def __init__(self, node: Node):
+    def __init__(self, node: Node, settings_manager=None):
         super().__init__()
         self._node = node
         
         # Initialize property values
         # Get max_speed from settings_manager if available, otherwise use default
-        if hasattr(node, 'settings_manager'):
-            self._max_speed = node.settings_manager.get('winch_max_speed_mmps') or 400.0
-            # Subscribe to settings changes
-            node.settings_manager.winch_max_speed_mmps_changed.connect(self._on_max_speed_changed)
+        if settings_manager is not None:
+            self._max_speed = settings_manager.get('winch_max_speed_mmps') or 400.0
+            settings_manager.winch_max_speed_mmps_changed.connect(self._on_max_speed_changed)
         else:
             self._max_speed = 400.0  # default output mm/s
 

@@ -9,26 +9,26 @@ class LidarController(QObject):
     distance_changed = Signal()
     angle_changed = Signal()
     
-    def __init__(self, robot_controller):
+    def __init__(self, node):
         super().__init__()
-        self._robot_controller = robot_controller  # Store reference to the robot controller
-        
+        self._node = node
+
         # Wall detection values
         self._distance = 0.0
         self._angle = 0.0
-        
+
         # Configure subscribers
         self._setup_subscribers()
-        
+
     def _setup_subscribers(self):
         """Set up ROS subscribers for wall detection data"""
-        self._distance_sub = self._robot_controller.create_subscription(
+        self._distance_sub = self._node.create_subscription(
             Float32,
             '/ef/lidar/wall_detection/distance',
             self._distance_callback,
             10
         )
-        self._angle_sub = self._robot_controller.create_subscription(
+        self._angle_sub = self._node.create_subscription(
             Float32,
             '/ef/lidar/wall_detection/filtered_angle',
             self._angle_callback,

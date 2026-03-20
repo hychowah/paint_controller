@@ -287,7 +287,7 @@ Rectangle {
                             color: "transparent"
                             
                             // Bind image source to control mode
-                            property string imageSource: backend.control_mode === "ef" ? 
+                            property string imageSource: stateStore.control_mode === "ef" ? 
                                                     "image://ef_live/frame" : 
                                                     "image://base_front_live/frame"
                             
@@ -342,13 +342,13 @@ Rectangle {
                     Connections {
                         target: baseStreamHandler
                         function onEndEffectorFrameReady() {
-                            if (backend.control_mode === "ef") {
+                            if (stateStore.control_mode === "ef") {
                                 efFrame.source = ""
                                 efFrame.source = "image://ef_live/frame"
                             }
                         }
                         function onBaseFrontFrameReady() {
-                            if (backend.control_mode !== "ef") {
+                            if (stateStore.control_mode !== "ef") {
                                 efFrame.source = ""
                                 efFrame.source = "image://base_front_live/frame"
                             }

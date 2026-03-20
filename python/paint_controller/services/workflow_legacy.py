@@ -27,9 +27,14 @@ class ActionWorker(QObject):
     success = Signal(str)  # Signal emitted with success message
     error = Signal(str)  # Signal emitted with error message.
     
-    def __init__(self, robot_controller, cmd_type, params):
+    def __init__(self, node, heartbeat_handler, teensy, winch, show_popup_fn, logger, cmd_type, params):
         super().__init__()
-        self._robot_controller = robot_controller
+        self._node = node
+        self._heartbeat_handler = heartbeat_handler
+        self._teensy = teensy
+        self._winch = winch
+        self._show_popup_fn = show_popup_fn
+        self._logger = logger
         self._cmd_type = cmd_type
         self._params = params
         self._abort = False
@@ -70,13 +75,11 @@ class ActionWorker(QObject):
         Returns:
             tuple: (success, message)
         """
-        heartbeat_handler = self._robot_controller.heartbeat_handler
-        
         # Check if components are online
-        if not heartbeat_handler.get_base_online():
+        if not self._heartbeat_handler.get_base_online():
             return False, "Base component is offline"
         
-        if not heartbeat_handler.get_ef_online():
+        if not self._heartbeat_handler.get_ef_online():
             return False, "EF component is offline"
         
         return True, "Components are online"
@@ -88,16 +91,14 @@ class ActionWorker(QObject):
         Returns:
             tuple: (success, message)
         """
-        heartbeat_handler = self._robot_controller.heartbeat_handler
-        
         # First check if components are online
         online_success, online_message = self._check_components_online()
         if not online_success:
             return False, online_message
             
         # Check for error states
-        base_state = heartbeat_handler.get_base_status()
-        ef_state = heartbeat_handler.get_ef_status()
+        base_state = self._heartbeat_handler.get_base_status()
+        ef_state = self._heartbeat_handler.get_ef_status()
         
         if base_state == HeartbeatStatus.ERROR.value:
             return False, "Base component is in ERROR state"
@@ -107,11 +108,11 @@ class ActionWorker(QObject):
         
         # Check for IDLE state
         if base_state != HeartbeatStatus.IDLE.value:
-            base_state_str = heartbeat_handler.get_status_string("base")
+            base_state_str = self._heartbeat_handler.get_status_string("base")
             return False, f"Base component is not in IDLE state (current: {base_state_str})"
         
         if ef_state != HeartbeatStatus.IDLE.value:
-            ef_state_str = heartbeat_handler.get_status_string("ef")
+            ef_state_str = self._heartbeat_handler.get_status_string("ef")
             return False, f"EF component is not in IDLE state (current: {ef_state_str})"
         
         return True, "Components are in IDLE state"
@@ -123,16 +124,14 @@ class ActionWorker(QObject):
         Returns:
             bool: True if at least one component is ONTASK
         """
-        heartbeat_handler = self._robot_controller.heartbeat_handler
-        
         # Check if components are online first
         online_success, _ = self._check_components_online()
         if not online_success:
             return False
         
         # Get current states
-        base_state = heartbeat_handler.get_base_status()
-        ef_state = heartbeat_handler.get_ef_status()
+        base_state = self._heartbeat_handler.get_base_status()
+        ef_state = self._heartbeat_handler.get_ef_status()
         
         # Check if either component is in ONTASK state
         return (base_state == HeartbeatStatus.ONTASK.value or 
@@ -141,22 +140,22 @@ class ActionWorker(QObject):
     def _ensure_service_clients(self):
         """Ensure service clients are created"""
         if not self._paint_base_action_client:
-            self._paint_base_action_client = self._robot_controller.create_client(PaintAction, '/base/execute_action/service')
+            self._paint_base_action_client = self._node.create_client(PaintAction, '/base/execute_action/service')
         if not self._paint_ef_action_client:
-            self._paint_ef_action_client = self._robot_controller.create_client(PaintAction, '/ef/execute_action/service')
+            self._paint_ef_action_client = self._node.create_client(PaintAction, '/ef/execute_action/service')
         
         # Wait for services with timeout
         services_ready = True
         
         if not self._paint_base_action_client.wait_for_service(timeout_sec=2.0):
             error_msg = 'Base Service not available. Timeout waiting for service.'
-            self._robot_controller.get_logger().error(error_msg)
+            self._logger.error(error_msg)
             self.error.emit(error_msg)
             services_ready = False
         
         if not self._paint_ef_action_client.wait_for_service(timeout_sec=2.0):
             error_msg = 'EF Service not available. Timeout waiting for service.'
-            self._robot_controller.get_logger().error(error_msg)
+            self._logger.error(error_msg)
             self.error.emit(error_msg)
             services_ready = False
             
@@ -168,7 +167,7 @@ class ActionWorker(QObject):
         idle_success, idle_message = self._check_components_idle()
         if not idle_success:
             error_msg = f"Cannot execute service calls: {idle_message}"
-            self._robot_controller.get_logger().error(error_msg)
+            self._logger.error(error_msg)
             self.error.emit(error_msg)
             return False, error_msg
         
@@ -186,7 +185,7 @@ class ActionWorker(QObject):
         ef_request.start_time = start_time
         ef_request.action = ef_action
         
-        self._robot_controller.get_logger().info(f"Starting service calls: Base={base_action}, EF={ef_action}")
+        self._logger.info(f"Starting service calls: Base={base_action}, EF={ef_action}")
         
         # Send requests asynchronously
         base_future = self._paint_base_action_client.call_async(base_request)
@@ -203,10 +202,10 @@ class ActionWorker(QObject):
             if base_future.done() and base_response is None:
                 try:
                     base_response = base_future.result()
-                    self._robot_controller.get_logger().info(f"Base service response received: {base_response}")
+                    self._logger.info(f"Base service response received: {base_response}")
                 except Exception as e:
                     error_msg = f"Base service call failed: {str(e)}"
-                    self._robot_controller.get_logger().error(error_msg)
+                    self._logger.error(error_msg)
                     self.error.emit(error_msg)
                     return False, error_msg
             
@@ -214,10 +213,10 @@ class ActionWorker(QObject):
             if ef_future.done() and ef_response is None:
                 try:
                     ef_response = ef_future.result()
-                    self._robot_controller.get_logger().info(f"EF service response received: {ef_response}")
+                    self._logger.info(f"EF service response received: {ef_response}")
                 except Exception as e:
                     error_msg = f"EF service call failed: {str(e)}"
-                    self._robot_controller.get_logger().error(error_msg)
+                    self._logger.error(error_msg)
                     self.error.emit(error_msg)
                     return False, error_msg
             
@@ -227,7 +226,7 @@ class ActionWorker(QObject):
             
             # Check if worker was asked to abort
             if self._abort:
-                self._robot_controller.get_logger().info("Operation aborted")
+                self._logger.info("Operation aborted")
                 return False, "Operation aborted"
             
             # Wait a bit before checking again
@@ -237,13 +236,13 @@ class ActionWorker(QObject):
         # Check for timeouts
         if base_response is None:
             error_msg = "Base service call timed out"
-            self._robot_controller.get_logger().error(error_msg)
+            self._logger.error(error_msg)
             self.error.emit(error_msg)
             return False, error_msg
         
         if ef_response is None:
             error_msg = "EF service call timed out"
-            self._robot_controller.get_logger().error(error_msg)
+            self._logger.error(error_msg)
             self.error.emit(error_msg)
             return False, error_msg
         
@@ -256,11 +255,11 @@ class ActionWorker(QObject):
                 error_messages.append("EF service failed")
             
             error_msg = " and ".join(error_messages)
-            self._robot_controller.get_logger().error(f"Service failures: {error_msg}")
+            self._logger.error(f"Service failures: {error_msg}")
             return False, f"Service failures: {error_msg}"
         
         # If we got here, the initial service calls succeeded
-        self._robot_controller.get_logger().info("Both service calls succeeded, waiting for completion")
+        self._logger.info("Both service calls succeeded, waiting for completion")
         
         # Wait a short time for components to transition to ONTASK state
         time.sleep(0.1)
@@ -272,19 +271,19 @@ class ActionWorker(QObject):
         while True:
             # Check if worker was asked to abort
             if self._abort:
-                self._robot_controller.get_logger().info("Operation aborted while waiting for completion")
+                self._logger.info("Operation aborted while waiting for completion")
                 return False, "Operation aborted while waiting for completion"
             
             # Check if components are ONTASK
             if not on_task_detected and self._are_components_on_task():
-                self._robot_controller.get_logger().info("Components are now ONTASK, waiting for completion")
+                self._logger.info("Components are now ONTASK, waiting for completion")
                 on_task_detected = True
             
             # Once we've seen ONTASK state, check if back to IDLE
             if on_task_detected:
                 idle_success, _ = self._check_components_idle()
                 if idle_success:
-                    self._robot_controller.get_logger().info("Components have returned to IDLE state, operation complete")
+                    self._logger.info("Components have returned to IDLE state, operation complete")
                     return True, "Operation completed successfully"
             
             # If we haven't detected ONTASK yet, check if components are already back to IDLE
@@ -292,7 +291,7 @@ class ActionWorker(QObject):
             if not on_task_detected:
                 idle_success, _ = self._check_components_idle()
                 if idle_success:
-                    self._robot_controller.get_logger().info("Operation completed (very quick)")
+                    self._logger.info("Operation completed (very quick)")
                     return True, "Operation completed successfully"
             
             # Wait before checking again
@@ -304,21 +303,21 @@ class ActionWorker(QObject):
         idle_success, idle_message = self._check_components_idle()
         if not idle_success:
             error_msg = f"Cannot execute {action_name}: {idle_message}"
-            self._robot_controller.get_logger().error(error_msg)
+            self._logger.error(error_msg)
             return False, error_msg
             
-        self._robot_controller.get_logger().info(f"Starting {action_name} simulation")
+        self._logger.info(f"Starting {action_name} simulation")
         time.sleep(duration)
         if self._abort:
-            self._robot_controller.get_logger().info(f"{action_name} aborted")
+            self._logger.info(f"{action_name} aborted")
             return False, f"{action_name} aborted"
-        self._robot_controller.get_logger().info(f"Completed {action_name} simulation")
+        self._logger.info(f"Completed {action_name} simulation")
         return True, f"{action_name} completed successfully"
     
     def run(self):
         """Main worker method that will be executed in the thread"""
         try:
-            self._robot_controller.get_logger().info(f"Worker executing {self._cmd_type}")
+            self._logger.info(f"Worker executing {self._cmd_type}")
             
             if self._cmd_type == "winch":
                 # Simple winch simulation
@@ -355,7 +354,7 @@ class ActionWorker(QObject):
                     success_msg = "Extension arm completed"
                 
                 elif self._cmd_type == "moveWinchTo":
-                    self._robot_controller.teensy_controller.extendArm(self._params[2])
+                    self._teensy.extendArm(self._params[2])
                     if len(self._params) == 4:
                         base_action = f"moveWinchTo_{self._params[0]}_{self._params[1]}"
                     else:
@@ -368,13 +367,13 @@ class ActionWorker(QObject):
                     base_action = f"moveWinchTo_{self._params[0]}_{self._params[1]}_{self._params[2]}_{self._params[3]}"
                     ef_action = f"spray_{self._params[0]}_{self._params[1]}_{self._params[2]}_{self._params[3]}"
                     # check if current winch cable is more than target
-                    current_cable_length = self._robot_controller.winch_controller.get_cable_length()
+                    current_cable_length = self._winch.get_cable_length()
                     target_cable_length = abs(float(self._params[0]))
                     if current_cable_length < target_cable_length:
                         # Show error message
                         error_msg = "Current winch cable length is less than target length"
-                        self._robot_controller.get_logger().error(error_msg)
-                        self._robot_controller.show_popup("Command Error", error_msg, "error")
+                        self._logger.error(error_msg)
+                        self._show_popup_fn("Command Error", error_msg, "error")
                         return
                     success_msg = "Sending decent and spray command"
                 
@@ -384,23 +383,23 @@ class ActionWorker(QObject):
                 if success:
                     if self._cmd_type == "moveWinchTo":
                         time.sleep(2.5)  
-                        self._robot_controller.teensy_controller.extendArm(self._params[3])
+                        self._teensy.extendArm(self._params[3])
                         time.sleep(2)
-                    self._robot_controller.show_popup(success_msg, "Success", "success")
+                    self._show_popup_fn(success_msg, "Success", "success")
                     self.success.emit(success_msg)
                 else:
-                    self._robot_controller.show_popup(message, "Error", "error")
+                    self._show_popup_fn(message, "Error", "error")
             
             else:
                 # Unknown command type
                 error_msg = f"Unknown command type: {self._cmd_type}"
-                self._robot_controller.get_logger().error(error_msg)
+                self._logger.error(error_msg)
                 self.error.emit(error_msg)
                 
         except Exception as e:
             # Handle any exceptions in the thread
             error_msg = f"Error executing command: {str(e)}"
-            self._robot_controller.get_logger().error(error_msg)
+            self._logger.error(error_msg)
             self.error.emit(error_msg)
         finally:
             # Always emit finished signal
@@ -417,10 +416,15 @@ class WorkFlowHandler(QObject):
     sequenceSaved = Signal(str) 
     pageChanged = Signal(int) 
 
-    def __init__(self, robot_controller):
+    def __init__(self, node, heartbeat_handler=None, teensy=None, winch=None, show_popup_fn=None, action_config=None):
         super().__init__()
         self._workflow = []
-        self._robot_controller = robot_controller
+        self._node = node
+        self._heartbeat_handler = heartbeat_handler
+        self._teensy = teensy
+        self._winch = winch
+        self._show_popup_fn = show_popup_fn
+        self._logger = node.get_logger()
         self._currentTrajDescription = []
         self._currentTrajCmd = []
         self._isExecuting = False  # Track execution state
@@ -433,7 +437,7 @@ class WorkFlowHandler(QObject):
 
         self.filePath = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'resource', 'workflow.json')      
         # Create action config instance
-        self._action_config = ActionConfigPython(self._robot_controller)
+        self._action_config = action_config if action_config is not None else ActionConfigPython(winch_controller=winch)
         
         # Register action handlers
         self._action_handlers = {
@@ -455,7 +459,7 @@ class WorkFlowHandler(QObject):
         
     def _setExecuting(self, executing):
         """Set execution state and emit signal"""
-        self._robot_controller.get_logger().info(f"Setting executing state to: {executing}")
+        self._logger.info(f"Setting executing state to: {executing}")
         if self._isExecuting != executing:
             self._isExecuting = executing
             self.executingChanged.emit(executing)
@@ -596,7 +600,7 @@ class WorkFlowHandler(QObject):
                             self._currentTrajCmd.append(commands[i])
                 else:
                     # Handle unknown action types
-                    self._robot_controller.get_logger().warning(f"Unknown action: {action_prefix}")
+                    self._logger.warning(f"Unknown action: {action_prefix}")
                     self._currentTrajDescription.append(f"Unknown action: {action_prefix}")
                     self._currentTrajCmd.append(["unknown", action_prefix])
 
@@ -612,12 +616,12 @@ class WorkFlowHandler(QObject):
     def _handle_worker_error(self, message):
         """Handle error signal from worker"""
         return
-        # self._robot_controller.get_logger().error(f"Worker error: {message}")
+        # self._logger.error(f"Worker error: {message}")
         # self.showMessage.emit(message, False)
     
     def _handle_worker_finished(self):
         """Handle finished signal from worker"""
-        self._robot_controller.get_logger().info("Worker finished")
+        self._logger.info("Worker finished")
         
         # Clean up thread and worker
         if self._thread:
@@ -641,7 +645,7 @@ class WorkFlowHandler(QObject):
             
         # Check if thread is still running
         if self._thread and self._thread.isRunning():
-            self._robot_controller.get_logger().warning("Thread is still running, cannot start new execution")
+            self._logger.warning("Thread is still running, cannot start new execution")
             self.showMessage.emit("Another action thread is still running", False)
             return False
             
@@ -649,7 +653,7 @@ class WorkFlowHandler(QObject):
         if 0 <= index < len(self._currentTrajCmd):
             cmd_type = self._currentTrajCmd[index][0]
             cmd_params = self._currentTrajCmd[index][1:]
-            self._robot_controller.get_logger().info(f"Starting execution of {cmd_type} command")
+            self._logger.info(f"Starting execution of {cmd_type} command")
             
             # Set executing state to true
             self._setExecuting(True)
@@ -659,7 +663,7 @@ class WorkFlowHandler(QObject):
                 self._thread = QThread()
                 
                 # Create the worker and move it to the thread
-                self._worker = ActionWorker(self._robot_controller, cmd_type, cmd_params)
+                self._worker = ActionWorker(self._node, self._heartbeat_handler, self._teensy, self._winch, self._show_popup_fn, self._logger, cmd_type, cmd_params)
                 self._worker.moveToThread(self._thread)
                 
                 # Connect signals and slots
@@ -672,11 +676,11 @@ class WorkFlowHandler(QObject):
                 # Start the thread
                 self._thread.start()
                 
-                self._robot_controller.get_logger().info(f"Started thread for {cmd_type} command")
+                self._logger.info(f"Started thread for {cmd_type} command")
                 return True
             except Exception as e:
                 error_msg = f"Error starting execution thread: {str(e)}"
-                self._robot_controller.get_logger().error(error_msg)
+                self._logger.error(error_msg)
                 self.showMessage.emit(error_msg, False)
                 self._setExecuting(False)
                 
@@ -708,7 +712,7 @@ class WorkFlowHandler(QObject):
         """Check if the action thread is still running"""
         if self._thread:
             is_running = self._thread.isRunning()
-            self._robot_controller.get_logger().info(f"Thread is running: {is_running}")
+            self._logger.info(f"Thread is running: {is_running}")
             return is_running
         return False
         
@@ -716,7 +720,7 @@ class WorkFlowHandler(QObject):
     @Slot()
     def forceResetExecution(self):
         """Force reset the execution state (for debugging)"""
-        self._robot_controller.get_logger().info("Forcing execution state reset")
+        self._logger.info("Forcing execution state reset")
         
         # Clean up thread if it exists
         if self._thread and self._thread.isRunning():
@@ -728,7 +732,7 @@ class WorkFlowHandler(QObject):
             
             # If thread is still running, terminate it (harsh)
             if self._thread.isRunning():
-                self._robot_controller.get_logger().warning("Thread did not quit, terminating")
+                self._logger.warning("Thread did not quit, terminating")
                 self._thread.terminate()
                 self._thread.wait()
                 
@@ -799,7 +803,7 @@ class WorkFlowHandler(QObject):
             self._current_page = page_index
             self.pageChanged.emit(page_index)  # Changed from page_changed to pageChanged
             page_name = "Planner" if page_index == 0 else "Executor"
-            self._robot_controller.show_popup("Page Changed", f"Switched to {page_name} mode", "info", 1500)
+            self._show_popup_fn("Page Changed", f"Switched to {page_name} mode", "info", 1500)
 
     @Slot()
     def switchPage(self):
@@ -821,7 +825,7 @@ class WorkFlowHandler(QObject):
         
         # Show popup
         page_name = "Planner" if new_page == 0 else "Executor"
-        self._robot_controller.show_popup("Page Changed", f"Directly switched to {page_name} mode", "info", 1500)
+        self._show_popup_fn("Page Changed", f"Directly switched to {page_name} mode", "info", 1500)
         
         # Return the new page index for immediate use in QML if needed
         return new_page

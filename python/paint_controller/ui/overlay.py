@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
 from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QThread
-from paint_controller.controllers.teensy import TeensyController
-from paint_controller.handlers.control_processor import ControlProcessor
 
 
 class OverlayController(QObject):
@@ -14,9 +12,10 @@ class OverlayController(QObject):
     controlOptionsChanged = Signal(list)
     activeMenuChanged = Signal(str)
     
-    def __init__(self, robotController):
+    def __init__(self, teensy):
         super().__init__()
-        self.robot = robotController
+        self._teensy = teensy
+        self._control_processor = None  # Set via set_control_processor()
 
         self._control_options = [
             "None",
@@ -52,6 +51,10 @@ class OverlayController(QObject):
         self._input_timer.setInterval(100)
         self._input_timer.timeout.connect(self._reset_input_lock)
         self._input_locked = False
+
+    def set_control_processor(self, control_processor):
+        """Set control processor reference (deferred wiring for circular dep)."""
+        self._control_processor = control_processor
 
     @Property(list, notify=controlOptionsChanged)
     def control_options(self):
@@ -152,8 +155,9 @@ class OverlayController(QObject):
                 self.rightSelectedIndexChanged.emit(self._right_selected_index)
         # set target yaw angle to current imu yaw angle if yaw control is not selected
         if self.get_left_selected_option() == "EF Yaw Angle" or self.get_right_selected_option() == "EF Yaw Angle":
-            self.robot.controlProcessor.controls["EF Yaw Angle"].offset = self.robot.teensy_controller.get_status().get('imu_yaw')
-            print(f"Set target yaw angle to {self.robot.teensy_controller.get_status().get('imu_yaw')}")
+            if self._control_processor and self._teensy:
+                self._control_processor.controls["EF Yaw Angle"].offset = self._teensy.get_status().get('imu_yaw')
+                print(f"Set target yaw angle to {self._teensy.get_status().get('imu_yaw')}")
             # Reset the temporary indices
             self._temp_left_index = 0
             self._temp_right_index = 0
@@ -303,9 +307,10 @@ class OverlayController(QObject):
         
         # If EF Yaw Angle is selected, initialize the target angle to current IMU yaw
         if left_control == "EF Yaw Angle" or right_control == "EF Yaw Angle":
-            current_yaw = self.robot.teensy_controller.get_status().get('imu_yaw', 0)
-            self.robot.controlProcessor.controls["EF Yaw Angle"].offset = current_yaw
-            print(f"Set target yaw angle to {current_yaw}")
+            if self._control_processor and self._teensy:
+                current_yaw = self._teensy.get_status().get('imu_yaw', 0)
+                self._control_processor.controls["EF Yaw Angle"].offset = current_yaw
+                print(f"Set target yaw angle to {current_yaw}")
 
     @Slot(result=tuple)
     def get_current_joystick_controls(self):

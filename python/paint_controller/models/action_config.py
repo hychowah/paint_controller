@@ -5,9 +5,9 @@ class ActionConfigPython(QObject):
     
     configChanged = Signal()  # Signal to notify when config changes
     
-    def __init__(self, robotController=None):
-        super().__init__()  # Initialize QObject
-        self.robot = robotController  # Store the robot controller reference
+    def __init__(self, winch_controller=None):
+        super().__init__()
+        self._winch_controller = winch_controller
         
         # Centralized configuration for all action types
         self._actions = {
@@ -128,14 +128,14 @@ class ActionConfigPython(QObject):
         
         # Set default values based on action type
         if action_id == "0":  # Move Winch To
-            item["input1"] = str(int(self.robot.winch_controller.get_cable_length()))  # Default distance
+            item["input1"] = str(int(self._winch_controller.get_cable_length()))  # Default distance
             item["input2"] = "350"  # Default velocity
             item["input3"] = "200"
             item["input4"] = "800"
             item["input5"] = "-1"
             item["input6"] = "-1"
         elif action_id == "1":  # Descend & Spray
-            item["input1"] = str(int(self.robot.winch_controller.get_cable_length()))  # Default target length
+            item["input1"] = str(int(self._winch_controller.get_cable_length()))  # Default target length
             item["input2"] = "550"  # Default speed
             item["input3"] = "55"  # Default start angle
             item["input4"] = "55"  # Default end angle

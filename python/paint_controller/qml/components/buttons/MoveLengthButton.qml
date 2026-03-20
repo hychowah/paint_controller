@@ -209,12 +209,10 @@ Item {
             onPressed: arrowBelow.opacity = 0.5
             onReleased: {
                 arrowBelow.opacity = 1.0
-                // Add validation before triggering the backend function
                 if (inputField.text.trim() === "" || verticalSlider.value === 0) {
                     warningDialog.open()
                 } else {
                     root.arrowBelowClicked()
-                    backend.moveWinchIncrement(-1 * parseInt(inputField.text), verticalSlider.value)
                 }
             }
         }

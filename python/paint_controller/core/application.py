@@ -758,77 +758,158 @@ def main():
     # Create Qt application
     app = QApplication(sys.argv)
     _app_instance = app
-    
-    # Create robot controller
-    controller = RobotController(config)
 
-    
+    # --- Core objects ---
+    from paint_controller.core.ros_node import PaintRosNode
+    from paint_controller.core.state_store import StateStore
+    from paint_controller.core.qt_bridge import QtBridge
+    from paint_controller.core.controller_factory import create_controllers
+
+    node = PaintRosNode()
+    settings_manager = SettingsManager(show_popup_fn=None)  # Wire show_popup after QtBridge
+    state_store = StateStore()
+    steam_deck_handler = SteamDeckHandler(deadzone=config.joystick_deadzone)
+
+    # Video & camera services
+    video_stream_handler = VideoStreamHandler(config.video_port, ros_node=node)
+    base_top_view_service = BaseTopViewService(video_stream_handler, settings_manager=settings_manager)
+
+    steam_deck_handler.start()
+
     # Start ROS thread
-    ros_thread = RosThread(controller)
+    ros_thread = RosThread(node)
     ros_thread.start()
-    
-    # Setup timer to process Python signals in Qt event loop
-    # This allows Ctrl+C to work properly with Qt
+
+    # Timer to process Python signals in Qt event loop (Ctrl+C handling)
     timer = QTimer()
-    timer.start(500)  # Check for signals every 500ms
-    timer.timeout.connect(lambda: None)  # Just process events
-    
-    # Setup QML engine
+    timer.start(500)
+    timer.timeout.connect(lambda: None)
+
+    # --- QML engine ---
     engine = QQmlApplicationEngine()
-    engine.addImageProvider("ef_live", controller.video_stream_handler.ef_image_provider)
-    engine.addImageProvider("base_front_live", controller.video_stream_handler.front_image_provider)
-    engine.addImageProvider("base_rear_live", controller.video_stream_handler.rear_image_provider)
-    engine.addImageProvider("base_top_view", controller.base_top_view_service.image_provider)
-    
-    # Add QML import path for relative imports to resolve
+    engine.addImageProvider("ef_live", video_stream_handler.ef_image_provider)
+    engine.addImageProvider("base_front_live", video_stream_handler.front_image_provider)
+    engine.addImageProvider("base_rear_live", video_stream_handler.rear_image_provider)
+    engine.addImageProvider("base_top_view", base_top_view_service.image_provider)
+
     qml_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'qml')
     engine.addImportPath(qml_dir)
-    
-    # Set context properties BEFORE loading QML to avoid "ReferenceError: X is not defined"
-    engine.rootContext().setContextProperty("backend", controller)
-    engine.rootContext().setContextProperty("baseStreamer", controller)
-    engine.rootContext().setContextProperty("overlayController", controller.overlayController)
-    engine.rootContext().setContextProperty("workFlowHandler", controller.workFlowHandler)
-    engine.rootContext().setContextProperty("workFlowRunner", controller.workflow_runner)
-    engine.rootContext().setContextProperty("warningHandler", controller.warningHandler)
-    engine.rootContext().setContextProperty("baseStreamHandler", controller.video_stream_handler)
-    engine.rootContext().setContextProperty("wheelController", controller.wheel_controller)
-    engine.rootContext().setContextProperty("winchController", controller.winch_controller)
-    engine.rootContext().setContextProperty("steamDeckHandler", controller.steam_deck_handler)
-    engine.rootContext().setContextProperty("windMonitor", controller.wind_monitor)
-    engine.rootContext().setContextProperty("teensyController", controller.teensy_controller)
-    engine.rootContext().setContextProperty("esp32ValveController", controller.esp32_valve_controller)
-    engine.rootContext().setContextProperty("lidarController", controller.lidar_controller)
-    engine.rootContext().setContextProperty("actionConfig", controller.action_config)
-    engine.rootContext().setContextProperty("heartbeatHandler", controller.heartbeat_handler)
-    engine.rootContext().setContextProperty("controlProcessor", controller.controlProcessor)
-    engine.rootContext().setContextProperty("sshHandler", controller.ssh_controller)
-    engine.rootContext().setContextProperty("videoStreamer", controller.video_stream_handler)
-    engine.rootContext().setContextProperty("systemMonitor", controller.system_monitor)
-    engine.rootContext().setContextProperty("screenRecorder", controller.screen_recorder)
-    engine.rootContext().setContextProperty("rosBagRecorder", controller.ros_bag_recorder)
-    engine.rootContext().setContextProperty("settingsManager", controller.settings_manager)
-    engine.rootContext().setContextProperty("screenManager", controller.screen_manager)
-    engine.rootContext().setContextProperty("baseTopViewController", controller.base_top_view_service)
-    controller.engine = engine
-    
+
+    # Create Qt bridge (needs engine for QML access)
+    qt_bridge = QtBridge(engine, state_store, logger=node.get_logger())
+
+    # Wire deferred show_popup to settings_manager
+    settings_manager._show_popup_fn = qt_bridge.show_popup
+
+    # --- Create all controllers via factory ---
+    bundle = create_controllers(
+        node=node,
+        settings_manager=settings_manager,
+        state_store=state_store,
+        steam_deck_handler=steam_deck_handler,
+        show_popup_fn=qt_bridge.show_popup,
+        config=config,
+    )
+
+    # Deferred wiring
+    qt_bridge.set_base_top_view_service(base_top_view_service)
+    qt_bridge.set_input_handler(bundle.input_handler)
+    bundle.input_handler.set_engine(engine)
+
+    # Give screen_manager access to logger (uses duck-typed self.node.get_logger())
+    bundle.screen_manager.node = node
+
+    # --- Steam Deck button callbacks ---
+    ih = bundle.input_handler
+    steam_deck_handler.register_button_callback('up', ih.on_up_pressed)
+    steam_deck_handler.register_button_callback('down', ih.on_down_pressed)
+    steam_deck_handler.register_button_callback('left', ih.on_left_pressed)
+    steam_deck_handler.register_button_callback('right', ih.on_right_pressed)
+    steam_deck_handler.register_button_callback('r4', ih.on_r4_pressed)
+    steam_deck_handler.register_button_callback('l4', ih.on_l4_pressed)
+    steam_deck_handler.register_button_callback('menu', ih.on_menu_pressed)
+    steam_deck_handler.register_button_callback('switch', ih.on_switch_pressed)
+    steam_deck_handler.register_button_callback('l5', ih.on_l5_pressed)
+    steam_deck_handler.register_button_callback('r5', ih.on_r5_pressed)
+    steam_deck_handler.register_button_callback('dot', qt_bridge.toggle_fullscreen)
+    steam_deck_handler.register_button_callback('a', qt_bridge.toggle_lidar_overlay)
+    steam_deck_handler.register_button_callback('l1', ih.on_l1_pressed)
+
+    # --- Signal wiring ---
+    state_store.control_mode_changed.connect(qt_bridge.update_fullscreen_video_source)
+    bundle.emergency_handler.overlay_changed.connect(qt_bridge.emergency_overlay_changed.emit)
+    bundle.emergency_handler.emergency_triggered.connect(qt_bridge.emergency_triggered.emit)
+    video_stream_handler.endEffectorFrameReady.connect(qt_bridge.frame_ready.emit)
+
+    # Wheel motor error → emergency stop + popup
+    def _handle_wheel_motor_error(has_error, error_message):
+        if has_error:
+            node.get_logger().error(f'Wheel motor error detected: {error_message}')
+            bundle.wheel_controller.emergency_stop()
+            bundle.winch_controller.command_speed_rpm(0)
+            bundle.teensy_controller.setSprayTrigger(1000)
+            qt_bridge.show_popup("MOTOR ERROR", error_message, "error", 5000)
+            qt_bridge.emergency_triggered.emit()
+
+    bundle.wheel_controller.error_state_changed.connect(_handle_wheel_motor_error)
+
+    # Timer callback: process controller inputs
+    def _timer_callback():
+        input_state = steam_deck_handler.get_current_state()
+        bundle.control_processor.process_input(input_state)
+        bundle.emergency_handler.check_emergency_button(input_state.get('buttons', {}))
+
+    qt_bridge.status_updated.connect(_timer_callback)
+
+    # --- QML context properties ---
+    ctx = engine.rootContext()
+    ctx.setContextProperty("backend", qt_bridge)
+    ctx.setContextProperty("stateStore", state_store)
+    ctx.setContextProperty("baseStreamer", qt_bridge)
+    ctx.setContextProperty("overlayController", bundle.overlay_controller)
+    ctx.setContextProperty("workFlowHandler", bundle.workflow_handler)
+    ctx.setContextProperty("workFlowRunner", bundle.workflow_runner)
+    ctx.setContextProperty("warningHandler", bundle.warning_handler)
+    ctx.setContextProperty("baseStreamHandler", video_stream_handler)
+    ctx.setContextProperty("wheelController", bundle.wheel_controller)
+    ctx.setContextProperty("winchController", bundle.winch_controller)
+    ctx.setContextProperty("steamDeckHandler", steam_deck_handler)
+    ctx.setContextProperty("windMonitor", bundle.wind_monitor)
+    ctx.setContextProperty("teensyController", bundle.teensy_controller)
+    ctx.setContextProperty("esp32ValveController", bundle.esp32_valve_controller)
+    ctx.setContextProperty("lidarController", bundle.lidar_controller)
+    ctx.setContextProperty("actionConfig", bundle.action_config)
+    ctx.setContextProperty("heartbeatHandler", bundle.heartbeat_handler)
+    ctx.setContextProperty("controlProcessor", bundle.control_processor)
+    ctx.setContextProperty("sshHandler", bundle.ssh_controller)
+    ctx.setContextProperty("videoStreamer", video_stream_handler)
+    ctx.setContextProperty("systemMonitor", bundle.system_monitor)
+    ctx.setContextProperty("screenRecorder", bundle.screen_recorder)
+    ctx.setContextProperty("rosBagRecorder", bundle.ros_bag_recorder)
+    ctx.setContextProperty("settingsManager", settings_manager)
+    ctx.setContextProperty("screenManager", bundle.screen_manager)
+    ctx.setContextProperty("baseTopViewController", base_top_view_service)
+
     # Load QML interface AFTER setting context properties
     qml_path = os.path.join(qml_dir, 'core', 'MainWindow.qml')
     engine.load(QUrl.fromLocalFile(qml_path))
-    
-    # Start status update timer
+
+    # --- Timers ---
     status_timer = QTimer()
-    status_timer.timeout.connect(controller.status_updated.emit)
+    status_timer.timeout.connect(qt_bridge.status_updated.emit)
     status_timer.start(int(1000 / config.update_rate))
 
     heartbeat_timer = QTimer()
-    heartbeat_timer.timeout.connect(controller._publish_heartbeat)
-    heartbeat_timer.start(500)  # 500 milliseconds = 0.5 seconds
-    
-    # Start system monitoring (every 1 second)
-    controller.system_monitor.start_monitoring(interval_ms=1000)
-    
-    # Run application
+    heartbeat_timer.timeout.connect(node.publish_heartbeat)
+    heartbeat_timer.start(500)
+
+    # Start system monitoring
+    bundle.system_monitor.start_monitoring(interval_ms=1000)
+
+    # Start all video streams
+    video_stream_handler.start_all_streams()
+
+    # --- Run ---
     try:
         sys.exit(app.exec())
     except Exception as e:
@@ -837,66 +918,57 @@ def main():
         traceback.print_exc()
     finally:
         print("Starting emergency shutdown sequence...")
-        
-        # Step 1: Stop timers BEFORE cleaning up anything else (must happen from main thread)
+
+        # Step 1: Stop timers
         try:
             status_timer.stop()
             heartbeat_timer.stop()
             timer.stop()
         except Exception as e:
             print(f"Error stopping timers: {e}")
-        
-        # Step 2: Request ROS thread shutdown and wait for it (short timeout)
+
+        # Step 2: Request ROS thread shutdown and wait
         try:
             ros_thread.request_shutdown()
-            # Wait max 2 seconds for ROS thread to finish (reduced from 3)
             if not ros_thread.wait(2000):
                 print("WARNING: ROS thread did not exit cleanly, forcing termination...")
                 ros_thread.terminate()
                 ros_thread.wait(500)
         except Exception as e:
             print(f"Error shutting down ROS thread: {e}")
-        
-        # Step 3: Call cleanup on controller (which calls cleanup on all sub-components)
-        # Use a timeout to prevent hanging
+
+        # Step 3: Cleanup controllers
         try:
             import threading
             cleanup_done = threading.Event()
-            
+
             def do_cleanup():
                 try:
-                    controller.cleanup()
+                    bundle.cleanup(node.get_logger())
+                    base_top_view_service.cleanup()
+                    video_stream_handler.cleanup()
+                    steam_deck_handler.cleanup()
+                    node.cleanup()
                     cleanup_done.set()
                 except Exception as e:
-                    print(f"Error during controller cleanup: {e}")
+                    print(f"Error during cleanup: {e}")
                     cleanup_done.set()
-            
+
             cleanup_thread = threading.Thread(target=do_cleanup, daemon=True)
             cleanup_thread.start()
-            
-            # Wait max 3 seconds for cleanup (reduced from infinite)
+
             if not cleanup_done.wait(timeout=3.0):
-                print("WARNING: Controller cleanup timed out, continuing shutdown...")
+                print("WARNING: Cleanup timed out, continuing shutdown...")
         except Exception as e:
-            print(f"Error during controller cleanup: {e}")
-        
-        # Step 4: Clean up heartbeat handler (quick operation)
-        try:
-            controller.heartbeat_handler.cleanup()
-        except Exception as e:
-            print(f"Error cleaning up heartbeat handler: {e}")
-        
-        # Step 5: Shutdown ROS context
+            print(f"Error during cleanup: {e}")
+
+        # Step 4: Shutdown ROS context
         try:
             rclpy.shutdown()
         except Exception as e:
             print(f"Error during ROS shutdown: {e}")
-        
+
         print("Emergency shutdown sequence complete")
-        
-        # Step 6: Force exit if we reach here
-        # If app.exec() returned normally, sys.exit() should have been called
-        # But if something prevented that, we force exit here
         print("Forcing application exit...")
         os._exit(0)
 

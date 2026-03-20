@@ -19,7 +19,7 @@ Rectangle {
     )
     
     // Add a control mode property (bound to the UI data model)
-    property string controlMode: backend.control_mode
+    property string controlMode: stateStore.control_mode
     
     // Add a subtle gradient background
     gradient: Gradient {

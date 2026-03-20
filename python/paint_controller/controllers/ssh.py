@@ -95,9 +95,9 @@ class UISSHController(QObject):
     devicePingTime = Signal(str, float)  # device_name, ping_time_ms
     deviceAvailabilityChanged = Signal()
 
-    def __init__(self, robot_controller, parent=None):
+    def __init__(self, show_popup_fn=None, parent=None):
         super().__init__(parent)
-        self.robot_controller = robot_controller
+        self._show_popup_fn = show_popup_fn
         self.thread_pool = QThreadPool.globalInstance()
         self._deviceAvailability = {}  # Backing store for device_availability property: {device_name: bool}
         self._devicePingTimes = {}  # Backing store for ping times: {device_name: float}
@@ -248,7 +248,7 @@ class UISSHController(QObject):
                 self.configUpdated.emit(device_name, "Configuration updated successfully")
                 
                 # Show success popup
-                self.robot_controller.show_popup(
+                self._show_popup_fn(
                     title="Configuration Updated",
                     message=f"{device_name} settings have been saved successfully",
                     popup_type="success"
@@ -269,7 +269,7 @@ class UISSHController(QObject):
                 self.availability_timers[device_name] = timer
                 return True
             else:
-                self.robot_controller.show_popup(
+                self._show_popup_fn(
                     title="Configuration Error",
                     message=f"Failed to save {device_name} settings",
                     popup_type="error"
@@ -278,7 +278,7 @@ class UISSHController(QObject):
                 
         except Exception as e:
             print(f"[UISSHController] Error updating config for {device_name}: {e}")
-            self.robot_controller.show_popup(
+            self._show_popup_fn(
                 title="Configuration Error", 
                 message=f"Error updating {device_name}: {str(e)}",
                 popup_type="error"
@@ -290,7 +290,7 @@ class UISSHController(QObject):
         remote_hosts = self._load_ssh_config(self.ssh_path)
         command_map = self._load_json_file(self.bash_path)
 
-        self.robot_controller.show_popup(
+        self._show_popup_fn(
             title="Device Command",
             message=f"Handling {action.upper()} for {service_name} on {device_name}",
             popup_type="info"
@@ -312,7 +312,7 @@ class UISSHController(QObject):
             return
 
         def callback(stdout, stderr):
-            self.robot_controller.show_popup(
+            self._show_popup_fn(
                 title="Device Command",
                 message=f"Command executed on {device_name}:\n{command}",
                 popup_type="info"

@@ -10,11 +10,16 @@ class EmergencyButtonHandler(QObject):
     overlay_changed = Signal(bool, float, float)  # visible, current_duration, target_duration
     emergency_triggered = Signal()
     
-    def __init__(self, steam_deck_handler, robot_controller):
+    def __init__(self, steam_deck_handler, winch, teensy, wheel,
+                 show_popup_fn=None, logger=None):
         super().__init__()
         
         self.steam_deck_handler = steam_deck_handler
-        self.robot_controller = robot_controller
+        self._winch = winch
+        self._teensy = teensy
+        self._wheel = wheel
+        self._show_popup_fn = show_popup_fn
+        self._logger = logger
         
         # Emergency state tracking
         self._state = {
@@ -80,40 +85,44 @@ class EmergencyButtonHandler(QObject):
             self._state['is_holding'] = False
             self.overlay_changed.emit(False, 0, 0)
             
-            self.robot_controller.winch_controller.command_speed_rpm(0)
-            self.robot_controller.teensy_controller.setSprayTrigger(1000)
+            self._winch.command_speed_rpm(0)
+            self._teensy.setSprayTrigger(1000)
             
             # Show emergency popup
-            self.robot_controller.show_popup("EMERGENCY", "Emergency stop activated!", "error", 1000)
+            if self._show_popup_fn:
+                self._show_popup_fn("EMERGENCY", "Emergency stop activated!", "error", 1000)
             
             # Log the event
-            self.robot_controller.get_logger().error(f'Emergency activated by user at {time.time()}')
+            if self._logger:
+                self._logger.error(f'Emergency activated by user at {time.time()}')
             
             # Emit signal for other components
             self.emergency_triggered.emit()
         except Exception as e:
-            self.robot_controller.get_logger().error(f'Error during emergency trigger: {e}')
+            if self._logger:
+                self._logger.error(f'Error during emergency trigger: {e}')
     
     def _stop_all_motors(self):
         """Stop all motors during emergency"""
         try:
             # Stop wheels
-            if hasattr(self.robot_controller.wheel_controller, 'emergency_stop'):
-                self.robot_controller.wheel_controller.emergency_stop()
-            elif hasattr(self.robot_controller.wheel_controller, 'set_wheel_speeds'):
-                self.robot_controller.wheel_controller.set_wheel_speeds(0, 0)
+            if hasattr(self._wheel, 'emergency_stop'):
+                self._wheel.emergency_stop()
+            elif hasattr(self._wheel, 'set_wheel_speeds'):
+                self._wheel.set_wheel_speeds(0, 0)
             
             # Stop winch
-            if hasattr(self.robot_controller.winch_controller, 'emergency_stop'):
-                self.robot_controller.winch_controller.emergency_stop()
-            elif hasattr(self.robot_controller.winch_controller, 'set_winch_speed'):
-                self.robot_controller.winch_controller.set_winch_speed(0)
+            if hasattr(self._winch, 'emergency_stop'):
+                self._winch.emergency_stop()
+            elif hasattr(self._winch, 'set_winch_speed'):
+                self._winch.set_winch_speed(0)
             
             # Stop any other motors here if needed
             # self._stop_additional_motors()
             
         except Exception as e:
-            self.robot_controller.get_logger().error(f'Error during emergency stop: {e}')
+            if self._logger:
+                self._logger.error(f'Error during emergency stop: {e}')
     
     def _cancel_emergency(self):
         """Cancel the emergency sequence"""

@@ -8,7 +8,7 @@ Rectangle {
     radius: 8
 
     // Add a control mode property (bound to the controller)
-    property string controlMode: backend.control_mode
+    property string controlMode: stateStore.control_mode
 
     // Main content container
     ColumnLayout {

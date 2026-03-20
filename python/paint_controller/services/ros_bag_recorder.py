@@ -40,10 +40,10 @@ class RosBagRecorder(QObject):
     DEVICE_NAME = "END_EFFECTOR"
     REMOTE_OUTPUT_DIR = "~/Documents/OperationData"
     
-    def __init__(self, robot_controller, parent: Optional[QObject] = None):
+    def __init__(self, show_popup_fn=None, parent: Optional[QObject] = None):
         super().__init__(parent)
         
-        self._robot_controller = robot_controller
+        self._show_popup_fn = show_popup_fn
         
         # Recording state
         self._is_bag_recording = False
@@ -147,8 +147,8 @@ class RosBagRecorder(QObject):
                 self.is_bag_recording_changed.emit()
                 
                 # Show error popup
-                if self._robot_controller:
-                    self._robot_controller.show_popup(
+                if self._show_popup_fn:
+                    self._show_popup_fn(
                         "ROS Bag Recording",
                         f"Failed to start recording: {stderr[:100]}",
                         "error",
@@ -180,8 +180,8 @@ class RosBagRecorder(QObject):
             self._duration_timer.start()
             
             # Show success popup
-            if self._robot_controller:
-                self._robot_controller.show_popup(
+            if self._show_popup_fn:
+                self._show_popup_fn(
                     "ROS Bag Recording",
                     f"Recording started: {self._current_bag_folder}",
                     "info",
@@ -270,8 +270,8 @@ class RosBagRecorder(QObject):
                 self._bag_status_message = f"Compress failed: {stderr[:50]}"
                 self.bag_status_message_changed.emit()
                 
-                if self._robot_controller:
-                    self._robot_controller.show_popup(
+                if self._show_popup_fn:
+                    self._show_popup_fn(
                         "ROS Bag Recording",
                         f"Compression failed: {stderr[:100]}",
                         "error",
@@ -282,8 +282,8 @@ class RosBagRecorder(QObject):
                 self._bag_status_message = ""
                 self.bag_status_message_changed.emit()
                 
-                if self._robot_controller:
-                    self._robot_controller.show_popup(
+                if self._show_popup_fn:
+                    self._show_popup_fn(
                         "ROS Bag Recording",
                         f"Saved: {folder_name}.tar.gz",
                         "info",
@@ -330,8 +330,8 @@ class RosBagRecorder(QObject):
         """Toggle ROS bag recording on/off."""
         if self._is_compressing:
             print("[RosBagRecorder] Cannot toggle - compression in progress")
-            if self._robot_controller:
-                self._robot_controller.show_popup(
+            if self._show_popup_fn:
+                self._show_popup_fn(
                     "ROS Bag Recording",
                     "Please wait for compression to complete",
                     "warning",
@@ -361,8 +361,8 @@ class RosBagRecorder(QObject):
             print("[RosBagRecorder] SSH not configured")
             self._bag_status_message = "SSH not configured"
             self.bag_status_message_changed.emit()
-            if self._robot_controller:
-                self._robot_controller.show_popup(
+            if self._show_popup_fn:
+                self._show_popup_fn(
                     "ROS Bag Recording",
                     "SSH connection not configured for End Effector",
                     "error",

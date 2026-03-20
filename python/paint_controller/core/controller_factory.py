@@ -1,0 +1,203 @@
+"""Factory for creating all controllers with explicit dependency injection."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass
+class ControllerBundle:
+    """All controllers and handlers created by the factory."""
+
+    # Independent
+    warning_handler: object
+    system_monitor: object
+
+    # ROS2 controllers
+    wheel_controller: object
+    esp32_valve_controller: object
+    lidar_controller: object
+    wind_monitor: object
+    winch_controller: object
+    teensy_controller: object
+    heartbeat_handler: object
+
+    # Cross-controller handlers
+    overlay_controller: object
+    control_processor: object
+    action_config: object
+    input_handler: object
+    emergency_handler: object
+
+    # Services
+    ssh_controller: object
+    screen_manager: object
+    screen_recorder: object
+    ros_bag_recorder: object
+    workflow_runner: object
+    workflow_handler: object
+
+    def cleanup(self, logger=None):
+        """Cleanup all controllers in reverse creation order."""
+        cleanup_order = [
+            'workflow_handler', 'workflow_runner',
+            'ros_bag_recorder', 'screen_recorder', 'screen_manager',
+            'ssh_controller',
+            'emergency_handler', 'input_handler',
+            'control_processor', 'overlay_controller',
+            'heartbeat_handler',
+            'teensy_controller', 'winch_controller',
+            'wind_monitor', 'lidar_controller',
+            'esp32_valve_controller', 'wheel_controller',
+            'system_monitor',
+        ]
+        for name in cleanup_order:
+            ctrl = getattr(self, name, None)
+            if ctrl and hasattr(ctrl, 'cleanup'):
+                try:
+                    ctrl.cleanup()
+                except Exception as e:
+                    if logger:
+                        logger.error(f'Error cleaning up {name}: {e}')
+
+
+def create_controllers(
+    node,
+    settings_manager,
+    state_store,
+    steam_deck_handler,
+    show_popup_fn,
+    config,
+):
+    """
+    Create all controllers with explicit dependency injection.
+
+    Args:
+        node: PaintRosNode instance (ROS2 node for pub/sub)
+        settings_manager: SettingsManager instance
+        state_store: StateStore instance (shared mutable state)
+        steam_deck_handler: SteamDeckHandler instance
+        show_popup_fn: Callable for showing UI popups (QtBridge.show_popup)
+        config: RobotConfig with hardware configuration
+
+    Returns:
+        ControllerBundle with all controllers wired together
+    """
+    from paint_controller.controllers.esp32_valve import ESP32ValveController
+    from paint_controller.controllers.lidar import LidarController
+    from paint_controller.controllers.ssh import UISSHController
+    from paint_controller.controllers.system_monitor import SystemMonitor
+    from paint_controller.controllers.teensy import TeensyController
+    from paint_controller.controllers.wheel import WheelController
+    from paint_controller.controllers.winch import WinchController
+    from paint_controller.controllers.wind_monitor import WindMonitor
+    from paint_controller.handlers.control_processor import ControlProcessor
+    from paint_controller.handlers.emergency import EmergencyButtonHandler
+    from paint_controller.handlers.heartbeat import UIHeartbeatHandler
+    from paint_controller.handlers.input import UIInputHandler
+    from paint_controller.handlers.warnings import WarningHandler
+    from paint_controller.models.action_config import ActionConfigPython
+    from paint_controller.services.ros_bag_recorder import RosBagRecorder
+    from paint_controller.services.screen_manager import ScreenManager
+    from paint_controller.services.screen_recorder import ScreenRecorder
+    from paint_controller.services.workflow.workflow_runner import WorkFlowRunner
+    from paint_controller.services.workflow_legacy import WorkFlowHandler
+    from paint_controller.ui.overlay import OverlayController
+
+    logger = node.get_logger()
+
+    # === Layer 1: Independent controllers ===
+    warning_handler = WarningHandler()
+    system_monitor = SystemMonitor()
+
+    # === Layer 2: ROS2-only controllers (need node for pub/sub) ===
+    wheel = WheelController(node)
+    esp32_valve = ESP32ValveController(node)
+    lidar = LidarController(node)
+    wind_monitor = WindMonitor(node)
+    heartbeat = UIHeartbeatHandler(node)
+
+    # === Layer 3: ROS2 + settings controllers ===
+    winch = WinchController(node, settings_manager=settings_manager)
+    teensy = TeensyController(node, settings_manager=settings_manager, winch_controller=winch, show_popup_fn=show_popup_fn)
+
+    # === Layer 4: Cross-controller handlers ===
+    # OverlayController and ControlProcessor have a circular dependency:
+    #   Overlay reads control_processor for selected option dispatch
+    #   ControlProcessor reads overlay for get_left/right_selected_option
+    # Resolve by creating overlay first, wiring control_processor after.
+    overlay = OverlayController(teensy=teensy)
+
+    control_processor = ControlProcessor(
+        wheel=wheel,
+        winch=winch,
+        teensy=teensy,
+        esp32_valve=esp32_valve,
+        overlay=overlay,
+        heartbeat_handler=heartbeat,
+        settings_manager=settings_manager,
+        state_store=state_store,
+    )
+    overlay.set_control_processor(control_processor)
+
+    action_config = ActionConfigPython(winch_controller=winch)
+
+    workflow_handler = WorkFlowHandler(
+        node,
+        heartbeat_handler=heartbeat,
+        teensy=teensy,
+        winch=winch,
+        show_popup_fn=show_popup_fn,
+        action_config=action_config,
+    )
+    workflow_runner = WorkFlowRunner(node)
+
+    input_handler = UIInputHandler(
+        teensy=teensy,
+        overlay=overlay,
+        control_processor=control_processor,
+        workflow_handler=workflow_handler,
+        settings_manager=settings_manager,
+        state_store=state_store,
+        show_popup_fn=show_popup_fn,
+    )
+
+    emergency = EmergencyButtonHandler(
+        steam_deck_handler=steam_deck_handler,
+        winch=winch,
+        teensy=teensy,
+        wheel=wheel,
+        show_popup_fn=show_popup_fn,
+        logger=logger,
+    )
+
+    # === Layer 5: Services ===
+    ssh = UISSHController(show_popup_fn=show_popup_fn)
+    screen_mgr = ScreenManager()
+    screen_rec = ScreenRecorder(screen_manager=screen_mgr)
+    ros_bag = RosBagRecorder(show_popup_fn=show_popup_fn)
+
+    logger.info('All controllers created with explicit DI')
+
+    return ControllerBundle(
+        warning_handler=warning_handler,
+        system_monitor=system_monitor,
+        wheel_controller=wheel,
+        esp32_valve_controller=esp32_valve,
+        lidar_controller=lidar,
+        wind_monitor=wind_monitor,
+        winch_controller=winch,
+        teensy_controller=teensy,
+        heartbeat_handler=heartbeat,
+        overlay_controller=overlay,
+        control_processor=control_processor,
+        action_config=action_config,
+        input_handler=input_handler,
+        emergency_handler=emergency,
+        ssh_controller=ssh,
+        screen_manager=screen_mgr,
+        screen_recorder=screen_rec,
+        ros_bag_recorder=ros_bag,
+        workflow_runner=workflow_runner,
+        workflow_handler=workflow_handler,
+    )

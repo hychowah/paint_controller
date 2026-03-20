@@ -257,9 +257,9 @@ class SettingsManager(QObject):
     operation_result = Signal(bool, str)
     setting_saved = Signal(str, object, str)
     
-    def __init__(self, parent=None, robot_controller=None):
+    def __init__(self, parent=None, show_popup_fn=None):
         super().__init__(parent)
-        self._robot_controller = robot_controller
+        self._show_popup_fn = show_popup_fn
         self._values: Dict[str, Any] = {}
         self._values_lock = threading.Lock()
 
@@ -432,10 +432,10 @@ class SettingsManager(QObject):
             description = self._settings_schema[key].get("description", key)
             self.setting_saved.emit(key, value, description)
             
-            # Show popup via robot_controller
-            if self._robot_controller and hasattr(self._robot_controller, 'show_popup'):
+            # Show popup
+            if self._show_popup_fn:
                 popup_message = f"{description}: {value}"
-                self._robot_controller.show_popup("Setting Saved", popup_message, "info", 2000)
+                self._show_popup_fn("Setting Saved", popup_message, "info", 2000)
         
         return success
     

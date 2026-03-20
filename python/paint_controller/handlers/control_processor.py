@@ -24,9 +24,18 @@ class ControlProcessor(QObject):
     left_control_value_changed = Signal(str)
     right_control_mode_changed = Signal(str)
     right_control_value_changed = Signal(str)
-    def __init__(self, robot_controller):
+    def __init__(self, wheel, winch, teensy, esp32_valve, overlay,
+                 heartbeat_handler, settings_manager, state_store):
         super().__init__()
-        self.robot = robot_controller
+        self._wheel = wheel
+        self._winch = winch
+        self._teensy = teensy
+        self._esp32_valve = esp32_valve
+        self._overlay = overlay
+        self._heartbeat_handler = heartbeat_handler
+        self._settings_manager = settings_manager
+        self._state_store = state_store
+
         self.last_command_times = {}
         self.last_message_time = 0
         
@@ -53,16 +62,16 @@ class ControlProcessor(QObject):
             'right_value': 0.0
         }
         
-        self._setup_settings(robot_controller)
+        self._setup_settings(settings_manager)
         self._setup_constants()
         self._setup_controls()
 
-    def _setup_settings(self, robot_controller):
+    def _setup_settings(self, settings_manager):
         """Load settings from settings_manager and subscribe to changes."""
         self.MESSAGE_UPDATE_INTERVAL = 0.2  # seconds, 5Hz display update rate
 
-        if hasattr(robot_controller, 'settings_manager'):
-            sm = robot_controller.settings_manager
+        if settings_manager is not None:
+            sm = settings_manager
             self.TRACK_MAX_SPEED = sm.get('track_max_speed') or 500.0
             self.TRACK_MIN_SPEED = sm.get('track_min_speed') or 50.0
             self._valve_turn_max = sm.get('valve_turn_max') or 20.0
@@ -238,7 +247,7 @@ class ControlProcessor(QObject):
     def _update_display(self):
         """Update the display with current control values at 5Hz"""
         if self._can_send_message():
-            if self.robot.overlayController.get_left_selected_option() == "None":
+            if self._overlay.get_left_selected_option() == "None":
                 left_part = "None"
                 left_mode = "None"
                 left_value = ""
@@ -264,7 +273,7 @@ class ControlProcessor(QObject):
                 else:
                     left_part = f"{left_mode} {left_value:.2f}" if left_mode else "None"
 
-            if self.robot.overlayController.get_right_selected_option() == "None":
+            if self._overlay.get_right_selected_option() == "None":
                 right_part = "None"
                 right_mode = "None"
                 right_value = ""
@@ -291,7 +300,7 @@ class ControlProcessor(QObject):
                     right_part = f"{right_mode} {right_value:.2f}" if right_mode else "None"
                     
             message = f"LEFT: {left_part} | RIGHT: {right_part}"
-            self.robot.display_message = message
+            self._state_store.display_message = message
             
             # Update control processor properties for overlay display
             self.left_control_mode = left_mode if left_mode else "None"
@@ -402,11 +411,11 @@ class ControlProcessor(QObject):
             if is_left_track:
                 self.current_values['left_mode'] = mode
                 self.current_values['left_value'] = f"L:{track_speed:.1f}"
-                self.robot.wheel_controller.command_left_wheel_speed(track_speed)
+                self._wheel.command_left_wheel_speed(track_speed)
             else:
                 self.current_values['right_mode'] = mode
                 self.current_values['right_value'] = f"R:{track_speed:.1f}"
-                self.robot.wheel_controller.command_right_wheel_speed(track_speed)
+                self._wheel.command_right_wheel_speed(track_speed)
         except Exception as e:
             print(f"Error commanding track control ({mode}): {str(e)}")
 
@@ -416,8 +425,8 @@ class ControlProcessor(QObject):
         command_angle = input_state[f'{stick}_stick']['x'] * config.scale
         msg = Float32(data=command_angle)
         neg_msg = Float32(data=-command_angle)
-        self.robot.teensy_controller.prop_left_joint_pub.publish(msg)
-        self.robot.teensy_controller.prop_right_joint_pub.publish(neg_msg)
+        self._teensy.prop_left_joint_pub.publish(msg)
+        self._teensy.prop_right_joint_pub.publish(neg_msg)
         
         # Update current values
         if stick == 'left':
@@ -450,14 +459,14 @@ class ControlProcessor(QObject):
         # # hardcode x to 0 for now
         # Fx = 0.0
         
-        self.robot.teensy_controller.set_ef_force(Fx, Fy)
+        self._teensy.set_ef_force(Fx, Fy)
 
     def _process_yaw_control(self, input_state: Dict, mode: str, stick: str):
         """Handle EF Yaw Angle specific control"""
         config = self.controls[mode]
         command_angle = - float(input_state[f'{stick}_stick']['x']) * config.scale + config.offset
         config.offset = command_angle
-        self.robot.teensy_controller.setYawAngle(command_angle)
+        self._teensy.setYawAngle(command_angle)
 
         # Update current values
         if stick == 'left':
@@ -499,7 +508,7 @@ class ControlProcessor(QObject):
         # Only send command if we should send
         if should_send:
             try:
-                self.robot.esp32_valve_controller.setValveTurn(valve_turn_value)
+                self._esp32_valve.setValveTurn(valve_turn_value)
                 # print(f"Commanding valve turn: {valve_turn_value}")
             except Exception as e:
                 print(f"Error commanding valve turn: {str(e)}")
@@ -528,7 +537,7 @@ class ControlProcessor(QObject):
         # Only send command if we should send
         if should_send:
             try:
-                self.robot.teensy_controller.setArmRailSpeed(arm_rail_speed_value)
+                self._teensy.setArmRailSpeed(arm_rail_speed_value)
                 # print(f"Commanding arm rail speed: {arm_rail_speed_value}")
             except Exception as e:
                 print(f"Error commanding arm rail speed: {str(e)}")
@@ -567,11 +576,11 @@ class ControlProcessor(QObject):
         # Only send command if we should send, conditions are met, and joystick has been activated
         if should_send and self.winch_speed_has_been_active:
             try:
-                if not self.robot.winch_controller.get_available():
+                if not self._winch.get_available():
                     print("Winch not available")
                     return
                 
-                if self.robot.winch_controller.get_motor_brake():
+                if self._winch.get_motor_brake():
                     print("Winch motor brake is on")
                     return
                 
@@ -579,7 +588,7 @@ class ControlProcessor(QObject):
                     print("Winch control locked: Base or EF is in ONTASK state")
                     return
                 
-                self.robot.winch_controller.command_speed_mmps(value)
+                self._winch.command_speed_mmps(value)
                 # print(f"Commanding winch speed: {value} mm/s")
             except Exception as e:
                 print(f"Error commanding winch speed: {str(e)}")
@@ -649,11 +658,11 @@ class ControlProcessor(QObject):
         if value >= config.min_value:
             # Map modes to their publishers
             publishers = {
-                "EF arm": self.robot.teensy_controller.ef_move_arm_rail_speed_pub,
-                "EF spray trigger": self.robot.teensy_controller.ef_spray_trigger_pub,
-                "EF top rail": self.robot.teensy_controller.ef_move_top_rail_speed_pub,
-                "EF prop pwm": [self.robot.teensy_controller.prop_left_pwm_pub, self.robot.teensy_controller.prop_right_pwm_pub],
-                "EF spray pitch": self.robot.teensy_controller.ef_spray_pitch_speed_pub,
+                "EF arm": self._teensy.ef_move_arm_rail_speed_pub,
+                "EF spray trigger": self._teensy.ef_spray_trigger_pub,
+                "EF top rail": self._teensy.ef_move_top_rail_speed_pub,
+                "EF prop pwm": [self._teensy.prop_left_pwm_pub, self._teensy.prop_right_pwm_pub],
+                "EF spray pitch": self._teensy.ef_spray_pitch_speed_pub,
             }
             
             if publisher := publishers.get(mode):
@@ -679,12 +688,12 @@ class ControlProcessor(QObject):
         """Process all control inputs with rate limiting"""
         try:
             # Process left joystick
-            left_mode = self.robot.overlayController.get_left_selected_option()
+            left_mode = self._overlay.get_left_selected_option()
             if left_mode in self.controls and self._can_send_command(left_mode):
                 self._process_control_with_dispatch(input_state, left_mode, 'left')
 
             # Process right joystick
-            right_mode = self.robot.overlayController.get_right_selected_option()
+            right_mode = self._overlay.get_right_selected_option()
             if right_mode in self.controls and self._can_send_command(right_mode):
                 self._process_control_with_dispatch(input_state, right_mode, 'right')
             
@@ -698,7 +707,7 @@ class ControlProcessor(QObject):
 
             if left_mode != "EF Yaw Angle" and right_mode != "EF Yaw Angle":
                 # Get IMU yaw from TeensyController instead of UIDataModel
-                teensy_imu_yaw = self.robot.teensy_controller.get_status_value('imu_yaw') or 0.0
+                teensy_imu_yaw = self._teensy.get_status_value('imu_yaw') or 0.0
                 self.controls["EF Yaw Angle"].offset = float(teensy_imu_yaw) * self.EF_YAW_IMU_SCALE
                 # print("Resetting EF Yaw Angle offset to:", self.controls["EF Yaw Angle"].offset)
 
@@ -707,7 +716,7 @@ class ControlProcessor(QObject):
 
         except Exception as e:
             print(f"Error processing control input: {str(e)}")
-            self.robot.display_message = f"Error processing control input: {str(e)}"
+            self._state_store.display_message = f"Error processing control input: {str(e)}"
 
 
     def set_winch_speed_limit(self, limit):
@@ -726,8 +735,8 @@ class ControlProcessor(QObject):
             bool: True if winch control should be locked, False otherwise
         """
         # Get the current heartbeat status for base and EF
-        base_status = self.robot.heartbeat_handler.get_base_status()
-        ef_status = self.robot.heartbeat_handler.get_ef_status()
+        base_status = self._heartbeat_handler.get_base_status()
+        ef_status = self._heartbeat_handler.get_ef_status()
         
         # Check if either component is in ONTASK status (0x01)
         if base_status == HeartbeatStatus.ONTASK.value or ef_status == HeartbeatStatus.ONTASK.value:
@@ -811,7 +820,7 @@ class ControlProcessor(QObject):
             right_travel = self._right_wheel_travel_mm
             
             # Send position command with configured RPM
-            success = self.robot.wheel_controller.command_position(
+            success = self._wheel.command_position(
                 left_mm=int(left_travel),
                 right_mm=int(right_travel),
                 rpm_limit=self._wheel_travel_rpm,
