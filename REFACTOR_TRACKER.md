@@ -13,6 +13,7 @@
 | 1 — Quick Wins | 8 | 8 | **Complete** |
 | 2 — Medium Effort | 8 | 8 | **Complete** |
 | 3 — Major Refactor | 6 | 3 | **Partial** (3.1-3.3 done, 3.4-3.6 deferred) |
+| 4A — Safety Fixes | 4 | 4 | **Complete** |
 
 ---
 
@@ -304,6 +305,57 @@ Architectural changes. Must be done on a feature branch with thorough testing.
 
 ---
 
+## Phase 4A — Safety Fixes (P0 Critical)
+
+Post-Phase 3 review identified thread safety, null-check, and dead code issues.
+
+### 4A.1 Add thread locks to StateStore ✅
+
+- [x] Added `threading.Lock` (`_lock`) to all 8 property getters and setters
+- [x] Signals emitted **outside** the lock to prevent deadlocks (KNOWLEDGE.md pattern)
+- [x] For compound properties (left/right control info), both mode + value captured inside lock before emitting
+
+**Files affected**: `core/state_store.py`  
+**Risk**: Low — additive change, same pattern as `SettingsManager._values_lock`
+
+---
+
+### 4A.2 Fix emergency.py null-checks + dead code ✅
+
+- [x] Verified existing null-checks on `_show_popup_fn` and `_logger` in `_trigger_emergency()` are correct
+- [x] Removed dead `_stop_all_motors()` method — was never called from any code path
+- [x] Emergency stop correctly stops winch + spray trigger; wheel stop not needed (tracks are gravity-locked)
+
+**Files affected**: `handlers/emergency.py`  
+**Risk**: Low — dead code removal only
+
+---
+
+### 4A.3 Add null-checks to ssh.py `_show_popup_fn` ✅
+
+- [x] Added `if self._show_popup_fn:` guards on 5 unprotected call sites:
+  - `update_device_config()` success popup
+  - `update_device_config()` failure popup
+  - `update_device_config()` exception popup
+  - `handle_device_command()` initial popup
+  - `handle_device_command()` callback popup
+
+**Files affected**: `controllers/ssh.py`  
+**Risk**: Low — prevents crash when `show_popup_fn=None`
+
+---
+
+### 4A.4 Protect `_last_input_time` in steam_deck.py ✅
+
+- [x] Added `threading.Lock` (`_last_input_time_lock`) — separate from existing `QMutex` to avoid mixing lock types
+- [x] Protected 4 access points: init, start(), `_process_input()` (writer), `_check_availability()` (reader)
+- [x] Added `import threading` to module
+
+**Files affected**: `handlers/steam_deck.py`  
+**Risk**: Low — narrow lock scope (single float read/write)
+
+---
+
 ## Code Smells Reference (Quick Lookup)
 
 | ID | File | Line(s) | Issue | Phase |
@@ -326,6 +378,10 @@ Architectural changes. Must be done on a feature branch with thorough testing.
 | S16 | `services/workflow/workflow_runner.py` | 387,391 | ~~Wrong method names~~ VERIFIED CORRECT — needs try/except | 1.3 |
 | S17 | Multiple files | — | Magic strings (no enums) | 1.1 |
 | S18 | Multiple files | — | ~~No thread locks on shared state~~ Fixed (2.3) | 2.3 |
+| S19 | `core/state_store.py` | all | No thread locks on StateStore properties | 4A.1 |
+| S20 | `handlers/emergency.py` | 95-119 | Dead `_stop_all_motors()` never called | 4A.2 |
+| S21 | `controllers/ssh.py` | 251,272,281,293,315 | `_show_popup_fn` called without null-check | 4A.3 |
+| S22 | `handlers/steam_deck.py` | 189,251,429 | `_last_input_time` cross-thread without lock | 4A.4 |
 
 ---
 
@@ -338,6 +394,10 @@ Architectural changes. Must be done on a feature branch with thorough testing.
 | B03 | ~~MEDIUM~~ | `core/application.py:73,901` | `os._exit()` is intentional — documented | 1.8 | [x] |
 | B04 | **MEDIUM** | `esp32_valve.py` | Socket shared across threads without lock | 2.3 | [x] |
 | B05 | **LOW** | `core/settings.py` | `ui_section_states` has no signal/property | 2.1 | [x] |
+| B06 | **HIGH** | `core/state_store.py` | No thread lock — concurrent ROS/Qt access | 4A.1 | [x] |
+| B07 | **MEDIUM** | `handlers/emergency.py` | Dead `_stop_all_motors()` + missing null-checks | 4A.2 | [x] |
+| B08 | **MEDIUM** | `controllers/ssh.py` | `_show_popup_fn` crashes if None | 4A.3 | [x] |
+| B09 | **MEDIUM** | `handlers/steam_deck.py` | `_last_input_time` race condition | 4A.4 | [x] |
 
 ---
 
@@ -390,3 +450,16 @@ Track what was done in each prompt/session.
 - Bugs fixed: B04 (socket thread safety), B05 (schema completeness)
 - Critical bug found & fixed: Teensy user-controlled fields (relay_enabled, etc.) overwritten on every ROS message
 - Notes: Phase 2 complete. 28 tests all passing.
+
+### Session 4 — 2026-03-23 (Phase 4A — Safety Fixes)
+
+- Phase: 4A — Safety Fixes (P0 Critical)
+- Items completed: 4A.1 (StateStore locks), 4A.2 (emergency.py cleanup), 4A.3 (ssh.py null-checks), 4A.4 (steam_deck.py lock)
+- Files modified:
+  - `core/state_store.py` — Added `threading.Lock` to all 8 property getters/setters; signals emitted outside lock per KNOWLEDGE.md pattern
+  - `handlers/emergency.py` — Removed dead `_stop_all_motors()` method (never called); existing null-checks on `_show_popup_fn`/`_logger` verified correct
+  - `controllers/ssh.py` — Added `if self._show_popup_fn:` guards on 5 unprotected call sites
+  - `handlers/steam_deck.py` — Added `threading.Lock` for `_last_input_time` (4 access points); added `import threading`
+- Bugs fixed: B06 (StateStore race), B07 (dead emergency code), B08 (ssh popup crash), B09 (steam_deck race)
+- Tests: All 28 existing tests pass
+- Notes: Phase 4A complete. Next: Phase 4B (logging sweep).

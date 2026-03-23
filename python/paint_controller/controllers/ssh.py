@@ -248,11 +248,12 @@ class UISSHController(QObject):
                 self.configUpdated.emit(device_name, "Configuration updated successfully")
                 
                 # Show success popup
-                self._show_popup_fn(
-                    title="Configuration Updated",
-                    message=f"{device_name} settings have been saved successfully",
-                    popup_type="success"
-                )
+                if self._show_popup_fn:
+                    self._show_popup_fn(
+                        title="Configuration Updated",
+                        message=f"{device_name} settings have been saved successfully",
+                        popup_type="success"
+                    )
 
                 if device_name in self.availability_timers:
                     self.availability_timers[device_name].stop()
@@ -269,20 +270,22 @@ class UISSHController(QObject):
                 self.availability_timers[device_name] = timer
                 return True
             else:
-                self._show_popup_fn(
-                    title="Configuration Error",
-                    message=f"Failed to save {device_name} settings",
-                    popup_type="error"
-                )
+                if self._show_popup_fn:
+                    self._show_popup_fn(
+                        title="Configuration Error",
+                        message=f"Failed to save {device_name} settings",
+                        popup_type="error"
+                    )
                 return False
                 
         except Exception as e:
             print(f"[UISSHController] Error updating config for {device_name}: {e}")
-            self._show_popup_fn(
-                title="Configuration Error", 
-                message=f"Error updating {device_name}: {str(e)}",
-                popup_type="error"
-            )
+            if self._show_popup_fn:
+                self._show_popup_fn(
+                    title="Configuration Error", 
+                    message=f"Error updating {device_name}: {str(e)}",
+                    popup_type="error"
+                )
             return False
 
     @Slot(str, str, str)
@@ -290,11 +293,12 @@ class UISSHController(QObject):
         remote_hosts = self._load_ssh_config(self.ssh_path)
         command_map = self._load_json_file(self.bash_path)
 
-        self._show_popup_fn(
-            title="Device Command",
-            message=f"Handling {action.upper()} for {service_name} on {device_name}",
-            popup_type="info"
-        )
+        if self._show_popup_fn:
+            self._show_popup_fn(
+                title="Device Command",
+                message=f"Handling {action.upper()} for {service_name} on {device_name}",
+                popup_type="info"
+            )
 
         launcher = remote_hosts.get(device_name)
         if not launcher:
@@ -312,11 +316,12 @@ class UISSHController(QObject):
             return
 
         def callback(stdout, stderr):
-            self._show_popup_fn(
-                title="Device Command",
-                message=f"Command executed on {device_name}:\n{command}",
-                popup_type="info"
-            )
+            if self._show_popup_fn:
+                self._show_popup_fn(
+                    title="Device Command",
+                    message=f"Command executed on {device_name}:\n{command}",
+                    popup_type="info"
+                )
             if stderr:
                 print(f"[{device_name}] STDERR:\n{stderr.strip()}")
             else:

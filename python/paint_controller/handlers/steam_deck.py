@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Callable, Any, Optional
 import math
 import time
+import threading
 import hid
 import struct
 
@@ -186,7 +187,8 @@ class SteamDeckHandler(QObject):
         
         # Connection status tracking
         self._available = False
-        self._last_input_time = 0
+        self._last_input_time = 0.0
+        self._last_input_time_lock = threading.Lock()
         self._connection_timeout = 1.0  # Time in seconds before considering disconnected
         
         # Create availability check timer
@@ -248,7 +250,8 @@ class SteamDeckHandler(QObject):
             self._reader_thread.start()
             
             self._available = True
-            self._last_input_time = time.time()
+            with self._last_input_time_lock:
+                self._last_input_time = time.time()
             self.connection_status_changed.emit(True)
             print("Steam Deck HID connection started successfully")
             return True
@@ -426,7 +429,8 @@ class SteamDeckHandler(QObject):
         current_time = time.time()
         
         # Calculate time since last input
-        time_since_last_input = current_time - self._last_input_time
+        with self._last_input_time_lock:
+            time_since_last_input = current_time - self._last_input_time
         
         # If it's been too long since the last update, consider disconnected
         was_available = self._available
@@ -443,7 +447,8 @@ class SteamDeckHandler(QObject):
             return
             
         # Update the last input time
-        self._last_input_time = time.time()
+        with self._last_input_time_lock:
+            self._last_input_time = time.time()
         
         # Set available status if it wasn't already
         if not self._available:

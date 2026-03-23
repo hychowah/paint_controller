@@ -102,28 +102,6 @@ class EmergencyButtonHandler(QObject):
             if self._logger:
                 self._logger.error(f'Error during emergency trigger: {e}')
     
-    def _stop_all_motors(self):
-        """Stop all motors during emergency"""
-        try:
-            # Stop wheels
-            if hasattr(self._wheel, 'emergency_stop'):
-                self._wheel.emergency_stop()
-            elif hasattr(self._wheel, 'set_wheel_speeds'):
-                self._wheel.set_wheel_speeds(0, 0)
-            
-            # Stop winch
-            if hasattr(self._winch, 'emergency_stop'):
-                self._winch.emergency_stop()
-            elif hasattr(self._winch, 'set_winch_speed'):
-                self._winch.set_winch_speed(0)
-            
-            # Stop any other motors here if needed
-            # self._stop_additional_motors()
-            
-        except Exception as e:
-            if self._logger:
-                self._logger.error(f'Error during emergency stop: {e}')
-    
     def _cancel_emergency(self):
         """Cancel the emergency sequence"""
         # Reset holding state
