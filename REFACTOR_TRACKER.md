@@ -14,6 +14,7 @@
 | 2 — Medium Effort | 8 | 8 | **Complete** |
 | 3 — Major Refactor | 6 | 3 | **Partial** (3.1-3.3 done, 3.4-3.6 deferred) |
 | 4A — Safety Fixes | 4 | 4 | **Complete** |
+| 4B — Logging Sweep | 1 | 1 | **Complete** |
 
 ---
 
@@ -356,6 +357,27 @@ Post-Phase 3 review identified thread safety, null-check, and dead code issues.
 
 ---
 
+## Phase 4B — Logging Sweep (P1 Observability)
+
+Replace ~214 bare `print()` calls across 18 production files with `logging.getLogger(__name__)`.
+
+### 4B.1 Replace print() with logging across all production files ✅
+
+- [x] **Controllers** (7 files): winch.py (24), ssh.py (22), wheel.py (8), teensy.py (5), system_monitor.py (2), lidar.py (2), esp32_valve.py (2)
+- [x] **Handlers** (3 files): steam_deck.py (24), control_processor.py (16 active), input.py (3)
+- [x] **Services** (4 files): video_stream.py (23), ros_bag_recorder.py (22), screen_recorder.py (19), workflow_legacy.py (1)
+- [x] **Core/UI/Widgets** (4 files): application.py (15 of 18 — 3 signal handler prints kept), settings.py (7), overlay.py (2), vtk_pointcloud.py (9)
+- [x] Pattern: module-level `logger = logging.getLogger(__name__)` with lazy `%s` formatting
+- [x] Files with existing ROS logger (`self._node.get_logger()`) keep that pattern (teensy.py)
+- [x] Signal handler `print()` in application.py intentionally preserved (logging not signal-safe)
+- [x] Class-name prefixes like `[SSHLauncher]` stripped (redundant with `__name__` logger)
+
+**Files affected**: 18 production files  
+**Risk**: Low — output-only change, no logic modification  
+**Tests**: All 28 tests pass
+
+---
+
 ## Code Smells Reference (Quick Lookup)
 
 | ID | File | Line(s) | Issue | Phase |
@@ -463,3 +485,32 @@ Track what was done in each prompt/session.
 - Bugs fixed: B06 (StateStore race), B07 (dead emergency code), B08 (ssh popup crash), B09 (steam_deck race)
 - Tests: All 28 existing tests pass
 - Notes: Phase 4A complete. Next: Phase 4B (logging sweep).
+
+### Session 5 — 2026-07-21 (Phase 4B — Logging Sweep)
+
+- Phase: 4B — Logging Sweep (P1 Observability)
+- Items completed: 4B.1 (replace ~214 print() calls with logging across 18 files)
+- Files modified (Batch 1 — Controllers):
+  - `controllers/winch.py` — 24 prints → logging
+  - `controllers/ssh.py` — 22 prints → logging, stripped class-name prefixes
+  - `controllers/wheel.py` — 8 prints → logging
+  - `controllers/teensy.py` — 5 prints → `self._node.get_logger()` (ROS pattern)
+  - `controllers/system_monitor.py` — 2 prints → logging
+  - `controllers/lidar.py` — 2 prints → logging
+  - `controllers/esp32_valve.py` — 2 prints → logging
+- Files modified (Batch 2 — Handlers):
+  - `handlers/steam_deck.py` — 24 prints → logging
+  - `handlers/control_processor.py` — 16 active prints → logging
+  - `handlers/input.py` — 3 prints → logging
+- Files modified (Batch 3 — Services):
+  - `services/video_stream.py` — 23 prints → logging (+ `_log()` fallback updated)
+  - `services/ros_bag_recorder.py` — 22 prints → logging
+  - `services/screen_recorder.py` — 19 prints → logging
+  - `services/workflow_legacy.py` — 1 print → logging
+- Files modified (Batch 4 — Core/UI/Widgets):
+  - `core/application.py` — 15 prints → logging (3 signal handler prints preserved)
+  - `core/settings.py` — 7 prints → logging
+  - `ui/overlay.py` — 2 prints → logging
+  - `widgets/vtk_pointcloud.py` — 9 prints → logging
+- Tests: All 28 pass
+- Notes: Phase 4B complete. All production print() replaced except signal handlers.

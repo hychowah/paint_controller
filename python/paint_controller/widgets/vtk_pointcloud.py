@@ -9,6 +9,9 @@ import numpy as np
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QComboBox, QCheckBox
 from PySide6.QtCore import Qt, Signal, Slot
 import collections
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     import vtk
@@ -16,7 +19,7 @@ try:
     VTK_AVAILABLE = True
 except ImportError:
     VTK_AVAILABLE = False
-    print("Warning: VTK not available. Install with: pip install vtk")
+    logger.warning("VTK not available. Install with: pip install vtk")
 
 
 class VTKPointCloudWidget(QWidget):
@@ -186,7 +189,7 @@ class VTKPointCloudWidget(QWidget):
         
         self.axes_actor = axes
         self.renderer.AddActor(axes)
-        print("VTK: Axes added to renderer")
+        logger.debug("Axes added to renderer")
         
     def _add_grid(self):
         """Add a ground grid to the scene"""
@@ -211,7 +214,7 @@ class VTKPointCloudWidget(QWidget):
         self.grid_actor.GetProperty().SetOpacity(0.5) # RViz Alpha
         
         self.renderer.AddActor(self.grid_actor)
-        print("VTK: Grid added to renderer")
+        logger.debug("Grid added to renderer")
         
     def _add_camera_info_text(self):
         """Add text actor for displaying camera info."""
@@ -220,7 +223,7 @@ class VTKPointCloudWidget(QWidget):
         self.camera_info_actor.GetTextProperty().SetColor(0.9, 0.9, 0.9)  # Light gray
         self.camera_info_actor.SetPosition(10, 10)  # Display coordinates
         self.renderer.AddActor2D(self.camera_info_actor)
-        print("VTK: Camera info text actor added")
+        logger.debug("Camera info text actor added")
 
     def _update_camera_info(self, *args):
         """Update the text with the current camera viewpoint."""
@@ -266,7 +269,7 @@ class VTKPointCloudWidget(QWidget):
         except:
             return
         
-        print(f"VTK: Updating point cloud with {len(points)} points")  # Debug
+        logger.debug("Updating point cloud with %d points", len(points))
         
         self.points_data.append(points)
         
@@ -329,12 +332,12 @@ class VTKPointCloudWidget(QWidget):
         # Add to renderer
         self.renderer.AddActor(self.point_cloud_actor)
         
-        print(f"VTK: Point cloud actor created and added to renderer")  # Debug
+        logger.debug("Point cloud actor created and added to renderer")
         
         # Force render if widget is visible
         if self.isVisible() and self.vtk_widget:
             self.vtk_widget.GetRenderWindow().Render()
-            print("VTK: Render triggered")  # Debug
+            logger.debug("Render triggered")
         
     def _generate_colors(self, points_array):
         """Generate colors for points based on current color mode"""
@@ -460,14 +463,14 @@ class VTKPointCloudWidget(QWidget):
             # Initialize interactor on first show
             if not self.vtk_widget.GetRenderWindow().GetInteractor().GetInitialized():
                 self.vtk_widget.GetRenderWindow().GetInteractor().Initialize()
-                print("VTK: Interactor initialized")
+                logger.debug("Interactor initialized")
             
             # Reset camera to ensure everything is visible
             # self.renderer.ResetCamera() # This overrides custom viewpoints
             
             # Force a render to show axes, grid, and any existing point cloud
             self.vtk_widget.GetRenderWindow().Render()
-            print("VTK: Initial render on show")
+            logger.debug("Initial render on show")
             
     def closeEvent(self, event):
         """Clean up VTK resources and signal closure"""

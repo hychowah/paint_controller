@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
+import logging
 import time
 from typing import Dict
 from rclpy.node import Node
 from std_msgs.msg import Bool
 from paint_interfaces.msg import MoveVehicleSpd, MoveVehiclePos, VehicleStatus
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
+
+logger = logging.getLogger(__name__)
 
 class WheelController(QObject):
     # Signals for property changed notifications
@@ -83,7 +86,7 @@ class WheelController(QObject):
             self._status_callback,
             10  
         )
-        print(f"Vehicle status subscriber set up on topic 'vehicle/status'")
+        logger.info("Vehicle status subscriber set up on topic 'vehicle/status'")
 
     def _check_availability(self):
         """
@@ -107,9 +110,9 @@ class WheelController(QObject):
             self.available_changed.emit()
             if not new_available:
                 if not is_connected:
-                    print(f"Wheel controller considered disconnected: {time_since_last_update:.1f}s since last message")
+                    logger.warning("Wheel controller considered disconnected: %.1fs since last message", time_since_last_update)
                 elif not motors_available:
-                    print(f"Wheel controller unavailable: left_available={self._left_motor_available}, right_available={self._right_motor_available}")
+                    logger.warning("Wheel controller unavailable: left_available=%s, right_available=%s", self._left_motor_available, self._right_motor_available)
 
     def _status_callback(self, msg: VehicleStatus):
         """Callback function for vehicle status messages"""
@@ -132,12 +135,12 @@ class WheelController(QObject):
                 self._available = new_available
                 self.available_changed.emit()
                 if new_available:
-                    print("Wheel controller connection restored")
+                    logger.info("Wheel controller connection restored")
             
             # Process the status update
             self.update_status(msg)
         except Exception as e:
-            print(f"Error in vehicle status callback: {e}")
+            logger.error("Error in vehicle status callback: %s", e)
     
     def _update_motor_availability(self, left_available: bool, right_available: bool):
         """Update motor availability states and emit signals if changed"""
@@ -365,7 +368,7 @@ class WheelController(QObject):
         msg = Bool()
         msg.data = not enabled
         self._disable_pub.publish(msg)
-        print(f'Wheel controller {"enabled" if enabled else "disabled"}')
+        logger.info('Wheel controller %s', 'enabled' if enabled else 'disabled')
         
     @Slot(float)
     def setLeftSpeed(self, speed: float):
@@ -391,7 +394,7 @@ class WheelController(QObject):
     def emergency_stop(self):
         """Emergency stop - immediately set both wheels to zero speed"""
         self.command_speed(0, 0)
-        print('Wheel controller emergency stop activated')
+        logger.info('Wheel controller emergency stop activated')
     
     @Slot()
     def resetWheelPosition(self):
@@ -401,7 +404,7 @@ class WheelController(QObject):
         msg = Bool()
         msg.data = True
         self._set_zero_pub.publish(msg)
-        print('Wheel positions reset to zero')
+        logger.info('Wheel positions reset to zero')
         
     def cleanup(self):
         """Clean up resources when shutting down"""

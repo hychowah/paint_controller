@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import logging
 from typing import Dict, Optional
 from std_msgs.msg import Float32, Int32
 from geometry_msgs.msg import Twist, Vector3
@@ -7,6 +8,8 @@ from paint_controller.handlers.heartbeat import HeartbeatStatus
 from paint_controller.utils.constants import JoystickControl
 from paint_controller.utils.input import DeadzoneTracker
 from PySide6.QtCore import QObject, Signal, Property
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class ControlConfig:
@@ -417,7 +420,7 @@ class ControlProcessor(QObject):
                 self.current_values['right_value'] = f"R:{track_speed:.1f}"
                 self._wheel.command_right_wheel_speed(track_speed)
         except Exception as e:
-            print(f"Error commanding track control ({mode}): {str(e)}")
+            logger.error("Error commanding track control (%s): %s", mode, e)
 
     def _process_joint_control(self, input_state: Dict, mode: str, stick: str):
         """Handle prop joint specific control"""
@@ -511,7 +514,7 @@ class ControlProcessor(QObject):
                 self._esp32_valve.setValveTurn(valve_turn_value)
                 # print(f"Commanding valve turn: {valve_turn_value}")
             except Exception as e:
-                print(f"Error commanding valve turn: {str(e)}")
+                logger.error("Error commanding valve turn: %s", e)
     
     def _process_arm_rail_speed(self, input_state: Dict):
         """Handle arm rail speed control using left analog trigger
@@ -540,7 +543,7 @@ class ControlProcessor(QObject):
                 self._teensy.setArmRailSpeed(arm_rail_speed_value)
                 # print(f"Commanding arm rail speed: {arm_rail_speed_value}")
             except Exception as e:
-                print(f"Error commanding arm rail speed: {str(e)}")
+                logger.error("Error commanding arm rail speed: %s", e)
 
     def _process_winch_speed(self, input_state: Dict, mode: str, stick: str):
         """Handle winch speed control using joystick Y-axis
@@ -577,21 +580,21 @@ class ControlProcessor(QObject):
         if should_send and self.winch_speed_has_been_active:
             try:
                 if not self._winch.get_available():
-                    print("Winch not available")
+                    logger.warning("Winch not available")
                     return
                 
                 if self._winch.get_motor_brake():
-                    print("Winch motor brake is on")
+                    logger.warning("Winch motor brake is on")
                     return
                 
                 if self._is_winch_control_locked():
-                    print("Winch control locked: Base or EF is in ONTASK state")
+                    logger.warning("Winch control locked: Base or EF is in ONTASK state")
                     return
                 
                 self._winch.command_speed_mmps(value)
                 # print(f"Commanding winch speed: {value} mm/s")
             except Exception as e:
-                print(f"Error commanding winch speed: {str(e)}")
+                logger.error("Error commanding winch speed: %s", e)
 
     def _process_wheel_travel(self, input_state: Dict, mode: str, stick: str):
         """Handle wheel travel position control using joystick Y-axis
@@ -715,7 +718,7 @@ class ControlProcessor(QObject):
             self._update_display()
 
         except Exception as e:
-            print(f"Error processing control input: {str(e)}")
+            logger.error("Error processing control input: %s", e)
             self._state_store.display_message = f"Error processing control input: {str(e)}"
 
 
@@ -752,19 +755,19 @@ class ControlProcessor(QObject):
         # Update control config
         self.controls["Track Control Left"].scale = self.TRACK_SCALE
         self.controls["Track Control Right"].scale = self.TRACK_SCALE
-        print(f"[ControlProcessor] Track max speed updated to: {new_value}")
+        logger.info("Track max speed updated to: %s", new_value)
     
     def _on_track_min_speed_changed(self, new_value: float):
         """Handle track_min_speed change from SettingsManager"""
         self.TRACK_MIN_SPEED = new_value
-        print(f"[ControlProcessor] Track min speed updated to: {new_value}")
+        logger.info("Track min speed updated to: %s", new_value)
     
     def _on_valve_turn_max_changed(self, new_value: float):
         """Handle valve_turn_max change from SettingsManager"""
         self._valve_turn_max = new_value
         self.VALVE_TURN_SCALE = self._valve_turn_max / self.JOYSTICK_MAX_VALUE
         self.controls["Valve Turn"].scale = self.VALVE_TURN_SCALE
-        print(f"[ControlProcessor] Valve turn max updated to: {new_value}")
+        logger.info("Valve turn max updated to: %s", new_value)
     
     def _on_winch_max_speed_mmps_changed(self, new_value: float):
         """Handle winch_max_speed_mmps change from SettingsManager"""
@@ -774,7 +777,7 @@ class ControlProcessor(QObject):
         self.controls["Winch Speed"].scale = self.WINCH_SCALE
         self.controls["Winch Speed"].min_value = -self._winch_max_speed_mmps
         self.controls["Winch Speed"].max_value = self._winch_max_speed_mmps
-        print(f"[ControlProcessor] Winch max speed updated to: {new_value} mm/s")
+        logger.info("Winch max speed updated to: %s mm/s", new_value)
 
     def _get_wheel_travel_scale(self) -> float:
         """Calculate wheel travel scale factor based on rate and update interval.
@@ -792,7 +795,7 @@ class ControlProcessor(QObject):
         self.controls["Wheel Travel Left"].max_value = self._wheel_travel_max
         self.controls["Wheel Travel Right"].min_value = -self._wheel_travel_max
         self.controls["Wheel Travel Right"].max_value = self._wheel_travel_max
-        print(f"[ControlProcessor] Wheel travel max updated to: {new_value} mm")
+        logger.info("Wheel travel max updated to: %s mm", new_value)
 
     def _on_wheel_travel_rate_changed(self, new_value: float):
         """Handle wheel_travel_rate change from SettingsManager"""
@@ -800,12 +803,12 @@ class ControlProcessor(QObject):
         # Update control config scale for both Left and Right
         self.controls["Wheel Travel Left"].scale = self._get_wheel_travel_scale()
         self.controls["Wheel Travel Right"].scale = self._get_wheel_travel_scale()
-        print(f"[ControlProcessor] Wheel travel rate updated to: {new_value} mm/sec")
+        logger.info("Wheel travel rate updated to: %s mm/sec", new_value)
 
     def _on_wheel_travel_rpm_changed(self, new_value: int):
         """Handle wheel_travel_rpm change from SettingsManager"""
         self._wheel_travel_rpm = new_value
-        print(f"[ControlProcessor] Wheel travel RPM updated to: {new_value}")
+        logger.info("Wheel travel RPM updated to: %s", new_value)
 
     def send_wheel_travel_command(self):
         """Send accumulated wheel travel position command and reset values
@@ -828,12 +831,12 @@ class ControlProcessor(QObject):
             )
             
             if success:
-                print(f"Wheel travel command sent: left={left_travel:.0f}mm, right={right_travel:.0f}mm, rpm={self._wheel_travel_rpm}")
+                logger.info("Wheel travel command sent: left=%.0fmm, right=%.0fmm, rpm=%s", left_travel, right_travel, self._wheel_travel_rpm)
             else:
-                print("Failed to send wheel travel command")
+                logger.warning("Failed to send wheel travel command")
                 
         except Exception as e:
-            print(f"Error sending wheel travel command: {str(e)}")
+            logger.error("Error sending wheel travel command: %s", e)
 
     # Properties for left control info
     @Property(str, notify=left_control_mode_changed)

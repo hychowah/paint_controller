@@ -13,6 +13,8 @@ gi.require_version('Gst', '1.0')
 gi.require_version('GstApp', '1.0')
 from gi.repository import Gst
 
+logger = logging.getLogger(__name__)
+
 # ROS2 imports (optional - gracefully handle if not available)
 try:
     import rclpy
@@ -93,7 +95,7 @@ class CameraStream(QObject):
                 raise RuntimeError(f"Failed to create sink for {self.config.name}")
                 
         except Exception as e:
-            print(f"Error creating pipeline for {self.config.name}: {e}")
+            logger.error("Error creating pipeline for %s: %s", self.config.name, e)
             self.pipeline = None
             self.sink = None
 
@@ -144,7 +146,7 @@ class CameraStream(QObject):
                     map_info = None
             
         except Exception as e:
-            print(f"Error processing sample for {self.config.name}: {e}")
+            logger.error("Error processing sample for %s: %s", self.config.name, e)
             return Gst.FlowReturn.ERROR
         
         finally:
@@ -157,10 +159,10 @@ class CameraStream(QObject):
                 try:
                     self.pipeline.set_state(Gst.State.PLAYING)
                     self._is_running = True
-                    print(f"Started stream for {self.config.name}")
+                    logger.info("Started stream for %s", self.config.name)
                     return True
                 except Exception as e:
-                    print(f"Error starting stream for {self.config.name}: {e}")
+                    logger.error("Error starting stream for %s: %s", self.config.name, e)
                     return False
         return False
 
@@ -170,10 +172,10 @@ class CameraStream(QObject):
                 try:
                     self.pipeline.set_state(Gst.State.NULL)
                     self._is_running = False
-                    print(f"Stopped stream for {self.config.name}")
+                    logger.info("Stopped stream for %s", self.config.name)
                     return True
                 except Exception as e:
-                    print(f"Error stopping stream for {self.config.name}: {e}")
+                    logger.error("Error stopping stream for %s: %s", self.config.name, e)
                     return False
         return False
 
@@ -211,10 +213,10 @@ class CameraStream(QObject):
             if self.image_provider:
                 self.image_provider.image = None
             
-            print(f"Cleaned up stream for {self.config.name}")
+            logger.info("Cleaned up stream for %s", self.config.name)
             
         except Exception as e:
-            print(f"Error during cleanup for {self.config.name}: {e}")
+            logger.error("Error during cleanup for %s: %s", self.config.name, e)
 
 class VideoStreamHandler(QObject):
     """Unified video stream handler for multiple cameras with ROS2 integration"""
@@ -538,7 +540,7 @@ class VideoStreamHandler(QObject):
             elif level == "debug":
                 logger.debug(f"[VideoStreamHandler] {message}")
         else:
-            print(f"[VideoStreamHandler] {message}")
+            logger.info("%s", message)
 
     def _create_camera_streams(self):
         """Create all configured camera streams"""
@@ -548,9 +550,9 @@ class VideoStreamHandler(QObject):
                     stream = CameraStream(config)
                     stream.frameReady.connect(self._on_camera_frame)
                     self.camera_streams[camera_type] = stream
-                    print(f"Created stream for {config.name}")
+                    logger.info("Created stream for %s", config.name)
                 except Exception as e:
-                    print(f"Failed to create stream for {config.name}: {e}")
+                    logger.error("Failed to create stream for %s: %s", config.name, e)
 
     def _on_camera_frame(self, camera_type: CameraType, image: QImage):
         if camera_type == CameraType.END_EFFECTOR:
@@ -587,9 +589,9 @@ class VideoStreamHandler(QObject):
         for camera_type, stream in streams_copy.items():
             if stream.start():
                 success_count += 1
-                print(f"Started {self.camera_configs[camera_type].name}")
+                logger.info("Started %s", self.camera_configs[camera_type].name)
             else:
-                print(f"Failed to start {self.camera_configs[camera_type].name}")
+                logger.warning("Failed to start %s", self.camera_configs[camera_type].name)
         
         return success_count
 
@@ -605,7 +607,7 @@ class VideoStreamHandler(QObject):
         
         for camera_type, stream in streams_copy.items():
             if stream.stop():
-                print(f"Stopped {self.camera_configs[camera_type].name}")
+                logger.info("Stopped %s", self.camera_configs[camera_type].name)
 
     def start_stream(self, camera_type: CameraType) -> bool:
         """
@@ -647,11 +649,11 @@ class VideoStreamHandler(QObject):
                     stream = CameraStream(config)
                     stream.frameReady.connect(self._on_camera_frame)
                     self.camera_streams[CameraType.CONFIGURABLE] = stream
-                    print(f"Enabled configurable stream on port {config.port}")
+                    logger.info("Enabled configurable stream on port %s", config.port)
                     return True
             return True
         except Exception as e:
-            print(f"Failed to enable configurable stream: {e}")
+            logger.error("Failed to enable configurable stream: %s", e)
             return False
 
     def disable_configurable_stream(self):
@@ -665,9 +667,9 @@ class VideoStreamHandler(QObject):
                     del self.camera_streams[CameraType.CONFIGURABLE]
             
             self.camera_configs[CameraType.CONFIGURABLE].enabled = False
-            print("Disabled configurable stream")
+            logger.info("Disabled configurable stream")
         except Exception as e:
-            print(f"Error disabling configurable stream: {e}")
+            logger.error("Error disabling configurable stream: %s", e)
 
     def get_stream_status(self) -> Dict[str, bool]:
         """
@@ -693,7 +695,7 @@ class VideoStreamHandler(QObject):
         shutdown sequence to prevent resource leaks.
         """
         try:
-            print("Cleaning up video streams...")
+            logger.info("Cleaning up video streams...")
             
             with self._streams_lock:
                 # Create snapshot to avoid iteration issues during cleanup
@@ -706,18 +708,18 @@ class VideoStreamHandler(QObject):
             for camera_type, stream in streams_copy.items():
                 try:
                     stream.cleanup()
-                    print(f"Cleaned up {camera_type.value} stream")
+                    logger.info("Cleaned up %s stream", camera_type.value)
                 except Exception as e:
-                    print(f"Error cleaning up {camera_type.value} stream: {e}")
+                    logger.error("Error cleaning up %s stream: %s", camera_type.value, e)
             
             # Step 3: Clear the dictionary
             with self._streams_lock:
                 self.camera_streams.clear()
             
-            print("Video stream cleanup complete")
+            logger.info("Video stream cleanup complete")
             
         except Exception as e:
-            print(f"Error during video stream cleanup: {e}")
+            logger.error("Error during video stream cleanup: %s", e)
 
     # Properties for backward compatibility
     @property

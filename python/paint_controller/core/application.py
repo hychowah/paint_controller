@@ -7,7 +7,10 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Optional, List, Any, Callable
 from threading import Lock
+import logging
 import yaml
+
+logger = logging.getLogger(__name__)
 
 # Force Qt to use X11 backend for VTK compatibility (Wayland issues)
 if 'QT_QPA_PLATFORM' not in os.environ:
@@ -97,7 +100,7 @@ class ConfigLoader:
                 config_dict = yaml.safe_load(f)
             return RobotConfig(**config_dict)
         except Exception as e:
-            print(f"Error loading config: {e}")
+            logger.error("Error loading config: %s", e)
             return RobotConfig()
         
 
@@ -203,13 +206,13 @@ class RosThread(QThread):
                     try:
                         self.node.cleanup()
                     except Exception as e:
-                        print(f"Error calling node cleanup method: {e}")
+                        logger.error("Error calling node cleanup method: %s", e)
                 
                 # Then destroy the node to clean up all ROS resources
                 self.node.destroy_node()
-                print("ROS node destroyed successfully")
+                logger.info("ROS node destroyed successfully")
         except Exception as e:
-            print(f"Error during ROS thread cleanup: {e}")
+            logger.error("Error during ROS thread cleanup: %s", e)
 
 #############################################
 ### Main Controller
@@ -913,11 +916,11 @@ def main():
     try:
         sys.exit(app.exec())
     except Exception as e:
-        print(f"Application error: {e}")
+        logger.error("Application error: %s", e)
         import traceback
         traceback.print_exc()
     finally:
-        print("Starting emergency shutdown sequence...")
+        logger.info("Starting emergency shutdown sequence...")
 
         # Step 1: Stop timers
         try:
@@ -925,17 +928,17 @@ def main():
             heartbeat_timer.stop()
             timer.stop()
         except Exception as e:
-            print(f"Error stopping timers: {e}")
+            logger.error("Error stopping timers: %s", e)
 
         # Step 2: Request ROS thread shutdown and wait
         try:
             ros_thread.request_shutdown()
             if not ros_thread.wait(2000):
-                print("WARNING: ROS thread did not exit cleanly, forcing termination...")
+                logger.warning("ROS thread did not exit cleanly, forcing termination...")
                 ros_thread.terminate()
                 ros_thread.wait(500)
         except Exception as e:
-            print(f"Error shutting down ROS thread: {e}")
+            logger.error("Error shutting down ROS thread: %s", e)
 
         # Step 3: Cleanup controllers
         try:
@@ -951,25 +954,25 @@ def main():
                     node.cleanup()
                     cleanup_done.set()
                 except Exception as e:
-                    print(f"Error during cleanup: {e}")
+                    logger.error("Error during cleanup: %s", e)
                     cleanup_done.set()
 
             cleanup_thread = threading.Thread(target=do_cleanup, daemon=True)
             cleanup_thread.start()
 
             if not cleanup_done.wait(timeout=3.0):
-                print("WARNING: Cleanup timed out, continuing shutdown...")
+                logger.warning("Cleanup timed out, continuing shutdown...")
         except Exception as e:
-            print(f"Error during cleanup: {e}")
+            logger.error("Error during cleanup: %s", e)
 
         # Step 4: Shutdown ROS context
         try:
             rclpy.shutdown()
         except Exception as e:
-            print(f"Error during ROS shutdown: {e}")
+            logger.error("Error during ROS shutdown: %s", e)
 
-        print("Emergency shutdown sequence complete")
-        print("Forcing application exit...")
+        logger.info("Emergency shutdown sequence complete")
+        logger.info("Forcing application exit...")
         os._exit(0)
 
 if __name__ == '__main__':

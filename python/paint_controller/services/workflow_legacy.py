@@ -1,3 +1,4 @@
+import logging
 import os.path
 import json
 
@@ -18,6 +19,8 @@ from rclpy.clock import Clock
 from paint_interfaces.srv import PaintAction
 from paint_controller.models.action_config import ActionConfigPython
 from paint_controller.handlers.heartbeat import HeartbeatStatus
+
+logger = logging.getLogger(__name__)
 
 
 class ActionWorker(QObject):
@@ -815,7 +818,7 @@ class WorkFlowHandler(QObject):
         new_page = 1 if self._current_page == 0 else 0
         
         # Print debug info
-        print(f"Direct page switch from {self._current_page} to {new_page}")
+        logger.debug("Direct page switch from %s to %s", self._current_page, new_page)
         
         # Set the page without using signals (for testing)
         self._current_page = new_page

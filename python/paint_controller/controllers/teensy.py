@@ -287,11 +287,11 @@ class TeensyController(QObject):
         if time_since_last_update > self._connection_timeout:
             if self._available:
                 self._available = False
-                print(f"Teensy considered disconnected: {time_since_last_update:.1f}s since last status update")
+                self._node.get_logger().warning("Teensy considered disconnected: %.1fs since last status update" % time_since_last_update)
                 self.connection_changed.emit(False)
         elif not self._available:
             self._available = True
-            print("Teensy connection established")
+            self._node.get_logger().info("Teensy connection established")
             self.connection_changed.emit(True)
     
     def _status_callback(self, msg: TeensyStatus):
@@ -371,7 +371,7 @@ class TeensyController(QObject):
                 self.status_changed.emit(new_status)
             
         except Exception as e:
-            print(f"Error in Teensy status callback: {e}")
+            self._node.get_logger().error("Error in Teensy status callback: %s" % e)
     
     def get_status(self) -> TeensyStatusDict:
         """Get current Teensy status"""
@@ -719,12 +719,12 @@ class TeensyController(QObject):
         if self._thrust_force != clamped_value:
             self._thrust_force = clamped_value
             self.thrust_force_changed.emit(self._thrust_force)
-            print(f"[TeensyController] Thrust force updated from settings: {clamped_value}")
+            self._node.get_logger().info("Thrust force updated from settings: %s" % clamped_value)
     
     def _on_thrust_ramp_rate_changed(self, new_value: float):
         """Handle thrust_ramp_rate change from SettingsManager"""
         self._thrust_ramp_rate = new_value
-        print(f"[TeensyController] Thrust ramp rate updated to: {new_value}")
+        self._node.get_logger().info("Thrust ramp rate updated to: %s" % new_value)
     
     def _update_thrust_ramp(self):
         """Update ramped thrust force at 10Hz"""

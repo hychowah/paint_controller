@@ -10,6 +10,7 @@ Features:
 - Graceful cleanup on application exit
 """
 
+import logging
 import os
 import subprocess
 import shutil
@@ -19,6 +20,8 @@ from pathlib import Path
 from typing import Optional
 
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
+
+logger = logging.getLogger(__name__)
 
 
 class ScreenRecorder(QObject):
@@ -79,7 +82,7 @@ class ScreenRecorder(QObject):
         try:
             self._output_dir.mkdir(parents=True, exist_ok=True)
         except Exception as e:
-            print(f"[ScreenRecorder] Error creating output directory: {e}")
+            logger.error("Error creating output directory: %s", e)
     
     def _update_free_space(self) -> None:
         """Update free disk space property."""
@@ -90,7 +93,7 @@ class ScreenRecorder(QObject):
                 self._free_space_gb = new_free_space
                 self.free_space_gb_changed.emit()
         except Exception as e:
-            print(f"[ScreenRecorder] Error checking disk space: {e}")
+            logger.error("Error checking disk space: %s", e)
             self._free_space_gb = 0.0
             self.free_space_gb_changed.emit()
     
@@ -102,7 +105,7 @@ class ScreenRecorder(QObject):
     def _start_ffmpeg(self) -> bool:
         """Start ffmpeg recording process."""
         if self._ffmpeg_process is not None:
-            print("[ScreenRecorder] ffmpeg process already running")
+            logger.warning("ffmpeg process already running")
             return False
         
         self._current_recording_file = self._generate_filename()
@@ -145,16 +148,16 @@ class ScreenRecorder(QObject):
             screen_text = "screen" if screen_count == 1 else "screens"
             self._status_message = f"Recording {resolution} ({screen_count} {screen_text})"
             
-            print(f"[ScreenRecorder] Started recording: {self._current_recording_file}")
-            print(f"[ScreenRecorder] Resolution: {resolution} ({screen_count} {screen_text})")
+            logger.info("Started recording: %s", self._current_recording_file)
+            logger.info("Resolution: %s (%d %s)", resolution, screen_count, screen_text)
             return True
         except FileNotFoundError:
-            print("[ScreenRecorder] ffmpeg not found. Please install ffmpeg.")
+            logger.error("ffmpeg not found. Please install ffmpeg.")
             self._status_message = "ffmpeg not installed"
             self.status_message_changed.emit()
             return False
         except Exception as e:
-            print(f"[ScreenRecorder] Error starting ffmpeg: {e}")
+            logger.error("Error starting ffmpeg: %s", e)
             self._status_message = f"Error: {str(e)}"
             self.status_message_changed.emit()
             return False
@@ -178,19 +181,19 @@ class ScreenRecorder(QObject):
                 self._ffmpeg_process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 # Force terminate if graceful shutdown fails
-                print("[ScreenRecorder] ffmpeg not responding, sending SIGTERM")
+                logger.warning("ffmpeg not responding, sending SIGTERM")
                 self._ffmpeg_process.terminate()
                 try:
                     self._ffmpeg_process.wait(timeout=3)
                 except subprocess.TimeoutExpired:
-                    print("[ScreenRecorder] ffmpeg still not responding, sending SIGKILL")
+                    logger.warning("ffmpeg still not responding, sending SIGKILL")
                     self._ffmpeg_process.kill()
                     self._ffmpeg_process.wait()
             
-            print(f"[ScreenRecorder] Stopped recording: {self._current_recording_file}")
+            logger.info("Stopped recording: %s", self._current_recording_file)
             return True
         except Exception as e:
-            print(f"[ScreenRecorder] Error stopping ffmpeg: {e}")
+            logger.error("Error stopping ffmpeg: %s", e)
             return False
         finally:
             self._ffmpeg_process = None
@@ -213,13 +216,13 @@ class ScreenRecorder(QObject):
         
         # Check if we need to segment (1 hour limit)
         if self._recording_duration_seconds >= self.MAX_RECORDING_DURATION_SECONDS:
-            print("[ScreenRecorder] Max duration reached, segmenting recording")
+            logger.info("Max duration reached, segmenting recording")
             self._segment_recording()
             return
         
         # Check if disk space is too low
         if self._free_space_gb < self.MIN_FREE_SPACE_GB:
-            print("[ScreenRecorder] Low disk space, stopping recording")
+            logger.warning("Low disk space, stopping recording")
             self._status_message = "Stopped: Low storage"
             self.status_message_changed.emit()
             self._stop_recording_internal()
@@ -232,11 +235,11 @@ class ScreenRecorder(QObject):
         self._update_free_space()
         if self._free_space_gb >= self.MIN_FREE_SPACE_GB:
             if self._start_ffmpeg():
-                print("[ScreenRecorder] Started new recording segment")
+                logger.info("Started new recording segment")
             else:
                 self._stop_recording_internal()
         else:
-            print("[ScreenRecorder] Not enough space for new segment")
+            logger.warning("Not enough space for new segment")
             self._status_message = "Stopped: Low storage"
             self.status_message_changed.emit()
             self._stop_recording_internal()
@@ -259,7 +262,7 @@ class ScreenRecorder(QObject):
         if not self._is_recording:
             return
         
-        print("[ScreenRecorder] Screen configuration changed, segmenting recording")
+        logger.info("Screen configuration changed, segmenting recording")
         self._segment_recording()
     
     # ===== QML Properties =====
@@ -303,7 +306,7 @@ class ScreenRecorder(QObject):
     def startRecording(self) -> None:
         """Start screen recording if conditions are met."""
         if self._is_recording:
-            print("[ScreenRecorder] Already recording")
+            logger.info("Already recording")
             return
         
         # Check disk space
@@ -311,7 +314,7 @@ class ScreenRecorder(QObject):
         if self._free_space_gb < self.MIN_FREE_SPACE_GB:
             self._status_message = f"Need {self.MIN_FREE_SPACE_GB}GB free (have {self._free_space_gb:.1f}GB)"
             self.status_message_changed.emit()
-            print(f"[ScreenRecorder] {self._status_message}")
+            logger.info("%s", self._status_message)
             return
         
         # Start ffmpeg
@@ -344,7 +347,7 @@ class ScreenRecorder(QObject):
         Gracefully stops any active recording to ensure the video file
         is properly finalized.
         """
-        print("[ScreenRecorder] Cleanup called")
+        logger.info("Cleanup called")
         self._monitor_timer.stop()
         if self._is_recording:
             self._stop_ffmpeg()

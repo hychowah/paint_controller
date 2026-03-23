@@ -9,6 +9,7 @@ Features:
 - Graceful cleanup on application exit
 """
 
+import logging
 import os
 import json
 import threading
@@ -19,6 +20,8 @@ from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 
 # Import SSHLauncher from ssh controller
 from paint_controller.controllers.ssh import SSHLauncher
+
+logger = logging.getLogger(__name__)
 
 
 class RosBagRecorder(QObject):
@@ -83,13 +86,13 @@ class RosBagRecorder(QObject):
                     key_path=device_config.get("key_path"),
                     port=device_config.get("port", 22)
                 )
-                print(f"[RosBagRecorder] SSH config loaded for {self.DEVICE_NAME}")
+                logger.info("SSH config loaded for %s", self.DEVICE_NAME)
             else:
-                print(f"[RosBagRecorder] WARNING: No SSH config found for {self.DEVICE_NAME}")
+                logger.warning("No SSH config found for %s", self.DEVICE_NAME)
                 self._bag_status_message = "SSH config not found"
                 self.bag_status_message_changed.emit()
         except Exception as e:
-            print(f"[RosBagRecorder] Error loading SSH config: {e}")
+            logger.error("Error loading SSH config: %s", e)
             self._bag_status_message = f"Config error: {e}"
             self.bag_status_message_changed.emit()
     
@@ -100,7 +103,7 @@ class RosBagRecorder(QObject):
     def _run_ssh_command(self, command: str, callback: Optional[Callable[[str, str], None]] = None) -> None:
         """Run a command on the remote device via SSH."""
         if not self._ssh_launcher:
-            print("[RosBagRecorder] SSH launcher not available")
+            logger.warning("SSH launcher not available")
             if callback:
                 callback("", "SSH not configured")
             return
@@ -140,7 +143,7 @@ class RosBagRecorder(QObject):
         
         def on_start_complete(stdout: str, stderr: str):
             if stderr and "error" in stderr.lower():
-                print(f"[RosBagRecorder] Error starting recording: {stderr}")
+                logger.error("Error starting recording: %s", stderr)
                 self._bag_status_message = f"Start failed: {stderr[:50]}"
                 self.bag_status_message_changed.emit()
                 self._is_bag_recording = False
@@ -161,12 +164,12 @@ class RosBagRecorder(QObject):
                 pid_str = stdout.strip()
                 if pid_str:
                     self._remote_pid = int(pid_str)
-                    print(f"[RosBagRecorder] Recording started with PID: {self._remote_pid}")
+                    logger.info("Recording started with PID: %s", self._remote_pid)
                 else:
-                    print("[RosBagRecorder] Recording started (no PID captured)")
+                    logger.info("Recording started (no PID captured)")
                     self._remote_pid = None
             except ValueError:
-                print(f"[RosBagRecorder] Could not parse PID from: {stdout}")
+                logger.warning("Could not parse PID from: %s", stdout)
                 self._remote_pid = None
             
             # Update state
@@ -218,7 +221,7 @@ class RosBagRecorder(QObject):
             )
         
         def on_stop_complete(stdout: str, stderr: str):
-            print(f"[RosBagRecorder] Recording stopped")
+            logger.info("Recording stopped")
             self._remote_pid = None
             
             # Update state
@@ -238,7 +241,7 @@ class RosBagRecorder(QObject):
     def _compress_bag_folder(self) -> None:
         """Compress the bag folder using tar on remote device."""
         if not self._current_bag_folder:
-            print("[RosBagRecorder] No bag folder to compress")
+            logger.warning("No bag folder to compress")
             return
         
         self._is_compressing = True
@@ -266,7 +269,7 @@ class RosBagRecorder(QObject):
             self.is_compressing_changed.emit()
             
             if stderr and "error" in stderr.lower():
-                print(f"[RosBagRecorder] Compression error: {stderr}")
+                logger.error("Compression error: %s", stderr)
                 self._bag_status_message = f"Compress failed: {stderr[:50]}"
                 self.bag_status_message_changed.emit()
                 
@@ -278,7 +281,7 @@ class RosBagRecorder(QObject):
                         3000
                     )
             else:
-                print(f"[RosBagRecorder] Compression complete: {folder_name}.tar.gz")
+                logger.info("Compression complete: %s.tar.gz", folder_name)
                 self._bag_status_message = ""
                 self.bag_status_message_changed.emit()
                 
@@ -329,7 +332,7 @@ class RosBagRecorder(QObject):
     def toggleBagRecording(self) -> None:
         """Toggle ROS bag recording on/off."""
         if self._is_compressing:
-            print("[RosBagRecorder] Cannot toggle - compression in progress")
+            logger.warning("Cannot toggle - compression in progress")
             if self._show_popup_fn:
                 self._show_popup_fn(
                     "ROS Bag Recording",
@@ -348,17 +351,17 @@ class RosBagRecorder(QObject):
     def startBagRecording(self) -> None:
         """Start ROS bag recording if conditions are met."""
         if self._is_bag_recording:
-            print("[RosBagRecorder] Already recording")
+            logger.info("Already recording")
             return
         
         if self._is_compressing:
-            print("[RosBagRecorder] Cannot start - compression in progress")
+            logger.warning("Cannot start - compression in progress")
             self._bag_status_message = "Wait for compression"
             self.bag_status_message_changed.emit()
             return
         
         if not self._ssh_launcher:
-            print("[RosBagRecorder] SSH not configured")
+            logger.warning("SSH not configured")
             self._bag_status_message = "SSH not configured"
             self.bag_status_message_changed.emit()
             if self._show_popup_fn:
@@ -397,17 +400,17 @@ class RosBagRecorder(QObject):
         Attempts to stop any active recording but doesn't block on SSH operations.
         This allows the application to exit quickly even if the remote device is unreachable.
         """
-        print("[RosBagRecorder] Cleanup called")
+        logger.info("Cleanup called")
         
         # Stop the duration timer
         try:
             if self._duration_timer.isActive():
                 self._duration_timer.stop()
         except Exception as e:
-            print(f"[RosBagRecorder] Error stopping timer: {e}")
+            logger.error("Error stopping timer: %s", e)
         
         if self._is_bag_recording:
-            print("[RosBagRecorder] Stopping active recording for cleanup (non-blocking)...")
+            logger.info("Stopping active recording for cleanup (non-blocking)...")
             
             # Try to stop recording but don't wait - the remote device can
             # continue running and we'll just leave the uncompressed bag file
@@ -421,16 +424,16 @@ class RosBagRecorder(QObject):
                 stop_command = "pkill -2 -f 'ros2 bag record' 2>/dev/null"
             
             def on_cleanup_attempt(stdout: str, stderr: str):
-                print("[RosBagRecorder] Cleanup stop command sent (not waiting for completion)")
+                logger.info("Cleanup stop command sent (not waiting for completion)")
             
             # Send the command but don't wait for response
             try:
                 self._run_ssh_command(stop_command, on_cleanup_attempt)
             except Exception as e:
-                print(f"[RosBagRecorder] Cleanup command failed (ignoring): {e}")
+                logger.error("Cleanup command failed (ignoring): %s", e)
             
             # Don't wait - just mark as complete
-            print("[RosBagRecorder] Cleanup complete (non-blocking)")
+            logger.info("Cleanup complete (non-blocking)")
         
         self._is_bag_recording = False
         self._is_compressing = False

@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
 from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Qt, Property, Signal, QThread
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class OverlayController(QObject):
@@ -157,7 +160,7 @@ class OverlayController(QObject):
         if self.get_left_selected_option() == "EF Yaw Angle" or self.get_right_selected_option() == "EF Yaw Angle":
             if self._control_processor and self._teensy:
                 self._control_processor.controls["EF Yaw Angle"].offset = self._teensy.get_status().get('imu_yaw')
-                print(f"Set target yaw angle to {self._teensy.get_status().get('imu_yaw')}")
+                logger.debug("Set target yaw angle to %s", self._teensy.get_status().get('imu_yaw'))
             # Reset the temporary indices
             self._temp_left_index = 0
             self._temp_right_index = 0
@@ -310,7 +313,7 @@ class OverlayController(QObject):
             if self._control_processor and self._teensy:
                 current_yaw = self._teensy.get_status().get('imu_yaw', 0)
                 self._control_processor.controls["EF Yaw Angle"].offset = current_yaw
-                print(f"Set target yaw angle to {current_yaw}")
+                logger.debug("Set target yaw angle to %s", current_yaw)
 
     @Slot(result=tuple)
     def get_current_joystick_controls(self):

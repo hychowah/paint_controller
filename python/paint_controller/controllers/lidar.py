@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
+import logging
 
 from std_msgs.msg import Float32
 from PySide6.QtCore import QObject, Signal, Property, Slot
+
+logger = logging.getLogger(__name__)
 
 
 class LidarController(QObject):
@@ -34,7 +37,7 @@ class LidarController(QObject):
             self._angle_callback,
             10
         )
-        print('LidarController: Subscribed to /ef/lidar/wall_detection/distance and /ef/lidar/wall_detection/filtered_angle')
+        logger.info('Subscribed to /ef/lidar/wall_detection/distance and /ef/lidar/wall_detection/filtered_angle')
     
     def get_distance(self) -> float:
         return self._distance
@@ -76,5 +79,5 @@ class LidarController(QObject):
     
     def cleanup(self):
         """Cleanup controller resources"""
-        print('Cleaning up LidarController...')
+        logger.info('Cleaning up LidarController...')
 

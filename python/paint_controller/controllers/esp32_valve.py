@@ -117,7 +117,7 @@ class UDPReceiveThread(QThread):
                 # Timeout is normal for non-blocking socket
                 continue
             except Exception as e:
-                print(f"UDP receive error: {e}")
+                logging.error("UDP receive error: %s", e)
                 time.sleep(0.1)
     
     def _validate_message(self, data: bytes, start_byte: int) -> bool:
@@ -410,7 +410,7 @@ class ESP32ValveController(QObject):
                     self._sock.sendto(message, (self._esp32_ip, self.RECEIVE_PORT))
             
         except Exception as e:
-            print(f"Failed to send valve command: {e}")
+            logging.error("Failed to send valve command: %s", e)
     
     @Slot(float)
     def setValveTurn(self, position_pct: float):

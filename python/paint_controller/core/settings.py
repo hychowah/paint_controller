@@ -8,11 +8,13 @@ to ~/ros2_ws/src/paint_controller_ros2/python/config/settings.json and can be mo
 
 import os
 import json
+import logging
 import threading
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from PySide6.QtCore import QObject, Signal, Slot, Property
 
+logger = logging.getLogger(__name__)
 
 # Settings schema — defines metadata for all settings (default, min, max, type, etc.)
 _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
@@ -288,7 +290,7 @@ class SettingsManager(QObject):
         config_path = self._get_config_path()
         
         if not config_path.exists():
-            print(f"[SettingsManager] No config file found, using defaults")
+            logger.info("No config file found, using defaults")
             return False
         
         try:
@@ -303,14 +305,14 @@ class SettingsManager(QObject):
                         if validated is not None:
                             self._values[key] = validated
             
-            print(f"[SettingsManager] Loaded settings from {config_path}")
+            logger.info("Loaded settings from %s", config_path)
             return True
             
         except json.JSONDecodeError as e:
-            print(f"[SettingsManager] Error parsing config file: {e}")
+            logger.error("Error parsing config file: %s", e)
             return False
         except Exception as e:
-            print(f"[SettingsManager] Error loading config: {e}")
+            logger.error("Error loading config: %s", e)
             return False
     
     def _validate_value(self, key: str, value: Any) -> Optional[Any]:
@@ -361,7 +363,7 @@ class SettingsManager(QObject):
             return typed_value
             
         except (ValueError, TypeError) as e:
-            print(f"[SettingsManager] Validation error for {key}: {e}")
+            logger.warning("Validation error for %s: %s", key, e)
             return None
     
     def get(self, key: str, default: Any = None) -> Any:
@@ -470,12 +472,12 @@ class SettingsManager(QObject):
             with open(config_path, 'w') as f:
                 json.dump(values_snapshot, f, indent=2)
             
-            print(f"[SettingsManager] Saved settings to {config_path}")
+            logger.info("Saved settings to %s", config_path)
             return (True, "Settings saved successfully")
             
         except Exception as e:
             error_msg = f"Failed to save settings: {e}"
-            print(f"[SettingsManager] {error_msg}")
+            logger.error("%s", error_msg)
             return (False, error_msg)
     
     @Slot(str, result=bool)

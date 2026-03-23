@@ -1,8 +1,12 @@
 
+import logging
+
 from PySide6.QtCore import QObject, Slot, QTimer, QMetaObject
 
 from paint_controller.utils.constants import ControlMode, JoystickControl, QmlObjectName
 from paint_controller.utils.input import DoublePressDetector
+
+logger = logging.getLogger(__name__)
 
 
 class UIInputHandler(QObject):
@@ -44,12 +48,12 @@ class UIInputHandler(QObject):
     def _on_arm_retract_length_changed(self, new_value: int):
         """Handle arm_retract_length change from SettingsManager"""
         self._arm_retract_length = new_value
-        print(f"[UIInputHandler] Arm retract length updated to: {new_value}")
+        logger.info("Arm retract length updated to: %s", new_value)
     
     def _on_arm_extend_length_changed(self, new_value: int):
         """Handle arm_extend_length change from SettingsManager"""
         self._arm_extend_length = new_value
-        print(f"[UIInputHandler] Arm extend length updated to: {new_value}")
+        logger.info("Arm extend length updated to: %s", new_value)
 
     @Slot()
     def on_l5_pressed(self):
@@ -73,7 +77,7 @@ class UIInputHandler(QObject):
             if popup:
                 QMetaObject.invokeMethod(popup, "close")
         except Exception as e:
-            print(f"[UIInputHandler] Warning: Could not close popup: {e}")
+            logger.warning("Could not close popup: %s", e)
         
         # Save current joystick controls before switching modes
         current_controls = self._overlay.get_current_joystick_controls()

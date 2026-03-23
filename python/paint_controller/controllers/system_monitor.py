@@ -5,12 +5,15 @@ Monitors battery level, remaining time, and CPU temperature.
 Runs in background QThread to avoid blocking UI.
 """
 
+import logging
 import subprocess
 import re
 import os
 from typing import Optional
 
 from PySide6.QtCore import QObject, Signal, Property, QTimer, QThread
+
+logger = logging.getLogger(__name__)
 
 
 class SystemMonitorWorker(QObject):
@@ -344,8 +347,8 @@ class SystemMonitor(QObject):
             self.worker_thread.quit()
             # Wait for thread to finish (max 2 seconds)
             if not self.worker_thread.wait(2000):
-                print("Warning: Worker thread did not exit cleanly, forcing termination")
+                logger.warning("Worker thread did not exit cleanly, forcing termination")
                 self.worker_thread.terminate()
                 self.worker_thread.wait()
         except Exception as e:
-            print(f"Error cleaning up SystemMonitor: {e}")
+            logger.error("Error cleaning up SystemMonitor: %s", e)

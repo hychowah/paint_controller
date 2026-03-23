@@ -1,4 +1,5 @@
 from PySide6.QtCore import QObject, Slot, Signal, QTimer, Property, QRunnable, QThreadPool
+import logging
 import os
 import json
 import paramiko
@@ -6,6 +7,8 @@ import threading
 import subprocess
 import time
 import platform
+
+logger = logging.getLogger(__name__)
 
 class SSHLauncher:
     def __init__(self, hostname, username, password=None, key_path=None, port=22):
@@ -17,31 +20,31 @@ class SSHLauncher:
 
     def run_script(self, command, callback=None):
         def _execute():
-            print(f"[SSHLauncher] Connecting to {self.username}@{self.hostname}:{self.port}")
+            logger.info("Connecting to %s@%s:%s", self.username, self.hostname, self.port)
             try:
                 client = paramiko.SSHClient()
                 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
                 if self.key_path:
-                    print(f"[SSHLauncher] Using private key: {self.key_path}")
+                    logger.info("Using private key: %s", self.key_path)
                     key = paramiko.RSAKey.from_private_key_file(self.key_path)
                     client.connect(self.hostname, port=self.port, username=self.username, pkey=key)
                 else:
-                    print("[SSHLauncher] Using password authentication")
+                    logger.info("Using password authentication")
                     client.connect(self.hostname, port=self.port, username=self.username, password=self.password)
 
-                print(f"[SSHLauncher] Executing command:\n{command}")
+                logger.info("Executing command:\n%s", command)
                 stdin, stdout, stderr = client.exec_command(command)
                 out = stdout.read().decode()
                 err = stderr.read().decode()
-                print(f"[SSHLauncher] STDOUT:\n{out}")
-                print(f"[UISSHController] STDERR:\n{err}")
+                logger.info("STDOUT:\n%s", out)
+                logger.info("STDERR:\n%s", err)
 
                 client.close()
                 if callback:
                     callback(out, err)
             except Exception as e:
-                print(f"[SSHLauncher] Exception: {e}")
+                logger.error("SSH exception: %s", e)
                 if callback:
                     callback("", str(e))
 
@@ -122,7 +125,7 @@ class UISSHController(QObject):
             with open(path, 'r') as f:
                 return json.load(f)
         except Exception as e:
-            print(f"[UISSHController] Failed to load JSON config from {path}: {e}")
+            logger.error("Failed to load JSON config from %s: %s", path, e)
             return {}
 
     def _save_json_file(self, path, data):
@@ -131,7 +134,7 @@ class UISSHController(QObject):
                 json.dump(data, f, indent=4)
             return True
         except Exception as e:
-            print(f"[UISSHController] Failed to save JSON config to {path}: {e}")
+            logger.error("Failed to save JSON config to %s: %s", path, e)
             return False
 
     def _load_ssh_config(self, path):
@@ -158,7 +161,7 @@ class UISSHController(QObject):
             except RuntimeError as e:
                 # Catch "Internal C++ object already deleted" errors
                 if "already deleted" in str(e):
-                    print(f"[UISSHController] Object being destroyed, skipping signal emission for {name}")
+                    logger.debug("Object being destroyed, skipping signal emission for %s", name)
                 else:
                     raise
 
@@ -171,13 +174,13 @@ class UISSHController(QObject):
         for index, (device_name, device_config) in enumerate(ssh_config.items()):
             if not device_config or not device_config.get("hostname"):
                 self.deviceAvailable.emit(device_name, False, f"Invalid configuration for {device_name}")
-                print(f"[UISSHController] Cannot start check for {device_name}: Invalid config")
+                logger.warning("Cannot start check for %s: Invalid config", device_name)
                 continue
             
             hostname = device_config["hostname"]
             
             if device_name in self.availability_timers:
-                print(f"[UISSHController] Availability check already running for {device_name}")
+                logger.info("Availability check already running for %s", device_name)
                 continue
             
             timer = QTimer(self)
@@ -190,7 +193,7 @@ class UISSHController(QObject):
         for device_name, timer in list(self.availability_timers.items()):
             timer.stop()
             timer.deleteLater()
-            print(f"[UISSHController] Stopped availability check for {device_name}")
+            logger.info("Stopped availability check for %s", device_name)
         self.availability_timers.clear()
 
     def _get_deviceAvailability(self):
@@ -225,7 +228,7 @@ class UISSHController(QObject):
             # Load existing config
             ssh_config = self._load_json_file(self.ssh_path)
 
-            print(f"[UISSHController] Updating config for {device_name} with IP: {ip}, Port: {port}, Username: {username}, Key Path: {key_path}")
+            logger.info("Updating config for %s with IP: %s, Port: %s, Username: %s, Key Path: %s", device_name, ip, port, username, key_path)
             
             # Update the device config
             if device_name not in ssh_config:
@@ -244,7 +247,7 @@ class UISSHController(QObject):
             
             # Save updated config
             if self._save_json_file(self.ssh_path, ssh_config):
-                print(f"[UISSHController] Updated config for {device_name}")
+                logger.info("Updated config for %s", device_name)
                 self.configUpdated.emit(device_name, "Configuration updated successfully")
                 
                 # Show success popup
@@ -279,7 +282,7 @@ class UISSHController(QObject):
                 return False
                 
         except Exception as e:
-            print(f"[UISSHController] Error updating config for {device_name}: {e}")
+            logger.error("Error updating config for %s: %s", device_name, e)
             if self._show_popup_fn:
                 self._show_popup_fn(
                     title="Configuration Error", 
@@ -302,17 +305,17 @@ class UISSHController(QObject):
 
         launcher = remote_hosts.get(device_name)
         if not launcher:
-            print(f"[UISSHController] ERROR: Unknown device '{device_name}'")
+            logger.error("Unknown device '%s'", device_name)
             return
 
         service_commands = command_map.get(device_name, {}).get(service_name)
         if not service_commands:
-            print(f"[UISSHController] ERROR: '{service_name}' not defined on device '{device_name}'")
+            logger.error("'%s' not defined on device '%s'", service_name, device_name)
             return
 
         command = service_commands.get(action)
         if not command:
-            print(f"[UISSHController] ERROR: No '{action}' command for {service_name} on {device_name}")
+            logger.error("No '%s' command for %s on %s", action, service_name, device_name)
             return
 
         def callback(stdout, stderr):
@@ -323,9 +326,9 @@ class UISSHController(QObject):
                     popup_type="info"
                 )
             if stderr:
-                print(f"[{device_name}] STDERR:\n{stderr.strip()}")
+                logger.warning("[%s] STDERR:\n%s", device_name, stderr.strip())
             else:
-                print(f"[{device_name}] STDOUT:\n{stdout.strip() or 'Done.'}")
+                logger.info("[%s] STDOUT:\n%s", device_name, stdout.strip() or 'Done.')
 
         launcher.run_script(command, callback)
 
@@ -333,4 +336,4 @@ class UISSHController(QObject):
         """Cleanup SSH controller resources"""
         self._is_cleaning_up = True
         self._stop_all_availability_checks()
-        print("[UISSHController] Cleanup complete")
+        logger.info("Cleanup complete")

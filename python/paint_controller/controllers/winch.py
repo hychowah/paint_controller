@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
+import logging
 import time
 from typing import Dict
 from rclpy.node import Node
 from std_msgs.msg import Float64, Bool
 from paint_interfaces.msg import WinchStatus, MoveWinchLength
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
+
+logger = logging.getLogger(__name__)
 
 class WinchController(QObject):
     # Define signals for property changes
@@ -78,14 +81,14 @@ class WinchController(QObject):
             self._status_callback,
             10
         )
-        print(f"Winch status subscriber set up on topic 'winch/status'")
+        logger.info("Winch status subscriber set up on topic 'winch/status'")
     
     def _status_callback(self, msg: WinchStatus):
         """Callback function for winch status messages"""
         try:
             self.update_status(msg)
         except Exception as e:
-            print(f"Error in winch status callback: {e}")
+            logger.error("Error in winch status callback: %s", e)
     
     def _check_availability(self):
         """
@@ -103,7 +106,7 @@ class WinchController(QObject):
             if self._available:
                 self._available = False
                 self.available_changed.emit()
-                print(f"Winch considered disconnected: {time_since_last_update:.1f}s since last message")
+                logger.warning("Winch considered disconnected: %.1fs since last message", time_since_last_update)
     
     def update_status(self, msg: WinchStatus):
         """Update property values from incoming status message"""
@@ -116,7 +119,7 @@ class WinchController(QObject):
         self._available = True
         if not was_available:
             self.available_changed.emit()
-            print("Winch connection restored")
+            logger.info("Winch connection restored")
         
         # Update other properties with throttling
         if current_time - self._last_update_time >= self._min_update_interval:
@@ -136,7 +139,7 @@ class WinchController(QObject):
     def command_speed_rpm(self, speed: float) -> bool:
         """Command winch speed with safety limits (RPM)"""
         if not self._available:
-            print("Cannot command speed: Winch not available")
+            logger.warning("Cannot command speed: Winch not available")
             return False
         safe_speed = float(self._apply_safety_limits(speed))
         msg = Float64()
@@ -148,7 +151,7 @@ class WinchController(QObject):
     def command_speed_mmps(self, speed: float) -> bool:
         """Command winch speed in mm/s with clamping to ±max_speed"""
         if not self._available:
-            print("Cannot command speed: Winch not available")
+            logger.warning("Cannot command speed: Winch not available")
             return False
         clamped_speed = float(self._apply_safety_limits(speed))
         msg = Float64()
@@ -169,10 +172,10 @@ class WinchController(QObject):
             msg.speed_mm_s = int(speed_mm_s)
             # acceleration_rpm_s will use message default (30 RPM/s)
             self._move_increment_pub.publish(msg)
-            print(f'Moving winch by: {length_mm} mm at {speed_mm_s} mm/s')
+            logger.info('Moving winch by: %d mm at %d mm/s', length_mm, speed_mm_s)
             return True
         except Exception as e:
-            print(f'Error moving winch: {e}')
+            logger.error('Error moving winch: %s', e)
             return False
     
     def move_increment_with_accel(self, length_mm: int, speed_mm_s: int, acceleration_rpm_s: int) -> bool:
@@ -187,10 +190,10 @@ class WinchController(QObject):
             msg.speed_mm_s = int(speed_mm_s)
             msg.acceleration_rpm_s = int(acceleration_rpm_s)
             self._move_increment_pub.publish(msg)
-            print(f'Moving winch by: {length_mm} mm at {speed_mm_s} mm/s with acceleration {acceleration_rpm_s} RPM/s')
+            logger.info('Moving winch by: %d mm at %d mm/s with acceleration %d RPM/s', length_mm, speed_mm_s, acceleration_rpm_s)
             return True
         except Exception as e:
-            print(f'Error moving winch: {e}')
+            logger.error('Error moving winch: %s', e)
             return False
         
     def move_absolute(self, length_mm: int, speed_mm_s: int) -> bool:
@@ -205,10 +208,10 @@ class WinchController(QObject):
             msg.speed_mm_s = int(speed_mm_s)
             # acceleration_rpm_s will use message default (30 RPM/s)
             self._move_absolute_pub.publish(msg)
-            print(f'Moving winch to: {length_mm} mm at {speed_mm_s} mm/s')
+            logger.info('Moving winch to: %d mm at %d mm/s', length_mm, speed_mm_s)
             return True
         except Exception as e:
-            print(f'Error moving winch: {e}')
+            logger.error('Error moving winch: %s', e)
             return False
     
     def move_absolute_with_accel(self, length_mm: int, speed_mm_s: int, acceleration_rpm_s: int) -> bool:
@@ -223,24 +226,24 @@ class WinchController(QObject):
             msg.speed_mm_s = int(speed_mm_s)
             msg.acceleration_rpm_s = int(acceleration_rpm_s)
             self._move_absolute_pub.publish(msg)
-            print(f'Moving winch to: {length_mm} mm at {speed_mm_s} mm/s with acceleration {acceleration_rpm_s} RPM/s')
+            logger.info('Moving winch to: %d mm at %d mm/s with acceleration %d RPM/s', length_mm, speed_mm_s, acceleration_rpm_s)
             return True
         except Exception as e:
-            print(f'Error moving winch: {e}')
+            logger.error('Error moving winch: %s', e)
             return False
         
     def set_load_detection_mode(self, enable: bool):
         if not self.available:
-            print("Cannot set load detection: Winch not available")
+            logger.warning("Cannot set load detection: Winch not available")
 
         try:
             msg = Bool()
             msg.data = enable
             self._load_detection_pub.publish(msg)
-            print(f'Load detection mode set to: {enable}')
+            logger.info('Load detection mode set to: %s', enable)
             return True
         except Exception as e:
-            print(f'Error setting load detection mode: {e}')
+            logger.error('Error setting load detection mode: %s', e)
             return False
     
     def _apply_safety_limits(self, speed: float) -> float:
@@ -250,7 +253,7 @@ class WinchController(QObject):
     def _on_max_speed_changed(self, new_value: float):
         """Handle max_speed change from SettingsManager"""
         self._max_speed = new_value
-        print(f"[WinchController] Max speed updated to: {new_value}")
+        logger.info("Max speed updated to: %s", new_value)
     
     @property
     def is_enabled(self) -> bool:
@@ -387,14 +390,14 @@ class WinchController(QObject):
     def setEnabled(self, enabled: bool):
         """Enable/disable winch from QML"""
         if not self._available:
-            print("Cannot enable winch: Winch not available")
+            logger.warning("Cannot enable winch: Winch not available")
             return
         
          # Send command to enable/disable winch
         msg = Bool()
         msg.data = enabled
         self._enable_pub.publish(msg)
-        print(f'Winch {"enabled" if enabled else "disabled"}')
+        logger.info('Winch %s', 'enabled' if enabled else 'disabled')
 
     @Slot(bool)
     def setLoadDetectionEnabled(self, enabled: bool):

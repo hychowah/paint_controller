@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import logging
 from dataclasses import dataclass
 from typing import Dict, List, Callable, Any, Optional
 import math
@@ -9,6 +10,8 @@ import hid
 import struct
 
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer, QThread, QMutex, QMutexLocker
+
+logger = logging.getLogger(__name__)
 
 class SteamDeckReaderThread(QThread):
     """Qt thread for reading from the Steam Deck HID device"""
@@ -31,7 +34,7 @@ class SteamDeckReaderThread(QThread):
         self._stop_requested = False
         
         if not self._device:
-            print("Error: No HID device set for reader thread")
+            logger.error("No HID device set for reader thread")
             return
             
         while not self._stop_requested:
@@ -47,7 +50,7 @@ class SteamDeckReaderThread(QThread):
             except Exception as e:
                 # Only log error if we're not stopping
                 if not self._stop_requested:
-                    print(f"Error reading from Steam Deck: {e}")
+                    logger.error("Error reading from Steam Deck: %s", e)
                 QThread.msleep(10)  # Longer sleep on error
     
     def stop(self):
@@ -65,7 +68,7 @@ class SteamDeckReaderThread(QThread):
         if self.isRunning():
             self.stop()
             if not self.wait(2000):  # Wait up to 2 seconds
-                print("Warning: Reader thread did not stop in time")
+                logger.warning("Reader thread did not stop in time")
                 self.terminate()  # Force terminate as last resort
                 self.wait(1000)  # Wait for termination
 
@@ -222,7 +225,7 @@ class SteamDeckHandler(QObject):
         """Initialize and start the Steam Deck HID connection"""
         # Prevent starting if already running
         if self._device is not None or self._reader_thread.isRunning():
-            print("Warning: Steam Deck handler already started")
+            logger.warning("Steam Deck handler already started")
             return True
         
         VALVE_VID = 0x28DE
@@ -236,7 +239,7 @@ class SteamDeckHandler(QObject):
                 break
         
         if not device_info:
-            print('Error: Steam Deck interface 2 not found!')
+            logger.error('Steam Deck interface 2 not found!')
             return False
         
         try:
@@ -253,11 +256,11 @@ class SteamDeckHandler(QObject):
             with self._last_input_time_lock:
                 self._last_input_time = time.time()
             self.connection_status_changed.emit(True)
-            print("Steam Deck HID connection started successfully")
+            logger.info("Steam Deck HID connection started successfully")
             return True
             
         except Exception as e:
-            print(f"Error initializing Steam Deck: {e}")
+            logger.error("Error initializing Steam Deck: %s", e)
             if self._device:
                 self._device.close()
                 self._device = None
@@ -273,13 +276,13 @@ class SteamDeckHandler(QObject):
                 try:
                     self._device.close()
                 except Exception as e:
-                    print(f"Error closing Steam Deck device: {e}")
+                    logger.error("Error closing Steam Deck device: %s", e)
                 finally:
                     self._device = None
             
         self._available = False
         self.connection_status_changed.emit(False)
-        print("Steam Deck HID connection stopped")
+        logger.info("Steam Deck HID connection stopped")
     
     def cleanup(self):
         """Comprehensive cleanup of all Steam Deck handler resources.
@@ -293,7 +296,7 @@ class SteamDeckHandler(QObject):
         
         This method is idempotent and safe to call multiple times.
         """
-        print("Cleaning up Steam Deck handler...")
+        logger.info("Cleaning up Steam Deck handler...")
         
         # Stop the availability timer
         if hasattr(self, '_availability_timer') and self._availability_timer:
@@ -307,7 +310,7 @@ class SteamDeckHandler(QObject):
         # Wait for reader thread to fully terminate
         if self._reader_thread and self._reader_thread.isRunning():
             if not self._reader_thread.wait(2000):  # Wait up to 2 seconds
-                print("Warning: Steam Deck reader thread did not terminate in time")
+                logger.warning("Steam Deck reader thread did not terminate in time")
         
         # Clear all callbacks
         with QMutexLocker(self._mutex):
@@ -319,7 +322,7 @@ class SteamDeckHandler(QObject):
         # Reset state
         self._available = False
         
-        print("Steam Deck handler cleanup complete")
+        logger.info("Steam Deck handler cleanup complete")
     
     def register_button_callback(self, button: str, callback: Callable[[], None]):
         """
@@ -337,7 +340,7 @@ class SteamDeckHandler(QObject):
                 self._button_callbacks[button].append(callback)
             return True
         else:
-            print(f"Warning: Button '{button}' is not a valid button name")
+            logger.warning("Button '%s' is not a valid button name", button)
             return False
     
     def unregister_button_callback(self, button: str, callback: Callable[[], None]):
@@ -357,10 +360,10 @@ class SteamDeckHandler(QObject):
                     self._button_callbacks[button].remove(callback)
                     return True
                 else:
-                    print(f"Warning: Callback not found for button '{button}'")
+                    logger.warning("Callback not found for button '%s'", button)
                     return False
         else:
-            print(f"Warning: Button '{button}' is not a valid button name")
+            logger.warning("Button '%s' is not a valid button name", button)
             return False
     
     def register_button_hold_callback(self, button: str, hold_duration: float, callback: Callable[[float], None], 
@@ -393,7 +396,7 @@ class SteamDeckHandler(QObject):
                 self._button_hold_triggered[button][callback_id] = False
             return True
         else:
-            print(f"Warning: Button '{button}' is not a valid button name")
+            logger.warning("Button '%s' is not a valid button name", button)
             return False
     
     def unregister_button_hold_callback(self, button: str, callback: Callable[[float], None]):
@@ -418,10 +421,10 @@ class SteamDeckHandler(QObject):
                         # Remove the callback
                         self._button_hold_callbacks[button].pop(i)
                         return True
-                print(f"Warning: Hold callback not found for button '{button}'")
+                logger.warning("Hold callback not found for button '%s'", button)
                 return False
         else:
-            print(f"Warning: Button '{button}' is not a valid button name")
+            logger.warning("Button '%s' is not a valid button name", button)
             return False
     
     def _check_availability(self):
@@ -437,7 +440,7 @@ class SteamDeckHandler(QObject):
         if time_since_last_input > self._connection_timeout:
             if self._available:
                 self._available = False
-                print(f"Steam Deck considered disconnected: {time_since_last_input:.1f}s since last message")
+                logger.warning("Steam Deck considered disconnected: %.1fs since last message", time_since_last_input)
                 self.connection_status_changed.emit(False)
     
     @Slot(bytes)
@@ -454,7 +457,7 @@ class SteamDeckHandler(QObject):
         if not self._available:
             self._available = True
             self.connection_status_changed.emit(True)
-            print("Steam Deck reconnected")
+            logger.info("Steam Deck reconnected")
             
         with QMutexLocker(self._mutex):
             # Store previous state for change detection
@@ -596,13 +599,13 @@ class SteamDeckHandler(QObject):
             try:
                 callback()
             except Exception as e:
-                print(f"Error in button callback for {button}: {e}")
+                logger.error("Error in button callback for %s: %s", button, e)
         
         for button, hold_callback, duration in hold_callbacks_to_execute:
             try:
                 hold_callback['callback'](duration)
             except Exception as e:
-                print(f"Error in hold callback for {button}: {e}")
+                logger.error("Error in hold callback for %s: %s", button, e)
         
         # Emit progress signals
         for button, current_duration, target_duration in progress_signals_to_emit:
@@ -701,7 +704,7 @@ class SteamDeckHandler(QObject):
             if button in self._debounce_times:
                 self._debounce_times[button] = max(0.0, debounce_time)  # Ensure non-negative
             else:
-                print(f"Warning: Button '{button}' not found when setting debounce time")
+                logger.warning("Button '%s' not found when setting debounce time", button)
     
     def set_default_debounce_time(self, debounce_time: float):
         """
@@ -727,7 +730,7 @@ class SteamDeckHandler(QObject):
             if button in self._debounce_times:
                 return self._debounce_times[button]
             else:
-                print(f"Warning: Button '{button}' not found when getting debounce time")
+                logger.warning("Button '%s' not found when getting debounce time", button)
                 return self._default_debounce_time
             
     def get_default_debounce_time(self) -> float:
