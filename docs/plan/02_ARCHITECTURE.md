@@ -1,0 +1,441 @@
+# Paint Controller Architecture Reference
+
+> **Source**: Codebase review (2026-04). Updated with audit findings.
+> **Canonical location**: `docs/plan/02_ARCHITECTURE.md`
+> **Related**: [01_MASTER_PLAN.md](01_MASTER_PLAN.md) | [03_QML_BINDINGS.md](03_QML_BINDINGS.md) | [04_AUDIT_REPORT.md](04_AUDIT_REPORT.md)
+
+---
+
+## Project Overview
+
+Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. Hybrid Python + C++ codebase for controlling a multi-DOF painting robot with cameras, winch, wheels, propellers, Lidar, and spray systems.
+
+**Tech Stack**: ROS2 (Humble/Jazzy), Python 3.10+, PySide6 (Qt 6), QML, C++, OpenCV, GStreamer, VTK, UDP
+
+---
+
+## Architecture Layer Overview
+
+### 1. Core Application Layer (`python/paint_controller/core/`)
+
+**Key Class: `RobotController(Node, QObject)`** - 11+ KB, 700+ lines
+- Hybrid: ROS2 Node (for pub/sub) + Qt Object (for signals)
+- **NOTE (Audit)**: ~L221-746 contains dead code from old `RobotController` class. Scheduled for removal in Task 0.1.
+- **Responsibilities**: 
+  - Main orchestration of all subsystems
+  - Signal routing between components
+  - ROS2 message publishing (heartbeat)
+  - UI integration (QML engine, property binding)
+  - Emergency shutdown handling
+  - Control mode management (base vs. end-effector)
+
+**Signal Groups**:
+- Video/display: `frame_ready`, `display_message_changed`
+- Control: `control_mode_changed`, `left/right_joystick_control_changed`
+- Emergency: `emergency_triggered`, `emergency_overlay_changed`
+- Status: `status_updated`, `control_mode_changed`
+
+**ROS2 Thread**: `RosThread(QThread)`
+- Isolated event loop (non-blocking `spin_once`)
+- Network error recovery with exponential backoff
+- Watchdog timeout detection (5s)
+- Graceful cleanup on shutdown
+
+**Settings Management**: `SettingsManager(QObject)` - ~500 lines
+- Centralized config persistence (JSON: `~/ros2_ws/src/paint_controller_ros2/python/config/settings.json`)
+- ~25 settings: winch speed, track limits, arm positions, video calibration
+- Qt signal/property pattern for QML binding
+- Validation with min/max/type metadata
+- Backward compatibility with defaults
+
+**State Store**: `StateStore(QObject)` — New in modernization plan
+- Replaces `backend` context property for app-level state
+- Properties: `controlMode`, `emergencyState`
+- Task 1.0 in Phase 1
+
+---
+
+### 2. Input/Control Handlers Layer (`python/paint_controller/handlers/`)
+
+#### **Steam Deck Input Handler** - `SteamDeckHandler(QObject)` ~400 lines
+- **HID Device Layer**: Valve USB interface (`0x28DE:0x1205`)
+- Multi-threaded: `SteamDeckReaderThread(QThread)` for non-blocking USB reads
+- State tracking:
+  - **Joysticks**: Left/right with smoothing + dead-zone (configurable 0.1 default)
+  - **Buttons**: 20 buttons with debounce timing, hold callbacks
+  - **Triggers**: Analog values 0-32768
+  - **IMU**: Pitch/roll/yaw from internal accelerometer
+- Button pressure tracking for double-press detection
+- Signals: `input_state_changed`, `button_held`, `button_hold_progress`
+
+**Known Quirks**:
+- 100Hz polling sufficient (reduced from 1kHz per KNOWLEDGE.md)
+- Port-specific button event delivery is critical
+
+#### **Input Processor** - `UIInputHandler(QObject)` ~100 lines
+- Maps Steam Deck buttons → robot actions
+- Double-press detection with 1s timeout (arm extend/retract)
+- Mode switching: base (track control) ↔ EF (end-effector)
+- Menu navigation (up/down/left/right)
+- Settings integration for arm presets
+- **NOTE (Audit R3)**: L79 has `findChild("messagePopup")` — must be replaced with `qt_bridge.close_popup()` signal in Task 1.2
+
+#### **Control Processor** - `ControlProcessor(QObject)` ~400 lines
+- **Complex joystick-to-command mapping**:
+  - Track control: Non-linear curve for friction compensation (dead-zone 5%, threshold 60%)
+  - Winch speed: Bidirectional with lock-out when at limits
+  - Wheel travel: Continuous accumulation until button press
+  - EF controls: 10+ different joystick mappings (arm, rail, trigger, pitch, yaw, etc.)
+- Display update at 5Hz (200ms throttle)
+- Per-command interval throttling: 10Hz typical
+- Valve turn deadzone: 2s timeout to reset
+- Settings-driven: Scale factors, min/max bounds dynamically loaded
+
+#### **Emergency Handler** - `EmergencyButtonHandler(QObject)` ~150 lines
+- Steam button hold-to-trigger (200ms default)
+- Progressive overlay feedback (duration/target_duration)
+- Cooldown: 1s between activations
+- Actions: Winch/wheel stop, spray trigger disable, error popup
+- State machine: idle → holding → triggered → cooldown
+
+#### **Heartbeat Monitor** - `UIHeartbeatHandler(QObject)` ~200 lines
+- Monitors 3 subsystems: controller, base robot, end-effector
+- Timeout-based disconnection detection (1s timeout)
+- Status polling every 200ms
+- Enum: IDLE(0x00), ONTASK(0x01), WARNING(0x02), ERROR(0x03)
+- Topics: `/controller/heartbeat`, `/base/heartbeat`, `/ef/heartbeat`
+- **NOTE (Audit)**: Duplicate `HeartbeatStatus` enum at ~L85 in application.py — remove in Task 0.2
+
+#### **Warning Handler** - Minimal (~50 lines)
+- Simple warning queue with dedup
+- QML-bindable property
+- **NOTE (Audit D5)**: No `cleanup()` method — intentionally omitted from `ControllerBundle.cleanup()`
+
+---
+
+### 3. Hardware Controllers Layer (`python/paint_controller/controllers/`)
+
+#### **Wheel Controller** - `WheelController(QObject)` ~250 lines
+- ROS2 publisher: `MoveVehicleSpd`, `MoveVehiclePos`
+- ROS2 subscriber: `VehicleStatus`
+- Motor state tracking: left/right speed, current, position
+- Motor availability: Per-track error state + online status
+- Error signal: Triggers emergency overlay on motor failure
+- Connection timeout: 1s before considered offline
+- Unified speed command (both tracks via single message)
+
+#### **Winch Controller** - `WineController(QObject)` ~200 lines
+- ROS2 publisher: speed (RPM/mm·s), enable, move commands
+- ROS2 subscriber: `WinchStatus`
+- Cable tracking: length, velocity, torque, motor temp
+- Load detection mode
+- Move commands: Increment, absolute, with acceleration control
+- Settings integration: max_speed_mmps loaded from SettingsManager
+- **NOTE (Audit R12)**: 4 disabled safety checks use `print()` instead of `logger.warning()`. Task 0.4 re-enables all 4.
+
+#### **Teensy Controller** - `TeensyController(QObject)` ~300 lines
+- ROS2 publisher: 20+ topics for sprayer, gimbal, props, relay, LED
+- ROS2 subscriber: `TeensyStatus` (comprehensive ARM/EF sensor fusion)
+- Sensor fusion: IMU (accel/pitch/roll/yaw), gimbal angles, motor temps
+- Thrust force ramping: 100ms update (configurable rate from settings)
+- Spray trigger: 0-2000 range (1000 = neutral)
+- Gimbal control: Pitch speed + angle, roll motors (PWM)
+- Prop control: Left/right joint + PWM independent
+- Status cache update throttle: 100ms
+
+#### **ESP32 Valve Controller** - `ESP32ValveController(QObject)` ~300 lines
+- UDP-based (ports 8888/8889)
+- ARP-based IP discovery with fallback (hardcoded 192.168.101.102)
+- `UDPReceiveThread(QThread)` for non-blocking recv
+- Valve position: 0-100% command → 0-1000 ESP32 (×10 multiplier)
+- Feedback: 0-10000 ESP32 → 0-100% ROS (÷100)
+- Keep-alive: Only resend if idle >1s
+- CRC validation (polynomial 0x07, init 0xFF)
+
+#### **Lidar Controller** - Simple (~100 lines)
+- ROS2 subscriber: `/ef/lidar/wall_detection/distance` + `filtered_angle`
+- Qt properties: `distance`, `angle` with changed signals
+
+#### **Wind Monitor** - Minimal (~50 lines)
+- ROS2 subscriber: `/wind/speed`, `/wind/direction` (Float32)
+- Qt properties for QML binding
+
+#### **System Monitor** - `SystemMonitor(QObject) + SystemMonitorWorker(QThread)` ~150 lines
+- Battery level/remaining time via `acpi -b`
+- CPU temperature from sysfs `/sys/class/thermal/`
+- Worker thread: 1s polling interval
+- Fallback methods for systems without acpi
+
+#### **SSH Controller** - `UISSHController(QObject)` ~200 lines
+- SSH launcher via paramiko (key or password auth)
+- Ping-based device availability (0.5s timeout)
+- QThreadPool for non-blocking network checks
+- Device manager: Up to 10 remote systems
+
+---
+
+### 4. Services Layer (`python/paint_controller/services/`)
+
+#### **Video Stream Handler** - `VideoStreamHandler(QObject)` ~300 lines
+- **GStreamer Pipeline**: UDP RTP H264 → AVDec → RGB
+- Multi-camera: End-effector, base-front, base-rear, base-top
+- Thread-safe: `QMutex` per image provider
+- `ImageProvider(QQuickImageProvider)`: Provides images to QML
+- Ports: 5000 (EF), 5001 (base-front), 5002 (base-rear), 5003 (base-top)
+- Copy-on-read to prevent external modification
+
+#### **Bird's Eye View Service** - ~350 lines
+- 150° fisheye undistortion + perspective transform
+- Parameters: Zoom (0.606), pan (x:0.026, y:0.474), crop (90% width)
+- Source trapezoid: Normalized coords scaled to resolution
+- Output: 300×400 vertical road view with optional cropping
+- Settings integration: All parameters bound to SettingsManager
+
+#### **Base Top View Service** - ~400 lines
+- Fisheye correction for base camera (1920×1080 @ calibration)
+- Parameters: k1=-0.389, k2=0.142 (distortion coefficients)
+- Circle boundary: Center (966,540), radius 599 (2048×1080 basis)
+- Output: Square 500×500 (dynamic scaling)
+- Zoom/pan/rotation: Settings-driven
+- Resolution scaling: Automatic if input differs from calibration
+
+#### **Screen Manager** - `ScreenManager(QObject)` ~150 lines
+- Real-time multi-display detection
+- Qt signal integration: `screens_changed`, `screen_added`, `screen_removed`
+- Polling: 1s interval for dynamic changes
+- Properties per screen: Name, resolution, DPI, refresh rate, primary flag
+
+#### **Screen Recorder** - ~100 lines
+- Desktop capture via ffmpeg
+- Configurable output path + codec
+
+#### **ROS Bag Recorder** - ~50 lines
+- Topic recording via rosbag2
+
+#### **Workflow Legacy** - `WorkFlowHandler(QObject) + ActionWorker(QThread)` ~200 lines
+- Legacy workflow execution (kept for backward compatibility)
+- Service client pattern for PaintAction ROS service
+- Component online/idle checking
+
+#### **Workflow Runner** - New pattern
+- Replaces legacy handler with improved error handling
+- Explicit state tracking + QML-exposed properties
+
+---
+
+### 5. Models & UI Controllers (`python/paint_controller/models/`, `ui/`)
+
+#### **ActionConfigPython** - ~150 lines
+- Centralized action definitions (move winch, descend+spray, extend arm, etc.)
+- 5 action types with field metadata
+- Default value generation based on current hardware state
+- QML-callable interface
+- **NOTE (Audit D5)**: No `cleanup()` method — intentionally omitted from `ControllerBundle.cleanup()`
+
+#### **OverlayController** - ~300 lines
+- Dual joystick menu system (left/right/system)
+- Index tracking for selection
+- Auto-disable conflicting options (track controls can coexist)
+- Temporary vs. committed selection states
+- Yaw angle offset management
+
+---
+
+### 6. QML UI Layer (`python/paint_controller/qml/`) - 91 files
+
+**Directory Structure**:
+```
+qml/
+  core/               → ApplicationWindow, themes, styling
+  navigation/         → SelectBar, TopBar (sidebars, headers)
+  pages/              → Main content pages
+    status/components → TeensyStatus, WheelStatus, etc.
+    settings/pages    → Tab implementations
+    settings/components → Reusable SettingInputField
+  components/         → Core UI building blocks
+    buttons/          → Various button styles
+    inputs/           → Text inputs, sliders, spinboxes
+    displays/         → Cards, gauges, monitors
+    panels/           → Grouped UI sections
+    specialized/      → VTK pointcloud container, video components
+    popups/           → Message popups
+  overlays/           → Fullscreen/modal dialogs
+    systemcontrol/    → Settings, workflow, system menu (L4/R4 buttons)
+    video/            → Video fullscreen + end-effector overlay with live stats
+    video/components/ → Nested video controls, settings, topbar
+    lidar/            → 3D lidar 2D/3D views
+    EmergencyOverlay  → Hold-to-activate visual
+    OverlayLayer      → Master coordinator
+  widgets/actions/    → Workflow action sequencing
+```
+
+**Key QML Patterns** (from KNOWLEDGE.md):
+- **Loader Timing**: Close popups 150ms before Loader source changes (scene graph conflicts)
+- **Screen Access**: Use `screen.width`, not `screen.geometry.width`
+- **Layout Children**: Never use `parent.width * 0.30` in ColumnLayout/RowLayout (use Layout.fillWidth + weight)
+- **Button Keyboard**: Secondary windows get keyboard events leak → use `focusPolicy: Qt.ClickFocus` + `Keys.onPressed` reject
+
+**CRITICAL Audit Finding (R11)**: `CommonStyle.qml` is a `pragma Singleton` + `QtObject`. `Screen.pixelDensity` CANNOT work because `QtObject` has no parent Window — `Screen` is an attached type requiring visual hierarchy. Must inject from MainWindow or Python-side.
+
+**Multi-Monitor Architecture**:
+- Main app: Secondary display (index 1 if available, otherwise primary)
+- Industrial monitor: Always on primary (index 0) - shows LiDAR/status fullscreen
+- Dynamic detection: ScreenManager polls every 1s
+
+---
+
+### 7. C++ Path (DEPRECATED)
+
+**Location**: `src/paint_controller.cpp`
+
+- Sets only 2 of 26 context properties (`backend`, `baseStreamer`)
+- Shares QML files with Python path
+- Has its own launch file
+- **User decision (Audit R2)**: Formally deprecated. `README_DEPRECATED.md` to be added at `src/`.
+- Will break when `baseStreamer` context property is removed in Task 0.3
+
+---
+
+### 8. Threading & Concurrency Model
+
+**Main Qt Thread**:
+- QML rendering, UI updates
+- Signal/slot delivery
+- Steam Deck button callbacks (debounced)
+- Timer-based polling (200ms heartbeat, 100ms thrust ramp, etc.)
+
+**ROS2 Thread** (`RosThread`):
+- `rclpy.spin_once()` with 50ms timeout
+- Decoupled from Qt event loop
+- Detects network disconnections, recovers gracefully
+
+**Worker Threads**:
+- `SteamDeckReaderThread`: USB HID reads (10ms sleep per iteration)
+- `UDPReceiveThread`: UDP valve status (socket timeout 100ms)
+- `SystemMonitorWorker`: Battery/CPU polling (configurable interval, e.g., 1s)
+- Workflow execution: `ActionWorker(QThread)` for service calls
+
+**Thread Safety**:
+- `QMutex` for image provider access (video frames)
+- `threading.RLock()` for camera stream pipeline state
+- ROS2 client/service calls: Direct (library handles thread safety)
+
+---
+
+## Data Flow & Signal Routing
+
+### Input Loop (Steam Deck → Command)
+```
+SteamDeckHandler (USB HID) 
+  ↓ [100Hz input_state_changed]
+UIInputHandler (maps buttons to actions)
+  ↓ [slots: on_up_pressed, on_switch_pressed, etc.]
+RobotController (coordinates response)
+  ↓
+ControlProcessor (processes joystick state)
+  ↓ [publishes to ROS2 topics]
+Teensy/Wheel/Winch controllers (command motors)
+  ↓ [Status messages back]
+Status callbacks update Qt properties
+  ↓
+QML display binding updates UI
+```
+
+### Video Stream Loop (RTP → QML Image)
+```
+GStreamer UDP pipeline (ports 5000-5003)
+  ↓ [New sample]
+ImageProvider (updates internal QImage, signals frameReady)
+  ↓
+QML Image (refreshes from image provider)
+  ↓
+BirdViewTransformer/BaseTopViewTransformer (CPU processing)
+  ↓ [Settings/parameters from SettingsManager]
+Output image
+```
+
+### Settings Change Loop
+```
+SettingsManager.setting_changed signal
+  ↓
+Subscribing handlers: Teensy, Wheel, Winch, ControlProcessor
+  ↓ [e.g., winch_max_speed_mmps_changed signal]
+Values update dynamically
+  ↓
+QML reflects new limits/values
+```
+
+---
+
+## Critical Coupling Points
+
+1. **RobotController → Everything**
+   - Central orchestrator inherits from both Node and QObject
+   - 30+ sub-controllers initialized here
+   - High coupling but necessary for ROS2/Qt integration
+
+2. **SettingsManager → Hardware Controllers**
+   - All controllers subscribe to setting_changed signals
+   - Creates runtime parameter binding
+   - Good separation (settings → dependent value)
+
+3. **ControlProcessor ↔ OverlayController**
+   - Joystick control modes selected in overlay
+   - Control processor executes them
+   - Tight but intentional coupling
+
+4. **Steam Deck Handler ↔ Input Handler**
+   - Button events → action handlers
+   - Direct callback registration (loose coupling)
+
+---
+
+## Performance Characteristics
+
+**Display Update Rate**: 
+- Heartbeat: 0.5s (2Hz)
+- Control display: 200ms throttle (5Hz)
+- Status UI: 100ms throttle (10Hz)
+- Thrust ramp: 100ms timer (10Hz update)
+
+**USB Input Polling**: 
+- Steam Deck HID: 10ms sleep between reads (100Hz effective)
+- Note: Reduced from 1ms per testing (100Hz + smoothing sufficient)
+
+**ROS2 Spin**: 
+- 50ms timeout per `spin_once()` call
+- Watchdog: 5s timeout for network detection
+
+**GStreamer Pipeline**:
+- Real-time H264 decoding
+- Thread-safe via mutex (tight coupling to QImage provider)
+
+**Video Transforms**:
+- Fisheye undistortion: Cached remap tables (computed once per resolution)
+- Perspective transform: Per-frame computation (lightweight)
+- Cropping/resizing: CPU-based, real-time
+
+---
+
+## Deployment
+
+**Build & Run**:
+```bash
+cd ~/ros2_ws && colcon build --packages-select paint_interfaces paint_controller_ros2
+paint_controller  # Entry point (__main__.py)
+```
+
+**Configuration Files**:
+- `python/config/settings.json` (runtime)
+- `python/config/base_top_view_camera.json` (fisheye calibration)
+- `python/paint_controller/config/ssh_config.json` (remote device list)
+- `python/paint_controller/config/bash_config.json` (launch scripts)
+
+**ROS2 Topics** (Key):
+- `/controller/heartbeat` (UInt8)
+- `/base/heartbeat`, `/ef/heartbeat`
+- `/vehicle/speed/cmd` (MoveVehicleSpd)
+- `/winch/move/speed/mmps/cmd` (Float64)
+- `/teensy/*` (20+ topics)
+- `/valve/turn/cmd` (Float32)
+- `valve/status` (ValveStatus)
