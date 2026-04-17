@@ -1,9 +1,9 @@
 
 import logging
 
-from PySide6.QtCore import QObject, Slot, QTimer, QMetaObject
+from PySide6.QtCore import QObject, Slot
 
-from paint_controller.utils.constants import ControlMode, JoystickControl, QmlObjectName
+from paint_controller.utils.constants import ControlMode, JoystickControl
 from paint_controller.utils.input import DoublePressDetector
 
 logger = logging.getLogger(__name__)
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class UIInputHandler(QObject):
     def __init__(self, teensy, overlay, control_processor, workflow_handler,
-                 settings_manager, state_store, show_popup_fn):
+                 settings_manager, state_store, show_popup_fn, close_popup_fn=None):
         super().__init__()
         self._teensy = teensy
         self._overlay = overlay
@@ -20,7 +20,7 @@ class UIInputHandler(QObject):
         self._settings_manager = settings_manager
         self._state_store = state_store
         self._show_popup_fn = show_popup_fn
-        self._engine = None  # Set via set_engine() after QML loads
+        self._close_popup_fn = close_popup_fn
 
         self._l5_double_press = DoublePressDetector(threshold=1.0)
         self._r5_double_press = DoublePressDetector(threshold=1.0)
@@ -40,10 +40,6 @@ class UIInputHandler(QObject):
         # Mode-specific joystick control memory
         self._base_mode_joystick_controls = None
         self._ef_mode_joystick_controls = None
-
-    def set_engine(self, engine):
-        """Set QML engine reference (deferred wiring after engine creation)."""
-        self._engine = engine
     
     def _on_arm_retract_length_changed(self, new_value: int):
         """Handle arm_retract_length change from SettingsManager"""
@@ -71,11 +67,8 @@ class UIInputHandler(QObject):
     def on_switch_pressed(self):
         # Close any existing popup to prevent rendering conflicts during overlay switch
         try:
-            if self._engine:
-                root = self._engine.rootObjects()[0]
-            popup = root.findChild(QObject, QmlObjectName.MESSAGE_POPUP)
-            if popup:
-                QMetaObject.invokeMethod(popup, "close")
+            if self._close_popup_fn:
+                self._close_popup_fn()
         except Exception as e:
             logger.warning("Could not close popup: %s", e)
         

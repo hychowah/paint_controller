@@ -1,0 +1,49 @@
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "W",   # pycodestyle warnings
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "N802",  # function name should be lowercase (Qt slots use camelCase)
+    "N803",  # argument name should be lowercase (Qt conventions)
+    "N806",  # variable in function should be lowercase (Qt conventions)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["N", "E402"]
+"python/paint_controller/scripts/*" = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["paint_controller"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+python_classes = ["Test*"]
+qt_api = "pyside6"
+
+[tool.coverage.run]
+source = ["paint_controller"]
+omit = [
+    "*/scripts/*",
+    "*/__main__.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.",
+    "if TYPE_CHECKING:",
+]

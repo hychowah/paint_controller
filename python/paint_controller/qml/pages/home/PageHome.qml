@@ -17,12 +17,6 @@ Rectangle {
     property bool baseFrontVideoActive: false
     property bool endEffectorVideoActive: false
 
-    // Auto-start video streams on page load
-    Component.onCompleted: {
-        console.log("PageHome loaded - starting video streams")
-        baseStreamHandler.start_all_streams()
-    }
-
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 0
@@ -373,7 +367,7 @@ Rectangle {
 
                                             // Pulsing animation when available
                                             SequentialAnimation on opacity {
-                                                running: sshHandler.deviceAvailability.END_EFFECTOR
+                                                running: !!(sshHandler && sshHandler.deviceAvailability && sshHandler.deviceAvailability.END_EFFECTOR)
                                                 loops: Animation.Infinite
                                                 NumberAnimation { from: 1.0; to: 0.5; duration: 1000; easing.type: Easing.InOutQuad }
                                                 NumberAnimation { from: 0.5; to: 1.0; duration: 1000; easing.type: Easing.InOutQuad }

@@ -152,7 +152,7 @@ Rectangle {
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.preferredWidth: parent.width * 0.6
+                Layout.preferredWidth: 60
                 spacing: 8
 
                 Text {
@@ -284,8 +284,9 @@ Rectangle {
 
             // Right Column - Control Buttons
             ColumnLayout {
+                Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.preferredWidth: parent.width * 0.35
+                Layout.preferredWidth: 35
                 spacing: 10
 
                 Text {

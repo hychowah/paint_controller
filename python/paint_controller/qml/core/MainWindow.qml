@@ -37,7 +37,7 @@ ApplicationWindow {
     // Use Qt's Screen type for positioning - access via Screen attached property
     screen: Qt.application.screens[mainScreenIndex] || Qt.application.screens[0]
 
-    property int sidebarWidth: 150 // Initial value (expanded width)
+    property int sidebarWidth: CommonStyle.shellSidebarExpandedWidth
     
     // Expose the video fullscreen overlay as a property
     property alias videoFullscreenOverlay: videoFullscreenOverlay
@@ -50,6 +50,7 @@ ApplicationWindow {
     y: screen ? screen.virtualY : 0
     width: screen ? screen.width : 1280
     height: screen ? screen.height : 800
+    color: CommonStyle.windowBackground
 
     // Controller bindings
     property bool showOverlay: overlayController.show_overlay
@@ -65,19 +66,19 @@ ApplicationWindow {
     Rectangle {
         id: background
         anchors.fill: parent
-        color: "#5E5C64"
+        color: CommonStyle.windowBackground
         
         RowLayout {
             anchors.fill: parent
-            spacing: 10
+            spacing: CommonStyle.spacingSm
             
             Item {
                 id: contentContainer
-                anchors.fill: parent
+                Layout.fillWidth: true
+                Layout.fillHeight: true
                 
                 SelectBar {
                     id: selectBar
-                    objectName: "selectBar"
                     stackView: stackView
                     height: parent.height
                     // Connect to the signal
@@ -108,7 +109,7 @@ ApplicationWindow {
                     Rectangle {
                         id: contentRect
                         anchors.fill: parent
-                        color: "#5E5C64"
+                        color: CommonStyle.windowBackground
                         
                         ColumnLayout {
                             anchors.fill: parent
@@ -116,14 +117,6 @@ ApplicationWindow {
                             
                             TopBar {
                                 Layout.fillWidth: true
-                                Component.onCompleted: {
-                                    for(var i = 0; i < children.length; i++) {
-                                        var child = children[i];
-                                        if (child.objectName === "topBar") {
-                                            child.uiData = uiData;
-                                        }
-                                    }
-                                }
                             }
                             
                             Item {
@@ -221,8 +214,6 @@ ApplicationWindow {
 
     CustomPopup {
         id: messagePopup
-        // This is referenced from Python code
-        objectName: "messagePopup"
     }
 
     OverlayLayer {
@@ -245,7 +236,6 @@ ApplicationWindow {
     // Video Fullscreen Overlay - for fullscreen video with DJI-style overlay
     VideoFullscreenOverlay {
         id: videoFullscreenOverlay
-        objectName: "videoFullscreenOverlay"
         anchors.fill: parent
         z: 500  // Below emergency overlay but above main content
     }
@@ -305,6 +295,42 @@ ApplicationWindow {
             
             // Use a small delay to let Qt.application.screens update
             screenUpdateTimer.restart()
+        }
+    }
+
+    // Bridge signals from Python backend to QML UI elements
+    Connections {
+        target: backend
+
+        function onShowPopupRequested(title, message, popupType, delay) {
+            messagePopup.messageTitle = title
+            messagePopup.messageText = message
+            messagePopup.messageType = popupType
+            messagePopup.dismissDelay = delay
+            messagePopup.open()
+        }
+
+        function onClosePopupRequested() {
+            messagePopup.close()
+        }
+
+        function onToggleSidebarRequested() {
+            selectBar.toggleSidebar()
+        }
+
+        function onToggleVideoOverlayRequested(active, videoSource) {
+            if (videoFullscreenOverlay.active) {
+                videoFullscreenOverlay.active = false
+            } else {
+                videoFullscreenOverlay.videoSource = videoSource
+                videoFullscreenOverlay.active = true
+            }
+        }
+
+        function onUpdateVideoSourceRequested(videoSource) {
+            if (videoFullscreenOverlay.active) {
+                videoFullscreenOverlay.videoSource = videoSource
+            }
         }
     }
     

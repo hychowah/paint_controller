@@ -1,6 +1,6 @@
 # QML ↔ Python Bindings Inventory
 
-> **Source**: Codebase review (2026-04). Updated with audit findings.
+> **Source**: Codebase review (2026-04). Updated 2026-04-17 with implementation progress.
 > **Canonical location**: `docs/plan/03_QML_BINDINGS.md`
 > **Related**: [01_MASTER_PLAN.md](01_MASTER_PLAN.md) | [02_ARCHITECTURE.md](02_ARCHITECTURE.md) | [04_AUDIT_REPORT.md](04_AUDIT_REPORT.md)
 
@@ -35,7 +35,7 @@ engine.load(QUrl.fromLocalFile(qml_path))
 
 ## Current Runtime Registration State
 
-As of 2026-04-17, all runtime objects are exposed via `setContextProperty()`.
+As of 2026-04-17, all 25 runtime objects are exposed via `setContextProperty()`. A validation loop in `application.py` verifies all 25 are non-`None` after `engine.load()`.
 
 > **⚠️ DO NOT USE `qmlRegisterSingletonInstance()` in PySide6.**
 > It corrupts the QML type system when combined with implicit directory imports (no `qmldir`).
@@ -49,7 +49,7 @@ As of 2026-04-17, all runtime objects are exposed via `setContextProperty()`.
 ### Core Objects
 | Property Name | Source | Type | Migration Task |
 |---|---|---|---|
-| `backend` | `qt_bridge` | `QtBridge` | Task 1.2 |
+| `backend` | `qt_bridge` | `QtBridge` | Task 1.2 ✅ (signals implemented, findChild eliminated) |
 | `overlayController` | `bundle.overlay_controller` | `OverlayController` | Task 1.3 |
 | `controlProcessor` | `bundle.control_processor` | `ControlProcessor` | Task 1.3 |
 
@@ -113,6 +113,37 @@ QML access uses lowercase instance names directly (no import needed):
 Text { text: wheelController.left_wheel_speed }
 Text { text: stateStore.control_mode }
 ```
+
+---
+
+## Signal-Based Bridge (QtBridge → QML)
+
+All `findChild()` calls have been eliminated. `QtBridge` now communicates with QML via signals consumed by a `Connections` block in `MainWindow.qml`:
+
+```python
+# In qt_bridge.py — signals
+showPopupRequested = Signal(str, str, str, int)    # title, message, type, delay
+closePopupRequested = Signal()                      # close popup
+toggleSidebarRequested = Signal()                   # toggle sidebar
+toggleVideoOverlayRequested = Signal(bool, str)     # active, videoSource
+updateVideoSourceRequested = Signal(str)            # videoSource
+```
+
+```qml
+// In MainWindow.qml
+Connections {
+    target: backend
+    function onShowPopupRequested(title, message, popupType, delay) { ... }
+    function onClosePopupRequested() { messagePopup.close() }
+    function onToggleSidebarRequested() { selectBar.toggleSidebar() }
+    function onToggleVideoOverlayRequested(active, videoSource) { ... }
+    function onUpdateVideoSourceRequested(videoSource) { ... }
+}
+```
+
+**Remaining QML object access**: `engine.rootObjects()[0]` in `toggle_multiscreen_window()` via `QMetaObject.invokeMethod`.
+
+**`input.py`**: Uses `close_popup_fn` callable (injected via constructor → `qt_bridge.close_popup`) instead of `findChild`.
 
 ---
 
@@ -197,7 +228,11 @@ qml/
 ```
 
 ### qmldir State
-One `qmldir` already exists under `overlays/systemcontrol/`. The rest of the QML tree still uses relative imports (e.g., `import "../pages/home"`).
+Two `qmldir` files exist:
+- `core/qmldir` — `singleton CommonStyle 1.0 CommonStyle.qml` (added as part of Task 2.0 design token system)
+- `overlays/systemcontrol/qmldir` — pre-existing
+
+The rest of the QML tree still uses relative imports (e.g., `import "../pages/home"`).
 
 **Task 1.9** creates `qmldir` for each directory.  
 **CRITICAL (Audit R8)**: Must use dotted names like `PaintController.Core`, NOT bare `module PaintController` (namespace collision with singleton URI).

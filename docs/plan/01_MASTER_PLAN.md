@@ -37,7 +37,7 @@ Last Modified: 2026-04-17
 | PRE-1 Machine-verify QML mapping | [x] | Mapping table refreshed to live identifiers; lowercase `stateStore` and aliases removed |
 | 1.0 Register StateStore | [x] | `StateStore` exposed via `setContextProperty`. `qmlRegisterSingletonInstance` abandoned (PySide6 bug — see KNOWLEDGE.md) |
 | 1.1 Register SettingsManager | [ ] | |
-| 1.2 Register QtBridge + kill findChild | [ ] | Includes input.py L79 |
+| 1.2 Register QtBridge + kill findChild | [x] | All `findChild` replaced with signals (`showPopupRequested`, `closePopupRequested`, `toggleSidebarRequested`, `toggleVideoOverlayRequested`, `updateVideoSourceRequested`). `input.py` uses `close_popup_fn` callable. `QmlObjectName` enum deleted. `objectName` removed from popup/selectBar/videoOverlay. Only remaining QML object access: `engine.rootObjects()[0]` in `toggle_multiscreen_window()`. |
 | 1.3 Register isolated controllers | [ ] | |
 | 1.4 Register wheelController | [ ] | 7 QML files |
 | 1.5 Register teensyController | [ ] | 7 QML files |
@@ -52,16 +52,16 @@ Last Modified: 2026-04-17
 | 1.11c required props — displays | [ ] | |
 | 1.11d required props — panels/popups | [ ] | |
 | 1.11e required props — widgets | [ ] | |
-| POST-1 Startup context property validation | [ ] | After ALL Phase 1 tasks |
-| 2.0 Expand CommonStyle | [ ] | DPI via Python, NOT Screen.pixelDensity |
-| 2.1 Design system — core/nav | [ ] | |
-| 2.2 Design system — buttons/inputs | [ ] | |
+| POST-1 Startup context property validation | [x] | Validation loop in `application.py` checks all 25 context properties for `None` after `engine.load()` |
+| 2.0 Expand CommonStyle | [x] | Token-based design system with scales, colors, spacing, typography, motion, and fixed shell tokens. `scaleFactor` defaults to 1.0 (runtime DPI removed — caused 2x on Steam Deck). `qmldir` singleton added. |
+| 2.1 Design system — core/nav | [x] | `MainWindow`, `TopBar`, `SelectBar` migrated. Shell chrome uses fixed tokens. |
+| 2.2 Design system — buttons/inputs | [x] | `ActionButton`, `TouchSwitch`, `NumpadButton`, `NumpadNew`, `KeyboardPopup`, `SettingInputField`, `TrajNumpad` migrated |
 | 2.3 Design system — displays | [ ] | |
-| 2.4 Design system — panels/popups | [ ] | |
-| 2.5a Design system — root overlays | [ ] | |
-| 2.5b Design system — systemcontrol | [ ] | |
+| 2.4 Design system — panels/popups | [x] | `ControlPanel`, `ConnectionStatusPanel`, `SettingsSection`, `CustomPopup` migrated |
+| 2.5a Design system — root overlays | [x] | `OverlayLayer`, `EmergencyOverlay` migrated |
+| 2.5b Design system — systemcontrol | [~] | `EditWorkFlowTab`, `WorkFlowTab` migrated (layout-safe weights); `CommandTab` anchor fix. Remaining tabs not yet themed. |
 | 2.5c Design system — video overlays | [ ] | |
-| 2.6a Design system — pages batch 1 | [ ] | |
+| 2.6a Design system — pages batch 1 | [~] | `PageHome` — removed duplicate stream start, guarded animation binding. Other pages not yet themed. |
 | 2.6b Design system — settings pages | [ ] | |
 | 2.6c Design system — status/workflow | [ ] | |
 | 2.7 Refactor OverlayLayer dedup | [ ] | |
@@ -74,15 +74,17 @@ Last Modified: 2026-04-17
 | 3.5 Tests — Input/SteamDeck | [ ] | |
 | 3.6 Tests — Wheel/Winch | [ ] | |
 | 3.7 Tests — ESP32/Teensy | [ ] | |
-| 3.8 CI/CD pipeline | [ ] | Remaining validation gate item before 1.1 |
-| 3.9 Fix build system | [ ] | |
+| 3.8 CI/CD pipeline | [x] | `.github/workflows/ci.yml`: lint → test → ROS2 build. `pyproject.toml` with ruff/pytest/coverage config. `requirements-dev.txt` updated. |
+| 3.9 Fix build system | [x] | `CMakeLists.txt` stripped to pure `ament_cmake` wrapper (C++/Qt5/GStreamer deps removed). `package.xml` cleaned to 0.1.0, C++ deps removed. `requirements.txt` switched to `~=` pins. |
 
 ## Current Checkpoint
 
-- Completed on 2026-04-17: `0.1-0.4`, `PRE-1`, `1.0`, and `3.1`
-- Current validation-gate policy: complete `3.8` before resuming Phase 1 migrations
-- If keeping that gate, the next task is `3.8 CI/CD pipeline`
-- After `3.8`, resume Phase 1 at `1.1 Register SettingsManager`
+- Completed on 2026-04-17: Phase 0 (`0.1-0.4`), `PRE-1`, `1.0`, `1.2`, `POST-1`, `3.1`, `3.8`, `3.9`
+- Phase 2 in progress: `2.0`, `2.1`, `2.2`, `2.4`, `2.5a` complete; `2.5b` and `2.6a` partially complete
+- Startup optimization done: deferred video, idempotent streams, timing instrumentation, cross-thread cleanup fix
+- QML warning fixes done: NumpadButton self-contained, layout-safe workflow tabs, PageHome animation guard, lidar unused Connections removed
+- Validation gate satisfied: CI + build system both done
+- **Next task**: `1.1 Register SettingsManager` (resume Phase 1 controller migrations)
 
 ---
 
@@ -124,7 +126,7 @@ Phase 3 (remaining): 3.0 → 3.2-3.7 (parallel test writing)
 |------|------|-----|
 | 1.0 StateStore | LOW | 4 QML files, establishes pattern |
 | 1.1 SettingsManager | LOW | 3 QML files |
-| 1.2 QtBridge + findChild | **HIGH** | Signal replacement + input.py scope + MainWindow changes |
+| 1.2 QtBridge + findChild | ~~HIGH~~ | ✅ DONE — Signal replacement + input.py scope + MainWindow changes |
 | 1.3 Isolated controllers (6) | MEDIUM | 6 registrations, 1-3 files each |
 | 1.4 wheelController | MEDIUM | 7 QML files |
 | 1.5 teensyController | MEDIUM | 7 QML files |
@@ -135,21 +137,13 @@ Phase 3 (remaining): 3.0 → 3.2-3.7 (parallel test writing)
 | 1.10 Versionless imports | LOW | Mechanical sed replace |
 | 1.9 qmldir manifests | **HIGH** | ~20 new files, module naming critical |
 | 1.11a-e Required props | MEDIUM | Each `required` is breaking if caller misses it |
-| 2.0 Expand CommonStyle | MEDIUM | DPI approach changed from original |
+| 2.0 Expand CommonStyle | ~~MEDIUM~~ | ✅ DONE — DPI approach resolved (fixed scaleFactor at 1.0) |
 
 ---
 
 ## Reference Patterns
 
-### Current Pattern: setContextProperty (to be REMOVED)
-```python
-# In application.py main(), L868-895
-ctx = engine.rootContext()
-ctx.setContextProperty("wheelController", bundle.wheel_controller)
-# QML accesses as global: wheelController.left_wheel_speed
-```
-
-### Target Pattern: setContextProperty (CURRENT)
+### Context Property Pattern (CURRENT — all 25 objects use this)
 ```python
 # In application.py main(), AFTER engine creation, BEFORE engine.load()
 ctx = engine.rootContext()
@@ -165,24 +159,15 @@ ctx.setContextProperty("wheelController", bundle.wheel_controller)
 wheelController.left_wheel_speed
 ```
 
-### Current findChild Pattern (to be REMOVED in Task 1.2)
+### Signal-Based Bridge Pattern (IMPLEMENTED — Task 1.2 ✅)
 ```python
-# In qt_bridge.py
-root = self._engine.rootObjects()[0]
-popup = root.findChild(QObject, "messagePopup")
-if popup:
-    QQmlProperty.write(popup, "messageTitle", title)
-    QMetaObject.invokeMethod(popup, "open")
-```
-
-### Target Signal Pattern (REPLACEMENT for findChild)
-```python
-# In qt_bridge.py — add signals
+# In qt_bridge.py — signals (live code)
 class QtBridge(QObject):
-    showPopupRequested = Signal(str, str, str, int)  # title, message, type, delay
-    closePopupRequested = Signal()                     # (Audit R3: for input.py)
-    navigateToPageRequested = Signal(int)
-    toggleVideoOverlayRequested = Signal(bool)
+    showPopupRequested = Signal(str, str, str, int)      # title, message, type, delay
+    closePopupRequested = Signal()                        # for input.py
+    toggleSidebarRequested = Signal()                     # sidebar toggle
+    toggleVideoOverlayRequested = Signal(bool, str)       # active, videoSource
+    updateVideoSourceRequested = Signal(str)              # videoSource
 
     def show_popup(self, title, msg, msg_type="info", delay=0):
         self.showPopupRequested.emit(title, msg, msg_type, delay)
@@ -191,38 +176,36 @@ class QtBridge(QObject):
         self.closePopupRequested.emit()
 ```
 ```qml
-// In MainWindow.qml — add Connections block (QML-side, auto-disconnects on destroy)
+// In MainWindow.qml — Connections block (live code)
 Connections {
-    target: Backend  // registered singleton
-    function onShowPopupRequested(title, message, msgType, delay) {
-        messagePopup.messageTitle = title
-        messagePopup.messageText = message
-        messagePopup.open()
-    }
-    function onClosePopupRequested() {
-        messagePopup.close()
-    }
-    function onNavigateToPageRequested(pageIndex) {
-        selectBar.navigateTo(pageIndex)
-    }
-    function onToggleVideoOverlayRequested(visible) {
-        videoFullscreenOverlay.visible = visible
-    }
+    target: backend  // context property
+    function onShowPopupRequested(title, message, popupType, delay) { ... }
+    function onClosePopupRequested() { messagePopup.close() }
+    function onToggleSidebarRequested() { selectBar.toggleSidebar() }
+    function onToggleVideoOverlayRequested(active, videoSource) { ... }
+    function onUpdateVideoSourceRequested(videoSource) { ... }
 }
 ```
 
-### CommonStyle Current State
+### CommonStyle Current State (IMPLEMENTED — Task 2.0 ✅)
 ```qml
 pragma Singleton
 import QtQuick 2.15
 QtObject {
-    readonly property color backgroundColor: "#FFFFFF"
-    readonly property color primaryColor: "#007bff"
-    readonly property int radius: 15
-    readonly property int fontSizeNormal: 16
-    readonly property int buttonHeight: 50
+    property real scaleFactor: 1.0  // drives scale-dependent tokens
+
+    // Colors (37 tokens): backgrounds, cards, accents, status, text, borders, overlay/input/button
+    readonly property color backgroundL0: "#0D1117"
+    readonly property color accentPrimary: "#58A6FF"
+    // ... (see qml/core/CommonStyle.qml for full list)
+
+    // Spacing (scaled): spacingXs(4) through spacingXxl(32)
+    // Typography: fontDisplay(24), fontHeading(20), fontBody(16), fontCaption(13), fontLabel(11)
+    // Shell chrome (fixed): shellTopBarHeight, shellSidebarExpandedWidth, etc.
+    // Legacy aliases (14): backward-compat mappings to new tokens
 }
 ```
+Registered via `qml/core/qmldir`: `singleton CommonStyle 1.0 CommonStyle.qml`
 
 ### QML Import Current Style (to be modernized in Task 1.10)
 ```qml
@@ -430,49 +413,24 @@ Access via `settingsManager.xyz` (lowercase, no import needed).
 
 ---
 
-### Task 1.2: Register QtBridge + Eliminate findChild()
+### Task 1.2: Register QtBridge + Eliminate findChild() (COMPLETED)
 
 **Goal**: Two-part task — register QtBridge as singleton AND replace all findChild() calls with signal-based communication.
 
-**Part A — Register QtBridge**:
-- `core/application.py` — Verify `setContextProperty("backend", qt_bridge)` is present (already exists)
-- `qml/overlays/EmergencyOverlay.qml` — `backend.x` → `Backend.x` with import
-- `qml/pages/settings/pages/MainSettingsPage.qml` — Same
+**Status**: ✅ DONE. All 5 `findChild` calls replaced with signal-based communication. `QmlObjectName` enum deleted. `objectName` removed from `messagePopup`, `selectBar`, `videoFullscreenOverlay`.
 
-**Part B — Eliminate findChild()**:
+**Signals implemented in `qt_bridge.py`**:
+- `showPopupRequested(str, str, str, int)` — title, message, type, delay
+- `closePopupRequested()` — for input.py close-before-mode-switch
+- `toggleSidebarRequested()` — sidebar toggle
+- `toggleVideoOverlayRequested(bool, str)` — active, videoSource
+- `updateVideoSourceRequested(str)` — update video source
 
-Live findChild calls to replace (5 total after Task 0.1 removes dead RobotController):
-| File | Line | Target | Replacement |
-|---|---|---|---|
-| `core/qt_bridge.py` | L47 | `messagePopup` | `showPopupRequested` signal |
-| `core/qt_bridge.py` | L76 | `selectBar` | `navigateToPageRequested` signal |
-| `core/qt_bridge.py` | L92 | `videoFullscreenOverlay` | `toggleVideoOverlayRequested` signal |
-| `core/qt_bridge.py` | L139 | `videoFullscreenOverlay` | `updateVideoSourceRequested` signal |
-| `handlers/input.py` | L79 | `messagePopup` | Call `qt_bridge.close_popup()` → `closePopupRequested` signal |
+**QML-side**: `Connections { target: backend }` block in `MainWindow.qml` receives all signals.
 
-Add to `qt_bridge.py`:
-- `showPopupRequested = Signal(str, str, str, int)` — title, message, type, delay
-- `closePopupRequested = Signal()` — (Audit R3: for input.py)
-- `navigateToPageRequested = Signal(int)` — page index
-- `toggleVideoOverlayRequested = Signal(bool)` — visible
+**input.py**: Uses `close_popup_fn` callable (injected via `create_controllers()` → `qt_bridge.close_popup`).
 
-Update `handlers/input.py` L79: replace `findChild` with `self._qt_bridge.close_popup()`
-
-Add `Connections` block to `qml/core/MainWindow.qml` (see Reference Patterns above).
-
-**objectName keep/remove list (Audit R4)**:
-- **Safe to remove**: `messagePopup`, `selectBar`, `videoFullscreenOverlay` — only used by findChild
-- **Must keep**: `stackView`, `topBar`, `lidarOverlay` — used by QML/JS code
-
-Remove `QmlObjectName` enum from `utils/constants.py` if no longer needed.
-Remove `from PySide6.QtQml import QQmlProperty` import if no longer used.
-
-**Verification**:
-- `grep -rn "findChild" python/paint_controller/ --include="*.py"` → ZERO hits
-- Popup shows when triggered from Python
-- Video overlay toggles from controller input
-- SelectBar navigation works from Python button handler
-- Emergency overlay still works
+**Only remaining QML object access**: `engine.rootObjects()[0]` in `toggle_multiscreen_window()` via `QMetaObject.invokeMethod`.
 
 ---
 

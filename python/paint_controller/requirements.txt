@@ -2,21 +2,21 @@
 # Install with: pip install -r requirements.txt
 
 # Qt6 UI Framework
-PySide6>=6.5.0
+PySide6~=6.5
 
 # Scientific/Visualization
-numpy>=1.24.0
-vtk>=9.2.0
+numpy~=1.24
+vtk~=9.2
 
 # Data serialization
-PyYAML>=6.0
+PyYAML~=6.0
 
 # SSH for remote connections
-paramiko>=3.0.0
+paramiko~=3.0
 
 # Steam Deck HID controller
-hidapi>=0.14.0
+hidapi~=0.14
 
 # GStreamer Python bindings (for video streaming)
 # Note: Also requires system packages - see README
-PyGObject>=3.42.0
+PyGObject~=3.42

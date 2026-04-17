@@ -115,7 +115,8 @@ Item {
 
             // Left panel - Action list
             Rectangle {
-                Layout.preferredWidth: parent.width * 0.5
+                Layout.fillWidth: true
+                Layout.preferredWidth: 1
                 Layout.fillHeight: true
                 color: "#1E1E1E"
                 radius: 8
@@ -225,6 +226,7 @@ Item {
             // Right panel - Action editor
             Rectangle {
                 Layout.fillWidth: true
+                Layout.preferredWidth: 1
                 Layout.fillHeight: true
                 color: "#1E1E1E"
                 radius: 8

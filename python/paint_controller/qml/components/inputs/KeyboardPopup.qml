@@ -5,8 +5,8 @@ import "../../core"
 
 Popup {
     id: keyboard
-    width: 650
-    height: 450
+    width: Math.round(650 * CommonStyle.scaleFactor)
+    height: Math.round(450 * CommonStyle.scaleFactor)
     padding: 0
     margins: 0
     modal: true
@@ -19,7 +19,7 @@ Popup {
     
     // Dimming overlay for rest of the screen
     Overlay.modal: Rectangle {
-        color: "#80000000"  // Semi-transparent black
+        color: CommonStyle.overlayScrim
     }
     
     // Properties
@@ -33,7 +33,7 @@ Popup {
             property: "y"
             from: parent.height
             to: parent.height - height
-            duration: 200
+            duration: CommonStyle.motionStandard
             easing.type: Easing.OutQuad
         }
     }
@@ -43,36 +43,36 @@ Popup {
             property: "y"
             from: parent.height - height
             to: parent.height
-            duration: 200
+            duration: CommonStyle.motionStandard
             easing.type: Easing.InQuad
         }
     }
     
     // Background
     background: Rectangle {
-        color: "#1a1a1a"
+        color: CommonStyle.backgroundL0
     }
     
     // Content
     ColumnLayout {
         anchors.fill: parent
-        spacing: 8
+        spacing: CommonStyle.spacingSm
         
         // Text input display
         Rectangle {
             Layout.fillWidth: true
-            Layout.margins: 10
-            Layout.preferredHeight: 60
-            color: "#2d2d2d"
-            radius: 8
+            Layout.margins: CommonStyle.spacingMd
+            Layout.preferredHeight: CommonStyle.itemHeight
+            color: CommonStyle.cardBackgroundAlt
+            radius: CommonStyle.radiusMd
             
             TextInput {
                 id: textDisplay
                 anchors.fill: parent
-                anchors.margins: 15
-                color: "#ffffff"
-                font.pixelSize: 18
-                font.family: "Sans"
+                anchors.margins: CommonStyle.spacingLg
+                color: CommonStyle.textPrimary
+                font.pixelSize: CommonStyle.fontBody + 2
+                font.family: CommonStyle.fontSans
                 text: currentText
                 clip: true
                 onTextChanged: {
@@ -84,7 +84,7 @@ Popup {
                 cursorVisible: true
                 cursorDelegate: Rectangle {
                     visible: textDisplay.cursorVisible
-                    color: "#0078d7"
+                    color: CommonStyle.accentPrimary
                     width: 2
                     height: parent.height * 0.7
                     anchors.verticalCenter: parent.verticalCenter
@@ -101,7 +101,7 @@ Popup {
             // QWERTY layout
             Column {
                 anchors.fill: parent
-                spacing: 10
+                spacing: CommonStyle.spacingMd
                 
                 // Row 1 - Numbers
                 Row {
@@ -261,14 +261,14 @@ Popup {
         signal clicked()
         
         // Styling
-        radius: 6
+        radius: CommonStyle.radiusSm
         color: {
             if (mouseArea.pressed)
-                return accentKey ? "#0051a8" : specialKey ? "#333333" : "#222222";
+                return accentKey ? CommonStyle.buttonPressed : specialKey ? CommonStyle.backgroundL2 : CommonStyle.backgroundL1;
             else if (toggled)
-                return "#0078d7";
+                return CommonStyle.accentPrimary;
             else
-                return accentKey ? "#0078d7" : specialKey ? "#444444" : "#3a3a3a";
+                return accentKey ? CommonStyle.accentPrimary : specialKey ? CommonStyle.cardBackgroundAlt : CommonStyle.cardBackground;
         }
         
         border.color: Qt.lighter(color, 1.2)
@@ -279,19 +279,19 @@ Popup {
         
         // Smooth color transitions
         Behavior on color {
-            ColorAnimation { duration: 50 }
+            ColorAnimation { duration: CommonStyle.motionFast }
         }
         
         // Key text
         Text {
             anchors.centerIn: parent
             text: buttonText
-            color: "#ffffff"
-            font.pixelSize: parent.width < 70 ? 30 : 36
+            color: CommonStyle.textPrimary
+            font.pixelSize: parent.width < 70 ? Math.round(30 * CommonStyle.scaleFactor) : Math.round(36 * CommonStyle.scaleFactor)
             font.bold: true
-            font.family: "Arial"
+            font.family: CommonStyle.fontSans
             style: Text.Outline
-            styleColor: "#000000"
+            styleColor: CommonStyle.backgroundL0
             renderType: Text.QtRendering
         }
         

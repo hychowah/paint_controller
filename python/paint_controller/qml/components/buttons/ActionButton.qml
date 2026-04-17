@@ -1,12 +1,13 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../../core"
 
 Rectangle {
     id: actionButton
     property string buttonText: "Action"
     property string buttonDescription: "Perform action"
-    property string iconColor: "#4CAF50"
+    property string iconColor: CommonStyle.statusSuccess
     property string iconType: "reset" // "reset", "warning", "info", etc.
     
     signal clicked()
@@ -16,11 +17,11 @@ Rectangle {
         feedbackTimer.restart()
     }
     
-    height: 60
-    radius: 10
-    color: actionMouseArea.containsMouse ? "#2A3040" : "#252A36"
+    height: CommonStyle.itemHeight
+    radius: CommonStyle.radiusMd
+    color: actionMouseArea.containsMouse ? CommonStyle.cardBackgroundAlt : CommonStyle.cardBackground
     border.width: 1
-    border.color: "#3A5A8C"
+    border.color: CommonStyle.borderDefault
     
     // This ensures consistent layout
     Layout.fillWidth: true
@@ -29,11 +30,11 @@ Rectangle {
     states: [
         State {
             name: "hovered"
-            PropertyChanges { target: actionButton; color: "#2A3040" }
+            PropertyChanges { target: actionButton; color: CommonStyle.cardBackgroundAlt }
         },
         State {
             name: "pressed"
-            PropertyChanges { target: actionButton; color: "#1E2530" }
+            PropertyChanges { target: actionButton; color: CommonStyle.backgroundL1 }
         }
     ]
     
@@ -41,7 +42,7 @@ Rectangle {
     transitions: [
         Transition {
             from: "*"; to: "*"
-            ColorAnimation { duration: 150 }
+            ColorAnimation { duration: CommonStyle.motionFast }
         }
     ]
     
@@ -66,14 +67,14 @@ Rectangle {
     // Button contents
     RowLayout {
         anchors.fill: parent
-        anchors.margins: 12
-        spacing: 12
+        anchors.margins: CommonStyle.spacingMd
+        spacing: CommonStyle.spacingMd
         
         // Icon with different types
         Rectangle {
-            width: 32
-            height: 32
-            radius: 16
+            width: Math.round(32 * CommonStyle.scaleFactor)
+            height: Math.round(32 * CommonStyle.scaleFactor)
+            radius: width / 2
             color: actionButton.iconColor
             
             // Icon content based on type
@@ -89,7 +90,7 @@ Rectangle {
                         ctx.reset();
                         ctx.beginPath();
                         ctx.arc(16, 16, 8, 0, 1.5 * Math.PI, false);
-                        ctx.strokeStyle = "white";
+                        ctx.strokeStyle = CommonStyle.textPrimary;
                         ctx.lineWidth = 2;
                         ctx.stroke();
                         
@@ -98,7 +99,7 @@ Rectangle {
                         ctx.moveTo(16, 8);
                         ctx.lineTo(12, 12);
                         ctx.lineTo(20, 12);
-                        ctx.fillStyle = "white";
+                        ctx.fillStyle = CommonStyle.textPrimary;
                         ctx.fill();
                     }
                 }
@@ -107,8 +108,8 @@ Rectangle {
                 Text {
                     anchors.centerIn: parent
                     text: "⚠"
-                    font.pixelSize: 16
-                    color: "white"
+                    font.pixelSize: CommonStyle.fontBody
+                    color: CommonStyle.textPrimary
                     font.bold: true
                     visible: iconType === "warning"
                 }
@@ -117,8 +118,8 @@ Rectangle {
                 Text {
                     anchors.centerIn: parent
                     text: "i"
-                    font.pixelSize: 16
-                    color: "white"
+                    font.pixelSize: CommonStyle.fontBody
+                    color: CommonStyle.textPrimary
                     font.bold: true
                     visible: iconType === "info"
                 }
@@ -127,8 +128,8 @@ Rectangle {
                 Text {
                     anchors.centerIn: parent
                     text: "⚡"
-                    font.pixelSize: 16
-                    color: "white"
+                    font.pixelSize: CommonStyle.fontBody
+                    color: CommonStyle.textPrimary
                     font.bold: true
                     visible: iconType !== "reset" && iconType !== "warning" && iconType !== "info"
                 }
@@ -138,19 +139,21 @@ Rectangle {
         // Text label
         ColumnLayout {
             Layout.fillWidth: true
-            spacing: 2
+            spacing: Math.max(2, CommonStyle.spacingXs)
             
             Text {
                 text: actionButton.buttonText
-                font.pixelSize: 16
+                font.family: CommonStyle.fontSans
+                font.pixelSize: CommonStyle.fontBody
                 font.bold: true
-                color: "#FFFFFF"
+                color: CommonStyle.textPrimary
             }
             
             Text {
                 text: actionButton.buttonDescription
-                font.pixelSize: 13
-                color: "#90CAF9"
+                font.family: CommonStyle.fontSans
+                font.pixelSize: CommonStyle.fontCaption
+                color: CommonStyle.accentMuted
             }
         }
     }
@@ -159,25 +162,25 @@ Rectangle {
     Rectangle {
         id: feedbackOverlay
         anchors.fill: parent
-        radius: 10
+        radius: CommonStyle.radiusMd
         color: "#32" + actionButton.iconColor.substring(1) // Semi-transparent version of icon color
         visible: false
         
         // Success check mark
         Rectangle {
             anchors.right: parent.right
-            anchors.rightMargin: 15
+            anchors.rightMargin: CommonStyle.spacingLg
             anchors.verticalCenter: parent.verticalCenter
-            width: 24
-            height: 24
+            width: Math.round(24 * CommonStyle.scaleFactor)
+            height: Math.round(24 * CommonStyle.scaleFactor)
             radius: 12
             color: actionButton.iconColor
             
             Text {
                 anchors.centerIn: parent
                 text: "✓"
-                color: "white"
-                font.pixelSize: 16
+                color: CommonStyle.textPrimary
+                font.pixelSize: CommonStyle.fontBody
                 font.bold: true
             }
         }

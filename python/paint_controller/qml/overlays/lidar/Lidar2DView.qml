@@ -513,17 +513,6 @@ Rectangle {
         }
     }
     
-    // Update when points change
-    Connections {
-        target: lidarController
-        
-        function onPoints_ready(points) {
-            console.log("2D View received", points.length, "points")
-            pointsData = points
-            canvas.requestPaint()
-        }
-    }
-    
     // Redraw when visibility changes
     onActiveChanged: {
         if (active) {

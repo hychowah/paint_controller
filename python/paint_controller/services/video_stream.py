@@ -5,6 +5,7 @@ from typing import Dict, Optional, Callable
 from dataclasses import dataclass
 from enum import Enum, auto
 import threading
+import time
 from copy import copy
 import logging
 
@@ -265,6 +266,8 @@ class VideoStreamHandler(QObject):
         
         # ✅ Thread-safe lock for camera_streams dictionary
         self._streams_lock = threading.RLock()
+        self._startup_lock = threading.RLock()
+        self._streams_started = False
         
         # Define camera configurations
         self.camera_configs = {
@@ -575,26 +578,51 @@ class VideoStreamHandler(QObject):
         with self._streams_lock:
             return self.camera_streams.get(camera_type)
 
+    @Slot(result=int)
     def start_all_streams(self):
         """
         Start all configured camera streams with thread-safe dictionary access.
         
         Creates a snapshot of streams to avoid issues with concurrent modifications.
         """
-        with self._streams_lock:
-            # Create snapshot to avoid iteration issues during concurrent modifications
-            streams_copy = copy(self.camera_streams)
-        
-        success_count = 0
-        for camera_type, stream in streams_copy.items():
-            if stream.start():
-                success_count += 1
-                logger.info("Started %s", self.camera_configs[camera_type].name)
-            else:
-                logger.warning("Failed to start %s", self.camera_configs[camera_type].name)
-        
-        return success_count
+        with self._startup_lock:
+            if self._streams_started:
+                logger.info("Video streams already started; skipping duplicate startup request")
+                return 0
 
+            with self._streams_lock:
+                # Create snapshot to avoid iteration issues during concurrent modifications
+                streams_copy = copy(self.camera_streams)
+
+            total_t0 = time.perf_counter()
+            success_count = 0
+            for camera_type, stream in streams_copy.items():
+                stream_t0 = time.perf_counter()
+                if stream.start():
+                    success_count += 1
+                    logger.info(
+                        "Started %s in %.1f ms",
+                        self.camera_configs[camera_type].name,
+                        (time.perf_counter() - stream_t0) * 1000.0,
+                    )
+                else:
+                    logger.warning(
+                        "Failed to start %s after %.1f ms",
+                        self.camera_configs[camera_type].name,
+                        (time.perf_counter() - stream_t0) * 1000.0,
+                    )
+
+            self._streams_started = success_count > 0
+            logger.info(
+                "Video stream startup finished in %.1f ms (%s/%s started)",
+                (time.perf_counter() - total_t0) * 1000.0,
+                success_count,
+                len(streams_copy),
+            )
+
+            return success_count
+
+    @Slot()
     def stop_all_streams(self):
         """
         Stop all camera streams with thread-safe dictionary access.
@@ -608,6 +636,9 @@ class VideoStreamHandler(QObject):
         for camera_type, stream in streams_copy.items():
             if stream.stop():
                 logger.info("Stopped %s", self.camera_configs[camera_type].name)
+
+        with self._startup_lock:
+            self._streams_started = False
 
     def start_stream(self, camera_type: CameraType) -> bool:
         """
@@ -715,6 +746,9 @@ class VideoStreamHandler(QObject):
             # Step 3: Clear the dictionary
             with self._streams_lock:
                 self.camera_streams.clear()
+
+            with self._startup_lock:
+                self._streams_started = False
             
             logger.info("Video stream cleanup complete")
             

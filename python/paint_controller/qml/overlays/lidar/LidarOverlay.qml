@@ -335,20 +335,6 @@ Rectangle {
         }
     }
     
-    // Connections to update when LiDAR data changes
-    Connections {
-        target: lidarController
-        
-        function onPoints_ready(points) {
-            console.log("Received", points.length, "points for rendering");
-            pointsData = points;
-        }
-        
-        function onPointcloud_updated(data) {
-            console.log("LiDAR data updated:", JSON.stringify(data));
-        }
-    }
-    
     // Smooth fade in/out animation
     Behavior on opacity {
         NumberAnimation { duration: 300 }

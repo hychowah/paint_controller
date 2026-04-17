@@ -3,6 +3,7 @@
 import sys
 import os
 import signal
+import time
 from dataclasses import dataclass
 from threading import Lock
 import logging
@@ -187,20 +188,29 @@ class RosThread(QThread):
 
 def main():
     global _app_instance
+    startup_t0 = time.perf_counter()
+
+    def log_startup(stage: str) -> None:
+        elapsed_ms = (time.perf_counter() - startup_t0) * 1000.0
+        logger.warning("[startup +%7.1f ms] %s", elapsed_ms, stage)
     
     # Setup signal handler for graceful shutdown
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
+    log_startup("Signal handlers registered")
     
     # Initialize ROS
     rclpy.init()
+    log_startup("ROS initialized")
     
     # Load configuration
     config = ConfigLoader.load_config('robot_config.yaml')
+    log_startup("Configuration loaded")
     
     # Create Qt application
     app = QApplication(sys.argv)
     _app_instance = app
+    log_startup("QApplication created")
 
     # --- Core objects ---
     from paint_controller.core.ros_node import PaintRosNode
@@ -209,24 +219,30 @@ def main():
     from paint_controller.core.controller_factory import create_controllers
 
     node = PaintRosNode()
+    log_startup("PaintRosNode created")
     settings_manager = SettingsManager(show_popup_fn=None)  # Wire show_popup after QtBridge
     state_store = StateStore()
     steam_deck_handler = SteamDeckHandler(deadzone=config.joystick_deadzone)
+    log_startup("Core state/services created")
 
     # Video & camera services
     video_stream_handler = VideoStreamHandler(config.video_port, ros_node=node)
     base_top_view_service = BaseTopViewService(video_stream_handler, settings_manager=settings_manager)
+    log_startup("Video and camera services created")
 
     steam_deck_handler.start()
+    log_startup("Steam Deck handler started")
 
     # Start ROS thread
     ros_thread = RosThread(node)
     ros_thread.start()
+    log_startup("ROS thread started")
 
     # Timer to process Python signals in Qt event loop (Ctrl+C handling)
     timer = QTimer()
     timer.start(500)
     timer.timeout.connect(lambda: None)
+    log_startup("Qt signal timer started")
 
     # --- QML engine ---
     engine = QQmlApplicationEngine()
@@ -234,12 +250,14 @@ def main():
     engine.addImageProvider("base_front_live", video_stream_handler.front_image_provider)
     engine.addImageProvider("base_rear_live", video_stream_handler.rear_image_provider)
     engine.addImageProvider("base_top_view", base_top_view_service.image_provider)
+    log_startup("QML engine and image providers ready")
 
     qml_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'qml')
     engine.addImportPath(qml_dir)
 
     # Create Qt bridge (needs engine for QML access)
     qt_bridge = QtBridge(engine, state_store, logger=node.get_logger())
+    log_startup("Qt bridge created")
 
     # Wire deferred show_popup to settings_manager
     settings_manager._show_popup_fn = qt_bridge.show_popup
@@ -251,13 +269,14 @@ def main():
         state_store=state_store,
         steam_deck_handler=steam_deck_handler,
         show_popup_fn=qt_bridge.show_popup,
+        close_popup_fn=qt_bridge.close_popup,
         config=config,
     )
+    log_startup("Controller bundle created")
 
     # Deferred wiring
     qt_bridge.set_base_top_view_service(base_top_view_service)
     qt_bridge.set_input_handler(bundle.input_handler)
-    bundle.input_handler.set_engine(engine)
 
     # --- Steam Deck button callbacks ---
     ih = bundle.input_handler
@@ -331,6 +350,22 @@ def main():
     # Load QML interface AFTER setting context properties
     qml_path = os.path.join(qml_dir, 'core', 'MainWindow.qml')
     engine.load(QUrl.fromLocalFile(qml_path))
+    log_startup("MainWindow QML loaded")
+
+    # Validate all context properties are set (catches typos / missing wiring)
+    _EXPECTED_CONTEXT_PROPERTIES = [
+        "stateStore", "backend", "overlayController", "workFlowHandler",
+        "workFlowRunner", "warningHandler", "baseStreamHandler",
+        "wheelController", "winchController", "steamDeckHandler",
+        "windMonitor", "teensyController", "esp32ValveController",
+        "lidarController", "actionConfig", "heartbeatHandler",
+        "controlProcessor", "sshHandler", "systemMonitor",
+        "screenRecorder", "rosBagRecorder", "settingsManager",
+        "screenManager", "baseTopViewController",
+    ]
+    for name in _EXPECTED_CONTEXT_PROPERTIES:
+        if ctx.contextProperty(name) is None:
+            node.get_logger().error(f"Missing QML context property: {name}")
 
     # --- Timers ---
     status_timer = QTimer()
@@ -340,28 +375,44 @@ def main():
     heartbeat_timer = QTimer()
     heartbeat_timer.timeout.connect(node.publish_heartbeat)
     heartbeat_timer.start(500)
+    log_startup("Status and heartbeat timers started")
 
     # Start system monitoring
     bundle.system_monitor.start_monitoring(interval_ms=1000)
+    log_startup("System monitoring started")
 
-    # Start all video streams
-    video_stream_handler.start_all_streams()
+    def _deferred_video_startup() -> None:
+        log_startup("Deferred video startup begin")
+        started_count = video_stream_handler.start_all_streams()
+        log_startup(f"Deferred video startup end: started {started_count} stream(s)")
+
+    QTimer.singleShot(200, _deferred_video_startup)
+    log_startup("Deferred video startup scheduled")
 
     # --- Run ---
     try:
+        log_startup("Entering Qt event loop")
         sys.exit(app.exec())
     except Exception as e:
         logger.error("Application error: %s", e)
         import traceback
         traceback.print_exc()
     finally:
+        shutdown_t0 = time.perf_counter()
+
+        def log_shutdown(stage: str) -> None:
+            elapsed_ms = (time.perf_counter() - shutdown_t0) * 1000.0
+            logger.warning("[shutdown +%7.1f ms] %s", elapsed_ms, stage)
+
         logger.info("Starting emergency shutdown sequence...")
+        log_shutdown("Shutdown sequence started")
 
         # Step 1: Stop timers
         try:
             status_timer.stop()
             heartbeat_timer.stop()
             timer.stop()
+            log_shutdown("Qt timers stopped")
         except Exception as e:
             logger.error("Error stopping timers: %s", e)
 
@@ -372,37 +423,27 @@ def main():
                 logger.warning("ROS thread did not exit cleanly, forcing termination...")
                 ros_thread.terminate()
                 ros_thread.wait(500)
+            log_shutdown("ROS thread stopped")
         except Exception as e:
             logger.error("Error shutting down ROS thread: %s", e)
 
         # Step 3: Cleanup controllers
         try:
-            import threading
-            cleanup_done = threading.Event()
-
-            def do_cleanup():
-                try:
-                    bundle.cleanup(node.get_logger())
-                    base_top_view_service.cleanup()
-                    video_stream_handler.cleanup()
-                    steam_deck_handler.cleanup()
-                    node.cleanup()
-                    cleanup_done.set()
-                except Exception as e:
-                    logger.error("Error during cleanup: %s", e)
-                    cleanup_done.set()
-
-            cleanup_thread = threading.Thread(target=do_cleanup, daemon=True)
-            cleanup_thread.start()
-
-            if not cleanup_done.wait(timeout=3.0):
-                logger.warning("Cleanup timed out, continuing shutdown...")
+            bundle.cleanup(node.get_logger())
+            log_shutdown("Controller bundle cleaned up")
+            base_top_view_service.cleanup()
+            log_shutdown("Base top view service cleaned up")
+            video_stream_handler.cleanup()
+            log_shutdown("Video stream handler cleaned up")
+            steam_deck_handler.cleanup()
+            log_shutdown("Steam Deck handler cleaned up")
         except Exception as e:
             logger.error("Error during cleanup: %s", e)
 
         # Step 4: Shutdown ROS context
         try:
             rclpy.shutdown()
+            log_shutdown("ROS context shutdown complete")
         except Exception as e:
             logger.error("Error during ROS shutdown: %s", e)
 

@@ -2,6 +2,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../../core"
 
 Rectangle {
     id: settingsSection
@@ -31,66 +32,69 @@ Rectangle {
     }
     
     // Sizing
-    width: parent ? parent.width : 400
+    width: parent ? parent.width : Math.round(400 * CommonStyle.scaleFactor)
     height: headerContainer.height + (expanded ? contentHeight : 0)
     
     // Styling
-    color: "#1E2433"
-    border.color: expanded ? "#3A5A8C" : "#333333"
+    color: CommonStyle.cardBackground
+    border.color: expanded ? CommonStyle.borderFocused : CommonStyle.inputBorder
     border.width: 1
-    radius: 8
+    radius: CommonStyle.radiusMd
     
     // Smooth height animation
     Behavior on height {
         NumberAnimation { 
-            duration: 200
+            duration: CommonStyle.motionStandard
             easing.type: Easing.InOutQuad 
         }
     }
     
     Behavior on border.color {
-        ColorAnimation { duration: 150 }
+        ColorAnimation { duration: CommonStyle.motionFast }
     }
     
     // Header container
     Rectangle {
         id: headerContainer
         width: parent.width
-        height: 52  // Slightly taller for better Steam Deck touch targets
+        height: Math.round(52 * CommonStyle.scaleFactor)
         color: "transparent"
         radius: parent.radius
         
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 15
-            anchors.rightMargin: 15
-            spacing: 10
+            anchors.leftMargin: CommonStyle.spacingLg
+            anchors.rightMargin: CommonStyle.spacingLg
+            spacing: CommonStyle.spacingMd
             
             // Chevron icon
             Text {
                 id: chevron
                 text: expanded ? "▼" : "▶"
-                color: "#AAAAAA"
-                font.pixelSize: 14  // Larger for Steam Deck
+                color: CommonStyle.textSecondary
+                font.family: CommonStyle.fontSans
+                font.pixelSize: CommonStyle.fontCaption
             }
             
             // Title and description
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 2
+                spacing: Math.max(2, CommonStyle.spacingXs)
                 
                 Text {
                     text: settingsSection.title
-                    color: "#FFFFFF"
-                    font.pixelSize: 16  // Larger for Steam Deck
+                    color: CommonStyle.textPrimary
+                    font.family: CommonStyle.fontSans
+                    font.pixelSize: CommonStyle.fontBody
                     font.bold: true
                 }
                 
                 Text {
                     visible: settingsSection.description !== ""
                     text: settingsSection.description
-                    color: "#888888"
-                    font.pixelSize: 13  // Larger for Steam Deck readability
+                    color: CommonStyle.textDisabled
+                    font.family: CommonStyle.fontSans
+                    font.pixelSize: CommonStyle.fontCaption
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                 }
@@ -110,7 +114,7 @@ Rectangle {
             anchors.bottom: parent.bottom
             width: parent.width - 20
             height: 1
-            color: "#333333"
+            color: CommonStyle.inputBorder
             anchors.horizontalCenter: parent.horizontalCenter
         }
     }
@@ -126,7 +130,7 @@ Rectangle {
         // Keep content always loaded, just hide with opacity
         opacity: expanded ? 1.0 : 0.0
         Behavior on opacity {
-            NumberAnimation { duration: 150 }
+            NumberAnimation { duration: CommonStyle.motionFast }
         }
         
         Loader {
@@ -135,8 +139,8 @@ Rectangle {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            anchors.margins: 15
-            anchors.topMargin: 10
+            anchors.margins: CommonStyle.spacingLg
+            anchors.topMargin: CommonStyle.spacingMd
             // Keep active always so content is preserved
             active: true
         }

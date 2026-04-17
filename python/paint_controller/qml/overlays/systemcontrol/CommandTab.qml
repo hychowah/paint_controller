@@ -354,7 +354,7 @@ Item {
 
                                         // Placeholder text
                                         Text {
-                                            anchors.fill: numberInputWrapper
+                                            anchors.fill: parent
                                             anchors.leftMargin: 10
                                             anchors.rightMargin: 50
                                             text: modelData.placeholder || ""

@@ -9,10 +9,10 @@ Rectangle {
     id: selectBar
     property var stackView
     property string selectedButton: "buttonHome"
-    property int expandedWidth: 150
-    property int collapsedWidth: 50
+    property int expandedWidth: CommonStyle.shellSidebarExpandedWidth
+    property int collapsedWidth: CommonStyle.shellSidebarCollapsedWidth
     property int buttonSize: expanded ? expandedWidth * 0.8 : collapsedWidth - 10
-    property int buttonSpacing: 20
+    property int buttonSpacing: CommonStyle.shellSidebarButtonGap
     property bool expanded: true
     property bool animationInProgress: false
 
@@ -20,7 +20,7 @@ Rectangle {
     
     width: expanded ? expandedWidth : collapsedWidth
     Layout.fillHeight: true
-    color: "#4374A2"
+    color: CommonStyle.sidebarBackground
     
     // NavigationButton Component Definition
     component NavigationButton: Rectangle {
@@ -38,8 +38,8 @@ Rectangle {
         // Button appearance
         width: selectBar.animationInProgress ? width : targetSize
         height: selectBar.animationInProgress ? height : targetSize
-        radius: 20
-        color: isSelected ? "#E2E2E2" : "#70A3D2"
+        radius: CommonStyle.shellSidebarButtonRadius
+        color: isSelected ? CommonStyle.sidebarButtonSelected : CommonStyle.sidebarButton
         anchors.horizontalCenter: parent.horizontalCenter
         
         // Public function to update size
@@ -54,14 +54,14 @@ Rectangle {
                 target: navigationButton
                 property: "width" 
                 to: selectBar.buttonSize
-                duration: 250
+                duration: CommonStyle.motionStandard
                 easing.type: Easing.InOutQuad 
             }
             NumberAnimation { 
                 target: navigationButton
                 property: "height" 
                 to: selectBar.buttonSize
-                duration: 250
+                duration: CommonStyle.motionStandard
                 easing.type: Easing.InOutQuad 
             }
         }
@@ -82,16 +82,17 @@ Rectangle {
         Text {
             text: buttonText
             anchors.bottom: parent.bottom
-            anchors.bottomMargin: 5
+            anchors.bottomMargin: CommonStyle.spacingXs + 1
             anchors.horizontalCenter: parent.horizontalCenter
-            color: "black"
-            font.pixelSize: 15
+            color: CommonStyle.textStrong
+            font.family: CommonStyle.fontSans
+            font.pixelSize: CommonStyle.shellNavLabelFont
             font.bold: true
             visible: selectBar.expanded
             opacity: selectBar.expanded ? 1.0 : 0.0
             
             Behavior on opacity {
-                NumberAnimation { duration: 150 }
+                NumberAnimation { duration: CommonStyle.motionFast }
             }
         }
 
@@ -111,7 +112,7 @@ Rectangle {
     Behavior on width {
         NumberAnimation { 
             id: widthAnimation
-            duration: 250
+            duration: CommonStyle.motionStandard
             easing.type: Easing.InOutQuad
             onRunningChanged: {
                 if (running) {
@@ -173,7 +174,7 @@ Rectangle {
     Rectangle {
         id: topSpacer
         width: parent.width
-        height: 50
+        height: CommonStyle.shellTopSpacerHeight
         color: "transparent"
         anchors.top: parent.top
     }
@@ -184,7 +185,7 @@ Rectangle {
         width: parent.width
         anchors.top: topSpacer.bottom
         anchors.bottom: connectionStatusPanel.top
-        anchors.bottomMargin: 20
+        anchors.bottomMargin: CommonStyle.spacingLg
         contentWidth: width
         contentHeight: buttonColumn.height
         clip: true
@@ -299,7 +300,7 @@ Rectangle {
     Rectangle {
         width: parent.width
         height: 2
-        color: "white"
+        color: CommonStyle.borderDefault
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: connectionStatusPanel.top
     }
@@ -309,13 +310,13 @@ Rectangle {
         expanded: selectBar.expanded
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: buttonExit.top
-        anchors.bottomMargin: selectBar.expanded ? 50 : 20
+        anchors.bottomMargin: selectBar.expanded ? CommonStyle.shellTopSpacerHeight : CommonStyle.spacingLg
     }
 
     Rectangle {
         width: parent.width
         height: 2
-        color: "white"
+        color: CommonStyle.borderDefault
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: connectionStatusPanel.bottom
     }
@@ -326,11 +327,11 @@ Rectangle {
         property int targetSize: selectBar.expanded ? selectBar.width * 0.8 : selectBar.width - 10
         width: animationInProgress ? width : targetSize
         height: animationInProgress ? height : targetSize
-        radius: 20
-        color: "#FF5733"
+        radius: CommonStyle.shellSidebarButtonRadius
+        color: CommonStyle.buttonDanger
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: 20
+        anchors.bottomMargin: CommonStyle.spacingLg
         
         function updateSize() {
             exitSizeAnimation.start();
@@ -342,14 +343,14 @@ Rectangle {
                 target: buttonExit
                 property: "width" 
                 to: selectBar.expanded ? selectBar.width * 0.8 : selectBar.width - 10
-                duration: 250
+                duration: CommonStyle.motionStandard
                 easing.type: Easing.InOutQuad 
             }
             NumberAnimation { 
                 target: buttonExit
                 property: "height" 
                 to: selectBar.expanded ? selectBar.width * 0.8 : selectBar.width - 10
-                duration: 250
+                duration: CommonStyle.motionStandard
                 easing.type: Easing.InOutQuad 
             }
         }
@@ -357,14 +358,15 @@ Rectangle {
         Text {
             text: "Exit"
             anchors.centerIn: parent
-            color: "#FFFFFF"
-            font.pixelSize: selectBar.expanded ? 20 : 14
+            color: CommonStyle.textPrimary
+            font.family: CommonStyle.fontSans
+            font.pixelSize: selectBar.expanded ? CommonStyle.shellExitFont : CommonStyle.shellWarningFont
             font.bold: true
             visible: selectBar.expanded
             opacity: selectBar.expanded ? 1.0 : 0.0
             
             Behavior on opacity {
-                NumberAnimation { duration: 150 }
+                NumberAnimation { duration: CommonStyle.motionFast }
             }
         }
 
@@ -382,7 +384,7 @@ Rectangle {
                 onPaint: {
                     var ctx = getContext("2d");
                     ctx.reset();
-                    ctx.strokeStyle = "white";
+                    ctx.strokeStyle = CommonStyle.textPrimary;
                     ctx.lineWidth = width * 0.1;
                     
                     // Draw an X

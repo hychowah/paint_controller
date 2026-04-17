@@ -6,8 +6,8 @@ import "../core"
 
 Rectangle {
     id: topBar
-    height: 56  // Slightly taller for modern proportions
-    color: "#28445E"  // Keeping the original color
+    height: CommonStyle.shellTopBarHeight
+    color: CommonStyle.chromeBackground
     z: 1  // Ensure top bar is above the StackView
     
     // Subtle gradient overlay for depth
@@ -25,20 +25,20 @@ Rectangle {
         anchors.bottom: parent.bottom
         width: parent.width
         height: 1
-        color: Qt.rgba(1, 1, 1, 0.5)  // Semi-transparent white
+        color: CommonStyle.borderDefault
     }
     
     RowLayout {
         anchors.fill: parent
-        anchors.margins: 16  // Increased margins
-        spacing: 16  // Increased spacing
+        anchors.margins: CommonStyle.spacingLg
+        spacing: CommonStyle.spacingLg
         
         // App message with improved typography
         Text {
             text: stateStore.display_message || ""
-            color: "white"
-            font.family: "Roboto"
-            font.pixelSize: 16
+            color: CommonStyle.textPrimary
+            font.family: CommonStyle.fontSans
+            font.pixelSize: CommonStyle.shellMessageFont
             font.weight: Font.Medium
             opacity: 0.9  // Slightly reduced opacity for softer look
         }
@@ -48,37 +48,37 @@ Rectangle {
         // Redesigned warning button
         Button {
             id: warningButton
-            Layout.preferredHeight: 36
+            Layout.preferredHeight: CommonStyle.shellControlHeightMd
             focusPolicy: Qt.NoFocus  // Prevent gamepad A button from triggering this
             
             contentItem: Row {
-                spacing: 8
+                spacing: CommonStyle.spacingSm
                 anchors.centerIn: parent
                 
                 Text {
                     text: "⚠️"
-                    font.pixelSize: 16
+                    font.pixelSize: CommonStyle.shellMessageFont
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 
                 Text {
                     text: "Warnings (" + warningHandler.warnings.length + ")"
-                    color: warningHandler.warnings.length === 0 ? "#333333" : "#ffffff"
-                    font.family: "Roboto"
-                    font.pixelSize: 14
+                    color: warningHandler.warnings.length === 0 ? CommonStyle.textStrong : CommonStyle.textPrimary
+                    font.family: CommonStyle.fontSans
+                    font.pixelSize: CommonStyle.shellWarningFont
                     font.weight: Font.Medium
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
             
             background: Rectangle {
-                color: warningHandler.warnings.length === 0 ? "#ffffff" : "#ff5252"  // Slightly modernized red
-                radius: 18  // Pill-shaped button
+                color: warningHandler.warnings.length === 0 ? CommonStyle.sidebarButtonSelected : CommonStyle.buttonDanger
+                radius: CommonStyle.shellControlHeightMd / 2
                 
                 // Add subtle gradient
                 Rectangle {
                     anchors.fill: parent
-                    radius: 18
+                    radius: parent.radius
                     gradient: Gradient {
                         GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.1) }
                         GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.1) }
@@ -91,18 +91,18 @@ Rectangle {
         
         // Modern digital clock
         Rectangle {
-            color: Qt.rgba(1, 1, 1, 0.1)  // Semi-transparent white background
-            radius: 6
-            Layout.preferredHeight: 36
-            Layout.preferredWidth: clockText.width + 24
+            color: Qt.rgba(1, 1, 1, 0.08)
+            radius: CommonStyle.radiusSm
+            Layout.preferredHeight: CommonStyle.shellControlHeightMd
+            Layout.preferredWidth: clockText.width + CommonStyle.spacingXl
             
             Text {
                 id: clockText
                 anchors.centerIn: parent
                 text: Qt.formatDateTime(new Date(), "hh:mm:ss")
-                color: "white"
-                font.family: "Roboto Mono"  // Monospaced font for clock
-                font.pixelSize: 18
+                color: CommonStyle.textPrimary
+                font.family: CommonStyle.fontMono
+                font.pixelSize: CommonStyle.shellClockFont
                 font.weight: Font.Medium
                 
                 Timer {
@@ -123,39 +123,39 @@ Rectangle {
         height: Math.min(Overlay.overlay.height * 0.8, 400)
         x: (Overlay.overlay.width - width) / 2
         y: (Overlay.overlay.height - height) / 2
-        padding: 24  // Increased padding
+        padding: CommonStyle.spacingXl
         modal: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         
         // Dark themed background matching the application style
         background: Rectangle {
-            color: "#2c3e50"  // Dark blue-gray background
-            radius: 8  // Rounded corners
+            color: CommonStyle.cardBackground
+            radius: CommonStyle.radiusMd
             border.width: 1
-            border.color: "#34495e"
+            border.color: CommonStyle.borderDefault
         }
         
         ColumnLayout {
             anchors.fill: parent
-            spacing: 16  // Increased spacing
+            spacing: CommonStyle.spacingLg
             
             // Header with line separator
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: CommonStyle.spacingSm
                 
                 Text {
                     text: "Warnings"
-                    font.family: "Roboto"
-                    font.pixelSize: 20
+                    font.family: CommonStyle.fontSans
+                    font.pixelSize: CommonStyle.fontHeading
                     font.weight: Font.Medium
-                    color: "white"
+                    color: CommonStyle.textPrimary
                 }
                 
                 Rectangle {
                     Layout.fillWidth: true
                     height: 1
-                    color: "#455a64"  // Darker separator
+                    color: CommonStyle.borderDefault
                 }
             }
             
@@ -168,34 +168,34 @@ Rectangle {
                 ListView {
                     id: listView
                     model: warningHandler.warnings
-                    spacing: 12
+                    spacing: CommonStyle.spacingMd
                     boundsBehavior: Flickable.StopAtBounds
                     width: parent.width
                     
                     delegate: Rectangle {
-                        width: ListView.view.width - 20
-                        height: warningLayout.implicitHeight + 24
-                        color: "#344352"  // Darker background for warning items
-                        radius: 6
+                        width: ListView.view.width - CommonStyle.spacingXl
+                        height: warningLayout.implicitHeight + CommonStyle.spacingXl
+                        color: CommonStyle.warningSurface
+                        radius: CommonStyle.radiusSm
                         border.width: 1
-                        border.color: "#ff5252"  // Red border for warnings
+                        border.color: CommonStyle.buttonDanger
                         
                         RowLayout {
                             id: warningLayout
-                            width: parent.width - 24  // Fixed width with margins
+                            width: parent.width - CommonStyle.spacingXl
                             anchors.centerIn: parent  // Center in parent
-                            spacing: 16
+                            spacing: CommonStyle.spacingLg
                             
                             Text {
                                 text: "⚠️"
-                                font.pixelSize: 16
+                                font.pixelSize: CommonStyle.fontBody
                             }
                             
                             Text {
                                 text: modelData
-                                color: "#ff9e80"  // Light orange for warning text
-                                font.family: "Roboto"
-                                font.pixelSize: 14
+                                color: CommonStyle.warningText
+                                font.family: CommonStyle.fontSans
+                                font.pixelSize: CommonStyle.fontCaption
                                 wrapMode: Text.Wrap
                                 Layout.fillWidth: true
                             }
@@ -206,18 +206,18 @@ Rectangle {
                                 
                                 contentItem: Text {
                                     text: parent.text
-                                    font.family: "Roboto"
-                                    font.pixelSize: 13
-                                    color: "#e0e0e0"  // Light text color
+                                    font.family: CommonStyle.fontSans
+                                    font.pixelSize: CommonStyle.fontCaption
+                                    color: CommonStyle.textPrimary
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                 }
                                 
                                 background: Rectangle {
-                                    color: parent.hovered ? "#28445E" : "#1e313d"  // Blue tones matching the app
-                                    radius: 4
-                                    implicitHeight: 32
-                                    implicitWidth: 80
+                                    color: parent.hovered ? CommonStyle.buttonHover : CommonStyle.buttonSecondary
+                                    radius: CommonStyle.radiusSm
+                                    implicitHeight: CommonStyle.controlHeightMd - CommonStyle.spacingXs
+                                    implicitWidth: Math.round(80 * CommonStyle.scaleFactor)
                                 }
                                 
                                 onClicked: {
@@ -242,19 +242,19 @@ Rectangle {
                     
                     contentItem: Text {
                         text: parent.text
-                        font.family: "Roboto"
-                        font.pixelSize: 14
+                        font.family: CommonStyle.fontSans
+                        font.pixelSize: CommonStyle.fontCaption
                         font.weight: Font.Medium
-                        color: "#ffffff"
+                        color: CommonStyle.textPrimary
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
                     
                     background: Rectangle {
-                        color: parent.hovered ? "#c62828" : "#d32f2f"  // Darker red
-                        radius: 4
-                        implicitHeight: 36
-                        implicitWidth: 100
+                        color: parent.hovered ? Qt.darker(CommonStyle.buttonDanger, 1.08) : CommonStyle.buttonDanger
+                        radius: CommonStyle.radiusSm
+                        implicitHeight: CommonStyle.controlHeightMd
+                        implicitWidth: Math.round(100 * CommonStyle.scaleFactor)
                     }
                     
                     onClicked: {

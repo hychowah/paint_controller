@@ -89,6 +89,7 @@ def create_controllers(
     state_store,
     steam_deck_handler: SteamDeckHandler,
     show_popup_fn,
+    close_popup_fn,
     config,
 ):
     """
@@ -161,6 +162,7 @@ def create_controllers(
         settings_manager=settings_manager,
         state_store=state_store,
         show_popup_fn=show_popup_fn,
+        close_popup_fn=close_popup_fn,
     )
 
     emergency = EmergencyButtonHandler(

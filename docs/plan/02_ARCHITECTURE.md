@@ -1,6 +1,6 @@
 # Paint Controller Architecture Reference
 
-> **Source**: Codebase review (2026-04). Updated with audit findings.
+> **Source**: Codebase review (2026-04). Updated 2026-04-17 with audit findings + implementation progress.
 > **Canonical location**: `docs/plan/02_ARCHITECTURE.md`
 > **Related**: [01_MASTER_PLAN.md](01_MASTER_PLAN.md) | [03_QML_BINDINGS.md](03_QML_BINDINGS.md) | [04_AUDIT_REPORT.md](04_AUDIT_REPORT.md)
 
@@ -24,7 +24,12 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Owns boot order and runtime wiring
 - Creates the Qt app, ROS node, settings/state objects, Steam Deck handler, video services, QML engine, bridge, and controller bundle
 - Exposes all runtime objects through `setContextProperty()` (NOT `qmlRegisterSingletonInstance` — broken in PySide6, see KNOWLEDGE.md)
-- Starts timers, ROS thread, system monitor, video streams, and shutdown cleanup
+- 25 context properties registered before `engine.load()`
+- Post-load validation loop checks all 25 properties for `None`
+- Starts timers, ROS thread, system monitor, and shutdown cleanup
+- Video streams deferred via `QTimer.singleShot(200, ...)` to avoid blocking first render
+- Startup instrumented with `time.perf_counter()` markers (`[startup +NNN.N ms] stage`)
+- Cleanup runs on main Qt thread (not background thread) to avoid cross-thread `QTimer` warnings
 
 **`PaintRosNode(Node)`**
 - Pure ROS2 node with no Qt inheritance
@@ -37,9 +42,12 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Exposed via `setContextProperty("stateStore", ...)`
 
 **`QtBridge(QObject)`**
-- Imperative UI bridge for popups, sidebar/fullscreen toggles, multiscreen window, and fullscreen source updates
+- Signal-based UI bridge for popups, sidebar/fullscreen toggles, multiscreen window, and fullscreen source updates
+- **All `findChild()` calls eliminated** — replaced with Qt signals consumed by QML `Connections` block
+- Signals: `showPopupRequested(str,str,str,int)`, `closePopupRequested()`, `toggleSidebarRequested()`, `toggleVideoOverlayRequested(bool,str)`, `updateVideoSourceRequested(str)`
+- Only remaining QML object access: `engine.rootObjects()[0]` in `toggle_multiscreen_window()` via `QMetaObject.invokeMethod`
 - Reads `StateStore` rather than owning application state itself
-- Still contains the remaining Python→QML `findChild()` debt targeted in Task 1.2
+- Deferred wiring: `set_base_top_view_service()`, `set_input_handler()`
 
 **`ControllerBundle` + `create_controllers()`**
 - Factory-built dependency graph for controllers, handlers, and services
@@ -89,7 +97,7 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Mode switching: base (track control) ↔ EF (end-effector)
 - Menu navigation (up/down/left/right)
 - Settings integration for arm presets
-- **NOTE (Audit R3)**: L79 has `findChild("messagePopup")` — must be replaced with `qt_bridge.close_popup()` signal in Task 1.2
+- Popup close uses `close_popup_fn` callable (injected via constructor), no `findChild`
 
 #### **Control Processor** - `ControlProcessor(QObject)` ~400 lines
 - **Complex joystick-to-command mapping**:
@@ -194,6 +202,8 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - `ImageProvider(QQuickImageProvider)`: Provides images to QML
 - Ports: 5000 (EF), 5001 (base-front), 5002 (base-rear), 5003 (base-top)
 - Copy-on-read to prevent external modification
+- `start_all_streams()` is idempotent (`_streams_started` flag) with per-stream timing logs
+- Startup deferred 200ms after QML load to avoid blocking first render
 
 #### **Bird's Eye View Service** - ~350 lines
 - 150° fisheye undistortion + perspective transform
@@ -285,8 +295,22 @@ qml/
 - **Screen Access**: Use `screen.width`, not `screen.geometry.width`
 - **Layout Children**: Never use `parent.width * 0.30` in ColumnLayout/RowLayout (use Layout.fillWidth + weight)
 - **Button Keyboard**: Secondary windows get keyboard events leak → use `focusPolicy: Qt.ClickFocus` + `Keys.onPressed` reject
+- **Signal-Based Bridge**: `MainWindow.qml` has `Connections { target: backend }` block receiving `showPopupRequested`, `closePopupRequested`, `toggleSidebarRequested`, `toggleVideoOverlayRequested`, `updateVideoSourceRequested`
+- **NumpadButton**: Self-contained with explicit properties (no fragile `parent.parent.*` bindings)
+- **Workflow Overlays**: Use `Layout.preferredWidth` weights instead of `parent.width * 0.X`
 
-**CRITICAL Audit Finding (R11)**: `CommonStyle.qml` is a `pragma Singleton` + `QtObject`. `Screen.pixelDensity` CANNOT work because `QtObject` has no parent Window — `Screen` is an attached type requiring visual hierarchy. Must inject from MainWindow or Python-side.
+**CRITICAL Audit Finding (R11) — RESOLVED**: `CommonStyle.qml` is a `pragma Singleton` + `QtObject`. `Screen.pixelDensity` cannot work because `QtObject` has no parent Window. **Resolution**: `scaleFactor` defaults to `1.0` (runtime DPI injection was removed because `Screen.pixelDensity / 4.0` ≈ 2x on Steam Deck, doubling all shell sizes). Shell chrome uses fixed tokens (`shellTopBarHeight`, `shellSidebarExpandedWidth`, etc.) that are NOT scaled. Registered as singleton via `qmldir` in `qml/core/`.
+
+**CommonStyle Token System** (~120 lines, `qml/core/CommonStyle.qml`):
+- `scaleFactor` (writable, default 1.0) — drives all scale-dependent tokens
+- **Colors**: 9 backgrounds, 3 cards, 3 accents, 4 status, 5 text, 2 borders, 10 overlay/input/button
+- **Typography**: `fontSans`/`fontMono` families, 5 font sizes (display→label)
+- **Spacing**: 6 levels (xs→xxl), all `Math.round(N * scaleFactor)`
+- **Radii/Borders**: 3 radii, 2 border widths
+- **Controls**: height/layout constants, motion durations
+- **Shell Chrome**: 11 fixed tokens (not scaled) preserving Steam Deck baseline
+- **Legacy Aliases**: 14 backward-compatible mappings to new tokens
+- **Singleton registration**: `qml/core/qmldir` → `singleton CommonStyle 1.0 CommonStyle.qml`
 
 **Multi-Monitor Architecture**:
 - Main app: Secondary display (index 1 if available, otherwise primary)
@@ -295,15 +319,14 @@ qml/
 
 ---
 
-### 7. C++ Path (DEPRECATED)
+### 7. C++ Path (REMOVED FROM BUILD)
 
 **Location**: `src/paint_controller.cpp`
 
+- Source files retained for reference but **no longer built** — `CMakeLists.txt` stripped of all C++ targets
 - Sets only 2 of 26 context properties (`backend`, `baseStreamer`)
-- Shares QML files with Python path
-- Has its own launch file
-- **User decision (Audit R2)**: Formally deprecated. `README_DEPRECATED.md` to be added at `src/`.
-- Will break when `baseStreamer` context property is removed in Task 0.3
+- `package.xml` no longer lists C++ dependencies (rclcpp, Qt5, GStreamer, HID)
+- Build system is now a pure `ament_cmake` wrapper for the Python package
 
 ---
 

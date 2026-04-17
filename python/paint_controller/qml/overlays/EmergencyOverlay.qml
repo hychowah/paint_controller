@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../core"
 
 Item {
     id: root
@@ -17,12 +18,12 @@ Item {
     property bool isAnimating: false
     
     // Colors matching the main UI theme
-    readonly property color backgroundColor: "#2D3142"
-    readonly property color primaryRed: "#E63946"
-    readonly property color primaryText: "#FFFFFF"
-    readonly property color secondaryText: "#A8B2C8"
-    readonly property color borderColor: "#E63946"
-    readonly property color progressBackground: "#404452"
+    readonly property color backgroundColor: CommonStyle.cardBackground
+    readonly property color primaryRed: CommonStyle.statusError
+    readonly property color primaryText: CommonStyle.textPrimary
+    readonly property color secondaryText: CommonStyle.textSecondary
+    readonly property color borderColor: CommonStyle.statusError
+    readonly property color progressBackground: CommonStyle.backgroundL2
     
     // Connect to the backend signal with better state management
     Connections {
@@ -60,7 +61,7 @@ Item {
     Rectangle {
         id: dimmer
         anchors.fill: parent
-        color: "#000000"
+        color: CommonStyle.overlayScrim
         opacity: 0
         visible: false
         
@@ -75,30 +76,30 @@ Item {
     Rectangle {
         id: overlay
         anchors.centerIn: parent
-        width: 480
-        height: 240
+        width: Math.round(480 * CommonStyle.scaleFactor)
+        height: Math.round(240 * CommonStyle.scaleFactor)
         color: backgroundColor
-        radius: 12
+        radius: CommonStyle.radiusLg
         border.color: borderColor
-        border.width: 2
+        border.width: CommonStyle.borderWidthThick
         visible: false
         opacity: 0
         scale: 0.9
         
         ColumnLayout {
             anchors.centerIn: parent
-            anchors.margins: 40
-            spacing: 32
+            anchors.margins: CommonStyle.spacingXxl + CommonStyle.spacingSm
+            spacing: CommonStyle.spacingXxl
             
             // Emergency header
             ColumnLayout {
-                spacing: 12
+                spacing: CommonStyle.spacingMd
                 Layout.alignment: Qt.AlignHCenter
                 
                 // Warning icon (styled as a circle with exclamation)
                 Rectangle {
-                    width: 48
-                    height: 48
+                    width: Math.round(48 * CommonStyle.scaleFactor)
+                    height: Math.round(48 * CommonStyle.scaleFactor)
                     radius: 24
                     color: primaryRed
                     Layout.alignment: Qt.AlignHCenter
@@ -106,8 +107,8 @@ Item {
                     Text {
                         anchors.centerIn: parent
                         text: "!"
-                        color: "#FFFFFF"
-                        font.pixelSize: 32
+                        color: CommonStyle.textPrimary
+                        font.pixelSize: Math.round(32 * CommonStyle.scaleFactor)
                         font.bold: true
                     }
                 }
@@ -115,7 +116,7 @@ Item {
                 Text {
                     text: "EMERGENCY STOP"
                     color: primaryText
-                    font.pixelSize: 24
+                    font.pixelSize: CommonStyle.fontDisplay
                     font.bold: true
                     Layout.alignment: Qt.AlignHCenter
                 }
@@ -123,20 +124,20 @@ Item {
                 Text {
                     text: "Hold Steam Button"
                     color: secondaryText
-                    font.pixelSize: 14
+                    font.pixelSize: CommonStyle.fontCaption
                     Layout.alignment: Qt.AlignHCenter
                 }
             }
             
             // Progress section
             ColumnLayout {
-                spacing: 12
+                spacing: CommonStyle.spacingMd
                 Layout.fillWidth: true
                 
                 // Progress bar container with modern styling
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 8
+                    height: CommonStyle.spacingSm
                     color: progressBackground
                     radius: 4
                     
@@ -167,7 +168,7 @@ Item {
                     Text {
                         text: `${Math.round(progress * 100)}%`
                         color: primaryRed
-                        font.pixelSize: 18
+                        font.pixelSize: CommonStyle.fontBody + 2
                         font.bold: true
                     }
                     
@@ -176,7 +177,7 @@ Item {
                     Text {
                         text: `${(currentDuration * 1000).toFixed(0)} / ${(targetDuration * 1000).toFixed(0)} ms`
                         color: secondaryText
-                        font.pixelSize: 14
+                        font.pixelSize: CommonStyle.fontCaption
                     }
                 }
             }

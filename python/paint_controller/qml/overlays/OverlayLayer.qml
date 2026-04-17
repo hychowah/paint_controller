@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import "../core"
 
 Item {
     id: overlayLayer
@@ -22,7 +23,7 @@ Item {
     Rectangle {
         id: leftOverlayBackground
         anchors.fill: parent
-        color: "#000000"
+        color: CommonStyle.overlayScrim
         opacity: 0.7
         visible: showLeftMenu
 
@@ -36,7 +37,7 @@ Item {
     Rectangle {
         id: rightOverlayBackground
         anchors.fill: parent
-        color: "#000000"
+        color: CommonStyle.overlayScrim
         opacity: 0.7
         visible: showRightMenu
 
@@ -49,44 +50,45 @@ Item {
     // Left menu container
     Rectangle {
         id: leftMenuContainer
-        width: 400
-        height: Math.min(parent.height * 0.8, 150 + 50 * controlOptions.length)
+        width: Math.round(400 * CommonStyle.scaleFactor)
+        height: Math.min(parent.height * 0.8, Math.round(150 * CommonStyle.scaleFactor) + CommonStyle.listRowHeight * controlOptions.length)
         anchors.centerIn: parent
-        color: "#2c2c2c"
+        color: CommonStyle.backgroundL0
         opacity: 0.9
-        radius: 10
+        radius: CommonStyle.radiusMd
         visible: showLeftMenu
 
         Rectangle {
             visible: activeMenu === "left"
             anchors.fill: parent
-            color: "#3498db"
+            color: CommonStyle.accentPrimary
             opacity: 0.1
-            radius: 10
+            radius: CommonStyle.radiusMd
         }
 
         Text {
             id: leftMenuTitle
             text: "Left Joystick Control"
-            color: "white"
-            font.pixelSize: 24
+            color: CommonStyle.textPrimary
+            font.family: CommonStyle.fontSans
+            font.pixelSize: CommonStyle.fontDisplay
             font.bold: true
             anchors {
                 top: parent.top
-                topMargin: 20
+                topMargin: CommonStyle.spacingXl
                 horizontalCenter: parent.horizontalCenter
             }
         }
 
         ScrollView {
             id: leftScrollView
-            width: parent.width - 40
+            width: parent.width - CommonStyle.spacingXxl - CommonStyle.spacingSm
             anchors {
                 top: leftMenuTitle.bottom
                 bottom: parent.bottom
-                topMargin: 20
+                topMargin: CommonStyle.spacingXl
                 horizontalCenter: parent.horizontalCenter
-                bottomMargin: 20
+                bottomMargin: CommonStyle.spacingXl
             }
             clip: true
 
@@ -96,28 +98,29 @@ Item {
                 model: controlOptions
                 delegate: Rectangle {
                     width: leftOptionsList.width
-                    height: 50
+                    height: CommonStyle.listRowHeight
                     color: "transparent"
 
                     Rectangle {
                         visible: index === leftSelectedIndex
                         anchors.fill: parent
-                        color: "#3498db"
+                        color: CommonStyle.accentPrimary
                         opacity: 0.5
-                        radius: 5
+                        radius: CommonStyle.radiusSm
                     }
 
                     Text {
                         text: modelData
                         color: {
-                            if (index === rightSelectedIndex) return "#ff6b6b"
-                            else if (index === leftSelectedIndex) return "white"
-                            else return "#cccccc"
+                            if (index === rightSelectedIndex) return CommonStyle.statusError
+                            else if (index === leftSelectedIndex) return CommonStyle.textPrimary
+                            else return CommonStyle.textSecondary
                         }
-                        font.pixelSize: 18
+                        font.family: CommonStyle.fontSans
+                        font.pixelSize: CommonStyle.fontBody + 2
                         anchors {
                             left: parent.left
-                            leftMargin: 20
+                            leftMargin: CommonStyle.spacingXl
                             verticalCenter: parent.verticalCenter
                         }
                     }
@@ -136,14 +139,14 @@ Item {
         Rectangle {
             id: leftSelectionIndicator
             width: 8
-            height: 50
-            color: "#3498db"
+            height: CommonStyle.listRowHeight
+            color: CommonStyle.accentPrimary
             radius: 4
             anchors {
                 right: parent.left
                 rightMargin: -4
             }
-            y: leftMenuTitle.height + 20 + (leftSelectedIndex * 50) - leftOptionsList.contentY
+            y: leftMenuTitle.height + CommonStyle.spacingXl + (leftSelectedIndex * CommonStyle.listRowHeight) - leftOptionsList.contentY
 
             Behavior on y {
                 NumberAnimation {
@@ -158,44 +161,45 @@ Item {
     Rectangle {
         id: rightMenuContainer
         z: 1001
-        width: 400
-        height: Math.min(parent.height * 0.8, 150 + 50 * controlOptions.length)
+        width: Math.round(400 * CommonStyle.scaleFactor)
+        height: Math.min(parent.height * 0.8, Math.round(150 * CommonStyle.scaleFactor) + CommonStyle.listRowHeight * controlOptions.length)
         anchors.centerIn: parent
-        color: "#2c2c2c"
+        color: CommonStyle.backgroundL0
         opacity: 0.9
-        radius: 10
+        radius: CommonStyle.radiusMd
         visible: showRightMenu
 
         Rectangle {
             visible: showRightMenu
             anchors.fill: parent
-            color: "#3498db"
+            color: CommonStyle.accentPrimary
             opacity: 0.1
-            radius: 10
+            radius: CommonStyle.radiusMd
         }
 
         Text {
             id: rightMenuTitle
             text: "Right Joystick Control"
-            color: "white"
-            font.pixelSize: 24
+            color: CommonStyle.textPrimary
+            font.family: CommonStyle.fontSans
+            font.pixelSize: CommonStyle.fontDisplay
             font.bold: true
             anchors {
                 top: parent.top
-                topMargin: 20
+                topMargin: CommonStyle.spacingXl
                 horizontalCenter: parent.horizontalCenter
             }
         }
 
         ScrollView {
             id: rightScrollView
-            width: parent.width - 40
+            width: parent.width - CommonStyle.spacingXxl - CommonStyle.spacingSm
             anchors {
                 top: rightMenuTitle.bottom
                 bottom: parent.bottom
-                topMargin: 20
+                topMargin: CommonStyle.spacingXl
                 horizontalCenter: parent.horizontalCenter
-                bottomMargin: 20
+                bottomMargin: CommonStyle.spacingXl
             }
             clip: true
 
@@ -205,28 +209,29 @@ Item {
                 model: controlOptions
                 delegate: Rectangle {
                     width: rightOptionsList.width
-                    height: 50
+                    height: CommonStyle.listRowHeight
                     color: "transparent"
 
                     Rectangle {
                         visible: index === rightSelectedIndex
                         anchors.fill: parent
-                        color: "#3498db"
+                        color: CommonStyle.accentPrimary
                         opacity: 0.5
-                        radius: 5
+                        radius: CommonStyle.radiusSm
                     }
 
                     Text {
                         text: modelData
                         color: {
-                            if (index === leftSelectedIndex) return "#ff6b6b"
-                            else if (index === rightSelectedIndex) return "white"
-                            else return "#cccccc"
+                            if (index === leftSelectedIndex) return CommonStyle.statusError
+                            else if (index === rightSelectedIndex) return CommonStyle.textPrimary
+                            else return CommonStyle.textSecondary
                         }
-                        font.pixelSize: 18
+                        font.family: CommonStyle.fontSans
+                        font.pixelSize: CommonStyle.fontBody + 2
                         anchors {
                             left: parent.left
-                            leftMargin: 20
+                            leftMargin: CommonStyle.spacingXl
                             verticalCenter: parent.verticalCenter
                         }
                     }
@@ -245,14 +250,14 @@ Item {
         Rectangle {
             id: rightSelectionIndicator
             width: 8
-            height: 50
-            color: "#3498db"
+            height: CommonStyle.listRowHeight
+            color: CommonStyle.accentPrimary
             radius: 4
             anchors {
                 right: parent.left
                 rightMargin: -4
             }
-            y: rightMenuTitle.height + 20 + (rightSelectedIndex * 50) - rightOptionsList.contentY
+            y: rightMenuTitle.height + CommonStyle.spacingXl + (rightSelectedIndex * CommonStyle.listRowHeight) - rightOptionsList.contentY
 
             Behavior on y {
                 NumberAnimation {

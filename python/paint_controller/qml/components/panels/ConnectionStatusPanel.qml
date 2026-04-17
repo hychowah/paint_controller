@@ -2,30 +2,37 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../../core"
 
 Rectangle {
     id: connectionStatusPanel
     width: parent.width
-    color: "#A4A589"
+    color: CommonStyle.sidebarBackground
     
     // Properties
     property bool expanded: true
     property bool showDeviceStatus: true
+    property int titleFontSize: CommonStyle.shellStatusTitleFont
+    property int metaFontSize: CommonStyle.shellStatusMetaFont
+    property color labelColor: CommonStyle.textPrimary
+    property color secondaryLabelColor: CommonStyle.textSecondary
+    property string efIpAddress: typeof uiData !== "undefined" && uiData ? uiData.ef_ip : "--"
+    property string baseIpAddress: typeof uiData !== "undefined" && uiData ? uiData.base_ip : "--"
     
     // Height adapts based on expanded state
-    height: expanded ? 100 : 60
+    height: expanded ? CommonStyle.shellStatusBarHeight : CommonStyle.itemHeight
     
     Behavior on height {
-        NumberAnimation { duration: 250; easing.type: Easing.InOutQuad }
+        NumberAnimation { duration: CommonStyle.motionStandard; easing.type: Easing.InOutQuad }
     }
 
     // Define colors for status indicators
-    property color availableColor: "#7ED957"  // Softer green
-    property color idleColor: "#4CD964"       // Natural green
-    property color onTaskColor: "#4A90E2"     // Soft blue
-    property color warningColor: "#FFCC00"    // Amber yellow
-    property color errorColor: "#FF5E3A"      // Soft red
-    property color offlineColor: "#8E8E93"    // Medium gray
+    property color availableColor: CommonStyle.statusSuccess
+    property color idleColor: CommonStyle.statusSuccess
+    property color onTaskColor: CommonStyle.statusInfo
+    property color warningColor: CommonStyle.statusWarning
+    property color errorColor: CommonStyle.statusError
+    property color offlineColor: CommonStyle.textDisabled
     
     // Helper function to get status color
     function getHeartbeatColor(isOnline, status) {
@@ -64,12 +71,12 @@ Rectangle {
         Column {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            anchors.rightMargin: 16
-            spacing: 6
+            anchors.rightMargin: CommonStyle.spacingLg
+            spacing: CommonStyle.spacingXs + 2
             
             // WINCH indicators
             Row {
-                spacing: 4
+                spacing: CommonStyle.spacingXs
                 
                 // Availability indicator
                 Rectangle {
@@ -90,7 +97,7 @@ Rectangle {
             
             // WHEEL indicators
             Row {
-                spacing: 4
+                spacing: CommonStyle.spacingXs
                 
                 // Availability indicator
                 Rectangle {
@@ -111,7 +118,7 @@ Rectangle {
             
             // EF indicators
             Row {
-                spacing: 4
+                spacing: CommonStyle.spacingXs
                 
                 // Availability indicator
                 Rectangle {
@@ -144,8 +151,8 @@ Rectangle {
         
         Column {
             anchors.fill: parent
-            spacing: 8
-            anchors.margins: 12
+            spacing: CommonStyle.spacingSm
+            anchors.margins: CommonStyle.spacingMd
     
             // Device Status View - only visible when expanded and showDeviceStatus is true
             Column {
@@ -155,13 +162,14 @@ Rectangle {
     
                 // WINCH status row
                 Row {
-                    spacing: 8
+                    spacing: CommonStyle.spacingSm
                     width: parent.width
     
                     Text {
                         text: "WINCH"
-                        color: "white"
-                        font.pixelSize: 12
+                        color: connectionStatusPanel.labelColor
+                        font.family: CommonStyle.fontSans
+                        font.pixelSize: connectionStatusPanel.titleFontSize
                         font.bold: true
                         anchors.verticalCenter: parent.verticalCenter
                         width: parent.parent.parent.parent.width * 0.45
@@ -169,7 +177,7 @@ Rectangle {
                     
                     // Status indicators
                     Row {
-                        spacing: 8
+                        spacing: CommonStyle.spacingSm
                         anchors.verticalCenter: parent.verticalCenter
                         
                         // Controller availability indicator
@@ -212,13 +220,14 @@ Rectangle {
     
                 // WHEEL status row
                 Row {
-                    spacing: 8
+                    spacing: CommonStyle.spacingSm
                     width: parent.width
     
                     Text {
                         text: "WHEEL"
-                        color: "white"
-                        font.pixelSize: 12
+                        color: connectionStatusPanel.labelColor
+                        font.family: CommonStyle.fontSans
+                        font.pixelSize: connectionStatusPanel.titleFontSize
                         font.bold: true
                         anchors.verticalCenter: parent.verticalCenter
                         width: parent.parent.parent.parent.width * 0.45
@@ -226,7 +235,7 @@ Rectangle {
                     
                     // Status indicators
                     Row {
-                        spacing: 8
+                        spacing: CommonStyle.spacingSm
                         anchors.verticalCenter: parent.verticalCenter
                         
                         // Controller availability indicator
@@ -269,13 +278,14 @@ Rectangle {
     
                 // EF status row
                 Row {
-                    spacing: 8
+                    spacing: CommonStyle.spacingSm
                     width: parent.width
     
                     Text {
                         text: "EF"
-                        color: "white"
-                        font.pixelSize: 12
+                        color: connectionStatusPanel.labelColor
+                        font.family: CommonStyle.fontSans
+                        font.pixelSize: connectionStatusPanel.titleFontSize
                         font.bold: true
                         anchors.verticalCenter: parent.verticalCenter
                         width: parent.parent.parent.parent.width * 0.45
@@ -283,7 +293,7 @@ Rectangle {
                     
                     // Status indicators
                     Row {
-                        spacing: 8
+                        spacing: CommonStyle.spacingSm
                         anchors.verticalCenter: parent.verticalCenter
                         
                         // Controller availability indicator
@@ -333,57 +343,62 @@ Rectangle {
     
                 // EF IP row
                 Row {
-                    spacing: 5
+                    spacing: CommonStyle.spacingXs + 1
                     width: parent.width
     
                     Text {
                         text: "EF IP:"
-                        color: "white"
-                        font.pixelSize: 12
+                        color: connectionStatusPanel.labelColor
+                        font.family: CommonStyle.fontSans
+                        font.pixelSize: connectionStatusPanel.titleFontSize
                         font.bold: true
                         width: parent.parent.parent.parent.width * 0.7
                     }
                     Text {
-                        text: uiData.ef_ip
-                        color: "white"
+                        text: connectionStatusPanel.efIpAddress
+                        color: connectionStatusPanel.secondaryLabelColor
+                        font.family: CommonStyle.fontMono
                         font.bold: true
-                        font.pixelSize: 10
-                        Layout.fillWidth: true
-                        anchors.right: parent.right
+                        font.pixelSize: connectionStatusPanel.metaFontSize
+                        width: parent.width - (parent.parent.parent.parent.width * 0.7) - parent.spacing
+                        horizontalAlignment: Text.AlignRight
                     }
                 }
     
                 // BASE IP row
                 Row {
-                    spacing: 5
+                    spacing: CommonStyle.spacingXs + 1
                     width: parent.width
     
                     Text {
                         text: "BASE IP:"
-                        color: "white"
-                        font.pixelSize: 12
+                        color: connectionStatusPanel.labelColor
+                        font.family: CommonStyle.fontSans
+                        font.pixelSize: connectionStatusPanel.titleFontSize
                         font.bold: true
                         width: parent.parent.parent.parent.width * 0.7
                     }
                     Text {
-                        text: uiData.base_ip
-                        color: "white"
+                        text: connectionStatusPanel.baseIpAddress
+                        color: connectionStatusPanel.secondaryLabelColor
+                        font.family: CommonStyle.fontMono
                         font.bold: true
-                        font.pixelSize: 10
-                        Layout.fillWidth: true
-                        anchors.right: parent.right
+                        font.pixelSize: connectionStatusPanel.metaFontSize
+                        width: parent.width - (parent.parent.parent.parent.width * 0.7) - parent.spacing
+                        horizontalAlignment: Text.AlignRight
                     }
                 }
             }
     
             // Instruction text - only visible when expanded
             Text {
-                anchors.bottom: parent.bottom
-                anchors.horizontalCenter: parent.horizontalCenter
+                width: parent.width
                 text: connectionStatusPanel.showDeviceStatus ? "Touch to show IP" : "Touch to show Device Status"
-                color: "white"
-                font.pixelSize: 10
+                color: connectionStatusPanel.secondaryLabelColor
+                font.family: CommonStyle.fontSans
+                font.pixelSize: connectionStatusPanel.metaFontSize
                 font.italic: true
+                horizontalAlignment: Text.AlignHCenter
             }
         }
     }

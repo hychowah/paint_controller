@@ -470,18 +470,6 @@ Rectangle {
         }
     }
     
-    // Update point cloud when data changes - only when active
-    Connections {
-        target: lidarController
-        enabled: root.active  // Only listen when overlay is active
-        
-        function onPoints_ready(points) {
-            if (root.active) {
-                pointsData = points
-            }
-        }
-    }
-    
     // Clear point data when deactivated to free memory
     onActiveChanged: {
         if (!active) {

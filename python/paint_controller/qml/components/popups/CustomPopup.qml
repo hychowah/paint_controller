@@ -4,8 +4,8 @@ import "../../core"
 
 Popup {
     id: customPopup
-    width: 450
-    height: 200
+    width: CommonStyle.popupWidth
+    height: CommonStyle.popupHeight
     modal: false
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -21,16 +21,16 @@ Popup {
     // Apply different styles based on popup type
     property color headerColor: {
         switch(messageType) {
-            case "warning": return "#FFC107";
-            case "error": return "#F44336";
-            default: return "#2196F3";  // info blue
+            case "warning": return CommonStyle.statusWarning;
+            case "error": return CommonStyle.statusError;
+            default: return CommonStyle.statusInfo;
         }
     }
     
     background: Rectangle {
         id: bgRect
-        color: "#3D3D3D"
-        radius: 15  // Increased corner radius
+        color: CommonStyle.cardBackground
+        radius: CommonStyle.cardRadius
         
         // Top color bar indicating message type
         Rectangle {
@@ -51,14 +51,14 @@ Popup {
                 property: "opacity"
                 from: 0.0
                 to: 1.0
-                duration: 300
+                duration: CommonStyle.motionSlow
                 easing.type: Easing.OutCubic
             }
             NumberAnimation {
                 property: "y"
                 from: customPopup.y - 30
                 to: customPopup.y
-                duration: 300
+                duration: CommonStyle.motionSlow
                 easing.type: Easing.OutCubic
             }
         }
@@ -110,14 +110,14 @@ Popup {
         
         Column {
             anchors.fill: parent
-            anchors.margins: 20
-            spacing: 20
+            anchors.margins: CommonStyle.spacingXl
+            spacing: CommonStyle.spacingXl
             
             // Icon and title row
             Row {
                 width: parent.width
-                height: 30
-                spacing: 12
+                height: Math.round(30 * CommonStyle.scaleFactor)
+                spacing: CommonStyle.spacingMd
                 
                 Rectangle {
                     width: 24
@@ -128,8 +128,8 @@ Popup {
                     
                     Text {
                         anchors.centerIn: parent
-                        color: "white"
-                        font.pixelSize: 14
+                        color: CommonStyle.textPrimary
+                        font.pixelSize: CommonStyle.fontCaption
                         font.bold: true
                         text: {
                             switch(customPopup.messageType) {
@@ -143,8 +143,9 @@ Popup {
                 
                 Text {
                     text: customPopup.messageTitle
-                    color: "white"
-                    font.pixelSize: 20
+                    color: CommonStyle.textPrimary
+                    font.family: CommonStyle.fontSans
+                    font.pixelSize: CommonStyle.fontHeading
                     font.bold: true
                     width: parent.width - 36
                     elide: Text.ElideRight
@@ -156,8 +157,9 @@ Popup {
             Text {
                 id: messageTextItem
                 text: customPopup.messageText
-                color: "#DDDDDD"
-                font.pixelSize: 16
+                color: CommonStyle.textSecondary
+                font.family: CommonStyle.fontSans
+                font.pixelSize: CommonStyle.fontBody
                 width: parent.width
                 height: parent.height - 50
                 wrapMode: Text.WordWrap

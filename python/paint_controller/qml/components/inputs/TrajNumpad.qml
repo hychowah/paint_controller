@@ -2,13 +2,14 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../../core"
 import "../buttons"
 
 Rectangle {
     id: workFlowNumpads
-    color: "#F5F7FA"
-    radius: 10
-    border.color: "#E0E0E0" 
+    color: CommonStyle.sidebarButtonSelected
+    radius: CommonStyle.radiusMd
+    border.color: CommonStyle.borderDefault
     border.width: 1
 
     property string lastClickedButton: "del"
@@ -98,17 +99,18 @@ Rectangle {
         enabled: selectedInputField.itemInx !== -1 && selectedInputField.inputInx !== -1
         
         background: Rectangle {
-            color: parent.down ? "#E4F0FE" : "#FFFFFF"
-            radius: 5
+            color: parent.down ? Qt.lighter(CommonStyle.accentPrimary, 1.7) : CommonStyle.textPrimary
+            radius: CommonStyle.radiusSm
             border.width: workFlowNumpads.lastClickedButton === numValue ? 2 : 1
-            border.color: workFlowNumpads.lastClickedButton === numValue ? "#007BFF" : "#E0E0E0"
+            border.color: workFlowNumpads.lastClickedButton === numValue ? CommonStyle.accentPrimary : CommonStyle.borderDefault
         }
         
         contentItem: Text {
             text: parent.text
-            font.pixelSize: 18
+            font.family: CommonStyle.fontSans
+            font.pixelSize: CommonStyle.fontBody + 2
             font.bold: true
-            color: parent.enabled ? "#333333" : "#B3B3B3" 
+            color: parent.enabled ? CommonStyle.textStrong : CommonStyle.textDisabled
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
         }
@@ -118,16 +120,16 @@ Rectangle {
 
     RowLayout {
         anchors.fill: parent
-        anchors.margins: 5
-        spacing: 5
+        anchors.margins: CommonStyle.spacingXs + 1
+        spacing: CommonStyle.spacingXs + 1
 
         // Numbers grid
         GridLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             columns: 5
-            rowSpacing: 5
-            columnSpacing: 5
+            rowSpacing: CommonStyle.spacingXs + 1
+            columnSpacing: CommonStyle.spacingXs + 1
 
             // Row 1: 1-5
             NumpadButton { numValue: "1" }
@@ -152,17 +154,18 @@ Rectangle {
             enabled: selectedInputField.itemInx !== -1 && selectedInputField.inputInx !== -1
             
             background: Rectangle {
-                color: parent.down ? "#E4F0FE" : "#FFFFFF"
-                radius: 5
+                color: parent.down ? Qt.lighter(CommonStyle.accentPrimary, 1.7) : CommonStyle.textPrimary
+                radius: CommonStyle.radiusSm
                 border.width: workFlowNumpads.lastClickedButton === "del" ? 2 : 1
-                border.color: workFlowNumpads.lastClickedButton === "del" ? "#007BFF" : "#E0E0E0"
+                border.color: workFlowNumpads.lastClickedButton === "del" ? CommonStyle.accentPrimary : CommonStyle.borderDefault
             }
             
             contentItem: Text {
                 text: parent.text
-                font.pixelSize: 24
+                font.family: CommonStyle.fontSans
+                font.pixelSize: CommonStyle.fontDisplay
                 font.bold: true
-                color: parent.enabled ? "#333333" : "#B3B3B3"
+                color: parent.enabled ? CommonStyle.textStrong : CommonStyle.textDisabled
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
             }

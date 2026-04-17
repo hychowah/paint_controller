@@ -1,11 +1,12 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../../core"
 
 ColumnLayout {
     id: root
     Layout.fillWidth: true
-    spacing: 8
+    spacing: CommonStyle.spacingSm
     
     // Component properties
     property string label: ""
@@ -15,42 +16,44 @@ ColumnLayout {
     property string defaultValue: "0"
     property var numberPadTarget: null
     property var confirmationPopup: null
-    property int fieldHeight: 60  // Configurable height for input and button
-    property int buttonWidth: 220  // Configurable width for save button
+    property int fieldHeight: CommonStyle.itemHeight
+    property int buttonWidth: Math.round(220 * CommonStyle.scaleFactor)
     
     // Label
     Text {
         text: root.label
-        color: "#FFFFFF"
-        font.pixelSize: 13
+        color: CommonStyle.textPrimary
+        font.family: CommonStyle.fontSans
+        font.pixelSize: CommonStyle.fontCaption
         font.bold: true
     }
     
     // Input row
     RowLayout {
         Layout.fillWidth: true
-        spacing: 10
+        spacing: CommonStyle.spacingMd
         
         // Input field
         Rectangle {
             Layout.fillWidth: true
             height: root.fieldHeight
-            color: "#1A1A1A"
-            border.color: inputField.activeFocus ? "#3A5A8C" : "#333333"
+            color: CommonStyle.inputBackground
+            border.color: inputField.activeFocus ? CommonStyle.inputFocusBorder : CommonStyle.inputBorder
             border.width: 1
-            radius: 6
+            radius: CommonStyle.radiusSm
             
             TextInput {
                 id: inputField
                 anchors.fill: parent
-                anchors.margins: 10
+                anchors.margins: CommonStyle.spacingMd
                 text: {
                     if (!settingsManager) return root.defaultValue
                     var value = settingsManager[root.settingKey]
                     if (value === undefined || value === null) return root.defaultValue
                     return root.decimalPlaces === 0 ? value.toString() : value.toFixed(root.decimalPlaces)
                 }
-                color: "#FFFFFF"
+                color: CommonStyle.textPrimary
+                font.family: CommonStyle.fontMono
                 font.pixelSize: Math.max(14, root.fieldHeight * 0.35)
                 verticalAlignment: TextInput.AlignVCenter
                 horizontalAlignment: TextInput.AlignRight
@@ -74,13 +77,14 @@ ColumnLayout {
         Rectangle {
             width: root.buttonWidth
             height: root.fieldHeight
-            radius: 6
-            color: saveArea.containsMouse ? "#4CAF50" : "#3A8F3A"
+            radius: CommonStyle.radiusSm
+            color: saveArea.containsMouse ? Qt.lighter(CommonStyle.statusSuccess, 1.08) : CommonStyle.statusSuccess
             
             Text {
                 anchors.centerIn: parent
                 text: "Save"
-                color: "#FFFFFF"
+                color: CommonStyle.textStrong
+                font.family: CommonStyle.fontSans
                 font.pixelSize: Math.max(12, root.fieldHeight * 0.30)
                 font.bold: true
             }

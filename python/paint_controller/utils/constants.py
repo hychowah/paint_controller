@@ -36,8 +36,3 @@ class JoystickControl(str, Enum):
     ARM_RAIL_SPEED = "Arm Rail Speed"
 
 
-class QmlObjectName(str, Enum):
-    """QML objectName values used in findChild() lookups."""
-    MESSAGE_POPUP = "messagePopup"
-    SELECT_BAR = "selectBar"
-    VIDEO_FULLSCREEN_OVERLAY = "videoFullscreenOverlay"

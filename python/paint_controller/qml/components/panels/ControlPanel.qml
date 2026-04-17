@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../../core"
 
 Rectangle {
     id: controlPanel
@@ -12,10 +13,10 @@ Rectangle {
     
     signal clicked()
     
-    height: 60
-    radius: 10
-    color: enabledState ? "#252A36" : "#222222"
-    border.color: enabledState ? "#3A5A8C" : "#333333"
+    height: CommonStyle.itemHeight
+    radius: CommonStyle.radiusMd
+    color: enabledState ? CommonStyle.cardBackground : CommonStyle.backgroundL1
+    border.color: enabledState ? CommonStyle.borderFocused : CommonStyle.inputBorder
     border.width: 1
     
     // This ensures consistent layout across all control panels
@@ -23,11 +24,11 @@ Rectangle {
     
     // Subtle transition animations
     Behavior on color {
-        ColorAnimation { duration: 200 }
+        ColorAnimation { duration: CommonStyle.motionStandard }
     }
     
     Behavior on border.color {
-        ColorAnimation { duration: 200 }
+        ColorAnimation { duration: CommonStyle.motionStandard }
     }
     
     MouseArea {
@@ -43,11 +44,11 @@ Rectangle {
         }
         // Hover effect
         onEntered: {
-            parent.color = enabledState ? "#2A3040" : "#2A2A2A"
+            parent.color = enabledState ? CommonStyle.cardBackgroundAlt : CommonStyle.backgroundL2
         }
         
         onExited: {
-            parent.color = enabledState ? "#252A36" : "#222222"
+            parent.color = enabledState ? CommonStyle.cardBackground : CommonStyle.backgroundL1
         }
     }
     
@@ -55,31 +56,32 @@ Rectangle {
     Row {
         anchors {
             fill: parent
-            margins: 10
+            margins: CommonStyle.spacingMd
             // Add right margin to create space between toggle and right edge
-            rightMargin: 15
+            rightMargin: CommonStyle.spacingLg
         }
-        spacing: 10
+        spacing: CommonStyle.spacingMd
         
         // Icon
         Rectangle {
-            width: 36
-            height: 36
-            radius: 18
-            color: enabledState ? "#3A5A8C" : "#444444"
+            width: CommonStyle.controlHeightMd
+            height: CommonStyle.controlHeightMd
+            radius: width / 2
+            color: enabledState ? CommonStyle.borderFocused : CommonStyle.textDisabled
             anchors.verticalCenter: parent.verticalCenter
             
             Text {
                 anchors.centerIn: parent
                 text: controlPanel.iconText
-                font.pixelSize: 16
-                color: "white"
+                font.family: CommonStyle.fontSans
+                font.pixelSize: CommonStyle.fontBody
+                color: CommonStyle.textPrimary
                 font.bold: true
             }
             
             // Color transition
             Behavior on color {
-                ColorAnimation { duration: 200 }
+                ColorAnimation { duration: CommonStyle.motionStandard }
             }
         }
         
@@ -92,23 +94,25 @@ Rectangle {
             
             Column {
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 2
+                spacing: Math.max(2, CommonStyle.spacingXs)
                 
                 Text {
                     text: controlPanel.controlName
-                    font.pixelSize: 16
+                    font.family: CommonStyle.fontSans
+                    font.pixelSize: CommonStyle.fontBody
                     font.bold: true
-                    color: "#FFFFFF"
+                    color: CommonStyle.textPrimary
                 }
                 
                 Text {
                     text: controlPanel.controlStatus
-                    font.pixelSize: 14
-                    color: enabledState ? "#90CAF9" : "#999999"
+                    font.family: CommonStyle.fontSans
+                    font.pixelSize: CommonStyle.fontCaption
+                    color: enabledState ? CommonStyle.accentMuted : CommonStyle.textDisabled
                     
                     // Color transition
                     Behavior on color {
-                        ColorAnimation { duration: 200 }
+                        ColorAnimation { duration: CommonStyle.motionStandard }
                     }
                 }
             }
@@ -119,20 +123,20 @@ Rectangle {
             width: 52
             height: 28
             radius: 14
-            color: enabledState ? "#3A5A8C" : "#444444"
+            color: enabledState ? CommonStyle.borderFocused : CommonStyle.textDisabled
             anchors.verticalCenter: parent.verticalCenter
             
             Rectangle {
                 width: 22
                 height: 22
                 radius: 11
-                color: "#FFFFFF"
+                color: CommonStyle.textPrimary
                 anchors.verticalCenter: parent.verticalCenter
                 x: enabledState ? parent.width - width - 3 : 3
                 
                 Behavior on x {
                     NumberAnimation { 
-                        duration: 200
+                        duration: CommonStyle.motionStandard
                         easing.type: Easing.OutCubic
                     }
                 }
@@ -140,7 +144,7 @@ Rectangle {
             
             // Color transition
             Behavior on color {
-                ColorAnimation { duration: 200 }
+                ColorAnimation { duration: CommonStyle.motionStandard }
             }
         }
     }

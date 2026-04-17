@@ -1,23 +1,24 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../../core"
 
 Rectangle {
     id: touchSwitchContainer
     
     // Exposed properties
     property bool checked: false
-    property color activeColor: "#4CAF50"
-    property color inactiveColor: "#cccccc"
-    property color activeBorderColor: "#43A047"
-    property color inactiveBorderColor: "#bbbbbb"
+    property color activeColor: CommonStyle.statusSuccess
+    property color inactiveColor: CommonStyle.textDisabled
+    property color activeBorderColor: CommonStyle.statusSuccess
+    property color inactiveBorderColor: CommonStyle.borderDefault
     
     // Signals
     signal toggled(bool checked)
     
     // Size properties with defaults
-    Layout.preferredWidth: 80
-    Layout.preferredHeight: 40
+    Layout.preferredWidth: Math.round(80 * CommonStyle.scaleFactor)
+    Layout.preferredHeight: Math.round(40 * CommonStyle.scaleFactor)
     color: "transparent"
     
     Switch {
@@ -26,8 +27,8 @@ Rectangle {
         checked: touchSwitchContainer.checked
         
         indicator: Rectangle {
-            implicitWidth: 60
-            implicitHeight: 30
+            implicitWidth: Math.round(60 * CommonStyle.scaleFactor)
+            implicitHeight: Math.round(30 * CommonStyle.scaleFactor)
             radius: height / 2
             color: switchControl.checked ? activeColor : inactiveColor
             border.color: switchControl.checked ? activeBorderColor : inactiveBorderColor
@@ -37,12 +38,12 @@ Rectangle {
                 width: parent.height - 8
                 height: width
                 radius: width / 2
-                color: "white"
+                color: CommonStyle.textPrimary
                 border.color: switchControl.checked ? activeBorderColor : inactiveBorderColor
                 anchors.verticalCenter: parent.verticalCenter
                 
                 Behavior on x {
-                    NumberAnimation { duration: 200 }
+                    NumberAnimation { duration: CommonStyle.motionStandard }
                 }
             }
         }
