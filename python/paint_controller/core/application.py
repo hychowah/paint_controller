@@ -21,7 +21,7 @@ import rclpy
 from rclpy.node import Node
 
 from PySide6.QtCore import QTimer, QUrl, Signal, QThread
-from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterSingletonInstance
+from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWidgets import QApplication
 
 from paint_controller.handlers.steam_deck import SteamDeckHandler
@@ -302,16 +302,8 @@ def main():
     qt_bridge.status_updated.connect(_timer_callback)
 
     # --- QML context properties ---
-    qmlRegisterSingletonInstance(
-        StateStore,
-        "PaintController",
-        1,
-        0,
-        "StateStore",
-        state_store,
-    )
-
     ctx = engine.rootContext()
+    ctx.setContextProperty("stateStore", state_store)
     ctx.setContextProperty("backend", qt_bridge)
     ctx.setContextProperty("overlayController", bundle.overlay_controller)
     ctx.setContextProperty("workFlowHandler", bundle.workflow_handler)

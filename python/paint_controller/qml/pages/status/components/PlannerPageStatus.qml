@@ -1,7 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import PaintController 1.0
 
 Rectangle {
     id: plannerPageStatus
@@ -20,7 +19,7 @@ Rectangle {
     )
     
     // Add a control mode property (bound to the UI data model)
-    property string controlMode: StateStore.control_mode
+    property string controlMode: stateStore.control_mode
     
     // Add a subtle gradient background
     gradient: Gradient {

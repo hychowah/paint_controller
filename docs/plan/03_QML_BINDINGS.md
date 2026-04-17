@@ -22,7 +22,11 @@ engine.addImageProvider("base_top_view", base_top_view_service.image_provider)
 qml_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'qml')
 engine.addImportPath(qml_dir)
 
-# Register singletons / set context properties BEFORE load
+# Register context properties BEFORE engine.load()
+ctx = engine.rootContext()
+ctx.setContextProperty("stateStore", state_store)
+# ... all other setContextProperty calls ...
+
 qml_path = os.path.join(qml_dir, 'core', 'MainWindow.qml')
 engine.load(QUrl.fromLocalFile(qml_path))
 ```
@@ -31,16 +35,16 @@ engine.load(QUrl.fromLocalFile(qml_path))
 
 ## Current Runtime Registration State
 
-As of 2026-04-17, runtime registration is **hybrid**:
+As of 2026-04-17, all runtime objects are exposed via `setContextProperty()`.
 
-- `StateStore` is already registered with `qmlRegisterSingletonInstance()` as `PaintController 1.0 / StateStore`
-- 23 remaining runtime identifiers are still exposed through `engine.rootContext().setContextProperty()`
+> **⚠️ DO NOT USE `qmlRegisterSingletonInstance()` in PySide6.**
+> It corrupts the QML type system when combined with implicit directory imports (no `qmldir`).
+> Symptoms: `Cannot assign object of type "QQuickRectangle" to list property "data"` — global breakage.
+> See KNOWLEDGE.md entry "NEVER Use qmlRegisterSingletonInstance in PySide6" and PYSIDE-2173/2160/2310.
+
+- All runtime objects use `engine.rootContext().setContextProperty()`
+- QML accesses them via lowercase instance names (e.g., `stateStore.control_mode`)
 - Removed aliases `baseStreamer` and `videoStreamer` are no longer part of the live Python/QML path
-
-### Singleton-Registered
-| QML Name | Source | Type | Completed Task |
-|---|---|---|---|
-| `StateStore` | `state_store` | `StateStore` | `1.0` |
 
 ### Core Objects
 | Property Name | Source | Type | Migration Task |
@@ -88,33 +92,26 @@ As of 2026-04-17, runtime registration is **hybrid**:
 
 ---
 
-## Registration Target Pattern
+## Registration Pattern
 
-After migration, every context property becomes a singleton:
+All Python objects are exposed to QML via `setContextProperty()`:
 
 ```python
-# In application.py — replaces setContextProperty block
-from PySide6.QtQml import qmlRegisterSingletonInstance
-
-qmlRegisterSingletonInstance(
-    WheelController,           # type
-    "PaintController",         # URI  
-    1, 0,                      # version major.minor
-    "WheelController",         # QML name
-    wheel_controller_instance  # object
-)
+# In application.py — register all objects BEFORE engine.load()
+ctx = engine.rootContext()
+ctx.setContextProperty("stateStore", state_store)
+ctx.setContextProperty("wheelController", wheel.wheel_controller)
+ctx.setContextProperty("settingsManager", settings_manager)
+# ... etc
 ```
 
-**CRITICAL (Audit R1)**: Do NOT add `QML_IMPORT_NAME` or `QML_IMPORT_MAJOR_VERSION` module variables. Those are only for `@QmlElement` decorator — they are dead code when using `qmlRegisterSingletonInstance()`.
+> **⚠️ DO NOT use `qmlRegisterSingletonInstance()`** — broken in PySide6. See KNOWLEDGE.md.
 
-QML access changes from:
+QML access uses lowercase instance names directly (no import needed):
 ```qml
-// OLD — global context property
+// Context property — available globally
 Text { text: wheelController.left_wheel_speed }
-
-// NEW — explicit import
-import PaintController 1.0
-Text { text: WheelController.left_wheel_speed }
+Text { text: stateStore.control_mode }
 ```
 
 ---
@@ -341,7 +338,7 @@ Planned for `QtBridge(QObject)` in Task 1.2:
 QML side:
 ```qml
 Connections {
-    target: QtBridge  // singleton after Task 1.2
+    target: backend  // context property, renamed in Task 1.2
     function onShowPopupRequested(title, message, type) { messagePopup.show(title, message, type) }
     function onClosePopupRequested() { messagePopup.close() }
     function onNavigateToPageRequested(page) { selectBar.navigateTo(page) }
@@ -372,8 +369,7 @@ QObject* popup = root->findChild<QObject*>("messagePopup");
 ## Current Registration Pattern Summary
 
 ### What's Currently Used
-- ✅ `qmlRegisterSingletonInstance()` for `StateStore`
-- ✅ `setContextProperty()` for the remaining runtime objects (hybrid registration)
+- ✅ `setContextProperty()` for all runtime objects
 - ✅ `@Property(type, notify=signal)` for bindable attributes
 - ✅ `@Slot()` for QML-callable methods
 - ✅ `Connections { target: obj }` for signal listening in QML
@@ -382,10 +378,10 @@ QObject* popup = root->findChild<QObject*>("messagePopup");
 - ✅ `objectName` for component identification
 
 ### What's Being Migrated To
-- ✅ `qmlRegisterSingletonInstance()` for all runtime objects over time
 - ✅ QML `Connections {}` with signals replacing `findChild()`
 - ✅ `qmldir` manifests for module organization
 - ✅ `required property` for explicit dependencies
 - ✅ Versionless Qt6 imports (`import QtQuick` not `import QtQuick 2.15`)
+- ❌ NOT using `qmlRegisterSingletonInstance()` (broken in PySide6 — see KNOWLEDGE.md)
 - ❌ NOT using `@QmlElement` or `@QmlSingleton` (Audit R1 — incompatible with factory pattern)
-- ❌ NOT using `QML_IMPORT_NAME` module variables (dead code for `qmlRegisterSingletonInstance`)
+- ❌ NOT using `QML_IMPORT_NAME` module variables

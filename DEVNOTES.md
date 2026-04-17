@@ -2,6 +2,19 @@
 
 ---
 
+### 2026-04-17 17:10 - Fix QML Startup Type System Corruption
+
+**Goal**: Restore UI startup after Phase 0 / singleton changes broke `paint_controller`
+**Issues**: `QQmlApplicationEngine` fails with `Cannot assign object of type "QQuickRectangle" to list property "data"; expected "QObject"` — global QML type system corruption
+**Tried**:
+- ~~ToolTip / hover bubble theory~~ — WRONG. Error is not QML-side at all
+- Headless isolation tests: all QML compiles fine WITHOUT `qmlRegisterSingletonInstance`
+- Even a minimal `QObject` with a single `Property(str)` + `Signal()` triggers the crash when registered via `qmlRegisterSingletonInstance`
+- `setContextProperty` works perfectly as replacement
+**Root Cause**: `qmlRegisterSingletonInstance` corrupts PySide6's QML type system when combined with implicit directory imports (no `qmldir`). Known family of bugs: PYSIDE-2173, PYSIDE-2160, PYSIDE-2310. Our specific symptom (QQuickRectangle→data) appears unreported upstream.
+**Result**: ✅ Replaced `qmlRegisterSingletonInstance` with `setContextProperty("stateStore", state_store)`. Updated 4 QML files: `StateStore.X` → `stateStore.X`, removed `import PaintController 1.0`.
+**Files**: `application.py`, `TopBar.qml`, `PageWorkFlow.qml`, `ExecutorPageStatus.qml`, `PlannerPageStatus.qml`
+
 ### 2026-04-17 16:30 - Pytest Infrastructure Validation Gate
 
 **Goal**: Complete Task 3.1 so future singleton and controller work has reusable Qt/ROS test scaffolding

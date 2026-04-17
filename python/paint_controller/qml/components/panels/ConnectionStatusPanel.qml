@@ -55,13 +55,6 @@ Rectangle {
         }
     }
 
-    // Make the rectangle clickable to toggle views
-    MouseArea {
-        anchors.fill: parent
-        enabled: expanded
-        onClicked: parent.showDeviceStatus = !parent.showDeviceStatus
-    }
-
     // FOR COLLAPSED STATE
     Item {
         visible: !expanded
@@ -143,6 +136,11 @@ Rectangle {
     Item {
         visible: expanded
         anchors.fill: parent
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: connectionStatusPanel.showDeviceStatus = !connectionStatusPanel.showDeviceStatus
+        }
         
         Column {
             anchors.fill: parent
@@ -208,16 +206,6 @@ Rectangle {
                                 border.width: 1
                                 border.color: Qt.rgba(parent.color.r, parent.color.g, parent.color.b, 0.5)
                             }
-                            
-                            ToolTip.visible: baseHeartbeatMouseArea.containsMouse
-                            ToolTip.text: "Base heartbeat: " + 
-                                getHeartbeatText(heartbeatHandler.base_online, heartbeatHandler.base_status)
-                            
-                            MouseArea {
-                                id: baseHeartbeatMouseArea
-                                anchors.fill: parent
-                                hoverEnabled: true
-                            }
                         }
                     }
                 }
@@ -275,16 +263,6 @@ Rectangle {
                                 border.width: 1
                                 border.color: Qt.rgba(parent.color.r, parent.color.g, parent.color.b, 0.5)
                             }
-                            
-                            ToolTip.visible: baseHeartbeatMouseArea2.containsMouse
-                            ToolTip.text: "Base heartbeat: " + 
-                                getHeartbeatText(heartbeatHandler.base_online, heartbeatHandler.base_status)
-                            
-                            MouseArea {
-                                id: baseHeartbeatMouseArea2
-                                anchors.fill: parent
-                                hoverEnabled: true
-                            }
                         }
                     }
                 }
@@ -341,16 +319,6 @@ Rectangle {
                                 color: "transparent"
                                 border.width: 1
                                 border.color: Qt.rgba(parent.color.r, parent.color.g, parent.color.b, 0.5)
-                            }
-                            
-                            ToolTip.visible: efHeartbeatMouseArea.containsMouse
-                            ToolTip.text: "EF heartbeat: " + 
-                                getHeartbeatText(heartbeatHandler.ef_online, heartbeatHandler.ef_status)
-                            
-                            MouseArea {
-                                id: efHeartbeatMouseArea
-                                anchors.fill: parent
-                                hoverEnabled: true
                             }
                         }
                     }

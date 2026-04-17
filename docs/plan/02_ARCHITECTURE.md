@@ -23,7 +23,7 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 **`main()` in `core/application.py`**
 - Owns boot order and runtime wiring
 - Creates the Qt app, ROS node, settings/state objects, Steam Deck handler, video services, QML engine, bridge, and controller bundle
-- Registers `StateStore` as the first singleton and exposes the remaining runtime identifiers through context properties
+- Exposes all runtime objects through `setContextProperty()` (NOT `qmlRegisterSingletonInstance` — broken in PySide6, see KNOWLEDGE.md)
 - Starts timers, ROS thread, system monitor, video streams, and shutdown cleanup
 
 **`PaintRosNode(Node)`**
@@ -34,7 +34,7 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 **`StateStore(QObject)`**
 - Thread-safe shared UI/controller state
 - Holds display message, control mode, and joystick control info for QML binding
-- First migrated singleton in Phase 1
+- Exposed via `setContextProperty("stateStore", ...)`
 
 **`QtBridge(QObject)`**
 - Imperative UI bridge for popups, sidebar/fullscreen toggles, multiscreen window, and fullscreen source updates

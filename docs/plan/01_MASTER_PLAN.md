@@ -17,7 +17,7 @@
 6. **If a task fails or scope changes**: Document in Notes column
 7. **Always verify** — run the verification steps listed per task
 8. **After modifying ANY QML**: Test the affected page/overlay manually
-9. **Don't add `QML_IMPORT_NAME`/`QML_IMPORT_MAJOR_VERSION`** to controller files — these are only for `@QmlElement`, not for `qmlRegisterSingletonInstance()`
+9. **NEVER use `qmlRegisterSingletonInstance()`** in PySide6 — it corrupts the QML type system. Use `setContextProperty()` instead. See KNOWLEDGE.md.
 
 **All Python paths below are relative to**: `python/paint_controller/`
 **All QML paths below are relative to**: `python/paint_controller/qml/`
@@ -35,7 +35,7 @@ Last Modified: 2026-04-17
 | 0.3 Remove aliases + fix bugs | [x] | C++ path formally deprecated; `baseStreamer`/`videoStreamer` removed; overlay slot returns list |
 | 0.4 Winch safety + ScreenManager | [x] | Re-enabled 4 winch safety checks; ScreenManager now takes `node` in constructor |
 | PRE-1 Machine-verify QML mapping | [x] | Mapping table refreshed to live identifiers; lowercase `stateStore` and aliases removed |
-| 1.0 Register StateStore | [x] | ESTABLISHES PATTERN; `StateStore` registered as first singleton while mixed registration remains |
+| 1.0 Register StateStore | [x] | `StateStore` exposed via `setContextProperty`. `qmlRegisterSingletonInstance` abandoned (PySide6 bug — see KNOWLEDGE.md) |
 | 1.1 Register SettingsManager | [ ] | |
 | 1.2 Register QtBridge + kill findChild | [ ] | Includes input.py L79 |
 | 1.3 Register isolated controllers | [ ] | |
@@ -52,7 +52,7 @@ Last Modified: 2026-04-17
 | 1.11c required props — displays | [ ] | |
 | 1.11d required props — panels/popups | [ ] | |
 | 1.11e required props — widgets | [ ] | |
-| POST-1 Startup singleton validation | [ ] | After ALL Phase 1 tasks |
+| POST-1 Startup context property validation | [ ] | After ALL Phase 1 tasks |
 | 2.0 Expand CommonStyle | [ ] | DPI via Python, NOT Screen.pixelDensity |
 | 2.1 Design system — core/nav | [ ] | |
 | 2.2 Design system — buttons/inputs | [ ] | |
@@ -107,7 +107,7 @@ Phase 1 continued: 1.1, 1.2, 1.3 (can parallel after 1.0)
          ↓
          1.11a-e (required props — after ALL 1.0-1.8 AND 1.9)
          ↓
-         POST-1 — Startup singleton validation
+         POST-1 — Startup context property validation
          ↓
 Phase 2: 2.0 (DPI via Python injection) → 2.1-2.6 (sequential by batch)
          2.7, 2.8 (independent, anytime)
@@ -149,24 +149,20 @@ ctx.setContextProperty("wheelController", bundle.wheel_controller)
 # QML accesses as global: wheelController.left_wheel_speed
 ```
 
-### Target Pattern: qmlRegisterSingletonInstance (REPLACEMENT)
+### Target Pattern: setContextProperty (CURRENT)
 ```python
 # In application.py main(), AFTER engine creation, BEFORE engine.load()
-from PySide6.QtQml import qmlRegisterSingletonInstance
-qmlRegisterSingletonInstance(WheelController, "PaintController", 1, 0, "WheelController", bundle.wheel_controller)
-# QML accesses via: import PaintController; WheelController.left_wheel_speed
+ctx = engine.rootContext()
+ctx.setContextProperty("wheelController", bundle.wheel_controller)
+# QML accesses as global: wheelController.left_wheel_speed
 ```
 
-> **IMPORTANT (Audit R1)**: Do NOT add `QML_IMPORT_NAME` or `QML_IMPORT_MAJOR_VERSION` module-level variables to controller files. These are only used by the `@QmlElement` decorator pipeline, not by `qmlRegisterSingletonInstance()`. The URI and version are passed as direct arguments to the function call.
+> **⚠️ DO NOT use `qmlRegisterSingletonInstance()`** — broken in PySide6 with implicit directory imports. See KNOWLEDGE.md.
 
-### QML Import Change
+### QML Access Pattern
 ```qml
-// BEFORE (current):
-// wheelController.left_wheel_speed  (global, no import)
-
-// AFTER (target):
-import PaintController
-// WheelController.left_wheel_speed  (imported singleton, type-safe)
+// Context property — available globally, lowercase instance name
+wheelController.left_wheel_speed
 ```
 
 ### Current findChild Pattern (to be REMOVED in Task 1.2)
@@ -404,52 +400,31 @@ done
 
 ---
 
-### Task 1.0: Register StateStore Singleton (ESTABLISHES PATTERN)
+### Task 1.0: Register StateStore (COMPLETED)
 
-**Goal**: Convert the first `setContextProperty` to `qmlRegisterSingletonInstance`. This defines the reference implementation — everything else copies this pattern.
+**Goal**: Expose `StateStore` to QML via `setContextProperty`. This defines the reference implementation.
+
+**Status**: ✅ DONE. Originally attempted with `qmlRegisterSingletonInstance` but that API is broken in PySide6 (corrupts QML type system with implicit directory imports). Reverted to `setContextProperty`.
 
 **Python changes**:
-- `core/application.py` — Replace:
-  ```python
-  ctx.setContextProperty("stateStore", state_store)
-  ```
-  With (add import at top: `from PySide6.QtQml import qmlRegisterSingletonInstance`):
-  ```python
-  qmlRegisterSingletonInstance(StateStore, "PaintController", 1, 0, "StateStore", state_store)
-  ```
-  This must be BEFORE `engine.load()` but AFTER the `state_store` instance is created.
+- `core/application.py` — Uses `ctx.setContextProperty("stateStore", state_store)` (already existed, kept as-is)
 
-**QML changes** (4 files):
-- `navigation/TopBar.qml` — Add `import PaintController` at top. Change `stateStore.xyz` to `StateStore.xyz`.
-- `pages/workflow/PageWorkFlow.qml` — Same pattern
-- `pages/status/components/ExecutorPageStatus.qml` — Same pattern
-- `pages/status/components/PlannerPageStatus.qml` — Same pattern
-
-**QML access pattern change**:
-```qml
-// BEFORE: stateStore.display_message (implicit global)
-// AFTER:
-import PaintController
-// ... StateStore.display_message (explicit imported singleton)
-```
-
-**Verification**:
-- TopBar shows display message correctly
-- PageWorkFlow binds to state_store properties
-- Status pages show executor/planner state
-- No QML warnings in console about unknown `StateStore`
-- `grep -rn "setContextProperty.*stateStore" core/application.py` → zero hits
+**QML files** (4 files): Access via `stateStore.xyz` (lowercase, no import needed)
+- `navigation/TopBar.qml`
+- `pages/workflow/PageWorkFlow.qml`
+- `pages/status/components/ExecutorPageStatus.qml`
+- `pages/status/components/PlannerPageStatus.qml`
 
 ---
 
-### Task 1.1: Register SettingsManager Singleton
+### Task 1.1: Register SettingsManager
 
-**Same pattern as 1.0. Apply to SettingsManager.**
+**Same setContextProperty pattern. Already exposed — verify QML access works.**
 
 **Python**: `core/settings.py` + `core/application.py`
 **QML** (3 files): `overlays/systemcontrol/SettingsTab.qml`, `components/panels/SettingsSection.qml`, `components/inputs/SettingInputField.qml`
 
-Change `settingsManager.xyz` → `SettingsManager.xyz` with `import PaintController`.
+Access via `settingsManager.xyz` (lowercase, no import needed).
 
 **Verification**: Settings page loads. Changing a setting value persists and is reflected in UI.
 
@@ -460,7 +435,7 @@ Change `settingsManager.xyz` → `SettingsManager.xyz` with `import PaintControl
 **Goal**: Two-part task — register QtBridge as singleton AND replace all findChild() calls with signal-based communication.
 
 **Part A — Register QtBridge**:
-- `core/application.py` — Replace `setContextProperty("backend", qt_bridge)` with `qmlRegisterSingletonInstance(QtBridge, "PaintController", 1, 0, "Backend", qt_bridge)`
+- `core/application.py` — Verify `setContextProperty("backend", qt_bridge)` is present (already exists)
 - `qml/overlays/EmergencyOverlay.qml` — `backend.x` → `Backend.x` with import
 - `qml/pages/settings/pages/MainSettingsPage.qml` — Same
 
@@ -847,11 +822,11 @@ Create `.github/workflows/ci.yml` with: colcon build → pytest → ruff → myp
 
 1. **Framework stays PySide6 + QML** — debt is in patterns, not tech choice
 2. **C++ node deprecated** — Python is primary, C++ path abandoned during modernization (Audit R2)
-3. **`qmlRegisterSingletonInstance` over `@QmlSingleton`** — all controllers are created at runtime in factory, not at import time. Only 15% could use `@QmlSingleton`; two paradigms worse than one.
-4. **No `QML_IMPORT_NAME` module variables** — unnecessary for `qmlRegisterSingletonInstance` (Audit R1)
+3. **`setContextProperty` for all runtime objects** — `qmlRegisterSingletonInstance` is broken in PySide6 with implicit directory imports (see KNOWLEDGE.md). All controllers use `setContextProperty` with lowercase instance names.
+4. **No `QML_IMPORT_NAME` module variables** — not needed for `setContextProperty`
 5. **Aggressive approach** — user confirmed: touch every file for solid foundation
 6. **Each phase on its own branch** — merged after verification
 7. **Target: Steam Deck + industrial touchscreen PCs** — must be DPI-aware
 8. **Test target: 30%→60% coverage** with comprehensive CI/CD
 9. **QtBridge SRP deferred to Phase 4** — known concern, adding signals as-is for now (Audit R13)
-10. **Mixed registration is safe during migration** — `setContextProperty` and `qmlRegisterSingletonInstance` can coexist. Remove `setContextProperty` only after ALL QML files for that property are migrated.
+10. **All objects use `setContextProperty`** — `qmlRegisterSingletonInstance` abandoned due to PySide6 bug. No migration needed for existing context properties.

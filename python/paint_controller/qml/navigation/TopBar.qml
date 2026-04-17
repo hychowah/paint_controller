@@ -2,7 +2,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import PaintController 1.0
 import "../core"
 
 Rectangle {
@@ -36,7 +35,7 @@ Rectangle {
         
         // App message with improved typography
         Text {
-            text: StateStore.display_message || ""
+            text: stateStore.display_message || ""
             color: "white"
             font.family: "Roboto"
             font.pixelSize: 16
