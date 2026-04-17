@@ -4,8 +4,6 @@ import sys
 import os
 import signal
 from dataclasses import dataclass
-from enum import Enum
-from typing import Dict, Optional, List, Any, Callable
 from threading import Lock
 import logging
 import yaml
@@ -21,36 +19,15 @@ os.environ['QT_IM_MODULE'] = 'none'
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import UInt8
 
-from PySide6.QtCore import QTimer, QObject, QUrl, Slot, Property, Signal, QThread, QMetaObject, Q_ARG
-from PySide6.QtQml import QQmlApplicationEngine, QQmlProperty
+from PySide6.QtCore import QTimer, QUrl, Signal, QThread
+from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterSingletonInstance
 from PySide6.QtWidgets import QApplication
 
-from paint_controller.ui.overlay import OverlayController
-from paint_controller.handlers.control_processor import ControlProcessor
 from paint_controller.handlers.steam_deck import SteamDeckHandler
-from paint_controller.services.workflow_legacy import WorkFlowHandler  # Keep for backwards compatibility
-from paint_controller.handlers.warnings import WarningHandler
 from paint_controller.services.video_stream import VideoStreamHandler
 from paint_controller.services.base_top_view_service import BaseTopViewService
-from paint_controller.controllers.wheel import WheelController
-from paint_controller.controllers.winch import WinchController
-from paint_controller.controllers.wind_monitor import WindMonitor
-from paint_controller.controllers.teensy import TeensyController
-from paint_controller.controllers.esp32_valve import ESP32ValveController
-from paint_controller.controllers.lidar import LidarController
-from paint_controller.models.action_config import ActionConfigPython
-from paint_controller.handlers.heartbeat import UIHeartbeatHandler
-from paint_controller.handlers.emergency import EmergencyButtonHandler
-from paint_controller.handlers.input import UIInputHandler
-from paint_controller.controllers.ssh import UISSHController
-from paint_controller.controllers.system_monitor import SystemMonitor
-from paint_controller.services.workflow.workflow_runner import WorkFlowRunner
-from paint_controller.services.screen_recorder import ScreenRecorder
-from paint_controller.services.ros_bag_recorder import RosBagRecorder
 from paint_controller.core.settings import SettingsManager
-from paint_controller.services.screen_manager import ScreenManager
 
 # Global reference for signal handler
 _app_instance = None
@@ -74,16 +51,6 @@ def signal_handler(signum, frame):
     # Force exit immediately - don't wait for cleanup
     print("Forced shutdown complete.")
     os._exit(1)  # Use os._exit to bypass cleanup that might be stuck
-
-#############################################
-### Configuration
-#############################################
-
-class HeartbeatStatus(Enum):
-    IDLE = 0x00      # System is off or not initialized
-    ONTASK = 0x01       # Normal operation
-    WARNING = 0x02  # Minor issue detected
-    ERROR = 0x03    # Critical error
 
 @dataclass
 class RobotConfig:
@@ -215,533 +182,6 @@ class RosThread(QThread):
             logger.error("Error during ROS thread cleanup: %s", e)
 
 #############################################
-### Main Controller
-#############################################
-
-class RobotController(Node, QObject):
-    frame_ready = Signal()
-    emergency_overlay_changed = Signal(bool, float, float)  # visible, current_duration, target_duration
-    emergency_triggered = Signal()
-    status_updated = Signal()
-    control_mode_changed = Signal(str)
-    display_message_changed = Signal(str)  # For displaying messages in UI
-    left_joystick_control_changed = Signal(str)
-    right_joystick_control_changed = Signal(str)
-    left_control_info_changed = Signal(str, str)  # mode, value
-    right_control_info_changed = Signal(str, str)  # mode, value
-
-    def __init__(self, config: RobotConfig):
-        Node.__init__(self, 'robot_controller')
-        QObject.__init__(self)
-        
-        # Cleanup guard to prevent multiple cleanup calls
-        self._cleanup_in_progress = False
-        self._cleanup_complete = False
-        
-        # Initialize settings manager first (before sub-controllers)
-        self.settings_manager = SettingsManager(self, robot_controller=self)
-        
-        # Initialize components
-        self.warningHandler = WarningHandler()
-
-        # Initialize unified video stream handler with ROS2 integration
-        self.video_stream_handler = VideoStreamHandler(config.video_port, ros_node=self)
-        
-        # Initialize base top view service (must be after video_stream_handler)
-        self.base_top_view_service = BaseTopViewService(self.video_stream_handler, settings_manager=self.settings_manager, parent=self)
-        
-        self.current_status = HeartbeatStatus.IDLE
-        self.config = config
-        
-        # Initialize state variables (replaces UIDataModel)
-        self._display_message = ""
-        self._left_joystick_control = "None"
-        self._right_joystick_control = "None"
-        self._left_control_mode = "None"
-        self._left_control_value = ""
-        self._right_control_mode = "None"
-        self._right_control_value = ""
-        
-        self.winch_controller = WinchController(self)
-        self.wheel_controller = WheelController(self)
-        self.overlayController = OverlayController(self)
-        self.teensy_controller = TeensyController(self)
-        self.esp32_valve_controller = ESP32ValveController(self)
-        self.lidar_controller = LidarController(self)
-        self.wind_monitor = WindMonitor(self)    
-        self.controlProcessor = ControlProcessor(self)
-        self.action_config = ActionConfigPython(self)
-        self.heartbeat_handler = UIHeartbeatHandler(self)
-        self.steam_deck_handler = SteamDeckHandler(deadzone=config.joystick_deadzone)
-        self.input_handler = UIInputHandler(self)
-        self.steam_deck_handler.start()
-        self.ssh_controller = UISSHController(self)
-        self.system_monitor = SystemMonitor()
-        self.screen_manager = ScreenManager(self)
-        self.screen_manager.node = self  # Give screen manager access to logger
-        self.screen_recorder = ScreenRecorder(parent=self, screen_manager=self.screen_manager)
-        self.ros_bag_recorder = RosBagRecorder(self)
-
-        
-        self.setup_steam_deck_callbacks()
-
-        self.status_updated.connect(self._timer_callback)
-
-        self._control_mode = "base" # base or ef
-        
-        # Connect control mode changes to update fullscreen video source
-        self.control_mode_changed.connect(self.update_fullscreen_video_source)
-
-        # Initialize emergency button handler
-        self.emergency_handler = EmergencyButtonHandler(self.steam_deck_handler, self)
-        # Connect emergency handler signals to our signals
-        self.emergency_handler.overlay_changed.connect(self.emergency_overlay_changed.emit)
-        self.emergency_handler.emergency_triggered.connect(self.emergency_triggered.emit)
-        
-        # Connect wheel controller error signal to trigger emergency
-        self.wheel_controller.error_state_changed.connect(self._handle_wheel_motor_error)
-
-        # Setup ROS subscribers and publishers
-        self._setup_subscribers()
-        self.heartbeat_pub = self.create_publisher(UInt8, '/controller/heartbeat', 10)
-
-        # Initialize workflow runner (new system - replaces old WorkFlowHandler)
-        self.workflow_runner = WorkFlowRunner(self)
-        
-        # Keep old handler for backwards compatibility (can be removed later)
-        self.workFlowHandler = WorkFlowHandler(self)
-
-        # Connect video stream signals
-        self.video_stream_handler.endEffectorFrameReady.connect(self.frame_ready.emit)
-        
-        # Note: LiDAR overlay updates automatically via QML Connections block
-        # No manual signal connection needed in Python
-        
-        # Start all video streams
-        self.video_stream_handler.start_all_streams()
-
-    @Slot(str, str, str, int)
-    def show_popup(self, title: str, message: str, popup_type: str = "info", dismiss_delay: int = 500):
-        """
-        Show a popup notification that auto-dismisses
-        
-        Args:
-            title: Title of the popup   
-            message: Message content
-            popup_type: Type of popup ("info", "warning", or "error")
-            dismiss_delay: Time in milliseconds before the popup dismisses itself (default: 3000ms)
-        """
-        root_objects = self.engine.rootObjects()
-        if not root_objects:
-            self.get_logger().error('No root QML objects found')
-            return
-            
-        root = root_objects[0]
-        popup = root.findChild(QObject, "messagePopup")
-        
-        if popup:
-            QQmlProperty.write(popup, "messageTitle", title)
-            QQmlProperty.write(popup, "messageText", message)
-            QQmlProperty.write(popup, "messageType", popup_type)
-            QQmlProperty.write(popup, "dismissDelay", dismiss_delay)
-            QMetaObject.invokeMethod(popup, "open")
-            self.get_logger().info(f'Showing {popup_type} popup: {title} - {message}')
-        else:
-            self.get_logger().error('Popup not found in QML')
-
-    def _handle_wheel_motor_error(self, has_error: bool, error_message: str):
-        """Handle wheel motor error signal - trigger emergency stop and show popup"""
-        if has_error:
-            self.get_logger().error(f'Wheel motor error detected: {error_message}')
-            
-            # Stop all motors
-            self.wheel_controller.emergency_stop()
-            self.winch_controller.command_speed_rpm(0)
-            self.teensy_controller.setSprayTrigger(1000)
-            
-            # Show error popup
-            self.show_popup("MOTOR ERROR", error_message, "error", 5000)
-            
-            # Emit emergency signal
-            self.emergency_triggered.emit()
-
-    def setup_steam_deck_callbacks(self):
-        ih = self.input_handler
-        self.steam_deck_handler.register_button_callback('up', ih.on_up_pressed)
-        self.steam_deck_handler.register_button_callback('down', ih.on_down_pressed)
-        self.steam_deck_handler.register_button_callback('left', ih.on_left_pressed)
-        self.steam_deck_handler.register_button_callback('right', ih.on_right_pressed)
-        self.steam_deck_handler.register_button_callback('r4', ih.on_r4_pressed)
-        self.steam_deck_handler.register_button_callback('l4', ih.on_l4_pressed)
-        self.steam_deck_handler.register_button_callback('menu', ih.on_menu_pressed)
-        self.steam_deck_handler.register_button_callback('switch', ih.on_switch_pressed)
-        self.steam_deck_handler.register_button_callback('l5', ih.on_l5_pressed)
-        self.steam_deck_handler.register_button_callback('r5', ih.on_r5_pressed)
-        self.steam_deck_handler.register_button_callback('dot', self.toggle_fullscreen)
-        self.steam_deck_handler.register_button_callback('a', self.toggle_lidar_overlay)
-        self.steam_deck_handler.register_button_callback('l1', ih.on_l1_pressed)
-
-
-    # Add property for control_mode
-    @Property(str, notify=control_mode_changed)
-    def control_mode(self):
-        return self._control_mode
-        
-    @control_mode.setter
-    def control_mode(self, mode):
-        if self._control_mode != mode:
-            self._control_mode = mode
-            self.control_mode_changed.emit(mode)
-
-    # Properties for display message (replaces UIDataModel.display_message)
-    @Property(str, notify=display_message_changed)
-    def display_message(self) -> str:
-        return self._display_message
-    
-    @display_message.setter
-    def display_message(self, message: str) -> None:
-        if self._display_message != message:
-            self._display_message = message
-            self.display_message_changed.emit(message)
-
-    # Properties for joystick control modes (replaces UIDataModel.left/right_joystick_control)
-    @Property(str, notify=left_joystick_control_changed)
-    def left_joystick_control(self) -> str:
-        return self._left_joystick_control
-    
-    @left_joystick_control.setter
-    def left_joystick_control(self, mode: str) -> None:
-        if self._left_joystick_control != mode:
-            self._left_joystick_control = mode
-            self.left_joystick_control_changed.emit(mode)
-
-    @Property(str, notify=right_joystick_control_changed)
-    def right_joystick_control(self) -> str:
-        return self._right_joystick_control
-    
-    @right_joystick_control.setter
-    def right_joystick_control(self, mode: str) -> None:
-        if self._right_joystick_control != mode:
-            self._right_joystick_control = mode
-            self.right_joystick_control_changed.emit(mode)
-
-    # Properties for left control info (mode and value)
-    @Property(str, notify=left_control_info_changed)
-    def left_control_mode(self) -> str:
-        return self._left_control_mode
-    
-    @left_control_mode.setter
-    def left_control_mode(self, mode: str) -> None:
-        if self._left_control_mode != mode:
-            self._left_control_mode = mode
-            self.left_control_info_changed.emit(mode, self._left_control_value)
-
-    @Property(str, notify=left_control_info_changed)
-    def left_control_value(self) -> str:
-        return self._left_control_value
-    
-    @left_control_value.setter
-    def left_control_value(self, value: str) -> None:
-        if self._left_control_value != value:
-            self._left_control_value = value
-            self.left_control_info_changed.emit(self._left_control_mode, value)
-
-    # Properties for right control info (mode and value)
-    @Property(str, notify=right_control_info_changed)
-    def right_control_mode(self) -> str:
-        return self._right_control_mode
-    
-    @right_control_mode.setter
-    def right_control_mode(self, mode: str) -> None:
-        if self._right_control_mode != mode:
-            self._right_control_mode = mode
-            self.right_control_info_changed.emit(mode, self._right_control_value)
-
-    @Property(str, notify=right_control_info_changed)
-    def right_control_value(self) -> str:
-        return self._right_control_value
-    
-    @right_control_value.setter
-    def right_control_value(self, value: str) -> None:
-        if self._right_control_value != value:
-            self._right_control_value = value
-            self.right_control_info_changed.emit(self._right_control_mode, value)
-
-    @Slot()
-    def toggle_sidebar(self):
-        """Toggle the sidebar expanded/collapsed state"""
-        # Get access to the root objects
-        root_objects = self.engine.rootObjects()
-        if not root_objects:
-            self.get_logger().error('No root QML objects found')
-            return
-            
-        root = root_objects[0]
-        # Find the selectBar component
-        select_bar = root.findChild(QObject, "selectBar")
-        
-        if select_bar:
-            # Invoke the toggleSidebar method
-            QMetaObject.invokeMethod(select_bar, "toggleSidebar")
-            self.get_logger().info('Toggled sidebar state')
-        else:
-            self.get_logger().error('SelectBar not found in QML')
-
-    @Slot()
-    def toggle_fullscreen(self):
-        """Toggle the video fullscreen overlay"""
-        root_objects = self.engine.rootObjects()
-        if not root_objects:
-            self.get_logger().error('No root QML objects found')
-            return
-            
-        root = root_objects[0]
-        # Find the videoFullscreenOverlay by object name
-        video_overlay = root.findChild(QObject, "videoFullscreenOverlay")
-        
-        if video_overlay:
-            # Get current active state
-            is_active = QQmlProperty.read(video_overlay, "active")
-            
-            if is_active:
-                # If already active, deactivate it
-                QQmlProperty.write(video_overlay, "active", False)
-                self.get_logger().info('Deactivated fullscreen overlay')
-                
-                # Disable bird view processing when overlay closes
-                if hasattr(self, 'base_top_view_service'):
-                    self.base_top_view_service.enabled = False
-            else:
-                # If not active, activate it with the appropriate video source
-                # Determine video source based on control mode
-                video_source = "image://ef_live/frame" if self._control_mode == "ef" else "image://base_front_live/frame"
-                
-                QQmlProperty.write(video_overlay, "videoSource", video_source)
-                QQmlProperty.write(video_overlay, "active", True)
-                self.get_logger().info(f'Activated fullscreen overlay with source: {video_source}')
-                
-                # Enable base top view only if control mode is base
-                if hasattr(self, 'base_top_view_service'):
-                    self.base_top_view_service.enabled = (self._control_mode == "base")
-        else:
-            self.get_logger().error('VideoFullscreenOverlay not found in QML')
-
-    @Slot()
-    def toggle_lidar_overlay(self):
-        """Handle A button press - triggers wheel travel double-press logic"""
-        self.input_handler.on_a_pressed()
-    
-    # Note: The LiDAR overlay automatically updates via QML signal connections
-    # when lidar_controller emits points_ready signal, so no manual update methods needed
-    
-    @Slot()
-    def toggle_multiscreen_window(self):
-        """Toggle the multi-screen test window"""
-        root_objects = self.engine.rootObjects()
-        if not root_objects:
-            self.get_logger().error('No root QML objects found')
-            return
-            
-        root = root_objects[0]
-        # Call the QML function to toggle the window
-        QMetaObject.invokeMethod(root, "toggleMultiScreenWindow")
-        self.get_logger().info('Toggled multi-screen test window')
-    
-
-
-    @Slot()
-    def update_fullscreen_video_source(self):
-        """Update the fullscreen overlay video source based on control mode (if active)"""
-        root_objects = self.engine.rootObjects()
-        if not root_objects:
-            return
-            
-        root = root_objects[0]
-        video_overlay = root.findChild(QObject, "videoFullscreenOverlay")
-        
-        if video_overlay:
-            # Only update if the overlay is currently active
-            is_active = QQmlProperty.read(video_overlay, "active")
-            
-            if is_active:
-                # Determine video source based on control mode
-                video_source = "image://ef_live/frame" if self._control_mode == "ef" else "image://base_front_live/frame"
-                QQmlProperty.write(video_overlay, "videoSource", video_source)
-                self.get_logger().info(f'Updated fullscreen video source to: {video_source}')
-                
-                # Update base top view enabled state based on control mode
-                if hasattr(self, 'base_top_view_service'):
-                    self.base_top_view_service.enabled = (self._control_mode == "base")
-
-
-    def _timer_callback(self):
-        """Update UI elements with latest data"""
-
-        # Process control inputs with current state
-        input_state = self.steam_deck_handler.get_current_state()
-        self.controlProcessor.process_input(input_state)
-        
-        # Check emergency button state
-        self.emergency_handler.check_emergency_button(input_state.get('buttons', {}))
-
-
-    def _publish_heartbeat(self):
-        """Publish a heartbeat message every 0.5 seconds"""
-        msg = UInt8()
-        msg.data = HeartbeatStatus.IDLE.value  # Indicate the node is alive
-        self.heartbeat_pub.publish(msg)
-        
-    def _setup_subscribers(self):
-        # No subscribers currently needed
-        pass
-
-    #############################################
-    ### UI Control Methods
-    #############################################
-
-    @Slot(str)
-    def setLeftJoystickControl(self, control: str):
-        """Set left joystick control mode"""
-        self.ui_data_model.left_joystick_control = control
-        self.get_logger().info(f'Left joystick control set to: {control}')
-
-    @Slot(str)
-    def setRightJoystickControl(self, control: str):
-        """Set right joystick control mode"""
-        self.ui_data_model.right_joystick_control = control
-        self.get_logger().info(f'Right joystick control set to: {control}')
-        self.display_message(f'Right joystick control set to: {control}')
-
-    @Slot()
-    def terminateNodes(self):
-        """Terminate all ROS nodes"""
-        return
-
-    @Slot(bool)
-    def toggleSwitchChanged(self, checked: bool):
-        """Handle toggle switch state change"""
-        self.get_logger().info(f'Toggle switch changed to: {checked}')
-        # Add specific toggle switch handling logic here
-
-    def cleanup(self):
-        """Cleanup all controller resources"""
-        # Prevent multiple cleanup attempts
-        if self._cleanup_in_progress or self._cleanup_complete:
-            return
-        
-        self._cleanup_in_progress = True
-        
-        try:
-            self.get_logger().info('Starting controller cleanup...')
-            
-            # Clean up base top view service
-            if hasattr(self, 'base_top_view_service') and self.base_top_view_service:
-                try:
-                    self.base_top_view_service.cleanup()
-                except Exception as e:
-                    self.get_logger().error(f"Error cleaning up base top view service: {e}")
-            
-            # Clean up video streams
-            if hasattr(self, 'video_stream_handler') and self.video_stream_handler:
-                try:
-                    self.video_stream_handler.cleanup()
-                except Exception as e:
-                    self.get_logger().error(f"Error cleaning up video stream handler: {e}")
-            
-            # Clean up emergency handler
-            if hasattr(self, 'emergency_handler') and self.emergency_handler:
-                try:
-                    self.emergency_handler.reset_state()
-                except Exception as e:
-                    self.get_logger().error(f"Error cleaning up emergency handler: {e}")
-            
-            # Clean up Steam Deck handler
-            if hasattr(self, 'steam_deck_handler') and self.steam_deck_handler:
-                try:
-                    self.steam_deck_handler.cleanup()
-                except Exception as e:
-                    self.get_logger().error(f"Error cleaning up steam deck handler: {e}")
-            
-            # Clean up all sub-controllers
-            if hasattr(self, 'winch_controller') and self.winch_controller:
-                try:
-                    self.winch_controller.cleanup()
-                except Exception as e:
-                    self.get_logger().error(f"Error cleaning up winch controller: {e}")
-            
-            if hasattr(self, 'wheel_controller') and self.wheel_controller:
-                try:
-                    self.wheel_controller.cleanup()
-                except Exception as e:
-                    self.get_logger().error(f"Error cleaning up wheel controller: {e}")
-            
-            if hasattr(self, 'wind_monitor') and self.wind_monitor:
-                try:
-                    self.wind_monitor.cleanup()
-                except Exception as e:
-                    self.get_logger().error(f"Error cleaning up wind monitor: {e}")
-            
-            if hasattr(self, 'teensy_controller') and self.teensy_controller:
-                try:
-                    self.teensy_controller.cleanup()
-                except Exception as e:
-                    self.get_logger().error(f"Error cleaning up teensy controller: {e}")
-            
-            if hasattr(self, 'lidar_controller') and self.lidar_controller:
-                try:
-                    self.lidar_controller.cleanup()
-                except Exception as e:
-                    self.get_logger().error(f"Error cleaning up lidar controller: {e}")
-            
-            if hasattr(self, 'ssh_controller') and self.ssh_controller:
-                try:
-                    self.ssh_controller.cleanup()
-                except Exception as e:
-                    self.get_logger().error(f"Error cleaning up ssh controller: {e}")
-            
-            if hasattr(self, 'system_monitor') and self.system_monitor:
-                try:
-                    self.system_monitor.cleanup()
-                except Exception as e:
-                    self.get_logger().error(f"Error cleaning up system monitor: {e}")
-            
-            if hasattr(self, 'ros_bag_recorder') and self.ros_bag_recorder:
-                try:
-                    self.ros_bag_recorder.cleanup()
-                except Exception as e:
-                    self.get_logger().error(f"Error cleaning up ros bag recorder: {e}")
-            
-            if hasattr(self, 'screen_recorder') and self.screen_recorder:
-                try:
-                    self.screen_recorder.cleanup()
-                except Exception as e:
-                    self.get_logger().error(f"Error cleaning up screen recorder: {e}")
-            
-            if hasattr(self, 'workflow_runner') and self.workflow_runner:
-                try:
-                    self.workflow_runner.cleanup()
-                except Exception as e:
-                    self.get_logger().error(f"Error cleaning up workflow runner: {e}")
-            
-            if hasattr(self, 'screen_manager') and self.screen_manager:
-                try:
-                    self.screen_manager.cleanup()
-                except Exception as e:
-                    self.get_logger().error(f"Error cleaning up screen manager: {e}")
-
-            # Destroy publishers
-            if hasattr(self, 'heartbeat_pub') and self.heartbeat_pub:
-                try:
-                    self.destroy_publisher(self.heartbeat_pub)
-                except Exception as e:
-                    self.get_logger().error(f"Error destroying heartbeat publisher: {e}")
-            
-            self.get_logger().info('Controller cleanup complete')
-        finally:
-            self._cleanup_in_progress = False
-            self._cleanup_complete = True
-
-#############################################
 ### Main Application
 #############################################
 
@@ -819,9 +259,6 @@ def main():
     qt_bridge.set_input_handler(bundle.input_handler)
     bundle.input_handler.set_engine(engine)
 
-    # Give screen_manager access to logger (uses duck-typed self.node.get_logger())
-    bundle.screen_manager.node = node
-
     # --- Steam Deck button callbacks ---
     ih = bundle.input_handler
     steam_deck_handler.register_button_callback('up', ih.on_up_pressed)
@@ -865,10 +302,17 @@ def main():
     qt_bridge.status_updated.connect(_timer_callback)
 
     # --- QML context properties ---
+    qmlRegisterSingletonInstance(
+        StateStore,
+        "PaintController",
+        1,
+        0,
+        "StateStore",
+        state_store,
+    )
+
     ctx = engine.rootContext()
     ctx.setContextProperty("backend", qt_bridge)
-    ctx.setContextProperty("stateStore", state_store)
-    ctx.setContextProperty("baseStreamer", qt_bridge)
     ctx.setContextProperty("overlayController", bundle.overlay_controller)
     ctx.setContextProperty("workFlowHandler", bundle.workflow_handler)
     ctx.setContextProperty("workFlowRunner", bundle.workflow_runner)
@@ -885,7 +329,6 @@ def main():
     ctx.setContextProperty("heartbeatHandler", bundle.heartbeat_handler)
     ctx.setContextProperty("controlProcessor", bundle.control_processor)
     ctx.setContextProperty("sshHandler", bundle.ssh_controller)
-    ctx.setContextProperty("videoStreamer", video_stream_handler)
     ctx.setContextProperty("systemMonitor", bundle.system_monitor)
     ctx.setContextProperty("screenRecorder", bundle.screen_recorder)
     ctx.setContextProperty("rosBagRecorder", bundle.ros_bag_recorder)

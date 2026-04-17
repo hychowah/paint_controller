@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Window 2.15
+import PaintController 1.0
 import "../../core"
 import "../../components/buttons"
 import "../../components/inputs"
@@ -287,7 +288,7 @@ Rectangle {
                             color: "transparent"
                             
                             // Bind image source to control mode
-                            property string imageSource: stateStore.control_mode === "ef" ? 
+                            property string imageSource: StateStore.control_mode === "ef" ? 
                                                     "image://ef_live/frame" : 
                                                     "image://base_front_live/frame"
                             
@@ -342,13 +343,13 @@ Rectangle {
                     Connections {
                         target: baseStreamHandler
                         function onEndEffectorFrameReady() {
-                            if (stateStore.control_mode === "ef") {
+                            if (StateStore.control_mode === "ef") {
                                 efFrame.source = ""
                                 efFrame.source = "image://ef_live/frame"
                             }
                         }
                         function onBaseFrontFrameReady() {
-                            if (stateStore.control_mode !== "ef") {
+                            if (StateStore.control_mode !== "ef") {
                                 efFrame.source = ""
                                 efFrame.source = "image://base_front_live/frame"
                             }

@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import PaintController 1.0
 
 Rectangle {
     id: executorPageStatus
@@ -8,7 +9,7 @@ Rectangle {
     radius: 8
 
     // Add a control mode property (bound to the controller)
-    property string controlMode: stateStore.control_mode
+    property string controlMode: StateStore.control_mode
 
     // Main content container
     ColumnLayout {

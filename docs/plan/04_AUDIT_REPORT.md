@@ -4,6 +4,10 @@
 > **Agents**: Technical Auditor (Safety Specialist) + Systems Architect (Optimization Specialist)
 > **Protocol**: Elon Musk first-principles — agents propose hypotheses, Project Lead validates against codebase
 
+> **Historical Note**: This is the 2026-04-16 pre-mortem rationale document. Its accepted findings were folded into `01_MASTER_PLAN.md`. Use this file for background and design reasoning, not for current progress status.
+
+> **Implemented Since This Audit**: `0.1-0.4`, `PRE-1`, `1.0`, and `3.1`
+
 ---
 
 ## Audit Process

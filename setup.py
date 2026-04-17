@@ -17,7 +17,7 @@ setup(
     maintainer_email='hychowah@gmail.com',
     description='A ROS 2 package for the paint controller node with a PySide6 UI',
     license='Apache License 2.0',
-    tests_require=['pytest'],
+    tests_require=['pytest', 'pytest-qt'],
     entry_points={
         'console_scripts': [
             # Main application

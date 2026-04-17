@@ -282,12 +282,12 @@ Architectural changes. Must be done on a feature branch with thorough testing.
 
 ---
 
-### 3.5 QML module organization
+### 3.5 QML module organization — Superseded by MASTER_PLAN Phase 1
 
-- [ ] Register QML types via `qmlRegisterType` instead of `setContextProperty`
-- [ ] Create proper QML module with `qmldir` file
-- [ ] Replace `findChild()` with proper QML type imports
-- [ ] Eliminate hardcoded QML `objectName` lookups
+This work is now tracked canonically in [docs/plan/01_MASTER_PLAN.md] under PRE-1, 1.0-1.11, and POST-1.
+
+- Use the master plan as the active tracker for singleton registration, qmldir creation, and `findChild()` removal.
+- Do not use this section as a separate execution checklist.
 
 **Files affected**: `core/application.py`, all QML files  
 **Risk**: HIGH — QML registration model change

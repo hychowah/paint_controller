@@ -4,38 +4,60 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from paint_controller.controllers.esp32_valve import ESP32ValveController
+from paint_controller.controllers.lidar import LidarController
+from paint_controller.controllers.ssh import UISSHController
+from paint_controller.controllers.system_monitor import SystemMonitor
+from paint_controller.controllers.teensy import TeensyController
+from paint_controller.controllers.wheel import WheelController
+from paint_controller.controllers.winch import WinchController
+from paint_controller.controllers.wind_monitor import WindMonitor
+from paint_controller.handlers.control_processor import ControlProcessor
+from paint_controller.handlers.emergency import EmergencyButtonHandler
+from paint_controller.handlers.heartbeat import UIHeartbeatHandler
+from paint_controller.handlers.input import UIInputHandler
+from paint_controller.handlers.steam_deck import SteamDeckHandler
+from paint_controller.handlers.warnings import WarningHandler
+from paint_controller.models.action_config import ActionConfigPython
+from paint_controller.services.ros_bag_recorder import RosBagRecorder
+from paint_controller.services.screen_manager import ScreenManager
+from paint_controller.services.screen_recorder import ScreenRecorder
+from paint_controller.services.workflow.workflow_runner import WorkFlowRunner
+from paint_controller.services.workflow_legacy import WorkFlowHandler
+from paint_controller.ui.overlay import OverlayController
+
 
 @dataclass
 class ControllerBundle:
     """All controllers and handlers created by the factory."""
 
     # Independent
-    warning_handler: object
-    system_monitor: object
+    warning_handler: WarningHandler
+    system_monitor: SystemMonitor
 
     # ROS2 controllers
-    wheel_controller: object
-    esp32_valve_controller: object
-    lidar_controller: object
-    wind_monitor: object
-    winch_controller: object
-    teensy_controller: object
-    heartbeat_handler: object
+    wheel_controller: WheelController
+    esp32_valve_controller: ESP32ValveController
+    lidar_controller: LidarController
+    wind_monitor: WindMonitor
+    winch_controller: WinchController
+    teensy_controller: TeensyController
+    heartbeat_handler: UIHeartbeatHandler
 
     # Cross-controller handlers
-    overlay_controller: object
-    control_processor: object
-    action_config: object
-    input_handler: object
-    emergency_handler: object
+    overlay_controller: OverlayController
+    control_processor: ControlProcessor
+    action_config: ActionConfigPython
+    input_handler: UIInputHandler
+    emergency_handler: EmergencyButtonHandler
 
     # Services
-    ssh_controller: object
-    screen_manager: object
-    screen_recorder: object
-    ros_bag_recorder: object
-    workflow_runner: object
-    workflow_handler: object
+    ssh_controller: UISSHController
+    screen_manager: ScreenManager
+    screen_recorder: ScreenRecorder
+    ros_bag_recorder: RosBagRecorder
+    workflow_runner: WorkFlowRunner
+    workflow_handler: WorkFlowHandler
 
     def cleanup(self, logger=None):
         """Cleanup all controllers in reverse creation order."""
@@ -65,7 +87,7 @@ def create_controllers(
     node,
     settings_manager,
     state_store,
-    steam_deck_handler,
+    steam_deck_handler: SteamDeckHandler,
     show_popup_fn,
     config,
 ):
@@ -83,27 +105,6 @@ def create_controllers(
     Returns:
         ControllerBundle with all controllers wired together
     """
-    from paint_controller.controllers.esp32_valve import ESP32ValveController
-    from paint_controller.controllers.lidar import LidarController
-    from paint_controller.controllers.ssh import UISSHController
-    from paint_controller.controllers.system_monitor import SystemMonitor
-    from paint_controller.controllers.teensy import TeensyController
-    from paint_controller.controllers.wheel import WheelController
-    from paint_controller.controllers.winch import WinchController
-    from paint_controller.controllers.wind_monitor import WindMonitor
-    from paint_controller.handlers.control_processor import ControlProcessor
-    from paint_controller.handlers.emergency import EmergencyButtonHandler
-    from paint_controller.handlers.heartbeat import UIHeartbeatHandler
-    from paint_controller.handlers.input import UIInputHandler
-    from paint_controller.handlers.warnings import WarningHandler
-    from paint_controller.models.action_config import ActionConfigPython
-    from paint_controller.services.ros_bag_recorder import RosBagRecorder
-    from paint_controller.services.screen_manager import ScreenManager
-    from paint_controller.services.screen_recorder import ScreenRecorder
-    from paint_controller.services.workflow.workflow_runner import WorkFlowRunner
-    from paint_controller.services.workflow_legacy import WorkFlowHandler
-    from paint_controller.ui.overlay import OverlayController
-
     logger = node.get_logger()
 
     # === Layer 1: Independent controllers ===
@@ -173,7 +174,7 @@ def create_controllers(
 
     # === Layer 5: Services ===
     ssh = UISSHController(show_popup_fn=show_popup_fn)
-    screen_mgr = ScreenManager()
+    screen_mgr = ScreenManager(node=node)
     screen_rec = ScreenRecorder(screen_manager=screen_mgr)
     ros_bag = RosBagRecorder(show_popup_fn=show_popup_fn)
 

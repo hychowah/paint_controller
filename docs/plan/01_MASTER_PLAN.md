@@ -2,7 +2,7 @@
 
 > **Created**: 2026-04-16
 > **Validated**: 2026-04-16 (survived Technical Auditor + Systems Architect pre-mortem)
-> **Status**: NOT STARTED
+> **Status**: IN PROGRESS
 > **Branch**: `refactor` (create sub-branches per phase)
 
 ---
@@ -12,7 +12,7 @@
 1. **Read `00_README.md`** for file reading order
 2. **Read this file** for the task list and progress tracker
 3. **Read `KNOWLEDGE.md`** in repo root for Qt/Python gotchas
-4. **Check the Progress Tracker** to find the next uncompleted task
+4. **Use the Current Checkpoint + Dependency Graph**, not row order alone, to choose the next task
 5. **After completing a task**: Mark it `[x]`, update "Last Modified", note deviations
 6. **If a task fails or scope changes**: Document in Notes column
 7. **Always verify** — run the verification steps listed per task
@@ -26,16 +26,16 @@
 
 ## Progress Tracker
 
-Last Modified: 2026-04-16
+Last Modified: 2026-04-17
 
 | Task | Status | Notes |
 |------|--------|-------|
-| 0.1 Delete RobotController | [ ] | |
-| 0.2 Type ControllerBundle | [ ] | |
-| 0.3 Remove aliases + fix bugs | [ ] | C++ path formally deprecated |
-| 0.4 Winch safety + ScreenManager | [ ] | Re-enable safety, use logger |
-| PRE-1 Machine-verify QML mapping | [ ] | **PREREQUISITE before any Phase 1 task** |
-| 1.0 Register StateStore | [ ] | ESTABLISHES PATTERN |
+| 0.1 Delete RobotController | [x] | RobotController + duplicate HeartbeatStatus removed; RobotConfig/ConfigLoader retained because `main()` still uses config loading |
+| 0.2 Type ControllerBundle | [x] | Concrete types added; imports moved to module scope |
+| 0.3 Remove aliases + fix bugs | [x] | C++ path formally deprecated; `baseStreamer`/`videoStreamer` removed; overlay slot returns list |
+| 0.4 Winch safety + ScreenManager | [x] | Re-enabled 4 winch safety checks; ScreenManager now takes `node` in constructor |
+| PRE-1 Machine-verify QML mapping | [x] | Mapping table refreshed to live identifiers; lowercase `stateStore` and aliases removed |
+| 1.0 Register StateStore | [x] | ESTABLISHES PATTERN; `StateStore` registered as first singleton while mixed registration remains |
 | 1.1 Register SettingsManager | [ ] | |
 | 1.2 Register QtBridge + kill findChild | [ ] | Includes input.py L79 |
 | 1.3 Register isolated controllers | [ ] | |
@@ -67,15 +67,22 @@ Last Modified: 2026-04-16
 | 2.7 Refactor OverlayLayer dedup | [ ] | |
 | 2.8 Fix page naming | [ ] | |
 | 3.0 Clean __init__.py imports | [ ] | |
-| 3.1 Pytest infrastructure | [ ] | |
+| 3.1 Pytest infrastructure | [x] | Added headless Qt fixture, fake ROS node/publisher/subscription/timer scaffolding, and validation test |
 | 3.2 Tests — StateStore/Settings | [ ] | |
 | 3.3 Tests — QtBridge/Factory | [ ] | |
 | 3.4 Tests — Emergency/ControlProc | [ ] | |
 | 3.5 Tests — Input/SteamDeck | [ ] | |
 | 3.6 Tests — Wheel/Winch | [ ] | |
 | 3.7 Tests — ESP32/Teensy | [ ] | |
-| 3.8 CI/CD pipeline | [ ] | |
+| 3.8 CI/CD pipeline | [ ] | Remaining validation gate item before 1.1 |
 | 3.9 Fix build system | [ ] | |
+
+## Current Checkpoint
+
+- Completed on 2026-04-17: `0.1-0.4`, `PRE-1`, `1.0`, and `3.1`
+- Current validation-gate policy: complete `3.8` before resuming Phase 1 migrations
+- If keeping that gate, the next task is `3.8 CI/CD pipeline`
+- After `3.8`, resume Phase 1 at `1.1 Register SettingsManager`
 
 ---
 
@@ -88,7 +95,9 @@ Phase 1: PRE-1 — Machine-verify QML mapping table
          ↓
          1.0 (StateStore — establishes pattern)
          ↓
-         1.1, 1.2, 1.3 (can parallel after 1.0)
+Validation Gate: 3.1 (pytest infrastructure) + 3.8 (CI pipeline)
+         ↓
+Phase 1 continued: 1.1, 1.2, 1.3 (can parallel after 1.0)
          ↓
          1.4 → 1.5 → 1.6 → 1.7a → 1.7b → 1.8 (controllers, sequential)
          ↓
@@ -103,8 +112,8 @@ Phase 1: PRE-1 — Machine-verify QML mapping table
 Phase 2: 2.0 (DPI via Python injection) → 2.1-2.6 (sequential by batch)
          2.7, 2.8 (independent, anytime)
          ↓
-Phase 3: 3.0 → 3.1 → 3.2-3.7 (parallel test writing)
-         3.8, 3.9 (independent, anytime)
+Phase 3 (remaining): 3.0 → 3.2-3.7 (parallel test writing)
+         3.9 (independent, anytime)
 ```
 
 ---
@@ -229,34 +238,32 @@ import "../pages/home"         // → stays or becomes module import after qmldi
 
 ---
 
-## Context Property → QML File Mapping
+## Runtime Identifier → QML File Mapping
 
 Used for Phase 1 tasks. Shows which QML files must be updated per controller registration.
 
-> **IMPORTANT (Audit R10)**: Before starting Phase 1, run `for prop in stateStore settingsManager backend ...; do echo "==$prop=="; grep -rl "$prop" qml/; done` and compare against this table. Fix any discrepancies.
+> **IMPORTANT (Audit R10)**: Before continuing Phase 1, run `for prop in StateStore settingsManager backend overlayController workFlowHandler workFlowRunner warningHandler baseStreamHandler wheelController winchController steamDeckHandler windMonitor teensyController esp32ValveController lidarController actionConfig heartbeatHandler controlProcessor sshHandler systemMonitor screenRecorder rosBagRecorder screenManager baseTopViewController; do echo "==$prop=="; grep -rl "$prop" qml/; done` and compare against this table. Fix any discrepancies.
 
-| Context Property | QML Files That Reference It |
+| Identifier | QML Files That Reference It |
 |---|---|
-| `backend` | EmergencyOverlay, MainSettingsPage |
-| `stateStore` | TopBar, PageWorkFlow, ExecutorPageStatus, PlannerPageStatus |
-| `baseStreamer` | PageSpray (**ALIAS — remove in 0.3, point to backend**) |
+| `backend` | EmergencyOverlay, PageSpray, MainSettingsPage |
+| `StateStore` | TopBar, PageWorkFlow, ExecutorPageStatus, PlannerPageStatus |
 | `overlayController` | MainWindow, MultiScreenListUI, SystemControlMenu |
 | `workFlowHandler` | SequenceList, WorkFlowControl, PageWorkFlow |
-| `workFlowRunner` | WorkFlowTab, WorkFlowStatusOverlay |
+| `workFlowRunner` | WorkFlowTab, EditWorkFlowTab, WorkFlowStatusOverlay |
 | `warningHandler` | TopBar |
-| `baseStreamHandler` | PageWheel, PageHome, VideoFullscreenOverlay, PageWorkFlow |
-| `wheelController` | PageWheel, BaseFrontOverlay, WheelsCard, DeviceControlTab, ConnectionStatusPanel, ExecutorPageStatus, PlannerPageStatus |
+| `baseStreamHandler` | PageWheel, PageHome, VideoFullscreenOverlay, DeviceControlTab, PageWorkFlow |
+| `wheelController` | PageWheel, BaseFrontOverlay, WheelsCard, DeviceControlTab, ConnectionStatusPanel, ExecutorPageStatus, PlannerPageStatus, WheelStatus |
 | `winchController` | PageWinch, PageStatus, EndEffectorOverlay, VideoOverlayTopBar, WinchCard, ConnectionStatusPanel, DeviceControlTab, CommandTab, MoveLengthButton, PlannerPageStatus, ExecutorPageStatus |
 | `steamDeckHandler` | *(no QML refs — Python-only, still register for consistency)* |
 | `windMonitor` | PageSensors |
-| `teensyController` | PageTuning, EndEffectorOverlay, VideoOverlayTopBar, SettingsTab, TeensyArmCard, IMUCard, MonitorHeader |
+| `teensyController` | PageTuning, EndEffectorOverlay, VideoOverlayTopBar, SettingsTab, TeensyArmCard, IMUCard, MonitorHeader, ConnectionStatusPanel, CommandTab, DeviceControlTab, ExecutorPageStatus, PlannerPageStatus, TeensyStatus |
 | `esp32ValveController` | EndEffectorOverlay, ValvesCard |
 | `lidarController` | LidarOverlay, Lidar2DView, Lidar3DView, WallDetectionOverlay, PageMonitor |
-| `actionConfig` | ActionSequence, ActionItem |
+| `actionConfig` | ActionSequence, ActionItem, PageWorkFlow |
 | `heartbeatHandler` | ConnectionStatusPanel, DeviceControlTab, PageHome |
 | `controlProcessor` | VideoFullscreenOverlay |
 | `sshHandler` | PageHome, PageLauncher, VideoOverlayTopBar |
-| `videoStreamer` | DeviceControlTab (**ALIAS — remove in 0.3, point to baseStreamHandler**) |
 | `systemMonitor` | VideoOverlayTopBar |
 | `screenRecorder` | VideoOverlayTopBar, DeviceControlTab |
 | `rosBagRecorder` | DeviceControlTab |
@@ -278,6 +285,8 @@ Used for Phase 1 tasks. Shows which QML files must be updated per controller reg
 ### Task 0.1: Delete Dead RobotController Class
 
 **Goal**: Remove ~525 lines of dead code from `core/application.py`.
+
+**Implementation note (2026-04-17)**: `RobotConfig` and `ConfigLoader` were retained because `main()` still uses `ConfigLoader.load_config('robot_config.yaml')` during startup.
 
 **Context**: The old `RobotController(Node, QObject)` god class was replaced by `PaintRosNode`, `StateStore`, `QtBridge`, `ControllerFactory` in the previous refactor. The new `main()` function never instantiates it. Confirmed dead code — zero runtime references. Verified: no external references in `launch/`, `tests/`, `scripts/`, or `fish-eye/`.
 
@@ -376,12 +385,12 @@ grep -n "\.node = " core/application.py
 
 **PREREQUISITE — Do this before ANY Phase 1 task.**
 
-**Goal**: Generate a fresh mapping of context property names to QML files and compare against the table above. Fix discrepancies.
+**Goal**: Generate a fresh mapping of runtime identifiers to QML files and compare against the table above. Fix discrepancies.
 
 **Script**:
 ```bash
 cd python/paint_controller
-for prop in stateStore settingsManager backend overlayController workFlowHandler workFlowRunner \
+for prop in StateStore settingsManager backend overlayController workFlowHandler workFlowRunner \
   warningHandler baseStreamHandler wheelController winchController steamDeckHandler windMonitor \
   teensyController esp32ValveController lidarController actionConfig heartbeatHandler \
   controlProcessor sshHandler systemMonitor screenRecorder rosBagRecorder screenManager \
@@ -806,6 +815,8 @@ Remove the backward-compat layer from `__init__.py` (root). After Task 0.1 remov
 ### Task 3.1: Pytest Infrastructure
 
 Set up pytest with mocking infrastructure for PySide6/ROS2. Extend the `conftest.py` namespace trick. Create mock factories for ROS2 Node, Publisher, Subscriber that can be injected into controllers.
+
+**Implementation note (2026-04-17)**: Added `tests/fakes.py`, expanded `tests/conftest.py` with headless Qt and fake-node fixtures, pinned `pytest.ini` to PySide6 for pytest-qt, added `requirements-dev.txt`, and validated the scaffolding with `tests/test_test_infrastructure.py` plus a full passing pytest run.
 
 > **Deferred idea (Architect)**: When writing tests for hardware controllers (3.6, 3.7), consider injecting pub/sub factories for testability instead of mocking the entire Node.
 

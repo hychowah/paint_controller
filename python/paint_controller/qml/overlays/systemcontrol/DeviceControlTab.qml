@@ -287,22 +287,22 @@ Item {
                     ControlPanel {
                         Layout.fillWidth: true
                         controlName: "EF Camera Recording"
-                        controlStatus: videoStreamer.is_recording ? "Recording" : "Streaming"
-                        enabledState: videoStreamer.is_recording
+                        controlStatus: baseStreamHandler.is_recording ? "Recording" : "Streaming"
+                        enabledState: baseStreamHandler.is_recording
                         iconText: "REC"
                         
-                        onClicked: videoStreamer.toggleRecording()
+                        onClicked: baseStreamHandler.toggleRecording()
                     }
 
                     // Base Camera Recording Control
                     ControlPanel {
                         Layout.fillWidth: true
                         controlName: "Base Camera Recording"
-                        controlStatus: videoStreamer.is_base_recording ? "Recording" : "Streaming"
-                        enabledState: videoStreamer.is_base_recording
+                        controlStatus: baseStreamHandler.is_base_recording ? "Recording" : "Streaming"
+                        enabledState: baseStreamHandler.is_base_recording
                         iconText: "BASE"
                         
-                        onClicked: videoStreamer.toggleBaseRecording()
+                        onClicked: baseStreamHandler.toggleBaseRecording()
                     }
 
                     // Screen Recording Control

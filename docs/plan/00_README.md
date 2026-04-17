@@ -8,12 +8,25 @@
 
 Read files in this order:
 
-1. **`01_MASTER_PLAN.md`** — The validated task list, dependency graph, progress tracker. Start here.
-2. **`02_ARCHITECTURE.md`** — Full system architecture reference (layers, threading, data flows).
-3. **`03_QML_BINDINGS.md`** — QML↔Python binding inventory, context properties, signal connections.
-4. **`04_AUDIT_REPORT.md`** — Pre-mortem audit findings, verdicts, and dismissed concerns.
-5. **`KNOWLEDGE.md`** (repo root) — Qt/Python gotchas and reusable patterns.
-6. **`DEVNOTES.md`** (repo root) — Historical debugging notes.
+1. **`01_MASTER_PLAN.md`** — Authoritative task tracker, dependency graph, progress table, and next-task gate. Start here.
+2. **`DEVNOTES.md`** (repo root) — Most recent completed work, validation results, and environment notes.
+3. **`KNOWLEDGE.md`** (repo root) — Qt/Python gotchas and reusable patterns.
+4. **`02_ARCHITECTURE.md`** — Current runtime architecture reference.
+5. **`03_QML_BINDINGS.md`** — Current QML↔Python registration state and remaining migration scope.
+6. **`04_AUDIT_REPORT.md`** — Historical pre-mortem rationale, not current status.
+7. **`REFACTOR_TRACKER.md`** (repo root) — Optional historical context only; not the active tracker.
+
+## Current Status Sources
+
+- **Authoritative progress tracker**: `docs/plan/01_MASTER_PLAN.md`
+- **Chronological completed work**: `DEVNOTES.md`
+- **Active session scratch plan**: `PLANNING.md`
+- **Historical context only**: `REFACTOR_TRACKER.md`, `docs/plan/04_AUDIT_REPORT.md`
+
+## Environment Note
+
+- VS Code is pinned to the project interpreter in `.vscode/settings.json`: `python/paint_controller/venv/bin/python`
+- If `PySide6` or `pytest` appear missing in-editor, check the selected interpreter first.
 
 ## Key Paths
 

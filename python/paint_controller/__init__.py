@@ -57,9 +57,7 @@ from .services.workflow_legacy import WorkFlowHandler, ActionWorker
 from .ui.overlay import OverlayController
 
 # Core
-from .core.application import (
-    RobotController, RobotConfig, ConfigLoader, RosThread, main
-)
+from .core.application import RosThread, main
 from .core.settings import SettingsManager
 
 # Models
@@ -119,9 +117,6 @@ __all__ = [
     'OverlayController',
     
     # Core
-    'RobotController',
-    'RobotConfig',
-    'ConfigLoader',
     'RosThread',
     'SettingsManager',
     'main',

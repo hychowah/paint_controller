@@ -71,8 +71,10 @@ class ScreenManager(QObject):
     screen_removed = Signal(int)  # screen index
     primary_screen_changed = Signal(str)  # screen name
     
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, node=None):
         super().__init__(parent)
+
+        self.node = node
         
         self._screens: List[QScreen] = []
         self._screen_count = 0
@@ -95,7 +97,7 @@ class ScreenManager(QObject):
     
     def _log_info(self, message: str) -> None:
         """Helper method for logging that checks if logger is available"""
-        if hasattr(self, 'node') and hasattr(self.node, 'get_logger'):
+        if self.node is not None and hasattr(self.node, 'get_logger'):
             self.node.get_logger().info(message)
         # Note: No fallback print to avoid cluttering console during testing
         # Enable standard logging if needed for standalone usage

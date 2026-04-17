@@ -18,22 +18,33 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 
 ### 1. Core Application Layer (`python/paint_controller/core/`)
 
-**Key Class: `RobotController(Node, QObject)`** - 11+ KB, 700+ lines
-- Hybrid: ROS2 Node (for pub/sub) + Qt Object (for signals)
-- **NOTE (Audit)**: ~L221-746 contains dead code from old `RobotController` class. Scheduled for removal in Task 0.1.
-- **Responsibilities**: 
-  - Main orchestration of all subsystems
-  - Signal routing between components
-  - ROS2 message publishing (heartbeat)
-  - UI integration (QML engine, property binding)
-  - Emergency shutdown handling
-  - Control mode management (base vs. end-effector)
+**Current orchestration is split across focused core units**
 
-**Signal Groups**:
-- Video/display: `frame_ready`, `display_message_changed`
-- Control: `control_mode_changed`, `left/right_joystick_control_changed`
-- Emergency: `emergency_triggered`, `emergency_overlay_changed`
-- Status: `status_updated`, `control_mode_changed`
+**`main()` in `core/application.py`**
+- Owns boot order and runtime wiring
+- Creates the Qt app, ROS node, settings/state objects, Steam Deck handler, video services, QML engine, bridge, and controller bundle
+- Registers `StateStore` as the first singleton and exposes the remaining runtime identifiers through context properties
+- Starts timers, ROS thread, system monitor, video streams, and shutdown cleanup
+
+**`PaintRosNode(Node)`**
+- Pure ROS2 node with no Qt inheritance
+- Owns the controller heartbeat publisher and ROS cleanup hook
+- Keeps ROS lifecycle separate from QML/UI concerns
+
+**`StateStore(QObject)`**
+- Thread-safe shared UI/controller state
+- Holds display message, control mode, and joystick control info for QML binding
+- First migrated singleton in Phase 1
+
+**`QtBridge(QObject)`**
+- Imperative UI bridge for popups, sidebar/fullscreen toggles, multiscreen window, and fullscreen source updates
+- Reads `StateStore` rather than owning application state itself
+- Still contains the remaining Python→QML `findChild()` debt targeted in Task 1.2
+
+**`ControllerBundle` + `create_controllers()`**
+- Factory-built dependency graph for controllers, handlers, and services
+- `ControllerBundle` is a lifecycle container with reverse-order cleanup
+- This is the real runtime composition layer now that the Python `RobotController` class is gone
 
 **ROS2 Thread**: `RosThread(QThread)`
 - Isolated event loop (non-blocking `spin_once`)
@@ -48,10 +59,10 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Validation with min/max/type metadata
 - Backward compatibility with defaults
 
-**State Store**: `StateStore(QObject)` — New in modernization plan
-- Replaces `backend` context property for app-level state
-- Properties: `controlMode`, `emergencyState`
-- Task 1.0 in Phase 1
+**Runtime registration state**
+- `StateStore` is already registered as `PaintController 1.0 / StateStore`
+- All other runtime identifiers remain on `setContextProperty()` pending later Phase 1 tasks
+- The deprecated C++ path under `src/paint_controller.cpp` still has its own `RobotController` type, but it is no longer the primary runtime
 
 ---
 
@@ -124,7 +135,7 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Connection timeout: 1s before considered offline
 - Unified speed command (both tracks via single message)
 
-#### **Winch Controller** - `WineController(QObject)` ~200 lines
+#### **Winch Controller** - `WinchController(QObject)` ~200 lines
 - ROS2 publisher: speed (RPM/mm·s), enable, move commands
 - ROS2 subscriber: `WinchStatus`
 - Cable tracking: length, velocity, torque, motor temp
@@ -330,7 +341,7 @@ SteamDeckHandler (USB HID)
   ↓ [100Hz input_state_changed]
 UIInputHandler (maps buttons to actions)
   ↓ [slots: on_up_pressed, on_switch_pressed, etc.]
-RobotController (coordinates response)
+StateStore / QtBridge / main() wiring
   ↓
 ControlProcessor (processes joystick state)
   ↓ [publishes to ROS2 topics]
@@ -369,10 +380,10 @@ QML reflects new limits/values
 
 ## Critical Coupling Points
 
-1. **RobotController → Everything**
-   - Central orchestrator inherits from both Node and QObject
-   - 30+ sub-controllers initialized here
-   - High coupling but necessary for ROS2/Qt integration
+1. **`main()` + ControllerFactory → Everything**
+  - Runtime composition is explicit now, but `application.py` still performs the final orchestration step
+  - `create_controllers()` centralizes most constructor dependency wiring
+  - This is a major improvement over the old god class, but it remains the main coordination hotspot
 
 2. **SettingsManager → Hardware Controllers**
    - All controllers subscribe to setting_changed signals
@@ -387,6 +398,10 @@ QML reflects new limits/values
 4. **Steam Deck Handler ↔ Input Handler**
    - Button events → action handlers
    - Direct callback registration (loose coupling)
+
+5. **QtBridge ↔ QML objectName contracts**
+  - Popup/sidebar/fullscreen operations still assume `engine.rootObjects()[0]` plus stable `objectName`s
+  - This is the remaining imperative QML bridge debt to remove in Task 1.2
 
 ---
 

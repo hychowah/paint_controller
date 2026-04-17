@@ -98,7 +98,7 @@ Rectangle {
 
 
     Connections {
-        target: baseStreamer
+        target: backend
         function onFrame_ready() {
             efFrame.source = ""
             efFrame.source = "image://ef_live/frame"

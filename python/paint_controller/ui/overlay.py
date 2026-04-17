@@ -315,12 +315,12 @@ class OverlayController(QObject):
                 self._control_processor.controls["EF Yaw Angle"].offset = current_yaw
                 logger.debug("Set target yaw angle to %s", current_yaw)
 
-    @Slot(result=tuple)
+    @Slot(result=list)
     def get_current_joystick_controls(self):
         """
         Get the current joystick control names
         
         Returns:
-            tuple[str, str]: A tuple containing (left_control_name, right_control_name)
+            list[str]: A list containing [left_control_name, right_control_name]
         """
-        return (self.get_left_selected_option(), self.get_right_selected_option())
+        return [self.get_left_selected_option(), self.get_right_selected_option()]

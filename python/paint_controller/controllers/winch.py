@@ -162,9 +162,9 @@ class WinchController(QObject):
     
     def move_increment(self, length_mm: int, speed_mm_s: int) -> bool:
         """Move winch by an increment (uses default acceleration of 30 RPM/s)"""
-        # if not self._available:
-        #     print("Cannot move increment: Winch not available")
-        #     return False
+        if not self._available:
+            self._node.get_logger().warning('Cannot move increment: Winch not available')
+            return False
             
         try:
             msg = MoveWinchLength()
@@ -180,9 +180,9 @@ class WinchController(QObject):
     
     def move_increment_with_accel(self, length_mm: int, speed_mm_s: int, acceleration_rpm_s: int) -> bool:
         """Move winch by an increment with custom acceleration"""
-        # if not self._available:
-        #     print("Cannot move increment: Winch not available")
-        #     return False
+        if not self._available:
+            self._node.get_logger().warning('Cannot move increment: Winch not available')
+            return False
             
         try:
             msg = MoveWinchLength()
@@ -198,9 +198,9 @@ class WinchController(QObject):
         
     def move_absolute(self, length_mm: int, speed_mm_s: int) -> bool:
         """Move winch to an absolute position (uses default acceleration of 30 RPM/s)"""
-        # if not self._available:
-        #     print("Cannot move absolute: Winch not available")
-        #     return False
+        if not self._available:
+            self._node.get_logger().warning('Cannot move absolute: Winch not available')
+            return False
             
         try:
             msg = MoveWinchLength()
@@ -216,9 +216,9 @@ class WinchController(QObject):
     
     def move_absolute_with_accel(self, length_mm: int, speed_mm_s: int, acceleration_rpm_s: int) -> bool:
         """Move winch to an absolute position with custom acceleration"""
-        # if not self._available:
-        #     print("Cannot move absolute: Winch not available")
-        #     return False
+        if not self._available:
+            self._node.get_logger().warning('Cannot move absolute: Winch not available')
+            return False
             
         try:
             msg = MoveWinchLength()

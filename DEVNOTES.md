@@ -2,6 +2,14 @@
 
 ---
 
+### 2026-04-17 16:30 - Pytest Infrastructure Validation Gate
+
+**Goal**: Complete Task 3.1 so future singleton and controller work has reusable Qt/ROS test scaffolding
+**Issues**: VS Code kept selecting the wrong `.venv`, which hid `PySide6` and `pytest`; future tests also needed shared fake ROS primitives instead of per-test ad hoc stubs
+**Tried**: Pinned workspace interpreter to `python/paint_controller/venv`, added `pytest-qt` and `pytest-cov`, built reusable fakes for logger/publisher/subscription/timer/node, and kept the namespace-only import bypass in `conftest.py`
+**Result**: ✅ Added headless Qt fixture plus fake ROS test doubles, validated with a new infrastructure test, and full pytest now passes (29 tests)
+**Files**: `.vscode/settings.json`, `requirements-dev.txt`, `tests/conftest.py`, `tests/fakes.py`, `tests/test_test_infrastructure.py`, `pytest.ini`, `setup.py`, `docs/plan/01_MASTER_PLAN.md`
+
 ### 2026-07-18 - Phase 3: Split RobotController God Class
 
 **Goal**: Split ~970-line `RobotController(Node, QObject)` dual-inheritance class into focused components with explicit DI

@@ -8,80 +8,83 @@
 
 ## QML Engine Setup
 
-**Location**: `python/paint_controller/core/application.py` (~L750-808)
+**Location**: `python/paint_controller/core/application.py`
 
 ### Engine Initialization
 ```python
 engine = QQmlApplicationEngine()
-engine.addImageProvider("ef_live", controller.video_stream_handler.ef_image_provider)
-engine.addImageProvider("base_front_live", controller.video_stream_handler.front_image_provider)
-engine.addImageProvider("base_rear_live", controller.video_stream_handler.rear_image_provider)
-engine.addImageProvider("base_top_view", controller.base_top_view_service.image_provider)
+engine.addImageProvider("ef_live", video_stream_handler.ef_image_provider)
+engine.addImageProvider("base_front_live", video_stream_handler.front_image_provider)
+engine.addImageProvider("base_rear_live", video_stream_handler.rear_image_provider)
+engine.addImageProvider("base_top_view", base_top_view_service.image_provider)
 
 # Add QML import path
 qml_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'qml')
 engine.addImportPath(qml_dir)
 
-# Load QML AFTER setting context properties
+# Register singletons / set context properties BEFORE load
 qml_path = os.path.join(qml_dir, 'core', 'MainWindow.qml')
 engine.load(QUrl.fromLocalFile(qml_path))
 ```
 
 ---
 
-## Context Properties (Python → QML)
+## Current Runtime Registration State
 
-All 26 properties set via `engine.rootContext().setContextProperty()` in **application.py:788-814**.
+As of 2026-04-17, runtime registration is **hybrid**:
 
-These are ALL migrating to `qmlRegisterSingletonInstance()` — see Phase 1 in [01_MASTER_PLAN.md](01_MASTER_PLAN.md).
+- `StateStore` is already registered with `qmlRegisterSingletonInstance()` as `PaintController 1.0 / StateStore`
+- 23 remaining runtime identifiers are still exposed through `engine.rootContext().setContextProperty()`
+- Removed aliases `baseStreamer` and `videoStreamer` are no longer part of the live Python/QML path
+
+### Singleton-Registered
+| QML Name | Source | Type | Completed Task |
+|---|---|---|---|
+| `StateStore` | `state_store` | `StateStore` | `1.0` |
 
 ### Core Objects
 | Property Name | Source | Type | Migration Task |
 |---|---|---|---|
-| `backend` | controller | RobotController | Task 1.0 (StateStore replaces) |
-| `baseStreamer` | controller | RobotController | Task 0.3 (remove alias) |
-| `overlayController` | controller.overlayController | OverlayController | Task 1.3 |
-| `controlProcessor` | controller.controlProcessor | ControlProcessor | Task 1.3 |
+| `backend` | `qt_bridge` | `QtBridge` | Task 1.2 |
+| `overlayController` | `bundle.overlay_controller` | `OverlayController` | Task 1.3 |
+| `controlProcessor` | `bundle.control_processor` | `ControlProcessor` | Task 1.3 |
 
 ### Hardware Controllers
 | Property Name | Source | Type | Migration Task |
 |---|---|---|---|
-| `wheelController` | controller.wheel_controller | WheelController | Task 1.4 |
-| `winchController` | controller.winch_controller | WinchController | Task 1.6 |
-| `teensyController` | controller.teensy_controller | TeensyController | Task 1.5 |
-| `esp32ValveController` | controller.esp32_valve_controller | ESP32ValveController | Task 1.7a |
-| `lidarController` | controller.lidar_controller | LidarController | Task 1.7a |
-| `windMonitor` | controller.wind_monitor | WindMonitor | Task 1.3 |
+| `wheelController` | `bundle.wheel_controller` | `WheelController` | Task 1.4 |
+| `winchController` | `bundle.winch_controller` | `WinchController` | Task 1.6 |
+| `teensyController` | `bundle.teensy_controller` | `TeensyController` | Task 1.5 |
+| `esp32ValveController` | `bundle.esp32_valve_controller` | `ESP32ValveController` | Task 1.7a |
+| `lidarController` | `bundle.lidar_controller` | `LidarController` | Task 1.7a |
+| `windMonitor` | `bundle.wind_monitor` | `WindMonitor` | Task 1.3 |
 
 ### Services
 | Property Name | Source | Type | Migration Task |
 |---|---|---|---|
-| `workFlowHandler` | controller.workFlowHandler | WorkFlowHandler | Task 1.8 |
-| `workFlowRunner` | controller.workflow_runner | WorkFlowRunner | Task 1.8 |
-| `baseStreamHandler` | controller.video_stream_handler | VideoStreamHandler | Task 1.7a |
-| `videoStreamer` | controller.video_stream_handler | VideoStreamHandler | Task 1.7a (same object, dual name) |
-| `baseTopViewController` | controller.base_top_view_service | BaseTopViewService | Task 1.7a |
+| `workFlowHandler` | `bundle.workflow_handler` | `WorkFlowHandler` | Task 1.8 |
+| `workFlowRunner` | `bundle.workflow_runner` | `WorkFlowRunner` | Task 1.8 |
+| `baseStreamHandler` | `video_stream_handler` | `VideoStreamHandler` | Task 1.7a |
+| `baseTopViewController` | `base_top_view_service` | `BaseTopViewService` | Task 1.7a |
 
 ### System & UI
 | Property Name | Source | Type | Migration Task |
 |---|---|---|---|
-| `warningHandler` | controller.warningHandler | WarningHandler | Task 1.3 |
-| `heartbeatHandler` | controller.heartbeat_handler | UIHeartbeatHandler | Task 1.3 |
-| `sshHandler` | controller.ssh_controller | UISSHController | Task 1.7a |
-| `systemMonitor` | controller.system_monitor | SystemMonitor | Task 1.3 |
-| `screenManager` | controller.screen_manager | ScreenManager | Task 1.7b |
-| `screenRecorder` | controller.screen_recorder | ScreenRecorder | Task 1.7b |
-| `rosBagRecorder` | controller.ros_bag_recorder | RosBagRecorder | Task 1.7b |
-| `settingsManager` | controller.settings_manager | SettingsManager | Task 1.1 |
-| `actionConfig` | controller.action_config | ActionConfigPython | Task 1.7b |
+| `warningHandler` | `bundle.warning_handler` | `WarningHandler` | Task 1.3 |
+| `heartbeatHandler` | `bundle.heartbeat_handler` | `UIHeartbeatHandler` | Task 1.3 |
+| `sshHandler` | `bundle.ssh_controller` | `UISSHController` | Task 1.7a |
+| `systemMonitor` | `bundle.system_monitor` | `SystemMonitor` | Task 1.3 |
+| `screenManager` | `bundle.screen_manager` | `ScreenManager` | Task 1.7b |
+| `screenRecorder` | `bundle.screen_recorder` | `ScreenRecorder` | Task 1.7b |
+| `rosBagRecorder` | `bundle.ros_bag_recorder` | `RosBagRecorder` | Task 1.7b |
+| `settingsManager` | `settings_manager` | `SettingsManager` | Task 1.1 |
+| `actionConfig` | `bundle.action_config` | `ActionConfigPython` | Task 1.7b |
 
-### Dual-Name Properties (Same Object, Two Names)
-| Property Names | Note |
+### Removed Aliases
+| Identifier | Status |
 |---|---|
-| `backend` / `baseStreamer` | Both point to RobotController. `baseStreamer` is legacy alias. |
-| `baseStreamHandler` / `videoStreamer` | Both point to VideoStreamHandler. |
-
-These dual names must be resolved during migration. `baseStreamer` removed in Task 0.3. `videoStreamer`/`baseStreamHandler` consolidated in Task 1.7a.
+| `baseStreamer` | Removed in Task 0.3; QML now targets `backend` where needed |
+| `videoStreamer` | Removed in Task 0.3; QML now uses `baseStreamHandler` |
 
 ---
 
@@ -196,8 +199,8 @@ qml/
         └── SequenceList.qml
 ```
 
-### No qmldir Files (Current State)
-No `qmldir` manifests exist. Imports use relative paths (e.g., `import "../pages/home"`).
+### qmldir State
+One `qmldir` already exists under `overlays/systemcontrol/`. The rest of the QML tree still uses relative imports (e.g., `import "../pages/home"`).
 
 **Task 1.9** creates `qmldir` for each directory.  
 **CRITICAL (Audit R8)**: Must use dotted names like `PaintController.Core`, NOT bare `module PaintController` (namespace collision with singleton URI).
@@ -216,10 +219,10 @@ Connections {
 
 ### Key Signals
 
-**Backend (RobotController)**
+**Backend (`QtBridge`)**
 - `emergency_overlay_changed(visible, current_duration, target_duration)` → EmergencyOverlay.qml
-- `display_message_changed()` → TopBar.qml
-- Various property-changed signals
+- `frame_ready()` → PageSpray.qml
+- UI toggle methods remain imperative bridge methods until Task 1.2 removes the remaining `findChild()` calls
 
 **OverlayController** (Dual joystick menu)
 - `leftSelectedIndexChanged(int)`
@@ -293,17 +296,17 @@ onClicked: overlayController.toggle_system_menu()
 
 ---
 
-## findChild() Lookups (Python → QML) — BEING REPLACED
+## findChild() Lookups (Python → QML) — CURRENT LIVE DEBT
 
 ### Current Locations (5 total — Audit R3 found the 5th)
 
 | Location | objectName | What it does |
 |---|---|---|
-| `application.py:337` | `messagePopup` | Close popup |
-| `application.py:478` | `selectBar` | Navigate page |
-| `application.py:497` | `videoFullscreenOverlay` | Toggle video |
-| `application.py:557` | `videoFullscreenOverlay` | Toggle video |
-| **`input.py:79`** | `messagePopup` | Close popup before mode switch |
+| `core/qt_bridge.py` | `messagePopup` | Show popup |
+| `core/qt_bridge.py` | `selectBar` | Toggle sidebar |
+| `core/qt_bridge.py` | `videoFullscreenOverlay` | Toggle fullscreen video |
+| `core/qt_bridge.py` | `videoFullscreenOverlay` | Update fullscreen source |
+| `handlers/input.py` | `messagePopup` | Close popup before mode switch |
 
 ### objectName Enum
 ```python
@@ -326,7 +329,7 @@ class QmlObjectName(str, Enum):
 
 ### Replacement Signals (Task 1.2)
 
-Added to `QtBridge(QObject)`:
+Planned for `QtBridge(QObject)` in Task 1.2:
 
 | Signal | Replaces | Emitted from |
 |---|---|---|
@@ -369,7 +372,8 @@ QObject* popup = root->findChild<QObject*>("messagePopup");
 ## Current Registration Pattern Summary
 
 ### What's Currently Used
-- ✅ `setContextProperty()` for all 26 objects (centralized in application.py)
+- ✅ `qmlRegisterSingletonInstance()` for `StateStore`
+- ✅ `setContextProperty()` for the remaining runtime objects (hybrid registration)
 - ✅ `@Property(type, notify=signal)` for bindable attributes
 - ✅ `@Slot()` for QML-callable methods
 - ✅ `Connections { target: obj }` for signal listening in QML
@@ -378,7 +382,7 @@ QObject* popup = root->findChild<QObject*>("messagePopup");
 - ✅ `objectName` for component identification
 
 ### What's Being Migrated To
-- ✅ `qmlRegisterSingletonInstance()` for all objects
+- ✅ `qmlRegisterSingletonInstance()` for all runtime objects over time
 - ✅ QML `Connections {}` with signals replacing `findChild()`
 - ✅ `qmldir` manifests for module organization
 - ✅ `required property` for explicit dependencies

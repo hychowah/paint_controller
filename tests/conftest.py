@@ -5,9 +5,16 @@ dependencies. We import them *directly* by pre-loading the utils subpackage
 before paint_controller/__init__.py can trigger PySide6/ROS2 imports.
 """
 
+import os
 import sys
 import importlib
 from pathlib import Path
+
+import pytest
+
+from tests.fakes import FakeNode
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 # Add python/ directory to sys.path
 _python_dir = Path(__file__).resolve().parent.parent / "python"
@@ -28,4 +35,20 @@ if "paint_controller.utils" not in sys.modules:
     _utils_pkg.__path__ = [str(_python_dir / "paint_controller" / "utils")]
     _utils_pkg.__package__ = "paint_controller.utils"
     sys.modules["paint_controller.utils"] = _utils_pkg
+
+
+@pytest.fixture(scope="session")
+def qt_app():
+    """Create a headless Qt application for QObject-based tests."""
+    from PySide6.QtWidgets import QApplication
+
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication([])
+    return app
+
+
+@pytest.fixture
+def fake_node() -> FakeNode:
+    return FakeNode()
 
