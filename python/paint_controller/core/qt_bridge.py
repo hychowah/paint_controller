@@ -14,7 +14,6 @@ class QtBridge(QObject):
     # QML-bound signals (consumed by Connections {} in MainWindow.qml)
     showPopupRequested = Signal(str, str, str, int)  # title, message, type, delay
     closePopupRequested = Signal()
-    navigateToPageRequested = Signal(int)
     toggleSidebarRequested = Signal()
     toggleVideoOverlayRequested = Signal(bool, str)  # active, videoSource
     updateVideoSourceRequested = Signal(str)  # videoSource
@@ -51,14 +50,6 @@ class QtBridge(QObject):
     @Slot()
     def close_popup(self):
         self.closePopupRequested.emit()
-
-    def _handle_wheel_motor_error(self, has_error: bool, error_message: str):
-        """Handle wheel motor error — trigger emergency stop and show popup."""
-        if not has_error:
-            return
-        self._log_error(f'Wheel motor error detected: {error_message}')
-        self.show_popup("MOTOR ERROR", error_message, "error", 5000)
-        self.emergency_triggered.emit()
 
     @Slot()
     def toggle_sidebar(self):

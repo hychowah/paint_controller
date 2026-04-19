@@ -9,6 +9,7 @@ import os
 import sys
 import importlib
 from pathlib import Path
+import types
 
 import pytest
 
@@ -21,9 +22,8 @@ _python_dir = Path(__file__).resolve().parent.parent / "python"
 if str(_python_dir) not in sys.path:
     sys.path.insert(0, str(_python_dir))
 
-# Pre-register the paint_controller package as a namespace-only module
-# so that importing paint_controller.utils.* doesn't trigger __init__.py
-import types
+# Pre-register paint_controller packages as namespace-only modules so submodule
+# imports do not trigger heavy package-level __init__.py side effects.
 if "paint_controller" not in sys.modules:
     _pkg = types.ModuleType("paint_controller")
     _pkg.__path__ = [str(_python_dir / "paint_controller")]
@@ -35,6 +35,95 @@ if "paint_controller.utils" not in sys.modules:
     _utils_pkg.__path__ = [str(_python_dir / "paint_controller" / "utils")]
     _utils_pkg.__package__ = "paint_controller.utils"
     sys.modules["paint_controller.utils"] = _utils_pkg
+
+if "paint_controller.handlers" not in sys.modules:
+    _handlers_pkg = types.ModuleType("paint_controller.handlers")
+    _handlers_pkg.__path__ = [str(_python_dir / "paint_controller" / "handlers")]
+    _handlers_pkg.__package__ = "paint_controller.handlers"
+    sys.modules["paint_controller.handlers"] = _handlers_pkg
+
+if "paint_controller.controllers" not in sys.modules:
+    _controllers_pkg = types.ModuleType("paint_controller.controllers")
+    _controllers_pkg.__path__ = [str(_python_dir / "paint_controller" / "controllers")]
+    _controllers_pkg.__package__ = "paint_controller.controllers"
+    sys.modules["paint_controller.controllers"] = _controllers_pkg
+
+
+def _install_test_module_stubs() -> None:
+    try:
+        importlib.import_module("rclpy.node")
+    except ModuleNotFoundError:
+        rclpy_pkg = sys.modules.setdefault("rclpy", types.ModuleType("rclpy"))
+        node_mod = types.ModuleType("rclpy.node")
+
+        class Node:
+            pass
+
+        node_mod.Node = Node
+        rclpy_pkg.node = node_mod
+        sys.modules["rclpy.node"] = node_mod
+
+    try:
+        importlib.import_module("std_msgs.msg")
+    except ModuleNotFoundError:
+        std_msgs_pkg = sys.modules.setdefault("std_msgs", types.ModuleType("std_msgs"))
+        msg_mod = types.ModuleType("std_msgs.msg")
+
+        class Float64:
+            def __init__(self):
+                self.data = 0.0
+
+        class Bool:
+            def __init__(self):
+                self.data = False
+
+        msg_mod.Float64 = Float64
+        msg_mod.Bool = Bool
+        std_msgs_pkg.msg = msg_mod
+        sys.modules["std_msgs.msg"] = msg_mod
+
+    try:
+        importlib.import_module("paint_interfaces.msg")
+    except ModuleNotFoundError:
+        paint_interfaces_pkg = sys.modules.setdefault("paint_interfaces", types.ModuleType("paint_interfaces"))
+        msg_mod = types.ModuleType("paint_interfaces.msg")
+
+        class WinchStatus:
+            def __init__(
+                self,
+                enabled=False,
+                cable_length=0.0,
+                cable_speed=0.0,
+                winch_torque=0.0,
+                motor_temperature=0.0,
+                motor_voltage=0.0,
+                motor_brake=True,
+                load_detection_mode=False,
+                unusual_load_detected=False,
+            ):
+                self.enabled = enabled
+                self.cable_length = cable_length
+                self.cable_speed = cable_speed
+                self.winch_torque = winch_torque
+                self.motor_temperature = motor_temperature
+                self.motor_voltage = motor_voltage
+                self.motor_brake = motor_brake
+                self.load_detection_mode = load_detection_mode
+                self.unusual_load_detected = unusual_load_detected
+
+        class MoveWinchLength:
+            def __init__(self):
+                self.length_mm = 0
+                self.speed_mm_s = 0
+                self.acceleration_rpm_s = 30
+
+        msg_mod.WinchStatus = WinchStatus
+        msg_mod.MoveWinchLength = MoveWinchLength
+        paint_interfaces_pkg.msg = msg_mod
+        sys.modules["paint_interfaces.msg"] = msg_mod
+
+
+_install_test_module_stubs()
 
 
 @pytest.fixture(scope="session")

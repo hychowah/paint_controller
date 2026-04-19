@@ -1,11 +1,18 @@
 # Paint Controller
 
-A ROS 2 node with PySide6 UI for controlling the robot.
+ROS 2 + PySide6/QML control application for the paint robot.
+
+## Current Status
+
+- Python runtime is the primary path; the old C++ UI path is retained only as reference and is no longer built.
+- Runtime objects are exposed to QML through `setContextProperty()`. Do not use `qmlRegisterSingletonInstance()` in this repo.
+- Local test suite currently passes at `42` tests using the project interpreter in `python/paint_controller/venv`.
+- Active modernization status is tracked in `docs/plan/01_MASTER_PLAN.md`.
 
 ## Prerequisites
 
-- Ubuntu 22.04/24.04
-- ROS 2 (Humble or Jazzy)
+- Ubuntu 22.04 or 24.04
+- ROS 2 Humble or Jazzy
 - Python 3.10+
 
 ### System Dependencies
@@ -22,10 +29,12 @@ sudo apt install -y \
     libgstreamer-plugins-base1.0-dev
 ```
 
-### Steam Deck Permissions (if using Steam Deck controller)
+### Steam Deck Permissions
+
+If you use the Steam Deck controller directly over USB/HID, install the udev rules:
 
 ```bash
-sudo tee /etc/udev/rules.d/99-steam-deck.rules <<EOF
+sudo tee /etc/udev/rules.d/99-steam-deck.rules <<'EOF'
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="28de", ATTRS{idProduct}=="1205", MODE="0666"
 SUBSYSTEM=="usb", ATTRS{idVendor}=="28de", ATTRS{idProduct}=="1205", MODE="0666"
 EOF
@@ -35,21 +44,15 @@ sudo udevadm trigger
 
 ## Installation
 
-### 1. Clone the Repository
+### 1. Clone Repositories
 
 ```bash
 cd ~/ros2_ws/src
 git clone https://github.com/hychowah/paint_controller.git paint_controller_ros2
-```
-
-### 2. Clone Dependencies
-
-```bash
-cd ~/ros2_ws/src
 git clone https://github.com/hychowah/paint_interfaces.git
 ```
 
-### 3. Build ROS 2 Packages
+### 2. Build ROS Packages
 
 ```bash
 cd ~/ros2_ws
@@ -57,7 +60,7 @@ colcon build --packages-select paint_interfaces paint_controller_ros2
 source install/setup.bash
 ```
 
-### 4. Create Virtual Environment
+### 3. Create the Project Python Environment
 
 ```bash
 cd ~/ros2_ws/src/paint_controller_ros2
@@ -65,14 +68,15 @@ python3 -m venv python/paint_controller/venv
 source python/paint_controller/venv/bin/activate
 pip install --upgrade pip
 pip install -r python/paint_controller/requirements.txt
+pip install -r requirements-dev.txt
 pip install -e .
 ```
 
-### 5. Create Launcher Script
+### 4. Optional Launcher Script
 
 ```bash
 mkdir -p ~/.local/bin
-cat > ~/.local/bin/paint_controller << 'EOF'
+cat > ~/.local/bin/paint_controller <<'EOF'
 #!/bin/bash
 SCRIPT_DIR="/home/$USER/ros2_ws/src/paint_controller_ros2"
 VENV_DIR="${SCRIPT_DIR}/python/paint_controller/venv"
@@ -85,7 +89,8 @@ EOF
 chmod +x ~/.local/bin/paint_controller
 ```
 
-Make sure `~/.local/bin` is in your PATH (add to `~/.bashrc` if needed):
+If needed:
+
 ```bash
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
@@ -93,13 +98,13 @@ source ~/.bashrc
 
 ## Running the Application
 
-### Option 1: Using the Launcher (Recommended)
+### Recommended
 
 ```bash
 paint_controller
 ```
 
-### Option 2: Manual Run
+### Manual Run
 
 ```bash
 source /opt/ros/humble/setup.bash
@@ -109,45 +114,63 @@ cd ~/ros2_ws/src/paint_controller_ros2/python
 python -m paint_controller
 ```
 
-## Features
+## Testing
 
-### Multi-Screen Display Support
+Use the project-local interpreter, not an arbitrary workspace `.venv`.
 
-The application now supports adaptive multi-screen display with real-time detection:
-
-- **Automatic Detection**: Detects connected displays automatically
-- **Real-Time Monitoring**: Updates when monitors are plugged/unplugged
-- **Test Interface**: Dedicated UI for testing multi-screen functionality
-- **Extended Display**: Can utilize external monitors for extended workspace
-
-#### Using Multi-Screen Support
-
-1. Launch the application normally
-2. Navigate to **Settings** → **Display Settings**
-3. Click **"Multi-Screen Test"** to open the test window
-4. Connect/disconnect external monitors to see real-time updates
-
-For detailed documentation, see [docs/MULTISCREEN_SUPPORT.md](docs/MULTISCREEN_SUPPORT.md)
-
-#### Testing Multi-Screen (Standalone)
+### Run the Full Suite
 
 ```bash
-cd python/paint_controller/scripts
-python3 test_multiscreen.py
+/home/$USER/ros2_ws/src/paint_controller_ros2/python/paint_controller/venv/bin/python -m pytest -q
 ```
 
-This runs a standalone test that monitors screen changes without the full application.
+### Run a Focused File
+
+```bash
+/home/$USER/ros2_ws/src/paint_controller_ros2/python/paint_controller/venv/bin/python -m pytest tests/test_winch.py -q
+```
+
+### Current Test Layers
+
+- Pure logic: `tests/test_crc.py`, `tests/test_input_utils.py`, `tests/test_settings_schema.py`
+- Harness validation: `tests/test_test_infrastructure.py`
+- Component and handler behavior: `tests/test_emergency.py`, `tests/test_winch.py`
+- Real ROS transport: `tests/test_winch_ros_integration.py`
+
+## Repository Layout
+
+- `python/paint_controller/` — Python application code
+- `python/paint_controller/qml/` — QML UI
+- `python/config/` — runtime configuration JSON
+- `tests/` — pytest suite
+- `docs/plan/` — modernization tracker and architecture docs
+- `src/` — deprecated C++ reference path
+
+## Documentation Map
+
+- `docs/plan/01_MASTER_PLAN.md` — authoritative modernization tracker
+- `docs/plan/02_ARCHITECTURE.md` — runtime architecture reference
+- `docs/plan/03_QML_BINDINGS.md` — QML/Python binding inventory
+- `DEVNOTES.md` — chronological development notes
+- `KNOWLEDGE.md` — reusable Qt/Python/ROS gotchas
+
+## Operational Notes
+
+- Multi-screen behavior is managed by `ScreenManager` and the QML shell; the primary behavior is documented in `docs/plan/02_ARCHITECTURE.md`.
+- The repository still contains reference C++ sources, but the build system is now a pure `ament_cmake` wrapper around the Python package.
 
 ## Troubleshooting
 
 ### Qt Platform Plugin Error
+
 If you see `qt.qpa.plugin: Could not load the Qt platform plugin "xcb"`:
+
 ```bash
 sudo apt install libxcb-xinerama0 libxcb-cursor0
 ```
 
-### Module Not Found Error
-Make sure you installed the package in editable mode:
+### Editable Install Missing
+
 ```bash
 cd ~/ros2_ws/src/paint_controller_ros2
 source python/paint_controller/venv/bin/activate
@@ -155,6 +178,7 @@ pip install -e .
 ```
 
 ### Steam Deck Not Detected
-1. Ensure Steam Deck is in desktop mode
-2. Check USB connection
-3. Verify udev rules are configured (see Prerequisites)
+
+1. Ensure the Steam Deck is in desktop mode.
+2. Check the USB connection.
+3. Verify the udev rules above are installed and reloaded.

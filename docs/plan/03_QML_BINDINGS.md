@@ -35,7 +35,7 @@ engine.load(QUrl.fromLocalFile(qml_path))
 
 ## Current Runtime Registration State
 
-As of 2026-04-17, all 25 runtime objects are exposed via `setContextProperty()`. A validation loop in `application.py` verifies all 25 are non-`None` after `engine.load()`.
+As of 2026-04-17, all 24 runtime objects are exposed via `setContextProperty()`. A validation loop in `application.py` verifies all 24 are non-`None` after `engine.load()`.
 
 > **⚠️ DO NOT USE `qmlRegisterSingletonInstance()` in PySide6.**
 > It corrupts the QML type system when combined with implicit directory imports (no `qmldir`).
@@ -50,39 +50,39 @@ As of 2026-04-17, all 25 runtime objects are exposed via `setContextProperty()`.
 | Property Name | Source | Type | Migration Task |
 |---|---|---|---|
 | `backend` | `qt_bridge` | `QtBridge` | Task 1.2 ✅ (signals implemented, findChild eliminated) |
-| `overlayController` | `bundle.overlay_controller` | `OverlayController` | Task 1.3 |
-| `controlProcessor` | `bundle.control_processor` | `ControlProcessor` | Task 1.3 |
+| `overlayController` | `bundle.overlay_controller` | `OverlayController` | Context property retained; no singleton migration planned |
+| `controlProcessor` | `bundle.control_processor` | `ControlProcessor` | Context property retained; no singleton migration planned |
 
 ### Hardware Controllers
 | Property Name | Source | Type | Migration Task |
 |---|---|---|---|
-| `wheelController` | `bundle.wheel_controller` | `WheelController` | Task 1.4 |
-| `winchController` | `bundle.winch_controller` | `WinchController` | Task 1.6 |
-| `teensyController` | `bundle.teensy_controller` | `TeensyController` | Task 1.5 |
-| `esp32ValveController` | `bundle.esp32_valve_controller` | `ESP32ValveController` | Task 1.7a |
-| `lidarController` | `bundle.lidar_controller` | `LidarController` | Task 1.7a |
-| `windMonitor` | `bundle.wind_monitor` | `WindMonitor` | Task 1.3 |
+| `wheelController` | `bundle.wheel_controller` | `WheelController` | Context property retained; no singleton migration planned |
+| `winchController` | `bundle.winch_controller` | `WinchController` | Context property retained; no singleton migration planned |
+| `teensyController` | `bundle.teensy_controller` | `TeensyController` | Context property retained; no singleton migration planned |
+| `esp32ValveController` | `bundle.esp32_valve_controller` | `ESP32ValveController` | Context property retained; no singleton migration planned |
+| `lidarController` | `bundle.lidar_controller` | `LidarController` | Context property retained; no singleton migration planned |
+| `windMonitor` | `bundle.wind_monitor` | `WindMonitor` | Context property retained; no singleton migration planned |
 
 ### Services
 | Property Name | Source | Type | Migration Task |
 |---|---|---|---|
-| `workFlowHandler` | `bundle.workflow_handler` | `WorkFlowHandler` | Task 1.8 |
-| `workFlowRunner` | `bundle.workflow_runner` | `WorkFlowRunner` | Task 1.8 |
-| `baseStreamHandler` | `video_stream_handler` | `VideoStreamHandler` | Task 1.7a |
-| `baseTopViewController` | `base_top_view_service` | `BaseTopViewService` | Task 1.7a |
+| `workFlowHandler` | `bundle.workflow_handler` | `WorkFlowHandler` | Context property retained for now; slated for workflow consolidation/removal |
+| `workFlowRunner` | `bundle.workflow_runner` | `WorkFlowRunner` | Context property retained; active runtime path |
+| `baseStreamHandler` | `video_stream_handler` | `VideoStreamHandler` | Context property retained; no singleton migration planned |
+| `baseTopViewController` | `base_top_view_service` | `BaseTopViewService` | Context property retained; no singleton migration planned |
 
 ### System & UI
 | Property Name | Source | Type | Migration Task |
 |---|---|---|---|
-| `warningHandler` | `bundle.warning_handler` | `WarningHandler` | Task 1.3 |
-| `heartbeatHandler` | `bundle.heartbeat_handler` | `UIHeartbeatHandler` | Task 1.3 |
-| `sshHandler` | `bundle.ssh_controller` | `UISSHController` | Task 1.7a |
-| `systemMonitor` | `bundle.system_monitor` | `SystemMonitor` | Task 1.3 |
-| `screenManager` | `bundle.screen_manager` | `ScreenManager` | Task 1.7b |
-| `screenRecorder` | `bundle.screen_recorder` | `ScreenRecorder` | Task 1.7b |
-| `rosBagRecorder` | `bundle.ros_bag_recorder` | `RosBagRecorder` | Task 1.7b |
-| `settingsManager` | `settings_manager` | `SettingsManager` | Task 1.1 |
-| `actionConfig` | `bundle.action_config` | `ActionConfigPython` | Task 1.7b |
+| `warningHandler` | `bundle.warning_handler` | `WarningHandler` | Context property retained; no singleton migration planned |
+| `heartbeatHandler` | `bundle.heartbeat_handler` | `UIHeartbeatHandler` | Context property retained; no singleton migration planned |
+| `sshHandler` | `bundle.ssh_controller` | `UISSHController` | Context property retained; no singleton migration planned |
+| `systemMonitor` | `bundle.system_monitor` | `SystemMonitor` | Context property retained; no singleton migration planned |
+| `screenManager` | `bundle.screen_manager` | `ScreenManager` | Context property retained; no singleton migration planned |
+| `screenRecorder` | `bundle.screen_recorder` | `ScreenRecorder` | Context property retained; no singleton migration planned |
+| `rosBagRecorder` | `bundle.ros_bag_recorder` | `RosBagRecorder` | Context property retained; no singleton migration planned |
+| `settingsManager` | `settings_manager` | `SettingsManager` | Context property retained; no singleton migration planned |
+| `actionConfig` | `bundle.action_config` | `ActionConfigPython` | Context property retained; no singleton migration planned |
 
 ### Removed Aliases
 | Identifier | Status |
@@ -252,9 +252,11 @@ Connections {
 ### Key Signals
 
 **Backend (`QtBridge`)**
-- `emergency_overlay_changed(visible, current_duration, target_duration)` → EmergencyOverlay.qml
-- `frame_ready()` → PageSpray.qml
-- UI toggle methods remain imperative bridge methods until Task 1.2 removes the remaining `findChild()` calls
+- `showPopupRequested(title, message, popupType, delay)` → popup display in `MainWindow.qml`
+- `closePopupRequested()` → popup close in `MainWindow.qml`
+- `toggleSidebarRequested()` → `SelectBar.qml`
+- `toggleVideoOverlayRequested(active, videoSource)` → fullscreen video overlay
+- `updateVideoSourceRequested(videoSource)` → fullscreen source refresh
 
 **OverlayController** (Dual joystick menu)
 - `leftSelectedIndexChanged(int)`
@@ -328,58 +330,17 @@ onClicked: overlayController.toggle_system_menu()
 
 ---
 
-## findChild() Lookups (Python → QML) — CURRENT LIVE DEBT
+## Python → QML Direct Access (Current State)
 
-### Current Locations (5 total — Audit R3 found the 5th)
+The live Python runtime no longer uses `findChild()` to reach QML objects.
 
-| Location | objectName | What it does |
-|---|---|---|
-| `core/qt_bridge.py` | `messagePopup` | Show popup |
-| `core/qt_bridge.py` | `selectBar` | Toggle sidebar |
-| `core/qt_bridge.py` | `videoFullscreenOverlay` | Toggle fullscreen video |
-| `core/qt_bridge.py` | `videoFullscreenOverlay` | Update fullscreen source |
-| `handlers/input.py` | `messagePopup` | Close popup before mode switch |
+- `QtBridge` uses signals consumed by a `Connections { target: backend }` block in `MainWindow.qml`
+- `input.py` closes the popup through the injected `close_popup_fn` callable
+- The old `QmlObjectName` enum was deleted
+- `messagePopup`, `selectBar`, and `videoFullscreenOverlay` are no longer Python bridge contracts
 
-### objectName Enum
-```python
-# utils/constants.py:39-42
-class QmlObjectName(str, Enum):
-    MESSAGE_POPUP = "messagePopup"
-    SELECT_BAR = "selectBar"
-    VIDEO_FULLSCREEN_OVERLAY = "videoFullscreenOverlay"
-```
-
-### objectName Declarations in QML
-
-| QML Location | objectName | Keep/Remove after migration |
-|---|---|---|
-| `MainWindow.qml:80` | `selectBar` | **REMOVE** — replaced by `navigateToPageRequested` signal |
-| `MainWindow.qml:135` | `stackView` | **KEEP** — used by QML/JS navigation code |
-| `MainWindow.qml:225` | `messagePopup` | **REMOVE** — replaced by `showPopupRequested`/`closePopupRequested` signals |
-| `MainWindow.qml:248` | `videoFullscreenOverlay` | **REMOVE** — replaced by `toggleVideoOverlayRequested` signal |
-| `MainWindow.qml:256` | `lidarOverlay` | **KEEP** — used by QML internally |
-
-### Replacement Signals (Task 1.2)
-
-Planned for `QtBridge(QObject)` in Task 1.2:
-
-| Signal | Replaces | Emitted from |
-|---|---|---|
-| `showPopupRequested(str, str, str)` | `findChild("messagePopup").show()` | `application.py` |
-| `closePopupRequested()` | `findChild("messagePopup").close()` | `application.py` + `input.py` |
-| `navigateToPageRequested(str)` | `findChild("selectBar").setCurrentIndex()` | `application.py` |
-| `toggleVideoOverlayRequested(bool)` | `findChild("videoFullscreenOverlay").toggleOverlay()` | `application.py` |
-
-QML side:
-```qml
-Connections {
-    target: backend  // context property, renamed in Task 1.2
-    function onShowPopupRequested(title, message, type) { messagePopup.show(title, message, type) }
-    function onClosePopupRequested() { messagePopup.close() }
-    function onNavigateToPageRequested(page) { selectBar.navigateTo(page) }
-    function onToggleVideoOverlayRequested(visible) { videoFullscreenOverlay.toggleOverlay(visible) }
-}
-```
+**Only remaining imperative QML access**
+- `engine.rootObjects()[0]` in `toggle_multiscreen_window()` via `QMetaObject.invokeMethod`
 
 ---
 
@@ -388,7 +349,7 @@ Connections {
 **Location**: `src/paint_controller.cpp`
 
 ```cpp
-// Only 2 of 26 context properties set
+// Only 2 of the 24 runtime objects required by the full UI are set
 engine.rootContext()->setContextProperty("backend", controller.get());
 engine.rootContext()->setContextProperty("baseStreamer", controller.get());
 
@@ -397,7 +358,7 @@ QObject* select_bar = root->findChild<QObject*>("selectBar");
 QObject* popup = root->findChild<QObject*>("messagePopup");
 ```
 
-**Status**: Formally deprecated per user decision (Audit R2). Will break when `baseStreamer` is removed in Task 0.3. See deprecation notice in [01_MASTER_PLAN.md](01_MASTER_PLAN.md).
+**Status**: Formally deprecated per user decision (Audit R2). The shared QML has already moved past the old `baseStreamer` alias, so this path is retained only as reference. See deprecation notice in [01_MASTER_PLAN.md](01_MASTER_PLAN.md).
 
 ---
 
@@ -409,11 +370,11 @@ QObject* popup = root->findChild<QObject*>("messagePopup");
 - ✅ `@Slot()` for QML-callable methods
 - ✅ `Connections { target: obj }` for signal listening in QML
 - ✅ Image providers for video streams
-- ✅ `findChild()` lookups for direct QML access (5 calls)
-- ✅ `objectName` for component identification
+- ✅ Signal-based bridge for popup/sidebar/video overlay control
+- ✅ Limited `objectName` usage for QML-side structure only
+- ✅ One remaining root-object invocation for multiscreen window handling
 
 ### What's Being Migrated To
-- ✅ QML `Connections {}` with signals replacing `findChild()`
 - ✅ `qmldir` manifests for module organization
 - ✅ `required property` for explicit dependencies
 - ✅ Versionless Qt6 imports (`import QtQuick` not `import QtQuick 2.15`)

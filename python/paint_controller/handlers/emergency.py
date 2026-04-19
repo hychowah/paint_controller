@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import time
-from PySide6.QtCore import QObject, Signal, QTimer
+from PySide6.QtCore import QObject, Signal
 
 class EmergencyButtonHandler(QObject):
     """Handler for emergency button functionality"""
@@ -87,6 +87,11 @@ class EmergencyButtonHandler(QObject):
             
             self._winch.command_speed_rpm(0)
             self._teensy.setSprayTrigger(1000)
+            if self._wheel is not None:
+                if hasattr(self._wheel, 'emergency_stop'):
+                    self._wheel.emergency_stop()
+                elif hasattr(self._wheel, 'setSpeed'):
+                    self._wheel.setSpeed(0, 0)
             
             # Show emergency popup
             if self._show_popup_fn:

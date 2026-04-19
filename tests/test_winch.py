@@ -1,0 +1,130 @@
+"""Tests for paint_controller.controllers.winch.WinchController."""
+
+from __future__ import annotations
+
+import importlib
+
+from tests.fakes import FakeNode, FakeRosBus
+
+
+class FakeSignal:
+    def __init__(self) -> None:
+        self._callbacks = []
+
+    def connect(self, callback) -> None:
+        self._callbacks.append(callback)
+
+    def emit(self, value) -> None:
+        for callback in self._callbacks:
+            callback(value)
+
+
+class FakeSettingsManager:
+    def __init__(self, initial_value: float) -> None:
+        self._value = initial_value
+        self.winch_max_speed_mmps_changed = FakeSignal()
+
+    def get(self, key: str):
+        if key == "winch_max_speed_mmps":
+            return self._value
+        return None
+
+
+def _winch_controller_class():
+    return importlib.import_module("paint_controller.controllers.winch").WinchController
+
+
+def test_speed_commands_rejected_when_unavailable(qt_app, fake_node):
+    controller = _winch_controller_class()(fake_node)
+
+    assert controller.command_speed_rpm(123.0) is False
+    assert controller.command_speed_mmps(123.0) is False
+    assert fake_node.publishers[0].published_messages == []
+    assert fake_node.publishers[1].published_messages == []
+
+
+def test_move_commands_guard_when_unavailable(qt_app, fake_node):
+    controller = _winch_controller_class()(fake_node)
+
+    assert controller.move_increment(100, 50) is False
+    assert controller.move_increment_with_accel(100, 50, 20) is False
+    assert controller.move_absolute(500, 70) is False
+    assert controller.move_absolute_with_accel(500, 70, 25) is False
+
+    warning_messages = [record.message for record in fake_node.get_logger().records if record.level == "warning"]
+    assert warning_messages == [
+        "Cannot move increment: Winch not available",
+        "Cannot move increment: Winch not available",
+        "Cannot move absolute: Winch not available",
+        "Cannot move absolute: Winch not available",
+    ]
+
+
+def test_speed_commands_clamp_to_max_speed(qt_app, fake_node):
+    controller = _winch_controller_class()(fake_node)
+    controller.set_available(True)
+
+    assert controller.command_speed_rpm(999.0) is True
+    assert controller.command_speed_mmps(-999.0) is True
+
+    rpm_msg = fake_node.publishers[0].published_messages[-1]
+    mmps_msg = fake_node.publishers[1].published_messages[-1]
+    assert rpm_msg.data == 400.0
+    assert mmps_msg.data == -400.0
+
+
+def test_enable_command_publishes_when_available(qt_app, fake_node):
+    controller = _winch_controller_class()(fake_node)
+    controller.set_available(True)
+
+    controller.setEnabled(True)
+
+    enable_msg = fake_node.publishers[2].published_messages[-1]
+    assert enable_msg.data is True
+
+
+def test_settings_manager_initial_value_and_updates_change_clamp(qt_app, fake_node):
+    settings = FakeSettingsManager(initial_value=125.0)
+    controller = _winch_controller_class()(fake_node, settings_manager=settings)
+    controller.set_available(True)
+
+    controller.command_speed_mmps(300.0)
+    first_msg = fake_node.publishers[1].published_messages[-1]
+    assert first_msg.data == 125.0
+
+    settings.winch_max_speed_mmps_changed.emit(75.0)
+    controller.command_speed_mmps(300.0)
+    second_msg = fake_node.publishers[1].published_messages[-1]
+    assert second_msg.data == 75.0
+
+
+def test_move_increment_publishes_message_when_available(qt_app, fake_node):
+    controller = _winch_controller_class()(fake_node)
+    controller.set_available(True)
+
+    assert controller.move_increment(250, 60) is True
+
+    move_msg = fake_node.publishers[3].published_messages[-1]
+    assert move_msg.length_mm == 250
+    assert move_msg.speed_mm_s == 60
+    assert move_msg.acceleration_rpm_s == 30
+
+
+def test_speed_command_reaches_subscriber_over_fake_ros_bus(qt_app):
+    bus = FakeRosBus()
+    publisher_node = FakeNode(bus=bus)
+    subscriber_node = FakeNode(bus=bus)
+    controller = _winch_controller_class()(publisher_node)
+    controller.set_available(True)
+    received = []
+
+    subscriber_node.create_subscription(
+        object,
+        "winch/move/speed/mmps/cmd",
+        lambda message: received.append(message.data),
+        1,
+    )
+
+    assert controller.command_speed_mmps(150.0) is True
+
+    assert received == [150.0]

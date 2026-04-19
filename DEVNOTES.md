@@ -2,6 +2,54 @@
 
 ---
 
+### 2026-04-17 23:30 - Synchronize README And Plan Docs To Current Runtime
+
+**Goal**: Bring the root README and `docs/plan/*` back in sync with the implemented runtime, test model, and modernization status
+**Issues**: The docs still described older migration intent, stale bridge debt, and outdated test workflow details even though the repo had already shifted to context-property runtime exposure and layered pytest coverage
+**Tried**: Rewrote `README.md` around current setup/run/test flow, updated the plan entry docs and master tracker, replaced stale `findChild()`/singleton-migration language with the live bridge state, and documented the layered test suite plus current `42 passed` local result
+**Result**: ✅ Documentation now reflects the current architecture and testing direction closely enough to prepare a clean follow-up commit
+**Files**: `README.md`, `docs/plan/00_README.md`, `docs/plan/01_MASTER_PLAN.md`, `docs/plan/02_ARCHITECTURE.md`, `docs/plan/03_QML_BINDINGS.md`, `docs/plan/04_AUDIT_REPORT.md`
+
+### 2026-04-17 23:05 - Normalize Existing Test Files By Test Layer
+
+**Goal**: Align the current test suite with the layered testing model before adding new tests
+**Issues**: The pure utility and schema files still used older class-wrapper patterns that obscured the real unit boundary, while the newer controller tests already followed a clearer behavior-first style
+**Tried**: Flattened pure utility/schema tests into module-level behavior functions, kept the shared harness file explicitly scoped to test primitives, and left the controller plus ROS integration files on their existing component/transport split
+**Result**: ✅ Existing tests now read more consistently by boundary: pure logic, harness validation, component behavior, and real ROS transport; full suite still passes unchanged
+**Files**: `tests/test_crc.py`, `tests/test_input_utils.py`, `tests/test_settings_schema.py`, `tests/test_test_infrastructure.py`
+
+### 2026-04-17 22:20 - Add Transport-Level Controller Validation
+
+**Goal**: Make controller tests more meaningful by verifying that a second node subscribed to the same topic actually receives the published command
+**Issues**: The existing safety tests only asserted that fake publishers stored messages, which proves controller intent but not pub/sub delivery semantics
+**Tried**: Extended `tests/fakes.py` with a shared in-process topic bus, added an infrastructure test proving node-to-node delivery, added a `WinchController` fake-bus transport test, and added a real `rclpy` pub/sub test that spins a subscriber node until it receives the message
+**Result**: ✅ The test harness now has both a fast transport layer for routine controller tests and a real ROS pub/sub validation path for command delivery
+**Files**: `tests/fakes.py`, `tests/test_test_infrastructure.py`, `tests/test_winch.py`, `tests/test_winch_ros_integration.py`, `PLANNING.md`
+
+### 2026-04-17 22:00 - Add WinchController Safety Tests
+
+**Goal**: Continue the safety-critical test phase with focused coverage for `WinchController`
+**Issues**: `WinchController` imports ROS and message modules at import time, so the test interpreter needed lightweight module stubs; the tests also needed to validate both availability guards and the settings-driven speed clamp behavior without a live ROS system
+**Tried**: Extended `tests/conftest.py` with a namespace-only `paint_controller.controllers` package plus minimal test stubs for `rclpy.node`, `std_msgs.msg`, and `paint_interfaces.msg`, then added focused tests for command rejection, move-command guards, clamp behavior, enable publishing, and settings updates
+**Result**: ✅ Winch safety behavior is now covered by unit tests and can run in the project venv without ROS runtime dependencies
+**Files**: `tests/conftest.py`, `tests/test_winch.py`, `docs/plan/01_MASTER_PLAN.md`, `PLANNING.md`
+
+### 2026-04-17 21:40 - Add EmergencyButtonHandler Safety Tests
+
+**Goal**: Start the safety-critical test phase with focused coverage for `EmergencyButtonHandler`
+**Issues**: Importing `paint_controller.handlers.emergency` through the package path would execute `handlers/__init__.py` and drag in the full handler stack; during test design it also became clear the emergency trigger stopped the winch and spray trigger but did not stop the wheel controller
+**Tried**: Extended `tests/conftest.py` with a namespace-only `paint_controller.handlers` package for direct submodule imports, added focused tests around hold/cancel/trigger/cooldown behavior, and updated `EmergencyButtonHandler` to call the wheel emergency stop path during trigger
+**Result**: ✅ Emergency behavior is now covered by unit tests and the handler stops the wheel controller as intended during emergency activation
+**Files**: `tests/conftest.py`, `tests/test_emergency.py`, `python/paint_controller/handlers/emergency.py`, `docs/plan/01_MASTER_PLAN.md`, `PLANNING.md`
+
+### 2026-04-17 21:15 - Phase A Cleanup: Remove Dead Launch/Test Config And Archive Prototype
+
+**Goal**: Remove obsolete repository artifacts so the plan and codebase match the current runtime architecture
+**Issues**: The repo still contained a dead C++ launch file for a non-built executable, a redundant `pytest.ini` that duplicated `pyproject.toml`, and the archived `fish-eye/` prototype even though its logic had already been ported into `base_top_view_service.py`
+**Tried**: Deleted the dead launch file and redundant pytest config, removed the fish-eye prototype contents, cleaned stale singleton-migration guidance from the plan docs, and updated code/comments that still referenced the removed prototype or pytest config
+**Result**: ✅ Phase A non-destructive cleanup is complete and the approved destructive cleanup has removed the obsolete files; only empty fish-eye directories may remain because directory removal commands are blocked by the tool policy
+**Files**: `launch/paint_controller_cpp.launch.py`, `pytest.ini`, `fish-eye/*`, `python/paint_controller/core/qt_bridge.py`, `python/paint_controller/core/ros_node.py`, `python/paint_controller/handlers/warnings.py`, `python/paint_controller/services/base_top_view_service.py`, `docs/plan/01_MASTER_PLAN.md`, `docs/plan/03_QML_BINDINGS.md`, `PLANNING.md`
+
 ### 2026-04-17 20:05 - Instrument Python Startup Lag And Fix Cross-Thread Cleanup
 
 **Goal**: Identify the remaining post-render lag after the QML warning flood was removed, and stop Qt timer cleanup warnings during shutdown

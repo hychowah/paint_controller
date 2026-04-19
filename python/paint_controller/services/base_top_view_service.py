@@ -101,7 +101,7 @@ class BaseTopViewTransformer:
     def initialize_for_resolution(self, width: int, height: int):
         """
         Initialize camera calibration and undistortion maps for given resolution.
-        Matches the logic from /fish-eye/core/processor.py exactly.
+        Matches the archived fisheye prototype logic that was ported into this service.
         
         Output is square — the fisheye lens projects a circle onto the sensor,
         so the sensor's aspect ratio is irrelevant. Square maximizes the
@@ -127,7 +127,7 @@ class BaseTopViewTransformer:
     
     def _compute_remap_tables(self):
         """Compute remap lookup tables for fast image transformation.
-        Matches /fish-eye/core/processor.py compute_remap_tables() exactly.
+        Preserves the historical calibration math from the archived fisheye prototype.
         
         Calibration parameters (center_x, center_y, radius) are scaled from
         calibration resolution to actual input stream resolution."""
@@ -298,7 +298,7 @@ class BaseTopViewTransformer:
     
     def process_frame(self, frame: np.ndarray) -> np.ndarray:
         """
-        Processing pipeline: fish-eye undistortion with circular crop and zoom (matches /fish-eye/main.py)
+        Processing pipeline: fisheye undistortion with circular crop and zoom.
         
         Args:
             frame: Input BGR frame

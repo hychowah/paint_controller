@@ -1,7 +1,7 @@
 # Paint Controller Modernization — Plan Documentation
 
 > **Created**: 2026-04-16
-> **Validated**: 2026-04-17 (post-implementation update)
+> **Validated**: 2026-04-17 (post-implementation + test/documentation sync)
 > **Branch**: `refactor`
 
 ## For Future LLM Sessions
@@ -21,11 +21,13 @@ Read files in this order:
 - **Authoritative progress tracker**: `docs/plan/01_MASTER_PLAN.md`
 - **Chronological completed work**: `DEVNOTES.md`
 - **Active session scratch plan**: `PLANNING.md`
+- **Operator/developer entry point**: `README.md`
 - **Historical context only**: `REFACTOR_TRACKER.md`, `docs/plan/04_AUDIT_REPORT.md`
 
 ## Environment Note
 
 - VS Code is pinned to the project interpreter in `.vscode/settings.json`: `python/paint_controller/venv/bin/python`
+- The reliable local test command is `python/paint_controller/venv/bin/python -m pytest -q`
 - If `PySide6` or `pytest` appear missing in-editor, check the selected interpreter first.
 
 ## Key Paths
@@ -42,6 +44,12 @@ Read files in this order:
 ```bash
 cd ~/ros2_ws && colcon build --packages-select paint_interfaces paint_controller_ros2
 paint_controller
+```
+
+## Validate
+
+```bash
+python/paint_controller/venv/bin/python -m pytest -q
 ```
 
 ## Rules

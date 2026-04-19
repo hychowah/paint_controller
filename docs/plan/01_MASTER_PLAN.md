@@ -1,7 +1,7 @@
 # Paint Controller PySide6/QML Modernization — Validated Master Plan
 
 > **Created**: 2026-04-16
-> **Validated**: 2026-04-16 (survived Technical Auditor + Systems Architect pre-mortem)
+> **Validated**: 2026-04-17 (pre-mortem + post-implementation/test sync)
 > **Status**: IN PROGRESS
 > **Branch**: `refactor` (create sub-branches per phase)
 
@@ -38,21 +38,21 @@ Last Modified: 2026-04-17
 | 1.0 Register StateStore | [x] | `StateStore` exposed via `setContextProperty`. `qmlRegisterSingletonInstance` abandoned (PySide6 bug — see KNOWLEDGE.md) |
 | 1.1 Register SettingsManager | [ ] | |
 | 1.2 Register QtBridge + kill findChild | [x] | All `findChild` replaced with signals (`showPopupRequested`, `closePopupRequested`, `toggleSidebarRequested`, `toggleVideoOverlayRequested`, `updateVideoSourceRequested`). `input.py` uses `close_popup_fn` callable. `QmlObjectName` enum deleted. `objectName` removed from popup/selectBar/videoOverlay. Only remaining QML object access: `engine.rootObjects()[0]` in `toggle_multiscreen_window()`. |
-| 1.3 Register isolated controllers | [ ] | |
-| 1.4 Register wheelController | [ ] | 7 QML files |
-| 1.5 Register teensyController | [ ] | 7 QML files |
-| 1.6 Register winchController | [ ] | 11 QML files — highest spread |
-| 1.7a Register controllers batch A | [ ] | ESP32, Lidar, SSH, Video, BaseTopView |
-| 1.7b Register controllers batch B | [ ] | Recorder, Overlay, Action, Steam |
-| 1.8 Register workflow handlers | [ ] | |
+| 1.3 Register isolated controllers | [x] | CANCELLED — singleton-registration track abandoned; these objects already work via `setContextProperty()` |
+| 1.4 Register wheelController | [x] | CANCELLED — `wheelController` already exposed via context property |
+| 1.5 Register teensyController | [x] | CANCELLED — `teensyController` already exposed via context property |
+| 1.6 Register winchController | [x] | CANCELLED — `winchController` already exposed via context property |
+| 1.7a Register controllers batch A | [x] | CANCELLED — runtime stays on context properties; no PySide6 singleton migration |
+| 1.7b Register controllers batch B | [x] | CANCELLED — runtime stays on context properties; no PySide6 singleton migration |
+| 1.8 Register workflow handlers | [x] | CANCELLED — runtime stays on context properties; workflow work shifts to consolidation/removal of `workflow_legacy.py` |
 | 1.10 Qt6 versionless imports | [ ] | **DO BEFORE 1.9** |
 | 1.9 Add qmldir manifests | [ ] | No bare `module PaintController` |
-| 1.11a required props — buttons | [ ] | After ALL 1.0-1.8 AND 1.9 |
+| 1.11a required props — buttons | [ ] | After 1.9 and stable import cleanup |
 | 1.11b required props — inputs | [ ] | |
 | 1.11c required props — displays | [ ] | |
 | 1.11d required props — panels/popups | [ ] | |
 | 1.11e required props — widgets | [ ] | |
-| POST-1 Startup context property validation | [x] | Validation loop in `application.py` checks all 25 context properties for `None` after `engine.load()` |
+| POST-1 Startup context property validation | [x] | Validation loop in `application.py` checks all 24 context properties for `None` after `engine.load()` |
 | 2.0 Expand CommonStyle | [x] | Token-based design system with scales, colors, spacing, typography, motion, and fixed shell tokens. `scaleFactor` defaults to 1.0 (runtime DPI removed — caused 2x on Steam Deck). `qmldir` singleton added. |
 | 2.1 Design system — core/nav | [x] | `MainWindow`, `TopBar`, `SelectBar` migrated. Shell chrome uses fixed tokens. |
 | 2.2 Design system — buttons/inputs | [x] | `ActionButton`, `TouchSwitch`, `NumpadButton`, `NumpadNew`, `KeyboardPopup`, `SettingInputField`, `TrajNumpad` migrated |
@@ -67,24 +67,26 @@ Last Modified: 2026-04-17
 | 2.7 Refactor OverlayLayer dedup | [ ] | |
 | 2.8 Fix page naming | [ ] | |
 | 3.0 Clean __init__.py imports | [ ] | |
-| 3.1 Pytest infrastructure | [x] | Added headless Qt fixture, fake ROS node/publisher/subscription/timer scaffolding, and validation test |
+| 3.1 Pytest infrastructure | [x] | Added headless Qt fixture, namespace-safe imports, fake ROS node/publisher/subscription/timer scaffolding, shared fake topic bus, and validation tests; normalized existing utility/harness test files to the layered style |
 | 3.2 Tests — StateStore/Settings | [ ] | |
 | 3.3 Tests — QtBridge/Factory | [ ] | |
-| 3.4 Tests — Emergency/ControlProc | [ ] | |
+| 3.4 Tests — Emergency/ControlProc | [~] | `tests/test_emergency.py` added for EmergencyButtonHandler; ControlProcessor coverage still pending |
 | 3.5 Tests — Input/SteamDeck | [ ] | |
-| 3.6 Tests — Wheel/Winch | [ ] | |
+| 3.6 Tests — Wheel/Winch | [~] | `tests/test_winch_ros_integration.py` adds real ROS pub/sub validation and `tests/test_winch.py` adds fast transport/unit coverage for WinchController; WheelController coverage still pending |
 | 3.7 Tests — ESP32/Teensy | [ ] | |
-| 3.8 CI/CD pipeline | [x] | `.github/workflows/ci.yml`: lint → test → ROS2 build. `pyproject.toml` with ruff/pytest/coverage config. `requirements-dev.txt` updated. |
+| 3.8 CI/CD pipeline | [x] | `.github/workflows/ci.yml`: lint gates both pytest and ROS2 build jobs. `pyproject.toml` with ruff/pytest/coverage config. `requirements-dev.txt` updated. |
 | 3.9 Fix build system | [x] | `CMakeLists.txt` stripped to pure `ament_cmake` wrapper (C++/Qt5/GStreamer deps removed). `package.xml` cleaned to 0.1.0, C++ deps removed. `requirements.txt` switched to `~=` pins. |
 
 ## Current Checkpoint
 
+- Test work now leads the active changes: `3.1` is complete, `3.4` is partial with `tests/test_emergency.py`, and `3.6` is partial with both fast transport tests and real ROS pub/sub validation for WinchController
+- The existing suite is normalized by boundary (pure logic, harness validation, component behavior, real ROS transport) and currently passes locally at `42` tests
 - Completed on 2026-04-17: Phase 0 (`0.1-0.4`), `PRE-1`, `1.0`, `1.2`, `POST-1`, `3.1`, `3.8`, `3.9`
 - Phase 2 in progress: `2.0`, `2.1`, `2.2`, `2.4`, `2.5a` complete; `2.5b` and `2.6a` partially complete
 - Startup optimization done: deferred video, idempotent streams, timing instrumentation, cross-thread cleanup fix
 - QML warning fixes done: NumpadButton self-contained, layout-safe workflow tabs, PageHome animation guard, lidar unused Connections removed
-- Validation gate satisfied: CI + build system both done
-- **Next task**: `1.1 Register SettingsManager` (resume Phase 1 controller migrations)
+- Validation gate satisfied: CI + build system both done; local pytest currently reports `42 passed`
+- **Next task**: `3.2 Tests — StateStore/Settings` or `2.3 Design system — displays` (singleton-registration track cancelled)
 
 ---
 
@@ -99,15 +101,13 @@ Phase 1: PRE-1 — Machine-verify QML mapping table
          ↓
 Validation Gate: 3.1 (pytest infrastructure) + 3.8 (CI pipeline)
          ↓
-Phase 1 continued: 1.1, 1.2, 1.3 (can parallel after 1.0)
-         ↓
-         1.4 → 1.5 → 1.6 → 1.7a → 1.7b → 1.8 (controllers, sequential)
+Phase 1 completed enough for runtime: 1.0 and 1.2 done; 1.1 plus 1.9/1.10/1.11 remain as cleanup work; 1.3-1.8 cancelled because PySide6 singleton registration is broken
          ↓
          1.10 (versionless imports — BEFORE 1.9)
          ↓
-         1.9 (qmldir manifests — after all registrations + versionless)
+         1.9 (qmldir manifests — after versionless imports)
          ↓
-         1.11a-e (required props — after ALL 1.0-1.8 AND 1.9)
+         1.11a-e (required props — after stable qmldir/import cleanup)
          ↓
          POST-1 — Startup context property validation
          ↓
@@ -127,13 +127,13 @@ Phase 3 (remaining): 3.0 → 3.2-3.7 (parallel test writing)
 | 1.0 StateStore | LOW | 4 QML files, establishes pattern |
 | 1.1 SettingsManager | LOW | 3 QML files |
 | 1.2 QtBridge + findChild | ~~HIGH~~ | ✅ DONE — Signal replacement + input.py scope + MainWindow changes |
-| 1.3 Isolated controllers (6) | MEDIUM | 6 registrations, 1-3 files each |
-| 1.4 wheelController | MEDIUM | 7 QML files |
-| 1.5 teensyController | MEDIUM | 7 QML files |
-| 1.6 winchController | **HIGH** | 11 QML files, highest spread |
-| 1.7a controllers batch A | MEDIUM | 5 registrations, moderate QML changes |
-| 1.7b controllers batch B | MEDIUM | 5 registrations |
-| 1.8 Workflow handlers | MEDIUM | 5 QML files |
+| 1.3 Isolated controllers (6) | CANCELLED | Context-property runtime retained; singleton migration abandoned |
+| 1.4 wheelController | CANCELLED | Context-property runtime retained |
+| 1.5 teensyController | CANCELLED | Context-property runtime retained |
+| 1.6 winchController | CANCELLED | Context-property runtime retained |
+| 1.7a controllers batch A | CANCELLED | Context-property runtime retained |
+| 1.7b controllers batch B | CANCELLED | Context-property runtime retained |
+| 1.8 Workflow handlers | CANCELLED | Context-property runtime retained; workflow consolidation is separate work |
 | 1.10 Versionless imports | LOW | Mechanical sed replace |
 | 1.9 qmldir manifests | **HIGH** | ~20 new files, module naming critical |
 | 1.11a-e Required props | MEDIUM | Each `required` is breaking if caller misses it |
@@ -143,7 +143,7 @@ Phase 3 (remaining): 3.0 → 3.2-3.7 (parallel test writing)
 
 ## Reference Patterns
 
-### Context Property Pattern (CURRENT — all 25 objects use this)
+### Context Property Pattern (CURRENT — all 24 runtime objects use this)
 ```python
 # In application.py main(), AFTER engine creation, BEFORE engine.load()
 ctx = engine.rootContext()
@@ -311,7 +311,7 @@ grep -n "RobotController" core/__init__.py __init__.py
 
 **Goal**: Remove 2 redundant `setContextProperty` aliases and fix a slot return type bug.
 
-> **C++ Deprecation Notice (Audit R2)**: The C++ binary (`paint_controller_cpp`) shares the same QML files and sets `baseStreamer`/`backend` context properties. It is formally deprecated. Do NOT update `paint_controller.cpp` during modernization. The C++ path only sets 2 of 26 context properties and is already non-functional for full UI. QML changes will break it; this is acceptable.
+> **C++ Deprecation Notice (Audit R2)**: The C++ binary (`paint_controller_cpp`) shares the same QML files and sets `baseStreamer`/`backend` context properties. It is formally deprecated. Do NOT update `paint_controller.cpp` during modernization. The C++ path only sets 2 of the 24 runtime objects required by the full UI and is already non-functional for normal operation. QML changes will break it; this is acceptable.
 
 **Files to modify**:
 - `core/application.py` — Remove these 2 lines from the context property block (~L868-895):
@@ -434,103 +434,21 @@ Access via `settingsManager.xyz` (lowercase, no import needed).
 
 ---
 
-### Task 1.3: Register Isolated Controllers (Batch)
+### Tasks 1.3-1.8: Controller Singleton Migration (CANCELLED)
 
-**Goal**: Register 6 controllers that each have ≤3 QML references.
+These tasks originally aimed to migrate runtime objects from context properties to PySide6 singleton registration plus PascalCase QML access.
 
-| Python File | Register As | QML Files |
-|---|---|---|
-| `controllers/wind_monitor.py` | `WindMonitor` | PageSensors |
-| `services/screen_manager.py` | `ScreenManager` | MainWindow |
-| `handlers/control_processor.py` | `ControlProcessor` | VideoFullscreenOverlay |
-| `handlers/warnings.py` | `WarningHandler` | TopBar |
-| `handlers/heartbeat.py` | `HeartbeatHandler` | ConnectionStatusPanel, DeviceControlTab, PageHome |
-| `controllers/system_monitor.py` | `SystemMonitor` | VideoOverlayTopBar |
+**Status**: CANCELLED.
 
-**For each**: Register in `application.py`, update QML files to `import PaintController` + PascalCase name.
+**Reason**:
+- `qmlRegisterSingletonInstance()` is broken in this codebase/PySide6 combination and corrupts the QML type system.
+- All runtime objects already work via `engine.rootContext().setContextProperty()`.
+- Future effort should go to tests, workflow consolidation, god-object decomposition, design-system completion, and later QML module cleanup.
 
-**Verification**: Each affected page/overlay loads. Remove 6 `setContextProperty` lines.
-
----
-
-### Task 1.4: Register wheelController (7 QML files)
-
-**Python**: `controllers/wheel.py` → register as `WheelController`
-**QML files to update**:
-1. `pages/wheel/PageWheel.qml`
-2. `overlays/video/components/BaseFrontOverlay.qml`
-3. `components/displays/WheelsCard.qml`
-4. `overlays/systemcontrol/DeviceControlTab.qml`
-5. `components/panels/ConnectionStatusPanel.qml`
-6. `pages/status/components/ExecutorPageStatus.qml`
-7. `pages/status/components/PlannerPageStatus.qml`
-
-In each: add `import PaintController` (if not already present), change `wheelController.xyz` → `WheelController.xyz`.
-
----
-
-### Task 1.5: Register teensyController (7 QML files)
-
-**Python**: `controllers/teensy.py` → register as `TeensyController`
-**QML files to update**:
-1. `pages/tuning/PageTuning.qml`
-2. `overlays/video/components/EndEffectorOverlay.qml`
-3. `overlays/video/components/VideoOverlayTopBar.qml`
-4. `overlays/systemcontrol/SettingsTab.qml`
-5. `components/displays/TeensyArmCard.qml`
-6. `components/displays/IMUCard.qml`
-7. `components/displays/MonitorHeader.qml`
-
----
-
-### Task 1.6: Register winchController (11 QML files)
-
-**Python**: `controllers/winch.py` → register as `WinchController`
-**QML files to update**:
-1. `pages/winch/PageWinch.qml`
-2. `pages/status/PageStatus.qml`
-3. `overlays/video/components/EndEffectorOverlay.qml`
-4. `overlays/video/components/VideoOverlayTopBar.qml`
-5. `components/displays/WinchCard.qml`
-6. `components/panels/ConnectionStatusPanel.qml`
-7. `overlays/systemcontrol/DeviceControlTab.qml`
-8. `overlays/systemcontrol/CommandTab.qml`
-9. `components/buttons/MoveLengthButton.qml`
-10. `pages/status/components/PlannerPageStatus.qml`
-11. `pages/status/components/ExecutorPageStatus.qml`
-
-**CAUTION**: Highest spread. Some files may already have `import PaintController` from earlier tasks. Only add the import if not already present.
-
----
-
-### Task 1.7a: Register Controllers Batch A (5 controllers)
-
-| Python File | Register As | QML Files |
-|---|---|---|
-| `controllers/esp32_valve.py` | `ESP32ValveController` | EndEffectorOverlay, ValvesCard |
-| `controllers/lidar.py` | `LidarController` | LidarOverlay, Lidar2DView, Lidar3DView, WallDetectionOverlay, PageMonitor |
-| `controllers/ssh.py` | `SSHController` | PageHome, PageLauncher, VideoOverlayTopBar |
-| `services/video_stream.py` | `VideoStreamHandler` | PageWheel, PageHome, VideoFullscreenOverlay, PageWorkFlow |
-| `services/base_top_view_service.py` | `BaseTopViewService` | BaseTopViewSettingsPopup, BaseFrontOverlay |
-
----
-
-### Task 1.7b: Register Controllers Batch B (5 controllers)
-
-| Python File | Register As | QML Files |
-|---|---|---|
-| `services/screen_recorder.py` | `ScreenRecorder` | VideoOverlayTopBar, DeviceControlTab |
-| `services/ros_bag_recorder.py` | `RosBagRecorder` | DeviceControlTab |
-| `ui/overlay.py` | `OverlayController` | MainWindow, MultiScreenListUI, SystemControlMenu |
-| `models/action_config.py` | `ActionConfig` | ActionSequence, ActionItem |
-| `handlers/steam_deck.py` | `SteamDeckHandler` | *(no QML refs — register for consistency)* |
-
----
-
-### Task 1.8: Register Workflow Handlers
-
-**Python files**: `services/workflow/workflow_runner.py`, `services/workflow_legacy.py`
-**QML files**: SequenceList, WorkFlowControl, PageWorkFlow, WorkFlowTab, WorkFlowStatusOverlay
+**Replacement guidance**:
+- Keep runtime objects on lowercase context properties.
+- Do not add `import PaintController` singleton-based access for controllers/services.
+- Treat workflow work as a consolidation/removal task for `workflow_legacy.py`, not a registration task.
 
 ---
 
@@ -598,7 +516,7 @@ TouchSwitch 1.0 TouchSwitch.qml
 
 **Goal**: Audit each reusable component and add `required` to properties that callers must provide.
 
-> **IMPORTANT (Audit R9)**: These tasks depend on ALL of 1.0-1.8 AND 1.9. Cannot add `required property` until that property's controller has been migrated to singleton imports.
+> **IMPORTANT (Audit R9)**: These tasks depend on stable module/import cleanup. Finish 1.9 first, then add `required property` only after each component's callers are explicit and audited.
 
 **Pattern**:
 ```qml
@@ -622,30 +540,29 @@ required property string settingKey
 
 ---
 
-### Task POST-1: Startup Singleton Validation
+### Task POST-1: Startup Context Property Validation
 
-**Goal**: Add validation that catches singleton registration typos.
+**Goal**: Add validation that catches context-property wiring typos.
 
-> **Audit R5**: QML silently returns `undefined` when a singleton name is wrong — no crash, no console error. This is dangerous for a robotic controller.
+> **Audit R5**: QML silently returns `undefined` when a runtime object name is wrong — no crash, no console error. This is dangerous for a robotic controller.
 
 **Add to `core/application.py`** after `engine.load()`:
 ```python
-# Verify all singletons are registered correctly
-_EXPECTED_SINGLETONS = [
-    "StateStore", "SettingsManager", "Backend", "WheelController",
-    "WinchController", "TeensyController", "ESP32ValveController",
-    "LidarController", "WindMonitor", "SystemMonitor", "ScreenManager",
-    "ControlProcessor", "WarningHandler", "HeartbeatHandler",
-    "SSHController", "VideoStreamHandler", "BaseTopViewService",
-    "ScreenRecorder", "RosBagRecorder", "OverlayController",
-    "ActionConfig", "SteamDeckHandler", "WorkFlowHandler", "WorkFlowRunner",
+# Verify all context properties are wired correctly
+_EXPECTED_CONTEXT_PROPERTIES = [
+  "stateStore", "backend", "overlayController", "workFlowHandler",
+  "workFlowRunner", "warningHandler", "baseStreamHandler",
+  "wheelController", "winchController", "steamDeckHandler",
+  "windMonitor", "teensyController", "esp32ValveController",
+  "lidarController", "actionConfig", "heartbeatHandler",
+  "controlProcessor", "sshHandler", "systemMonitor",
+  "screenRecorder", "rosBagRecorder", "settingsManager",
+  "screenManager", "baseTopViewController",
 ]
-for name in _EXPECTED_SINGLETONS:
-    obj = engine.singletonInstance("PaintController", name)
-    if obj is None:
-        logger.error(f"FATAL: Singleton '{name}' not registered under PaintController")
-        sys.exit(1)
-logger.info(f"All {len(_EXPECTED_SINGLETONS)} singletons verified")
+for name in _EXPECTED_CONTEXT_PROPERTIES:
+  if ctx.contextProperty(name) is None:
+    logger.error(f"Missing QML context property: {name}")
+logger.info(f"Validated {len(_EXPECTED_CONTEXT_PROPERTIES)} QML context properties")
 ```
 
 ---
@@ -749,13 +666,13 @@ Remove the backward-compat layer from `__init__.py` (root). After Task 0.1 remov
 
 Set up pytest with mocking infrastructure for PySide6/ROS2. Extend the `conftest.py` namespace trick. Create mock factories for ROS2 Node, Publisher, Subscriber that can be injected into controllers.
 
-**Implementation note (2026-04-17)**: Added `tests/fakes.py`, expanded `tests/conftest.py` with headless Qt and fake-node fixtures, pinned `pytest.ini` to PySide6 for pytest-qt, added `requirements-dev.txt`, and validated the scaffolding with `tests/test_test_infrastructure.py` plus a full passing pytest run.
+**Implementation note (2026-04-17)**: Added `tests/fakes.py`, expanded `tests/conftest.py` with headless Qt and fake-node fixtures, configured pytest in `pyproject.toml` for PySide6/pytest-qt, added `requirements-dev.txt`, validated the scaffolding with `tests/test_test_infrastructure.py`, then normalized the existing utility/harness tests to the layered style. Current local suite state: `42 passed`.
 
 > **Deferred idea (Architect)**: When writing tests for hardware controllers (3.6, 3.7), consider injecting pub/sub factories for testability instead of mocking the entire Node.
 
 ### Tasks 3.2-3.7: Test Modules
 
-Each task creates tests for a specific pair of modules. Follow existing test patterns in `tests/test_crc.py` and `tests/test_input_utils.py`.
+Each task creates tests for a specific pair of modules. Follow the layered patterns already present in `tests/test_crc.py`, `tests/test_input_utils.py`, `tests/test_emergency.py`, `tests/test_winch.py`, and `tests/test_winch_ros_integration.py`.
 
 - **3.2**: StateStore + SettingsManager
 - **3.3**: QtBridge + ControllerFactory
@@ -766,7 +683,7 @@ Each task creates tests for a specific pair of modules. Follow existing test pat
 
 ### Task 3.8: CI/CD Pipeline
 
-Create `.github/workflows/ci.yml` with: colcon build → pytest → ruff → mypy → coverage.
+Create `.github/workflows/ci.yml` with the current repo flow: lint first, then pytest and ROS2 build as lint-gated jobs.
 
 ### Task 3.9: Fix Build System
 
@@ -785,6 +702,6 @@ Create `.github/workflows/ci.yml` with: colcon build → pytest → ruff → myp
 5. **Aggressive approach** — user confirmed: touch every file for solid foundation
 6. **Each phase on its own branch** — merged after verification
 7. **Target: Steam Deck + industrial touchscreen PCs** — must be DPI-aware
-8. **Test target: 30%→60% coverage** with comprehensive CI/CD
+8. **Test direction: layered suite** — pure logic, harness validation, component behavior, and thin real ROS transport checks
 9. **QtBridge SRP deferred to Phase 4** — known concern, adding signals as-is for now (Audit R13)
 10. **All objects use `setContextProperty`** — `qmlRegisterSingletonInstance` abandoned due to PySide6 bug. No migration needed for existing context properties.

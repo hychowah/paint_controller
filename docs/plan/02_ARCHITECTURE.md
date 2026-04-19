@@ -1,6 +1,6 @@
 # Paint Controller Architecture Reference
 
-> **Source**: Codebase review (2026-04). Updated 2026-04-17 with audit findings + implementation progress.
+> **Source**: Codebase review (2026-04). Updated 2026-04-17 with audit findings, implementation progress, and test/documentation sync.
 > **Canonical location**: `docs/plan/02_ARCHITECTURE.md`
 > **Related**: [01_MASTER_PLAN.md](01_MASTER_PLAN.md) | [03_QML_BINDINGS.md](03_QML_BINDINGS.md) | [04_AUDIT_REPORT.md](04_AUDIT_REPORT.md)
 
@@ -24,8 +24,8 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Owns boot order and runtime wiring
 - Creates the Qt app, ROS node, settings/state objects, Steam Deck handler, video services, QML engine, bridge, and controller bundle
 - Exposes all runtime objects through `setContextProperty()` (NOT `qmlRegisterSingletonInstance` — broken in PySide6, see KNOWLEDGE.md)
-- 25 context properties registered before `engine.load()`
-- Post-load validation loop checks all 25 properties for `None`
+- 24 context properties registered before `engine.load()`
+- Post-load validation loop checks all 24 properties for `None`
 - Starts timers, ROS thread, system monitor, and shutdown cleanup
 - Video streams deferred via `QTimer.singleShot(200, ...)` to avoid blocking first render
 - Startup instrumented with `time.perf_counter()` markers (`[startup +NNN.N ms] stage`)
@@ -68,8 +68,9 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Backward compatibility with defaults
 
 **Runtime registration state**
-- `StateStore` is already registered as `PaintController 1.0 / StateStore`
-- All other runtime identifiers remain on `setContextProperty()` pending later Phase 1 tasks
+- All 24 live runtime objects are exposed via `setContextProperty()`
+- The singleton-registration track was cancelled because `qmlRegisterSingletonInstance()` is broken in this PySide6 setup
+- Remaining Phase 1 work is import/qmldir/property cleanup, not controller singleton migration
 - The deprecated C++ path under `src/paint_controller.cpp` still has its own `RobotController` type, but it is no longer the primary runtime
 
 ---
@@ -123,11 +124,11 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Status polling every 200ms
 - Enum: IDLE(0x00), ONTASK(0x01), WARNING(0x02), ERROR(0x03)
 - Topics: `/controller/heartbeat`, `/base/heartbeat`, `/ef/heartbeat`
-- **NOTE (Audit)**: Duplicate `HeartbeatStatus` enum at ~L85 in application.py — remove in Task 0.2
 
 #### **Warning Handler** - Minimal (~50 lines)
 - Simple warning queue with dedup
 - QML-bindable property
+- Starts empty at runtime; no placeholder warning rows
 - **NOTE (Audit D5)**: No `cleanup()` method — intentionally omitted from `ControllerBundle.cleanup()`
 
 ---
@@ -150,7 +151,7 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Load detection mode
 - Move commands: Increment, absolute, with acceleration control
 - Settings integration: max_speed_mmps loaded from SettingsManager
-- **NOTE (Audit R12)**: 4 disabled safety checks use `print()` instead of `logger.warning()`. Task 0.4 re-enables all 4.
+- Availability guards are re-enabled on the move-command paths and covered by both unit/component tests and transport validation
 
 #### **Teensy Controller** - `TeensyController(QObject)` ~300 lines
 - ROS2 publisher: 20+ topics for sprayer, gimbal, props, relay, LED
@@ -262,7 +263,7 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 
 ---
 
-### 6. QML UI Layer (`python/paint_controller/qml/`) - 91 files
+### 6. QML UI Layer (`python/paint_controller/qml/`) - 90 files
 
 **Directory Structure**:
 ```
@@ -324,7 +325,7 @@ qml/
 **Location**: `src/paint_controller.cpp`
 
 - Source files retained for reference but **no longer built** — `CMakeLists.txt` stripped of all C++ targets
-- Sets only 2 of 26 context properties (`backend`, `baseStreamer`)
+- Sets only 2 of the 24 runtime objects required by the full UI (`backend`, `baseStreamer`)
 - `package.xml` no longer lists C++ dependencies (rclcpp, Qt5, GStreamer, HID)
 - Build system is now a pure `ament_cmake` wrapper for the Python package
 
@@ -422,9 +423,34 @@ QML reflects new limits/values
    - Button events → action handlers
    - Direct callback registration (loose coupling)
 
-5. **QtBridge ↔ QML objectName contracts**
-  - Popup/sidebar/fullscreen operations still assume `engine.rootObjects()[0]` plus stable `objectName`s
-  - This is the remaining imperative QML bridge debt to remove in Task 1.2
+5. **QtBridge ↔ Main window root object**
+  - Popup/sidebar/fullscreen operations are signal-based now and handled by QML `Connections {}`
+  - The only remaining imperative access is `engine.rootObjects()[0]` for the multiscreen window path
+  - This is narrower debt than the old `findChild()` bridge, but still worth keeping isolated
+
+---
+
+## Test Architecture
+
+The repo now uses a layered test model instead of one generic mocking style for everything.
+
+**Pure logic tests**
+- `tests/test_crc.py`
+- `tests/test_input_utils.py`
+- `tests/test_settings_schema.py`
+
+**Harness validation**
+- `tests/test_test_infrastructure.py` validates the shared fake ROS/Qt primitives themselves
+
+**Component and handler behavior**
+- `tests/test_emergency.py` exercises `EmergencyButtonHandler` with explicit fake collaborators
+- `tests/test_winch.py` exercises `WinchController` behavior with `FakeNode` and the shared fake topic bus
+
+**Real ROS transport**
+- `tests/test_winch_ros_integration.py` proves the published command reaches a real `rclpy` subscriber callback
+
+**Local validation status**
+- Current documented local result: `42 passed` using `python/paint_controller/venv/bin/python -m pytest -q`
 
 ---
 

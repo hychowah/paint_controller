@@ -1,18 +1,20 @@
 # Refactor Tracker — Paint Controller PySide6/ROS2
 
 > **Created**: 2026-03-20  
-> **Purpose**: Track structural improvements from code review. Work is split into 3 phases by risk/effort.  
-> **Usage**: Check off items as completed. Each phase can span multiple prompts/sessions.
+> **Purpose**: Archived structural-improvement tracker from the earlier refactor effort.  
+> **Usage**: Read for historical context only; do not use it as the active execution checklist.
+
+> **Historical Note**: This tracker is kept for historical session context. The active source of truth is `docs/plan/01_MASTER_PLAN.md`, and its task numbering does not match the phase numbering in this older document.
 
 ---
 
-## Current Status
+## Historical Status Snapshot
 
 | Phase | Items | Done | Status |
 |-------|-------|------|--------|
 | 1 — Quick Wins | 8 | 8 | **Complete** |
 | 2 — Medium Effort | 8 | 8 | **Complete** |
-| 3 — Major Refactor | 6 | 3 | **Partial** (3.1-3.3 done, 3.4-3.6 deferred) |
+| 3 — Major Refactor | 6 | 3 | **Partial** (historical snapshot only; see `docs/plan/01_MASTER_PLAN.md` for current active status) |
 | 4A — Safety Fixes | 4 | 4 | **Complete** |
 | 4B — Logging Sweep | 1 | 1 | **Complete** |
 
@@ -325,7 +327,7 @@ Post-Phase 3 review identified thread safety, null-check, and dead code issues.
 
 - [x] Verified existing null-checks on `_show_popup_fn` and `_logger` in `_trigger_emergency()` are correct
 - [x] Removed dead `_stop_all_motors()` method — was never called from any code path
-- [x] Emergency stop correctly stops winch + spray trigger; wheel stop not needed (tracks are gravity-locked)
+- [x] Emergency stop logic in this historical pass stopped winch + spray trigger; later work also added an explicit wheel emergency stop path
 
 **Files affected**: `handlers/emergency.py`  
 **Risk**: Low — dead code removal only
@@ -460,7 +462,7 @@ Track what was done in each prompt/session.
 - New files created:
   - `python/config/esp32_valve.json` — ESP32 hardware config
   - `tests/conftest.py` — namespace-bypass for test imports
-  - `tests/pytest.ini` — pytest configuration
+  - `pytest.ini` — initial pytest configuration at the repo root (later removed; config now lives in `pyproject.toml`)
   - `tests/test_crc.py` — 8 CRC8 tests
   - `tests/test_input_utils.py` — 14 input utility tests
   - `tests/test_settings_schema.py` — 6 schema validation tests
@@ -471,7 +473,7 @@ Track what was done in each prompt/session.
   - `handlers/control_processor.py` — valve_turn scale fix, init extracted to 3 setup methods
 - Bugs fixed: B04 (socket thread safety), B05 (schema completeness)
 - Critical bug found & fixed: Teensy user-controlled fields (relay_enabled, etc.) overwritten on every ROS message
-- Notes: Phase 2 complete. 28 tests all passing.
+- Notes: Phase 2 complete at the time of this session. The current suite is larger; see `docs/plan/01_MASTER_PLAN.md` for the up-to-date test status.
 
 ### Session 4 — 2026-03-23 (Phase 4A — Safety Fixes)
 
@@ -483,7 +485,7 @@ Track what was done in each prompt/session.
   - `controllers/ssh.py` — Added `if self._show_popup_fn:` guards on 5 unprotected call sites
   - `handlers/steam_deck.py` — Added `threading.Lock` for `_last_input_time` (4 access points); added `import threading`
 - Bugs fixed: B06 (StateStore race), B07 (dead emergency code), B08 (ssh popup crash), B09 (steam_deck race)
-- Tests: All 28 existing tests pass
+- Tests: All 28 existing tests passed at the time of this session
 - Notes: Phase 4A complete. Next: Phase 4B (logging sweep).
 
 ### Session 5 — 2026-07-21 (Phase 4B — Logging Sweep)
@@ -512,5 +514,5 @@ Track what was done in each prompt/session.
   - `core/settings.py` — 7 prints → logging
   - `ui/overlay.py` — 2 prints → logging
   - `widgets/vtk_pointcloud.py` — 9 prints → logging
-- Tests: All 28 pass
+- Tests: All 28 passed at the time of this session
 - Notes: Phase 4B complete. All production print() replaced except signal handlers.

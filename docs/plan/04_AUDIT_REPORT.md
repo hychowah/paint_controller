@@ -6,7 +6,7 @@
 
 > **Historical Note**: This is the 2026-04-16 pre-mortem rationale document. Its accepted findings were folded into `01_MASTER_PLAN.md`. Use this file for background and design reasoning, not for current progress status.
 
-> **Implemented Since This Audit**: `0.1-0.4`, `PRE-1`, `1.0`, `1.2`, `POST-1`, `3.1`, `3.8`, `3.9`, and partial Phase 2 (`2.0`, `2.1`, `2.2`, `2.4`, `2.5a`)
+> **Implemented Since This Audit**: `0.1-0.4`, `PRE-1`, `1.0`, `1.2`, `POST-1`, `3.1`, `3.8`, `3.9`, partial Phase 2 (`2.0`, `2.1`, `2.2`, `2.4`, `2.5a`), plus partial Phase 3 safety/transport tests (`3.4`, `3.6`) and the subsequent test-suite/documentation normalization pass
 
 ---
 
@@ -36,7 +36,7 @@
 **Source**: Technical Auditor
 **Finding**: `src/paint_controller.cpp` L502-503 sets `baseStreamer` and `backend` context properties and loads the same QML files. Removing `baseStreamer` from QML (Task 0.3) breaks the C++ launch path.
 
-**Evidence**: Verified. C++ binary shares `qml/core/MainWindow.qml`. Has its own launch file. But only sets 2 of 26 context properties — already non-functional for full UI.
+**Evidence**: Verified. C++ binary shares `qml/core/MainWindow.qml`. Has its own launch file. But only sets 2 of the 24 runtime objects required by the full UI — already non-functional for normal operation.
 
 **Verdict**: VALID. User decision: **Deprecate C++ path.** Added deprecation notice to Task 0.3.
 

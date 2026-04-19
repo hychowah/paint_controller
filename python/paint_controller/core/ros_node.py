@@ -6,9 +6,6 @@ from std_msgs.msg import UInt8
 
 class HeartbeatStatus:
     IDLE = 0x00
-    ONTASK = 0x01
-    WARNING = 0x02
-    ERROR = 0x03
 
 
 class PaintRosNode(Node):

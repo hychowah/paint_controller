@@ -34,10 +34,13 @@ class FakePublisher:
     msg_type: Any
     topic: str
     qos: int
+    bus: "FakeRosBus | None" = None
     published_messages: List[Any] = field(default_factory=list)
 
     def publish(self, message: Any) -> None:
         self.published_messages.append(message)
+        if self.bus is not None:
+            self.bus.publish(self.topic, message)
 
 
 @dataclass
@@ -46,6 +49,27 @@ class FakeSubscription:
     topic: str
     callback: Callable[[Any], None]
     qos: int
+
+
+@dataclass
+class FakeRosBus:
+    subscriptions_by_topic: dict[str, List[FakeSubscription]] = field(default_factory=dict)
+
+    def register_subscription(self, subscription: FakeSubscription) -> None:
+        self.subscriptions_by_topic.setdefault(subscription.topic, []).append(subscription)
+
+    def unregister_subscription(self, subscription: FakeSubscription) -> None:
+        subscriptions = self.subscriptions_by_topic.get(subscription.topic)
+        if subscriptions is None:
+            return
+        if subscription in subscriptions:
+            subscriptions.remove(subscription)
+        if not subscriptions:
+            del self.subscriptions_by_topic[subscription.topic]
+
+    def publish(self, topic: str, message: Any) -> None:
+        for subscription in list(self.subscriptions_by_topic.get(topic, [])):
+            subscription.callback(message)
 
 
 @dataclass
@@ -65,7 +89,8 @@ class FakeTimer:
 class FakeNode:
     """Small ROS-node-like test double for controller tests."""
 
-    def __init__(self) -> None:
+    def __init__(self, bus: FakeRosBus | None = None) -> None:
+        self.bus = bus
         self.logger = FakeLogger()
         self.publishers: List[FakePublisher] = []
         self.subscriptions: List[FakeSubscription] = []
@@ -78,7 +103,7 @@ class FakeNode:
         return self.logger
 
     def create_publisher(self, msg_type: Any, topic: str, qos: int) -> FakePublisher:
-        publisher = FakePublisher(msg_type=msg_type, topic=topic, qos=qos)
+        publisher = FakePublisher(msg_type=msg_type, topic=topic, qos=qos, bus=self.bus)
         self.publishers.append(publisher)
         return publisher
 
@@ -96,6 +121,8 @@ class FakeNode:
             qos=qos,
         )
         self.subscriptions.append(subscription)
+        if self.bus is not None:
+            self.bus.register_subscription(subscription)
         return subscription
 
     def create_timer(self, interval_sec: float, callback: Callable[[], None]) -> FakeTimer:
@@ -110,6 +137,8 @@ class FakeNode:
 
     def destroy_subscription(self, subscription: FakeSubscription) -> None:
         self.destroyed_subscriptions.append(subscription)
+        if self.bus is not None:
+            self.bus.unregister_subscription(subscription)
         if subscription in self.subscriptions:
             self.subscriptions.remove(subscription)
 
