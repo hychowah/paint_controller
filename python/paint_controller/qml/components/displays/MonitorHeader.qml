@@ -1,29 +1,31 @@
 // Monitor Header - Telemetry, Status Badges, and Emergency Stop
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import "../../core"
 
 Rectangle {
     id: headerBar
     height: 80
-    color: "#252a35"
+    color: CommonStyle.backgroundL1
+    radius: CommonStyle.radiusMd
     
     RowLayout {
         anchors.fill: parent
-        anchors.margins: 10
-        spacing: 20
+        anchors.margins: CommonStyle.spacingSm + 2
+        spacing: CommonStyle.spacingXl - CommonStyle.spacingXs
         
         // LEFT SECTION: Telemetry
         RowLayout {
             Layout.preferredWidth: 350
-            spacing: 15
+            spacing: CommonStyle.spacingLg - 1
             
             // Voltage indicator
             Rectangle {
                 Layout.preferredWidth: 110
                 Layout.fillHeight: true
-                color: "#29303b"
-                radius: 6
+                color: CommonStyle.cardBackground
+                radius: CommonStyle.radiusSm
                 
                 ColumnLayout {
                     anchors.centerIn: parent
@@ -31,18 +33,18 @@ Rectangle {
                     
                     Text {
                         text: "⚡"
-                        font.pixelSize: 22
-                        color: "#3498db"
+                        font.pixelSize: CommonStyle.fontHeading + 2
+                        color: CommonStyle.accentPrimary
                         horizontalAlignment: Text.AlignHCenter
                         Layout.alignment: Qt.AlignHCenter
                     }
                     
                     Text {
                         text: (teensyController.all_status.voltage || 0).toFixed(1) + "V"
-                        font.pixelSize: 20
-                        font.family: "Monospace"
+                        font.pixelSize: CommonStyle.fontHeading
+                        font.family: CommonStyle.fontMono
                         font.bold: true
-                        color: "#FFFFFF"
+                        color: CommonStyle.textPrimary
                         horizontalAlignment: Text.AlignHCenter
                         Layout.alignment: Qt.AlignHCenter
                     }
@@ -53,8 +55,8 @@ Rectangle {
             Rectangle {
                 Layout.preferredWidth: 110
                 Layout.fillHeight: true
-                color: "#29303b"
-                radius: 6
+                color: CommonStyle.cardBackground
+                radius: CommonStyle.radiusSm
                 
                 ColumnLayout {
                     anchors.centerIn: parent
@@ -62,18 +64,18 @@ Rectangle {
                     
                     Text {
                         text: "🌡️"
-                        font.pixelSize: 22
-                        color: "#f39c12"
+                        font.pixelSize: CommonStyle.fontHeading + 2
+                        color: CommonStyle.statusWarning
                         horizontalAlignment: Text.AlignHCenter
                         Layout.alignment: Qt.AlignHCenter
                     }
                     
                     Text {
                         text: (teensyController.all_status.temperature || 0).toFixed(0) + "°C"
-                        font.pixelSize: 20
-                        font.family: "Monospace"
+                        font.pixelSize: CommonStyle.fontHeading
+                        font.family: CommonStyle.fontMono
                         font.bold: true
-                        color: "#FFFFFF"
+                        color: CommonStyle.textPrimary
                         horizontalAlignment: Text.AlignHCenter
                         Layout.alignment: Qt.AlignHCenter
                     }
@@ -84,8 +86,8 @@ Rectangle {
             Rectangle {
                 Layout.preferredWidth: 110
                 Layout.fillHeight: true
-                color: "#29303b"
-                radius: 6
+                color: CommonStyle.cardBackground
+                radius: CommonStyle.radiusSm
                 
                 ColumnLayout {
                     anchors.centerIn: parent
@@ -93,18 +95,18 @@ Rectangle {
                     
                     Text {
                         text: "⏱️"
-                        font.pixelSize: 22
-                        color: "#2ecc71"
+                        font.pixelSize: CommonStyle.fontHeading + 2
+                        color: CommonStyle.statusSuccess
                         horizontalAlignment: Text.AlignHCenter
                         Layout.alignment: Qt.AlignHCenter
                     }
                     
                     Text {
                         text: "Loop: " + (teensyController.all_status.loop_time || 0).toFixed(0) + "us"
-                        font.pixelSize: 16
-                        font.family: "Monospace"
+                        font.pixelSize: CommonStyle.fontBody
+                        font.family: CommonStyle.fontMono
                         font.bold: true
-                        color: "#FFFFFF"
+                        color: CommonStyle.textPrimary
                         horizontalAlignment: Text.AlignHCenter
                         Layout.alignment: Qt.AlignHCenter
                     }
@@ -119,22 +121,22 @@ Rectangle {
             
             RowLayout {
                 anchors.centerIn: parent
-                spacing: 12
+                spacing: CommonStyle.spacingMd
                 
                 // Relay Status Badge
                 Rectangle {
                     Layout.preferredWidth: 120
                     Layout.preferredHeight: 48
-                    color: teensyController.all_status.relay_on ? "#2ecc71" : "#7f8c8d"
-                    radius: 8
+                    color: teensyController.all_status.relay_on ? CommonStyle.statusSuccess : CommonStyle.textDisabled
+                    radius: CommonStyle.radiusSm
                     
                     Text {
                         anchors.centerIn: parent
                         text: teensyController.all_status.relay_on ? "RELAY ON" : "RELAY OFF"
-                        font.pixelSize: 14
-                        font.family: "Roboto"
+                        font.pixelSize: CommonStyle.fontBody
+                        font.family: CommonStyle.fontSans
                         font.bold: true
-                        color: "#FFFFFF"
+                        color: CommonStyle.textPrimary
                     }
                 }
                 
@@ -142,16 +144,16 @@ Rectangle {
                 Rectangle {
                     Layout.preferredWidth: 180
                     Layout.preferredHeight: 48
-                    color: teensyController.all_status.enabled ? "#2ecc71" : "#7f8c8d"
-                    radius: 8
+                    color: teensyController.all_status.enabled ? CommonStyle.statusSuccess : CommonStyle.textDisabled
+                    radius: CommonStyle.radiusSm
                     
                     Text {
                         anchors.centerIn: parent
                         text: teensyController.all_status.enabled ? "SYSTEM ENABLED" : "SYSTEM DISABLED"
-                        font.pixelSize: 14
-                        font.family: "Roboto"
+                        font.pixelSize: CommonStyle.fontBody
+                        font.family: CommonStyle.fontSans
                         font.bold: true
-                        color: "#FFFFFF"
+                        color: CommonStyle.textPrimary
                     }
                 }
             }
@@ -169,18 +171,18 @@ Rectangle {
             activeFocusOnTab: false
             
             background: Rectangle {
-                color: exitButton.pressed ? "#c0392b" : "#FF5733"
-                radius: 8
-                border.color: "#a93226"
+                color: exitButton.pressed ? CommonStyle.buttonPressed : CommonStyle.buttonDanger
+                radius: CommonStyle.radiusSm
+                border.color: CommonStyle.statusError
                 border.width: 2
             }
             
             contentItem: Text {
                 text: "EXIT"
-                font.pixelSize: 20
-                font.family: "Roboto"
+                font.pixelSize: CommonStyle.fontHeading
+                font.family: CommonStyle.fontSans
                 font.bold: true
-                color: "#FFFFFF"
+                color: CommonStyle.textPrimary
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
             }

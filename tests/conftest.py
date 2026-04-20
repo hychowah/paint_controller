@@ -48,6 +48,12 @@ if "paint_controller.controllers" not in sys.modules:
     _controllers_pkg.__package__ = "paint_controller.controllers"
     sys.modules["paint_controller.controllers"] = _controllers_pkg
 
+if "paint_controller.core" not in sys.modules:
+    _core_pkg = types.ModuleType("paint_controller.core")
+    _core_pkg.__path__ = [str(_python_dir / "paint_controller" / "core")]
+    _core_pkg.__package__ = "paint_controller.core"
+    sys.modules["paint_controller.core"] = _core_pkg
+
 
 def _install_test_module_stubs() -> None:
     try:
@@ -134,6 +140,17 @@ def qt_app():
     app = QApplication.instance()
     if app is None:
         app = QApplication([])
+    return app
+
+
+@pytest.fixture(scope="session")
+def qt_core_app():
+    """Create a Qt core application for QObject-based tests without widgets."""
+    from PySide6.QtCore import QCoreApplication
+
+    app = QCoreApplication.instance()
+    if app is None:
+        app = QCoreApplication([])
     return app
 
 

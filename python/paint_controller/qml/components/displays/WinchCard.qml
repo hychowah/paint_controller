@@ -1,8 +1,9 @@
 // Winch Card - Cable and motor data
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 import "."
+import "../../core"
 
 IndustrialCard {
     id: winchCard
@@ -11,15 +12,15 @@ IndustrialCard {
     property real maxWinchCurrent: 10.0
     
     // Consistent sizing for all metrics
-    property int metricValueSize: 28
-    property int metricLabelSize: 13
-    property int metricUnitSize: 12
+    property int metricValueSize: CommonStyle.fontDisplay + CommonStyle.spacingXs
+    property int metricLabelSize: CommonStyle.fontCaption
+    property int metricUnitSize: CommonStyle.fontLabel
     
     GridLayout {
         anchors.fill: parent
         columns: 2
-        rowSpacing: 12
-        columnSpacing: 20
+        rowSpacing: CommonStyle.spacingMd
+        columnSpacing: CommonStyle.spacingXl - CommonStyle.spacingXs
         
         // Cable Length
         MetricValue {
@@ -28,7 +29,7 @@ IndustrialCard {
             label: "Cable Length"
             value: ((winchController.cable_length || 0) / 1000).toFixed(2)
             unit: "m"
-            valueColor: "#3498db"
+            valueColor: CommonStyle.accentPrimary
             valueFontSize: winchCard.metricValueSize
             labelFontSize: winchCard.metricLabelSize
             unitFontSize: winchCard.metricUnitSize
@@ -41,7 +42,7 @@ IndustrialCard {
             label: ((winchController.cable_speed || 0) >= 0 ? "↑" : "↓") + " Cable Speed"
             value: Math.abs(winchController.cable_speed || 0).toFixed(1)
             unit: "m/s"
-            valueColor: "#3498db"
+            valueColor: CommonStyle.accentPrimary
             valueFontSize: winchCard.metricValueSize
             labelFontSize: winchCard.metricLabelSize
             unitFontSize: winchCard.metricUnitSize
@@ -54,7 +55,7 @@ IndustrialCard {
             label: "Voltage"
             value: (winchController.motor_voltage || 0).toFixed(1)
             unit: "V"
-            valueColor: "#3498db"
+            valueColor: CommonStyle.accentPrimary
             valueFontSize: winchCard.metricValueSize
             labelFontSize: winchCard.metricLabelSize
             unitFontSize: winchCard.metricUnitSize
@@ -67,7 +68,7 @@ IndustrialCard {
             label: "Temperature"
             value: (winchController.motor_temperature || 0).toFixed(1)
             unit: "°C"
-            valueColor: "#3498db"
+            valueColor: CommonStyle.accentPrimary
             valueFontSize: winchCard.metricValueSize
             labelFontSize: winchCard.metricLabelSize
             unitFontSize: winchCard.metricUnitSize
@@ -77,7 +78,7 @@ IndustrialCard {
         ColumnLayout {
             Layout.fillWidth: true
             Layout.columnSpan: 2
-            spacing: 6
+            spacing: CommonStyle.spacingXs + 2
             
             property real currentValue: (winchController.winch_torque || 0) / 100
             property real currentPercent: winchCard.maxWinchCurrent > 0 ? currentValue / winchCard.maxWinchCurrent * 100 : 0
@@ -85,24 +86,24 @@ IndustrialCard {
             Text {
                 text: "Current"
                 font.pixelSize: winchCard.metricLabelSize
-                font.family: "Roboto"
-                color: "#AAAAAA"
+                font.family: CommonStyle.fontSans
+                color: CommonStyle.textSecondary
             }
             
             Text {
                 text: parent.currentValue.toFixed(2) + " A (" + parent.currentPercent.toFixed(0) + "%)"
                 font.pixelSize: winchCard.metricValueSize
-                font.family: "Monospace"
+                font.family: CommonStyle.fontMono
                 font.bold: true
-                color: "#3498db"
+                color: CommonStyle.accentPrimary
             }
             
             ProgressBarIndicator {
                 Layout.fillWidth: true
                 value: parent.currentValue
                 maxValue: winchCard.maxWinchCurrent
-                barColor: parent.currentPercent > 80 ? "#f39c12" : "#2ecc71"
-                barHeight: 10
+                barColor: parent.currentPercent > 80 ? CommonStyle.statusWarning : CommonStyle.statusSuccess
+                barHeight: CommonStyle.spacingSm + 2
             }
         }
     }

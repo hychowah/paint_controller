@@ -1,8 +1,8 @@
 // Monitor UI - 1280x720 optimized for 7-inch industrial display
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import QtCharts 2.15
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import QtCharts
 import "../../core"
 import "../../components/buttons"
 import "../../components/displays"

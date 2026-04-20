@@ -1,4 +1,5 @@
-import QtQuick 2.15
+import QtQuick
+import "../../core"
 
 Canvas {
     id: canvas
@@ -8,7 +9,7 @@ Canvas {
     property real maxValue: 40   // Set to the maximum expected RPM
     property real midLine: 0     // The middle line (0 RPM in this case)
     property real maxAbsValue: 40 // Default max absolute value
-    property color lineColor: "blue"
+    property color lineColor: CommonStyle.accentPrimary
     
     function updateMinMaxValues() {
         if (dataPoints.length > 0) {
@@ -30,7 +31,7 @@ Canvas {
         var step = w / (maxDataPoints - 1);
 
         // Draw the middle line
-        ctx.strokeStyle = "#888888";
+        ctx.strokeStyle = CommonStyle.textDisabled;
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(0, h/2);

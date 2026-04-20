@@ -1,5 +1,6 @@
 // Horizontal progress bar for showing load/current indicators
-import QtQuick 2.15
+import QtQuick
+import "../../core"
 
 Item {
     id: root
@@ -7,9 +8,9 @@ Item {
     // Properties
     property real value: 0.0
     property real maxValue: 100.0
-    property color barColor: "#2ecc71"
-    property color backgroundColor: "#1e222b"
-    property int barHeight: 12
+    property color barColor: CommonStyle.statusSuccess
+    property color backgroundColor: CommonStyle.inputBackground
+    property int barHeight: CommonStyle.spacingMd
     
     height: barHeight
     
@@ -28,7 +29,7 @@ Item {
         radius: barHeight / 2
         
         Behavior on width {
-            NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
+            NumberAnimation { duration: CommonStyle.motionFast; easing.type: Easing.OutQuad }
         }
     }
 }

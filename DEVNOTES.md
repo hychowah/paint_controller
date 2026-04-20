@@ -2,12 +2,44 @@
 
 ---
 
+### 2026-04-20 02:05 - Pre-Commit Documentation Sync And LLM Navigation Cleanup
+
+**Goal**: Make the documentation set truthful and easier to navigate before committing the current implementation batch
+**Issues**: README and plan docs still mixed an older historical `42 passed` full-suite claim with the current Qt fixture abort, the README test inventory lagged behind the new `StateStore`/`SettingsManager`/`UIInputHandler` coverage, and fresh sessions could still miss the existing `docs/plan/00_README.md` index
+**Tried**: Reconciled validation wording across the README and master plan, promoted `docs/plan/00_README.md` as the canonical LLM session-start index instead of adding a second index file, and softened a couple of overstated completion notes to match the real repo state
+**Result**: ✅ The active docs now agree on the current validation state, new sessions have a clearer navigation entry point, and the repo can be committed without claiming a fully green local test suite that is not yet true in this terminal
+**Files**: `README.md`, `docs/plan/00_README.md`, `docs/plan/01_MASTER_PLAN.md`, `docs/plan/04_AUDIT_REPORT.md`
+
+### 2026-04-20 01:15 - Finish qmldir Rollout, Core Runtime Tests, and Display Tokenization
+
+**Goal**: Complete Tasks `1.9`, `3.2`, and `2.3` without destabilizing the current relative-import QML runtime or the terminal-safe pytest path
+**Issues**: The repo still lacked `qmldir` coverage in most QML directories, had no direct runtime tests for `StateStore` or `SettingsManager`, and `components/displays/` still bypassed `CommonStyle` heavily. A full `tests/` run in this shell still aborts when the `qt_app`/`QApplication` fixture path is exercised
+**Tried**: Added type-export `qmldir` files across the missing directories without introducing new `module ...` declarations, added a `paint_controller.core` namespace stub plus `qt_core_app` fixture, wrote direct runtime tests for `StateStore` and `SettingsManager`, and tokenized the full display folder against `CommonStyle`
+**Result**: ✅ Task `1.9` is complete with safe `qmldir` coverage, Task `3.2` now has direct runtime coverage, Task `2.3` is functionally complete across the display folder, and targeted venv validation for the new core/settings/input test batch reports `17 passed`
+**Files**: `python/paint_controller/qml/**/qmldir`, `python/paint_controller/qml/components/displays/*.qml`, `tests/conftest.py`, `tests/test_state_store.py`, `tests/test_settings_runtime.py`, `docs/plan/01_MASTER_PLAN.md`, `docs/plan/03_QML_BINDINGS.md`
+
+### 2026-04-20 00:20 - Align Plan Docs With Remaining Safety Fixes
+
+**Goal**: Eliminate the last Python-side popup `findChild()` lookup, re-enable the remaining winch move-command safety guards, and bring the plan docs back into exact agreement with the live code
+**Issues**: The documentation already claimed both fixes were complete, but `handlers/input.py` still closed the popup through `findChild()` and `controllers/winch.py` still had four commented-out availability guards on move commands
+**Tried**: Switched `UIInputHandler` to use the already-injected `close_popup_fn`, removed the dead popup/object-name wiring, re-enabled the four winch guards with logger warnings and early `False` returns, then updated the plan docs and task record to reflect the now-true runtime state
+**Result**: ✅ Python now has zero `findChild()` calls, winch move commands refuse unavailable hardware again, the active plan files no longer overstate unfinished work, and `UIInputHandler` now has focused regression coverage for popup-close + mode-switch behavior
+**Files**: `python/paint_controller/handlers/input.py`, `python/paint_controller/controllers/winch.py`, `tests/test_input_handler.py`, `PLANNING.md`, `docs/plan/00_README.md`, `docs/plan/01_MASTER_PLAN.md`, `docs/plan/02_ARCHITECTURE.md`, `docs/plan/03_QML_BINDINGS.md`, `docs/plan/04_AUDIT_REPORT.md`
+
+### 2026-04-20 00:35 - Normalize QML Imports To Versionless Qt6 Style
+
+**Goal**: Complete Task `1.10` by removing version pins from Qt module imports across the QML tree before starting the broader `qmldir` rollout
+**Issues**: The tree still mixed `QtQuick 2.15`, `QtQuick.Controls 2.15`, `QtQuick.Layouts 1.15`, and a leftover `QtGraphicalEffects 1.15` import in `PageSpray.qml`
+**Tried**: Applied a mechanical tree-wide import rewrite for the Qt6 modules, then converted the final graphical-effects import to `Qt5Compat.GraphicalEffects` and updated the active plan docs to mark `1.10` complete
+**Result**: ✅ The QML tree now uses versionless Qt imports consistently, leaving `qmldir` expansion as the next structural cleanup step rather than import syntax churn
+**Files**: `python/paint_controller/qml/**/*.qml`, `docs/plan/01_MASTER_PLAN.md`, `docs/plan/03_QML_BINDINGS.md`
+
 ### 2026-04-17 23:30 - Synchronize README And Plan Docs To Current Runtime
 
 **Goal**: Bring the root README and `docs/plan/*` back in sync with the implemented runtime, test model, and modernization status
 **Issues**: The docs still described older migration intent, stale bridge debt, and outdated test workflow details even though the repo had already shifted to context-property runtime exposure and layered pytest coverage
-**Tried**: Rewrote `README.md` around current setup/run/test flow, updated the plan entry docs and master tracker, replaced stale `findChild()`/singleton-migration language with the live bridge state, and documented the layered test suite plus current `42 passed` local result
-**Result**: ✅ Documentation now reflects the current architecture and testing direction closely enough to prepare a clean follow-up commit
+**Tried**: Rewrote `README.md` around current setup/run/test flow, updated the plan entry docs and master tracker, replaced stale `findChild()`/singleton-migration language with the live bridge state, and documented the layered test suite plus the then-current `42 passed` local result
+**Result**: ✅ Documentation reflected the runtime and test direction at that point; later sessions added more coverage and replaced the earlier full-suite pass claim with the current targeted-pass-plus-fixture-blocker status
 **Files**: `README.md`, `docs/plan/00_README.md`, `docs/plan/01_MASTER_PLAN.md`, `docs/plan/02_ARCHITECTURE.md`, `docs/plan/03_QML_BINDINGS.md`, `docs/plan/04_AUDIT_REPORT.md`
 
 ### 2026-04-17 23:05 - Normalize Existing Test Files By Test Layer
@@ -15,7 +47,7 @@
 **Goal**: Align the current test suite with the layered testing model before adding new tests
 **Issues**: The pure utility and schema files still used older class-wrapper patterns that obscured the real unit boundary, while the newer controller tests already followed a clearer behavior-first style
 **Tried**: Flattened pure utility/schema tests into module-level behavior functions, kept the shared harness file explicitly scoped to test primitives, and left the controller plus ROS integration files on their existing component/transport split
-**Result**: ✅ Existing tests now read more consistently by boundary: pure logic, harness validation, component behavior, and real ROS transport; full suite still passes unchanged
+**Result**: ✅ Existing tests now read more consistently by boundary: pure logic, harness validation, component behavior, and real ROS transport; the full suite still passed at that point in the repo timeline
 **Files**: `tests/test_crc.py`, `tests/test_input_utils.py`, `tests/test_settings_schema.py`, `tests/test_test_infrastructure.py`
 
 ### 2026-04-17 22:20 - Add Transport-Level Controller Validation

@@ -1,5 +1,6 @@
 // Mini line graph for showing trends (e.g., IMU data)
-import QtQuick 2.15
+import QtQuick
+import "../../core"
 
 Canvas {
     id: canvas
@@ -7,7 +8,7 @@ Canvas {
     // Properties
     property var dataPoints: []
     property int maxDataPoints: 10
-    property color lineColor: "#3498db"
+    property color lineColor: CommonStyle.accentPrimary
     property real lineWidth: 2
     property real minValue: -10
     property real maxValue: 10

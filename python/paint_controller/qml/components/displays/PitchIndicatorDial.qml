@@ -1,5 +1,6 @@
-import QtQuick 2.15
-import QtQuick.Shapes 1.15
+import QtQuick
+import QtQuick.Shapes
+import "../../core"
 
 Item {
     id: root
@@ -21,9 +22,9 @@ Item {
     Rectangle {
         id: container
         anchors.fill: parent
-        color: "#000000"
+        color: CommonStyle.backgroundL0
         opacity: root.backgroundOpacity
-        radius: 8
+        radius: CommonStyle.radiusSm
         border.width: 0
         clip: true
         
@@ -48,7 +49,7 @@ Item {
                 y: parent.height / 2 - 1.5
                 width: parent.width * 0.5
                 height: 3
-                color: "#FFFFFF"
+                color: CommonStyle.textPrimary
                 radius: 1.5
             }
             
@@ -66,8 +67,8 @@ Item {
                     var centerX = width / 2
                     var centerY = height / 2
                     
-                    ctx.strokeStyle = "#CCCCCC"
-                    ctx.fillStyle = "#FFFFFF"
+                    ctx.strokeStyle = CommonStyle.textSecondary
+                    ctx.fillStyle = CommonStyle.textPrimary
                     ctx.font = "11px Arial"
                     ctx.textAlign = "center"
                     ctx.textBaseline = "middle"
@@ -111,7 +112,7 @@ Item {
                 y: parent.height / 2 - 1.5
                 width: 40
                 height: 3
-                color: "#FFAA00"
+                color: CommonStyle.statusWarning
                 radius: 1.5
             }
             
@@ -121,7 +122,7 @@ Item {
                 y: parent.height / 2 - 1.5
                 width: 40
                 height: 3
-                color: "#FFAA00"
+                color: CommonStyle.statusWarning
                 radius: 1.5
             }
             
@@ -131,8 +132,8 @@ Item {
                 width: 6
                 height: 6
                 radius: 3
-                color: "#FFAA00"
-                border.color: "#000000"
+                color: CommonStyle.statusWarning
+                border.color: CommonStyle.backgroundL0
                 border.width: 1
             }
         }
@@ -144,8 +145,8 @@ Item {
             anchors.top: parent.top
             anchors.topMargin: 5
             text: "PITCH"
-            color: "#CCCCCC"
-            font.pixelSize: 9
+            color: CommonStyle.textSecondary
+            font.pixelSize: CommonStyle.fontLabel - 2
             font.bold: true
             z: 11
         }
@@ -156,10 +157,10 @@ Item {
             anchors.top: pitchLabel.bottom
             anchors.topMargin: 25
             text: (root.currentPitch >= 0 ? "+" : "") + root.currentPitch.toFixed(1) + "°"
-            color: "#FFFFFF"
-            font.pixelSize: 11
+            color: CommonStyle.textPrimary
+            font.pixelSize: CommonStyle.fontLabel
             font.bold: true
-            font.family: "Courier New"
+            font.family: CommonStyle.fontMono
             z: 11
         }
     }

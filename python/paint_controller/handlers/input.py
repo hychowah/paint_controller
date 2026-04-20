@@ -1,17 +1,18 @@
 
 import logging
 
-from PySide6.QtCore import QObject, Slot
+from PySide6.QtCore import QObject, Slot, QTimer
 
 from paint_controller.utils.constants import ControlMode, JoystickControl
 from paint_controller.utils.input import DoublePressDetector
+
 
 logger = logging.getLogger(__name__)
 
 
 class UIInputHandler(QObject):
     def __init__(self, teensy, overlay, control_processor, workflow_handler,
-                 settings_manager, state_store, show_popup_fn, close_popup_fn=None):
+                 settings_manager, state_store, show_popup_fn, close_popup_fn):
         super().__init__()
         self._teensy = teensy
         self._overlay = overlay
@@ -40,7 +41,7 @@ class UIInputHandler(QObject):
         # Mode-specific joystick control memory
         self._base_mode_joystick_controls = None
         self._ef_mode_joystick_controls = None
-    
+
     def _on_arm_retract_length_changed(self, new_value: int):
         """Handle arm_retract_length change from SettingsManager"""
         self._arm_retract_length = new_value
@@ -67,8 +68,7 @@ class UIInputHandler(QObject):
     def on_switch_pressed(self):
         # Close any existing popup to prevent rendering conflicts during overlay switch
         try:
-            if self._close_popup_fn:
-                self._close_popup_fn()
+            self._close_popup_fn()
         except Exception as e:
             logger.warning("Could not close popup: %s", e)
         

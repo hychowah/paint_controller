@@ -1,5 +1,5 @@
-import QtQuick 2.15
-import QtQuick.Layouts 1.15
+import QtQuick
+import QtQuick.Layouts
 import "../../core"
 import "."
 
@@ -9,28 +9,30 @@ Rectangle {
     property string unit: "RPM"
     property real value: 0
     property string valueSource: ""
-    property color backgroundColor: "#E2E2E2"
-    property color lineColor: "blue"
+    property color backgroundColor: CommonStyle.cardBackgroundAlt
+    property color lineColor: CommonStyle.accentPrimary
     property real maxAbsValue: 40
-    property real titleFontSize: 22
-    property real valueFontSize: 40
-    property real unitFontSize: 16
+    property real titleFontSize: CommonStyle.fontHeading + 2
+    property real valueFontSize: CommonStyle.fontDisplay + CommonStyle.spacingLg
+    property real unitFontSize: CommonStyle.fontBody
 
     Layout.fillWidth: true
     Layout.preferredHeight: 150 // Default height, can be overridden
     color: backgroundColor
-    radius: 10
-    border.width: 2
+    radius: CommonStyle.radiusMd
+    border.width: CommonStyle.borderWidthThick
+    border.color: CommonStyle.cardBorder
 
     Text {
         id: valueTitle
         text: root.title
         font.bold: true
         font.pixelSize: titleFontSize
-        color: "#000000"
+        font.family: CommonStyle.fontSans
+        color: CommonStyle.textPrimary
         anchors.top: parent.top
         anchors.left: parent.left
-        anchors.margins: 10
+        anchors.margins: CommonStyle.spacingSm + 2
     }
 
     LineGraph {
@@ -48,7 +50,8 @@ Rectangle {
         id: valueText
         text: root.value.toFixed(1)
         font.pixelSize: valueFontSize
-        color: "#000000"
+        font.family: CommonStyle.fontMono
+        color: CommonStyle.textPrimary
         anchors.bottom: parent.bottom
         anchors.right: parent.right
         anchors.rightMargin: 50
@@ -58,7 +61,8 @@ Rectangle {
         id: unitText
         text: unit
         font.pixelSize: unitFontSize
-        color: "#000000"
+        font.family: CommonStyle.fontSans
+        color: CommonStyle.textSecondary
         anchors.bottom: parent.bottom
         anchors.right: parent.right
         anchors.margins: 5

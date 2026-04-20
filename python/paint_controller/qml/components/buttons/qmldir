@@ -1,0 +1,5 @@
+ActionButton 1.0 ActionButton.qml
+CustomButton 1.0 CustomButton.qml
+MoveLengthButton 1.0 MoveLengthButton.qml
+NumpadButton 1.0 NumpadButton.qml
+TouchSwitch 1.0 TouchSwitch.qml

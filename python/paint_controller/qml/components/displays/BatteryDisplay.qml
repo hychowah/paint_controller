@@ -1,5 +1,6 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
+import QtQuick
+import QtQuick.Controls
+import "../../core"
 
 /**
  * Reusable battery display component
@@ -15,14 +16,14 @@ Item {
     property real borderWidth: 1
     property real iconWidth: 28
     property real iconHeight: 14
-    property color borderColor: "#AAAAAA"
-    property color dividerColor: "#666666"
+    property color borderColor: CommonStyle.textSecondary
+    property color dividerColor: CommonStyle.textDisabled
     
     // Functions
     function getBatteryColor(percent) {
-        if (percent > 50) return "#00FF00"      // Green
-        if (percent > 25) return "#FFAA00"      // Orange
-        return "#FF3333"                         // Red
+        if (percent > 50) return CommonStyle.statusSuccess
+        if (percent > 25) return CommonStyle.statusWarning
+        return CommonStyle.statusError
     }
     
     Row {
@@ -56,9 +57,9 @@ Item {
         Text {
             text: Math.round(batteryDisplay.batteryPercent) + "%"
             color: batteryDisplay.getBatteryColor(batteryDisplay.batteryPercent)
-            font.pixelSize: 11
+            font.pixelSize: CommonStyle.fontLabel
             font.bold: true
-            font.family: "Courier New"
+            font.family: CommonStyle.fontMono
             anchors.verticalCenter: parent.verticalCenter
         }
     }

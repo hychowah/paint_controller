@@ -1,5 +1,5 @@
-import QtQuick 2.15
-import QtQuick.Shapes 1.15
+import QtQuick
+import QtQuick.Shapes
 import "../../core"
 
 Item {
@@ -52,7 +52,7 @@ Item {
         anchors.fill: parent
         ShapePath {
             strokeWidth: 32
-            strokeColor: "#1a1a1a"
+            strokeColor: CommonStyle.inputBackground
             fillColor: "transparent"
             capStyle: ShapePath.RoundCap
             
@@ -71,7 +71,7 @@ Item {
         anchors.fill: parent
         ShapePath {
             strokeWidth: 2
-            strokeColor: "#1a1a1a"
+            strokeColor: CommonStyle.cardBorder
             fillColor: "transparent"
             capStyle: ShapePath.RoundCap
             
@@ -91,7 +91,7 @@ Item {
         id: maxIndicator
         width: Math.min(root.width, root.height) / 2
         height: 4
-        color: "#ff8080"  // Light red color
+        color: CommonStyle.statusError
         opacity: 0.6
         antialiasing: true
         
@@ -107,7 +107,7 @@ Item {
         id: dialIndicator
         width: Math.min(root.width, root.height) / 2
         height: 4
-        color: "red"
+        color: CommonStyle.buttonDanger
         antialiasing: true
         
         x: root.width / 2
@@ -126,7 +126,7 @@ Item {
             y: 5
             width: index % 5 === 0 ? 3 : 2
             height: index % 5 === 0 ? 15 : 10
-            color: "#FFFFFF"
+            color: CommonStyle.textPrimary
             
             transform: [
                 Translate {
@@ -149,8 +149,8 @@ Item {
             x: root.width / 2 - width / 2
             y: 40
             text: (index * 2).toString()
-            color: "#FFFFFF"
-            font.pixelSize: 16
+            color: CommonStyle.textPrimary
+            font.pixelSize: CommonStyle.fontBody
             
             transform: [
                 Translate {
@@ -181,7 +181,8 @@ Item {
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Math.round(speed).toString() 
-                color: "#FFFFFF"
+                color: CommonStyle.textPrimary
+                font.family: CommonStyle.fontMono
                 font.pixelSize: Math.min(centerDisplay.width * 1, centerDisplay.height * 1)
                 font.bold: true
             }
@@ -196,7 +197,8 @@ Item {
             bottomMargin: 40
         }
         text: "mmps"
-        color: "#FFFFFF"
+        color: CommonStyle.textPrimary
+        font.family: CommonStyle.fontSans
         font.pixelSize: Math.min(centerDisplay.width * 0.3, centerDisplay.height * 0.45)
     }
 

@@ -43,7 +43,7 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 
 **`QtBridge(QObject)`**
 - Signal-based UI bridge for popups, sidebar/fullscreen toggles, multiscreen window, and fullscreen source updates
-- **All `findChild()` calls eliminated** — replaced with Qt signals consumed by QML `Connections` block
+- **All popup/sidebar/video `findChild()` calls eliminated** — replaced with Qt signals consumed by QML `Connections` block; `UIInputHandler` closes popups through an injected `close_popup_fn`
 - Signals: `showPopupRequested(str,str,str,int)`, `closePopupRequested()`, `toggleSidebarRequested()`, `toggleVideoOverlayRequested(bool,str)`, `updateVideoSourceRequested(str)`
 - Only remaining QML object access: `engine.rootObjects()[0]` in `toggle_multiscreen_window()` via `QMetaObject.invokeMethod`
 - Reads `StateStore` rather than owning application state itself
@@ -151,7 +151,7 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Load detection mode
 - Move commands: Increment, absolute, with acceleration control
 - Settings integration: max_speed_mmps loaded from SettingsManager
-- Availability guards are re-enabled on the move-command paths and covered by both unit/component tests and transport validation
+- Availability guards are re-enabled on the speed and move-command paths; the winch test suite covers the speed-path behavior and transport validation, while move-command guard coverage still needs explicit tests
 
 #### **Teensy Controller** - `TeensyController(QObject)` ~300 lines
 - ROS2 publisher: 20+ topics for sprayer, gimbal, props, relay, LED
@@ -450,7 +450,7 @@ The repo now uses a layered test model instead of one generic mocking style for 
 - `tests/test_winch_ros_integration.py` proves the published command reaches a real `rclpy` subscriber callback
 
 **Local validation status**
-- Current documented local result: `42 passed` using `python/paint_controller/venv/bin/python -m pytest -q`
+- Current documented local result: targeted venv validation for the new core batch is green, while a full `python/paint_controller/venv/bin/python -m pytest tests -q` run still aborts in this terminal on the Qt application fixture path
 
 ---
 

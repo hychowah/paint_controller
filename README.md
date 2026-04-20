@@ -6,7 +6,8 @@ ROS 2 + PySide6/QML control application for the paint robot.
 
 - Python runtime is the primary path; the old C++ UI path is retained only as reference and is no longer built.
 - Runtime objects are exposed to QML through `setContextProperty()`. Do not use `qmlRegisterSingletonInstance()` in this repo.
-- Local test suite currently passes at `42` tests using the project interpreter in `python/paint_controller/venv`.
+- Targeted venv validation for the current core batch passes: `tests/test_state_store.py`, `tests/test_settings_runtime.py`, `tests/test_settings_schema.py`, and `tests/test_input_handler.py` report `17 passed`.
+- A full `tests/` run still aborts in this terminal when the `qt_app` / `QApplication` fixture path is exercised. Treat full local-suite validation as an active test-infrastructure task, not a completed guarantee.
 - Active modernization status is tracked in `docs/plan/01_MASTER_PLAN.md`.
 
 ## Prerequisites
@@ -124,6 +125,8 @@ Use the project-local interpreter, not an arbitrary workspace `.venv`.
 /home/$USER/ros2_ws/src/paint_controller_ros2/python/paint_controller/venv/bin/python -m pytest -q
 ```
 
+Note: In the current terminal environment, the full suite can still abort when widget-based Qt tests hit the `qt_app` fixture. If that happens, run focused files while the fixture work is in progress.
+
 ### Run a Focused File
 
 ```bash
@@ -132,9 +135,10 @@ Use the project-local interpreter, not an arbitrary workspace `.venv`.
 
 ### Current Test Layers
 
-- Pure logic: `tests/test_crc.py`, `tests/test_input_utils.py`, `tests/test_settings_schema.py`
+- Pure logic and schema: `tests/test_crc.py`, `tests/test_input_utils.py`, `tests/test_settings_schema.py`
 - Harness validation: `tests/test_test_infrastructure.py`
-- Component and handler behavior: `tests/test_emergency.py`, `tests/test_winch.py`
+- Core runtime state and persistence: `tests/test_state_store.py`, `tests/test_settings_runtime.py`
+- Component and handler behavior: `tests/test_emergency.py`, `tests/test_input_handler.py`, `tests/test_winch.py`
 - Real ROS transport: `tests/test_winch_ros_integration.py`
 
 ## Repository Layout
@@ -148,6 +152,7 @@ Use the project-local interpreter, not an arbitrary workspace `.venv`.
 
 ## Documentation Map
 
+- `docs/plan/00_README.md` — start here in a fresh LLM or handoff session; authority order and doc navigation
 - `docs/plan/01_MASTER_PLAN.md` — authoritative modernization tracker
 - `docs/plan/02_ARCHITECTURE.md` — runtime architecture reference
 - `docs/plan/03_QML_BINDINGS.md` — QML/Python binding inventory

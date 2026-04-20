@@ -1,7 +1,8 @@
 // Monospace label for numerical data to prevent layout shift
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import "../../core"
 
 RowLayout {
     id: root
@@ -10,19 +11,19 @@ RowLayout {
     property string label: ""
     property string value: "0.0"
     property string unit: ""
-    property color valueColor: "#FFFFFF"
-    property color labelColor: "#AAAAAA"
-    property int valueFontSize: 16
-    property int labelFontSize: 12
+    property color valueColor: CommonStyle.textPrimary
+    property color labelColor: CommonStyle.textSecondary
+    property int valueFontSize: CommonStyle.fontBody
+    property int labelFontSize: CommonStyle.fontCaption
     
-    spacing: 6
+    spacing: CommonStyle.spacingXs
     
     // Label text
     Text {
         visible: label !== ""
         text: label
         font.pixelSize: labelFontSize
-        font.family: "Roboto"
+        font.family: CommonStyle.fontSans
         color: labelColor
     }
     
@@ -30,7 +31,7 @@ RowLayout {
     Text {
         text: value
         font.pixelSize: valueFontSize
-        font.family: "Monospace"
+        font.family: CommonStyle.fontMono
         font.bold: true
         color: valueColor
     }
@@ -40,7 +41,7 @@ RowLayout {
         visible: unit !== ""
         text: unit
         font.pixelSize: labelFontSize
-        font.family: "Roboto"
+        font.family: CommonStyle.fontSans
         color: labelColor
     }
 }

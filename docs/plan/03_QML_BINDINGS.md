@@ -100,7 +100,7 @@ All Python objects are exposed to QML via `setContextProperty()`:
 # In application.py — register all objects BEFORE engine.load()
 ctx = engine.rootContext()
 ctx.setContextProperty("stateStore", state_store)
-ctx.setContextProperty("wheelController", wheel.wheel_controller)
+ctx.setContextProperty("wheelController", bundle.wheel_controller)
 ctx.setContextProperty("settingsManager", settings_manager)
 # ... etc
 ```
@@ -228,14 +228,22 @@ qml/
 ```
 
 ### qmldir State
-Two `qmldir` files exist:
-- `core/qmldir` — `singleton CommonStyle 1.0 CommonStyle.qml` (added as part of Task 2.0 design token system)
+`qmldir` coverage is now in place across the QML tree.
+
+Existing/special cases:
+- `core/qmldir` — `singleton CommonStyle 1.0 CommonStyle.qml`
 - `overlays/systemcontrol/qmldir` — pre-existing
 
-The rest of the QML tree still uses relative imports (e.g., `import "../pages/home"`).
+Added during Task 1.9:
+- `navigation/`
+- `components/buttons/`, `components/displays/`, `components/inputs/`, `components/panels/`, `components/popups/`, `components/specialized/pointcloud/`
+- `overlays/`, `overlays/lidar/`, `overlays/video/`, `overlays/video/components/`
+- `pages/home/`, `pages/misc/`, `pages/settings/`, `pages/settings/components/`, `pages/settings/pages/`, `pages/spray/`, `pages/status/`, `pages/status/components/`, `pages/tuning/`, `pages/wheel/`, `pages/winch/`, `pages/workflow/`
+- `widgets/actions/`
 
-**Task 1.9** creates `qmldir` for each directory.  
-**CRITICAL (Audit R8)**: Must use dotted names like `PaintController.Core`, NOT bare `module PaintController` (namespace collision with singleton URI).
+The current rollout is intentionally conservative: these files provide type export entries only. The runtime still uses relative imports (for example `import "../pages/home"`) and does not yet depend on dotted URI-module imports. That avoids reintroducing the import/type-system instability that previously blocked singleton-registration work.
+
+**Guardrail**: Never use bare `module PaintController` in any `qmldir`. If URI-module imports are introduced later, they need their own audited migration pass.
 
 ---
 

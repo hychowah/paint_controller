@@ -1,21 +1,22 @@
 // Valves Card - Flow rate, position, and motor data
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 import "."
+import "../../core"
 
 IndustrialCard {
     id: valvesCard
     title: "Valves"
     
     // Consistent sizing for all metrics
-    property int metricValueSize: 28
-    property int metricLabelSize: 13
-    property int metricUnitSize: 12
+    property int metricValueSize: CommonStyle.fontDisplay + CommonStyle.spacingXs
+    property int metricLabelSize: CommonStyle.fontCaption
+    property int metricUnitSize: CommonStyle.fontLabel
     
     ColumnLayout {
         anchors.fill: parent
-        spacing: 10
+        spacing: CommonStyle.spacingSm + 2
         
         // Top row: Flow Rate, Motor Current, Total Volume
         RowLayout {
@@ -29,7 +30,7 @@ IndustrialCard {
                 label: "Flow Rate"
                 value: (esp32ValveController.valve_rate || 0).toFixed(1)
                 unit: "L/min"
-                valueColor: "#3498db"
+                valueColor: CommonStyle.accentPrimary
                 valueFontSize: valvesCard.metricValueSize
                 labelFontSize: valvesCard.metricLabelSize
                 unitFontSize: valvesCard.metricUnitSize
@@ -42,7 +43,7 @@ IndustrialCard {
                 label: "Motor Current"
                 value: (esp32ValveController.valve_motor_current || 0).toFixed(1)
                 unit: "A"
-                valueColor: "#3498db"
+                valueColor: CommonStyle.accentPrimary
                 valueFontSize: valvesCard.metricValueSize
                 labelFontSize: valvesCard.metricLabelSize
                 unitFontSize: valvesCard.metricUnitSize
@@ -55,7 +56,7 @@ IndustrialCard {
                 label: "Total Volume"
                 value: (esp32ValveController.total_volume || 0).toFixed(1)
                 unit: "L"
-                valueColor: "#3498db"
+                valueColor: CommonStyle.accentPrimary
                 valueFontSize: valvesCard.metricValueSize
                 labelFontSize: valvesCard.metricLabelSize
                 unitFontSize: valvesCard.metricUnitSize
@@ -64,20 +65,20 @@ IndustrialCard {
             Item { Layout.fillWidth: true }
         }
         
-        Item { Layout.preferredHeight: 6 }
+        Item { Layout.preferredHeight: CommonStyle.spacingXs + 2 }
         
         // Valve Position
         ColumnLayout {
             Layout.fillWidth: true
-            spacing: 6
+            spacing: CommonStyle.spacingXs + 2
             
             property real valvePositionPercent: (esp32ValveController.valve_position || 0)
             
             Text {
                 text: "Position: " + parent.valvePositionPercent.toFixed(0) + "%"
-                font.pixelSize: 12
-                font.family: "Roboto"
-                color: "#AAAAAA"
+                font.pixelSize: CommonStyle.fontLabel
+                font.family: CommonStyle.fontSans
+                color: CommonStyle.textSecondary
             }
             
             Item {
@@ -89,18 +90,18 @@ IndustrialCard {
                 
                 Rectangle {
                     anchors.fill: parent
-                    color: "#1e222b"
+                    color: CommonStyle.inputBackground
                     radius: 9
                 }
                 
                 Rectangle {
                     width: Math.max(0, Math.min(parent.width * parent.normalizedPosition, parent.width))
                     height: parent.height
-                    color: "#3498db"
+                    color: CommonStyle.accentPrimary
                     radius: 9
                     
                     Behavior on width {
-                        NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
+                        NumberAnimation { duration: CommonStyle.motionFast; easing.type: Easing.OutQuad }
                     }
                 }
                 
@@ -109,13 +110,13 @@ IndustrialCard {
                     y: parent.height / 2 - 6
                     width: 12
                     height: 12
-                    color: "#FFFFFF"
+                    color: CommonStyle.textPrimary
                     radius: 6
-                    border.color: "#3498db"
+                    border.color: CommonStyle.accentPrimary
                     border.width: 2
                     
                     Behavior on x {
-                        NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
+                        NumberAnimation { duration: CommonStyle.motionFast; easing.type: Easing.OutQuad }
                     }
                 }
             }

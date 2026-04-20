@@ -1,5 +1,6 @@
-import QtQuick 2.15
-import QtQuick.Shapes 1.15
+import QtQuick
+import QtQuick.Shapes
+import "../../core"
 
 Item {
     id: root
@@ -36,9 +37,9 @@ Item {
     Rectangle {
         id: dialBackground
         anchors.fill: parent
-        color: "#000000"
+        color: CommonStyle.backgroundL0
         opacity: root.backgroundOpacity
-        radius: 8
+        radius: CommonStyle.radiusSm
         border.width: 0
         
         property real centerX: width / 2
@@ -51,7 +52,7 @@ Item {
             
             ShapePath {
                 strokeWidth: 3
-                strokeColor: "#555555"
+                strokeColor: CommonStyle.cardBorder
                 fillColor: "transparent"
                 capStyle: ShapePath.RoundCap
                 
@@ -76,8 +77,8 @@ Item {
                 var centerY = dialBackground.centerY
                 var radius = dialBackground.dialRadius
                 
-                ctx.strokeStyle = "#CCCCCC"
-                ctx.fillStyle = "#FFFFFF"
+                ctx.strokeStyle = CommonStyle.textSecondary
+                ctx.fillStyle = CommonStyle.textPrimary
                 ctx.font = "10px Arial"
                 ctx.textAlign = "center"
                 ctx.textBaseline = "middle"
@@ -129,8 +130,8 @@ Item {
             width: 12
             height: 12
             radius: 6
-            color: "#CCCCCC"
-            border.color: "#999999"
+            color: CommonStyle.textSecondary
+            border.color: CommonStyle.textDisabled
             border.width: 1
             z: 2
         }
@@ -157,7 +158,7 @@ Item {
                 width: 3
                 height: (dialBackground.dialRadius - 10) + 5
                 radius: 1.5
-                color: "#FF3333"
+                color: CommonStyle.statusError
             }
         }
         
@@ -168,8 +169,8 @@ Item {
             anchors.top: parent.top
             anchors.topMargin: 5
             text: "YAW"
-            color: "#CCCCCC"
-            font.pixelSize: 9
+            color: CommonStyle.textSecondary
+            font.pixelSize: CommonStyle.fontLabel - 2
             font.bold: true
         }
         
@@ -179,8 +180,9 @@ Item {
             anchors.top: yawLabel.bottom
             anchors.topMargin: 30
             text: root.currentYaw.toFixed(1) + "° / " + root.targetYaw.toFixed(1) + "°"
-            color: "#FFFFFF"
-            font.pixelSize: 11
+            color: CommonStyle.textPrimary
+            font.pixelSize: CommonStyle.fontLabel
+            font.family: CommonStyle.fontMono
             font.bold: true
             z: 2
         }

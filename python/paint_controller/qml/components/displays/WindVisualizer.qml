@@ -1,15 +1,15 @@
 // WindVisualizer.qml - Improved Responsive Version
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 import "../../core"
 
 Rectangle {
     id: windVisualizer
-    color: "#FFFFFF"
-    radius: 10
-    border.color: "#E0E0E0"
-    border.width: 1
+    color: CommonStyle.cardBackgroundAlt
+    radius: CommonStyle.radiusMd
+    border.color: CommonStyle.cardBorder
+    border.width: CommonStyle.borderWidthThin
 
     // Properties that can be set from outside
     property real windSpeed: 0
@@ -31,6 +31,7 @@ Rectangle {
             text: "Wind Conditions"
             font.pixelSize: isCompact ? 14 : Math.max(12, 18 * scaleFactor)
             font.bold: true
+            color: CommonStyle.textPrimary
             Layout.alignment: Qt.AlignHCenter
             // Remove the visible property entirely to always show
         }
@@ -47,8 +48,8 @@ Rectangle {
             Rectangle {
                 anchors.fill: parent
                 radius: width / 2
-                color: "#F8F8F8"
-                border.color: "#E0E0E0"
+                color: CommonStyle.inputBackground
+                border.color: CommonStyle.cardBorder
                 border.width: Math.max(1, 2 * scaleFactor)
 
                 // Cardinal direction markers - only show in non-compact mode
@@ -62,7 +63,7 @@ Rectangle {
                         text: modelData
                         font.bold: true
                         font.pixelSize: Math.max(8, 10 * scaleFactor)
-                        color: "#666666"
+                        color: CommonStyle.textSecondary
                     }
                 }
 
@@ -72,7 +73,7 @@ Rectangle {
                     width: Math.max(4, 6 * scaleFactor)
                     height: width
                     radius: width / 2
-                    color: "#666666"
+                    color: CommonStyle.textSecondary
                 }
             }
 
@@ -101,8 +102,8 @@ Rectangle {
                     var arrowLength = Math.min(width, height) * 0.35
                     var arrowWidth = arrowLength * 0.3
                     
-                    ctx.fillStyle = "#2196F3"
-                    ctx.strokeStyle = "#1976D2"
+                    ctx.fillStyle = CommonStyle.accentPrimary
+                    ctx.strokeStyle = CommonStyle.buttonPressed
                     ctx.lineWidth = Math.max(1, 2 * scaleFactor)
                     
                     // Draw arrow pointing up (north)
@@ -121,9 +122,9 @@ Rectangle {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: isCompact ? 30 : Math.max(25, 50 * scaleFactor)
-            color: "#F8F8F8"
+            color: CommonStyle.inputBackground
             radius: 5
-            border.color: "#E0E0E0"
+            border.color: CommonStyle.cardBorder
             border.width: 1
 
             RowLayout {
@@ -140,7 +141,7 @@ Rectangle {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: Math.max(4, 6 * scaleFactor)
-                    color: "#E0E0E0"
+                    color: CommonStyle.cardBorder
                     radius: height / 2
 
                     Rectangle {
@@ -148,9 +149,9 @@ Rectangle {
                         height: parent.height
                         radius: height / 2
                         color: {
-                            if (windSpeed < 10) return "#4CAF50"
-                            if (windSpeed < 20) return "#FFC107"
-                            return "#F44336"
+                            if (windSpeed < 10) return CommonStyle.statusSuccess
+                            if (windSpeed < 20) return CommonStyle.statusWarning
+                            return CommonStyle.statusError
                         }
 
                         Behavior on width {
@@ -167,9 +168,9 @@ Rectangle {
                     font.pixelSize: Math.max(12, 14 * scaleFactor)
                     font.bold: true
                     color: {
-                        if (windSpeed < 10) return "#4CAF50"
-                        if (windSpeed < 20) return "#FFC107"
-                        return "#F44336"
+                        if (windSpeed < 10) return CommonStyle.statusSuccess
+                        if (windSpeed < 20) return CommonStyle.statusWarning
+                        return CommonStyle.statusError
                     }
                 }
             }

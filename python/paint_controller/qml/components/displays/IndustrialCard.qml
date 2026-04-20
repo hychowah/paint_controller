@@ -1,6 +1,7 @@
 // Industrial-styled card component with dark theme
-import QtQuick 2.15
-import QtQuick.Controls 2.15
+import QtQuick
+import QtQuick.Controls
+import "../../core"
 
 Rectangle {
     id: root
@@ -10,25 +11,27 @@ Rectangle {
     property bool showTitle: title !== ""
     
     // Industrial dark theme colors
-    color: "#29303b"
-    radius: 8
+    color: CommonStyle.cardBackground
+    radius: CommonStyle.radiusMd
+    border.color: CommonStyle.cardBorder
+    border.width: CommonStyle.borderWidthThin
     
     // Default content container
     default property alias content: contentArea.data
     
     Column {
         anchors.fill: parent
-        anchors.margins: 12
-        spacing: 8
+        anchors.margins: CommonStyle.spacingMd
+        spacing: CommonStyle.spacingSm
         
         // Optional title
         Text {
             visible: showTitle
             text: root.title
-            font.pixelSize: 14
+            font.pixelSize: CommonStyle.fontBody
             font.bold: true
-            font.family: "Roboto"
-            color: "#FFFFFF"
+            font.family: CommonStyle.fontSans
+            color: CommonStyle.textPrimary
             width: parent.width
         }
         
