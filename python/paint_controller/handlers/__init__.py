@@ -1,19 +1,5 @@
-"""Event and input handlers for robot control."""
+"""Handler package.
 
-from .emergency import EmergencyButtonHandler
-from .heartbeat import UIHeartbeatHandler, HeartbeatStatus
-from .input import UIInputHandler
-from .warnings import WarningHandler
-from .steam_deck import SteamDeckHandler
-from .control_processor import ControlProcessor, ControlConfig
-
-__all__ = [
-    'EmergencyButtonHandler',
-    'UIHeartbeatHandler',
-    'HeartbeatStatus',
-    'UIInputHandler',
-    'WarningHandler',
-    'SteamDeckHandler',
-    'ControlProcessor',
-    'ControlConfig',
-]
+Package-level imports stay empty so tests and partial imports can load only the
+ specific handler they need without triggering the full handler stack.
+"""

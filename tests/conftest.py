@@ -75,18 +75,60 @@ def _install_test_module_stubs() -> None:
         std_msgs_pkg = sys.modules.setdefault("std_msgs", types.ModuleType("std_msgs"))
         msg_mod = types.ModuleType("std_msgs.msg")
 
+        class Float32:
+            def __init__(self):
+                self.data = 0.0
+
         class Float64:
             def __init__(self):
                 self.data = 0.0
+
+        class Float32MultiArray:
+            def __init__(self):
+                self.data = []
+
+        class Int32:
+            def __init__(self):
+                self.data = 0
+
+        class Int32MultiArray:
+            def __init__(self):
+                self.data = []
 
         class Bool:
             def __init__(self):
                 self.data = False
 
+        msg_mod.Float32 = Float32
         msg_mod.Float64 = Float64
+        msg_mod.Float32MultiArray = Float32MultiArray
+        msg_mod.Int32 = Int32
+        msg_mod.Int32MultiArray = Int32MultiArray
         msg_mod.Bool = Bool
         std_msgs_pkg.msg = msg_mod
         sys.modules["std_msgs.msg"] = msg_mod
+
+    try:
+        importlib.import_module("geometry_msgs.msg")
+    except ModuleNotFoundError:
+        geometry_msgs_pkg = sys.modules.setdefault("geometry_msgs", types.ModuleType("geometry_msgs"))
+        msg_mod = types.ModuleType("geometry_msgs.msg")
+
+        class Vector3:
+            def __init__(self, x=0.0, y=0.0, z=0.0):
+                self.x = x
+                self.y = y
+                self.z = z
+
+        class Twist:
+            def __init__(self):
+                self.linear = Vector3()
+                self.angular = Vector3()
+
+        msg_mod.Vector3 = Vector3
+        msg_mod.Twist = Twist
+        geometry_msgs_pkg.msg = msg_mod
+        sys.modules["geometry_msgs.msg"] = msg_mod
 
     try:
         importlib.import_module("paint_interfaces.msg")
@@ -123,8 +165,114 @@ def _install_test_module_stubs() -> None:
                 self.speed_mm_s = 0
                 self.acceleration_rpm_s = 30
 
+        class MoveVehicleSpd:
+            def __init__(self):
+                self.left_rpm = 0
+                self.right_rpm = 0
+
+        class MoveVehiclePos:
+            def __init__(self):
+                self.left_travel_mm = 0
+                self.right_travel_mm = 0
+                self.rpm_limit = 0
+                self.relative = True
+
+        class VehicleStatus:
+            def __init__(
+                self,
+                left_available=False,
+                right_available=False,
+                left_error=False,
+                right_error=False,
+                left_speed=0.0,
+                right_speed=0.0,
+                left_current=0.0,
+                right_current=0.0,
+                left_travel_mm=0.0,
+                right_travel_mm=0.0,
+            ):
+                self.left_available = left_available
+                self.right_available = right_available
+                self.left_error = left_error
+                self.right_error = right_error
+                self.left_speed = left_speed
+                self.right_speed = right_speed
+                self.left_current = left_current
+                self.right_current = right_current
+                self.left_travel_mm = left_travel_mm
+                self.right_travel_mm = right_travel_mm
+
+        class ValveStatus:
+            def __init__(self):
+                self.valve_motor_current = 0
+                self.valve_position = 0.0
+                self.valve_rate = 0.0
+                self.total_volume = 0.0
+                self.valve_motor_connected = False
+                self.flow_meter_connected = False
+
+        class _Vector3:
+            def __init__(self, x=0.0, y=0.0, z=0.0):
+                self.x = x
+                self.y = y
+                self.z = z
+
+        class TeensyStatus:
+            def __init__(self):
+                self.runtime = 0
+                self.top_rail_position = 0.0
+                self.top_rail_speed = 0.0
+                self.top_rail_current = 0.0
+                self.arm_rail_position = 0.0
+                self.arm_rail_speed = 0.0
+                self.arm_rail_current = 0.0
+                self.arm_extension_dist = 0.0
+                self.arm_sensor_dist = 0.0
+                self.voltage = 0.0
+                self.temperature = 0.0
+                self.current = 0.0
+                self.looptime = 0.0
+                self.looptime_counter = 0
+                self.relay_on = False
+                self.enabled = False
+                self.left_prop_position = 0.0
+                self.left_prop_pwm = 0
+                self.right_prop_position = 0.0
+                self.right_prop_pwm = 0
+                self.linear_acceleration = _Vector3()
+                self.angular_velocity = _Vector3()
+                self.orientation = _Vector3()
+                self.spray_gun_pitch = 0.0
+                self.gimbal_pitch_motor_angle = 0.0
+                self.gimbal_pitch_motor_current = 0.0
+                self.gimbal_pitch_motor_temp = 0.0
+                self.gimbal_roll_motor_angle = 0.0
+                self.gimbal_roll_motor_current = 0.0
+                self.gimbal_roll_motor_temp = 0.0
+                self.spray_gun_trigger = False
+                self.yaw_enabled = False
+                self.yaw_command = 0.0
+                self.yaw_pid_p = 0.0
+                self.yaw_pid_i = 0.0
+                self.yaw_pid_d = 0.0
+
+        class TeensyYaw:
+            def __init__(self):
+                self.yaw_enabled = False
+                self.yaw_command = 0.0
+                self.yaw_pid_p = 0.0
+                self.yaw_pid_i = 0.0
+                self.yaw_pid_d = 0.0
+                self.yaw_pwm = 0
+
         msg_mod.WinchStatus = WinchStatus
         msg_mod.MoveWinchLength = MoveWinchLength
+        msg_mod.MoveVehicleSpd = MoveVehicleSpd
+        msg_mod.MoveVehiclePos = MoveVehiclePos
+        msg_mod.VehicleStatus = VehicleStatus
+        msg_mod.ValveStatus = ValveStatus
+        msg_mod.TeensyStatus = TeensyStatus
+        msg_mod.TeensyYaw = TeensyYaw
         paint_interfaces_pkg.msg = msg_mod
         sys.modules["paint_interfaces.msg"] = msg_mod
 

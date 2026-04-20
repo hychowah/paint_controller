@@ -39,19 +39,25 @@ If two files disagree, prefer the file higher in this list unless `DEVNOTES.md` 
 - `PLANNING.md` is temporary scratch for the active task and should not be treated as the long-term source of truth.
 - `REFACTOR_TRACKER.md` is archived context, not the active tracker.
 - `04_AUDIT_REPORT.md` contains useful rationale, but some recommendations were superseded by the later context-property runtime strategy.
+- Historical test-count or task-order claims in older notes can drift. Use the **Current Checkpoint** section in `01_MASTER_PLAN.md` as the active queue.
 
 ## Environment Note
 
 - VS Code is pinned to the project interpreter in `.vscode/settings.json`: `python/paint_controller/venv/bin/python`
 - The reliable local test command is `python/paint_controller/venv/bin/python -m pytest -q`
-- Full suite runs cleanly: 100 tests, all passing. `QT_QPA_PLATFORM` is force-assigned `"offscreen"` in `conftest.py` (overrides any shell-level `xcb` setting).
+- The test inventory has moved well past the older `100 passed` snapshot. Revalidate any full-suite claim with a fresh local pytest run rather than trusting fixed counts in historical notes.
+- `QT_QPA_PLATFORM` is force-assigned `"offscreen"` in `conftest.py` (overrides any shell-level `xcb` setting).
 - If `PySide6` or `pytest` appear missing in-editor, check the selected interpreter first.
+
+## Active Queue Snapshot
+
+- Immediate priority: `3.5`, then `1.11a-e`, and finally `2.8`
+- Deferred backlog: remaining Phase 2 theming work (`2.5b`, `2.5c`, `2.6a-c`, `2.7`) stays documented but is intentionally postponed until the hardening queue is complete
 
 ## Key Paths
 
 - **Python app**: `python/paint_controller/`
 - **QML UI**: `python/paint_controller/qml/`
-- **C++ node** (deprecated): `src/`
 - **Launch files**: `launch/`
 - **Tests**: `tests/`
 - **Config**: `python/config/`

@@ -1,21 +1,5 @@
-"""Hardware and system controllers for robot components."""
+"""Controller package.
 
-from .lidar import LidarController
-from .wheel import WheelController
-from .winch import WinchController
-from .teensy import TeensyController
-from .wind_monitor import WindMonitor
-from .system_monitor import SystemMonitor, SystemMonitorWorker
-from .ssh import UISSHController, SSHLauncher
-
-__all__ = [
-    'LidarController',
-    'WheelController',
-    'WinchController',
-    'TeensyController',
-    'WindMonitor',
-    'SystemMonitor',
-    'SystemMonitorWorker',
-    'UISSHController',
-    'SSHLauncher',
-]
+Deliberately avoids package-level re-exports so importing one controller does
+not drag the full ROS/PySide controller graph into memory.
+"""

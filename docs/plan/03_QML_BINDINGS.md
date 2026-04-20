@@ -175,7 +175,6 @@ qml/
 │   │   └── components/
 │   │       ├── BaseFrontOverlay.qml
 │   │       ├── BaseTopViewSettingsPopup.qml
-│   │       ├── PointEditorOverlay.qml
 │   │       ├── WallDetectionOverlay.qml
 │   │       └── ControlInfoPanel.qml
 │   ├── lidar/
@@ -218,7 +217,6 @@ qml/
 │       └── pointcloud/
 │           ├── PointCloudGeometry.qml
 │           └── PointCloudEffect.qml
-└── widgets/
 ```
 
 ### qmldir State

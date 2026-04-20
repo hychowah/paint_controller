@@ -60,6 +60,22 @@ def test_move_commands_guard_when_unavailable(qt_app, fake_node):
     ]
 
 
+def test_enable_and_load_detection_guard_when_unavailable(qt_app, fake_node):
+    controller = _winch_controller_class()(fake_node)
+
+    assert controller.set_load_detection_mode(True) is False
+    assert controller.setEnabled(True) is False
+
+    assert fake_node.publishers[2].published_messages == []
+    assert fake_node.publishers[5].published_messages == []
+
+    warning_messages = [record.message for record in fake_node.get_logger().records if record.level == "warning"]
+    assert warning_messages == [
+        "Cannot set load detection: Winch not available",
+        "Cannot enable winch: Winch not available",
+    ]
+
+
 def test_speed_commands_clamp_to_max_speed(qt_app, fake_node):
     controller = _winch_controller_class()(fake_node)
     controller.set_available(True)

@@ -139,7 +139,7 @@ class WinchController(QObject):
     def command_speed_rpm(self, speed: float) -> bool:
         """Command winch speed with safety limits (RPM)"""
         if not self._available:
-            print("Cannot command speed: Winch not available")
+            self._node.get_logger().warning("Cannot command speed: Winch not available")
             return False
         safe_speed = float(self._apply_safety_limits(speed))
         msg = Float64()
@@ -151,7 +151,7 @@ class WinchController(QObject):
     def command_speed_mmps(self, speed: float) -> bool:
         """Command winch speed in mm/s with clamping to ±max_speed"""
         if not self._available:
-            print("Cannot command speed: Winch not available")
+            self._node.get_logger().warning("Cannot command speed: Winch not available")
             return False
         clamped_speed = float(self._apply_safety_limits(speed))
         msg = Float64()
@@ -234,7 +234,8 @@ class WinchController(QObject):
         
     def set_load_detection_mode(self, enable: bool):
         if not self.available:
-            print("Cannot set load detection: Winch not available")
+            self._node.get_logger().warning("Cannot set load detection: Winch not available")
+            return False
 
         try:
             msg = Bool()
@@ -390,14 +391,15 @@ class WinchController(QObject):
     def setEnabled(self, enabled: bool):
         """Enable/disable winch from QML"""
         if not self._available:
-            print("Cannot enable winch: Winch not available")
-            return
+            self._node.get_logger().warning("Cannot enable winch: Winch not available")
+            return False
         
          # Send command to enable/disable winch
         msg = Bool()
         msg.data = enabled
         self._enable_pub.publish(msg)
         print(f'Winch {"enabled" if enabled else "disabled"}')
+        return True
 
     @Slot(bool)
     def setLoadDetectionEnabled(self, enabled: bool):

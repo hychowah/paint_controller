@@ -485,6 +485,7 @@ class TeensyController(QObject):
         self._node.get_logger().info(f'Spray gun leveling {"enabled" if enabled else "disabled"}')
         self._publish_bool(self.ef_spray_level_enable_pub, enabled)
         self._spray_gun_leveling_enabled = enabled
+        self._status['spray_gun_leveling_enabled'] = enabled
         self.spray_gun_leveling_changed.emit(enabled)
 
     @Slot(float, float)

@@ -4,7 +4,6 @@ import QtQuick.Layouts
 import QtQuick.Window
 import "../pages/home"
 import "../pages/spray"
-import "../pages/workflow"
 import "../pages/wheel"
 import "../pages/winch"
 import "../pages/tuning"

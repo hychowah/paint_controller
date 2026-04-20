@@ -34,6 +34,11 @@ Last Modified: 2026-04-20
 | 0.2 Type ControllerBundle | [x] | Concrete types added; imports moved to module scope |
 | 0.3 Remove aliases + fix bugs | [x] | C++ path formally deprecated; `baseStreamer`/`videoStreamer` removed; overlay slot returns list |
 | 0.4 Winch safety + ScreenManager | [x] | Re-enabled 4 winch move-command availability guards with logger warnings; ScreenManager now takes `node` in constructor |
+| BF-1 Winch load-detection guard | [x] | `set_load_detection_mode()` now returns early with a logger warning when the winch is unavailable; covered in `tests/test_winch.py` |
+| BF-2 SystemMonitor thread affinity | [x] | Worker timer now belongs to the worker object and start/stop are queued through signals; covered in `tests/test_system_monitor.py` |
+| BF-3 Wheel error queued handling | [x] | `error_state_changed` now uses `Qt.QueuedConnection` so UI-side reactions stay off the ROS thread |
+| BF-4 Winch logger consistency | [x] | Remaining availability guards in `winch.py` now use the node logger instead of `print()` |
+| BF-5 MainWindow startup import fix | [x] | Stale `../pages/workflow` import removed from `MainWindow.qml`; validated in `QT_QPA_PLATFORM=offscreen` mode through `MainWindow QML loaded` |
 | PRE-1 Machine-verify QML mapping | [x] | Mapping table refreshed to live identifiers; lowercase `stateStore` and aliases removed |
 | 1.0 Register StateStore | [x] | `StateStore` exposed via `setContextProperty`. `qmlRegisterSingletonInstance` abandoned (PySide6 bug — see KNOWLEDGE.md) |
 | 1.1 Register SettingsManager | [x] | Confirmed done — registered in `application.py`, validated in POST-1 loop |
@@ -47,11 +52,11 @@ Last Modified: 2026-04-20
 | 1.8 Register workflow handlers | [x] | CANCELLED — runtime stays on context properties; `workflow_legacy.py` deleted in Phase 1B |
 | 1.10 Qt6 versionless imports | [x] | All QML files now use versionless Qt imports; `PageSpray.qml` uses `Qt5Compat.GraphicalEffects` for the Qt6 compatibility path |
 | 1.9 Add qmldir manifests | [x] | Type-export `qmldir` files added across the QML tree; no bare `module PaintController`, and no new `module ...` declarations yet while runtime stays on relative imports |
-| 1.11a required props — buttons | [ ] | After 1.9 and stable import cleanup |
-| 1.11b required props — inputs | [ ] | |
-| 1.11c required props — displays | [ ] | |
-| 1.11d required props — panels/popups | [ ] | |
-| 1.11e required props — widgets | [ ] | |
+| 1.11a required props — buttons | [ ] | After BF-1..BF-4 and controller test hardening |
+| 1.11b required props — inputs | [ ] | Same two-pass hardening gate as 1.11a |
+| 1.11c required props — displays | [ ] | Largest batch; run only after the test safety net expands |
+| 1.11d required props — panels/popups | [ ] | Audit callers first; missing `required` bindings should fail loudly |
+| 1.11e required props — specialized | [ ] | Covers the surviving reusable specialized QML components (for example pointcloud geometry), not deleted workflow widgets |
 | POST-1 Startup context property validation | [x] | Validation loop in `application.py` checks all 22 context properties for `None` after `engine.load()` |
 | 2.0 Expand CommonStyle | [x] | Token-based design system with scales, colors, spacing, typography, motion, and fixed shell tokens. `scaleFactor` defaults to 1.0 (runtime DPI removed — caused 2x on Steam Deck). `qmldir` singleton added. |
 | 2.1 Design system — core/nav | [x] | `MainWindow`, `TopBar`, `SelectBar` migrated. Shell chrome uses fixed tokens. |
@@ -59,68 +64,58 @@ Last Modified: 2026-04-20
 | 2.3 Design system — displays | [x] | Display folder migrated to `CommonStyle` for the shared visual system; a few responsive size/motion literals still remain in specialized visualizers/dials |
 | 2.4 Design system — panels/popups | [x] | `ControlPanel`, `ConnectionStatusPanel`, `SettingsSection`, `CustomPopup` migrated |
 | 2.5a Design system — root overlays | [x] | `OverlayLayer`, `EmergencyOverlay` migrated |
-| 2.5b Design system — systemcontrol | [~] | `EditWorkFlowTab`, `WorkFlowTab` migrated (layout-safe weights); `CommandTab` anchor fix. Remaining tabs not yet themed. |
-| 2.5c Design system — video overlays | [ ] | |
-| 2.6a Design system — pages batch 1 | [~] | `PageHome` — removed duplicate stream start, guarded animation binding. Other pages not yet themed. |
-| 2.6b Design system — settings pages | [ ] | |
-| 2.6c Design system — status/workflow | [ ] | |
-| 2.7 Refactor OverlayLayer dedup | [ ] | |
+| 2.5b Design system — systemcontrol | [~] | Deferred by user until safety/test hardening is complete. `EditWorkFlowTab`, `WorkFlowTab` migrated (layout-safe weights); `CommandTab` anchor fix. |
+| 2.5c Design system — video overlays | [ ] | Deferred by user until after BF + Phase 3 hardening work |
+| 2.6a Design system — pages batch 1 | [~] | Deferred by user until safety/test hardening is complete. `PageHome` already removed duplicate stream start and guarded its animation binding. |
+| 2.6b Design system — settings pages | [ ] | Deferred by user until after the active hardening queue |
+| 2.6c Design system — status/workflow | [ ] | Deferred by user until after the active hardening queue |
+| 2.7 Refactor OverlayLayer dedup | [ ] | Deferred with the rest of the design-system backlog |
 | 2.8 Fix page naming | [ ] | |
-| 3.0 Clean __init__.py imports | [ ] | |
+| 3.0 Clean __init__.py imports | [x] | `core`, `handlers`, and `controllers` package inits are now lightweight and no longer re-export heavy Qt/ROS modules |
 | 3.1 Pytest infrastructure | [x] | Added headless Qt fixture, namespace-safe imports, fake ROS node/publisher/subscription/timer scaffolding, shared fake topic bus, and validation tests; normalized existing utility/harness test files to the layered style |
 | 3.2 Tests — StateStore/Settings | [x] | Added direct runtime coverage for `StateStore` signals/defaults and `SettingsManager` load/clamp/save/persistence behavior |
 | 3.3 Tests — QtBridge/Factory | [x] | `tests/test_qt_bridge.py` — 13 tests (signals, video source selection, null-safe wiring) |
 | 3.4 Tests — Emergency/ControlProc | [x] | `tests/test_emergency.py` (EmergencyButtonHandler); `tests/test_control_processor.py` — 31 tests (track curve/deadzone/clamping, winch guards/locks/activation-gate, wheel travel accumulation/send) |
 | 3.5 Tests — Input/SteamDeck | [~] | `tests/test_input_handler.py` covers `UIInputHandler` mode switching and popup-close wiring; SteamDeck HID parsing still untested |
-| 3.6 Tests — Wheel/Winch | [~] | `tests/test_winch_ros_integration.py` adds real ROS pub/sub validation and `tests/test_winch.py` adds fast transport/unit coverage for WinchController; WheelController coverage still pending |
-| 3.7 Tests — ESP32/Teensy | [ ] | |
+| 3.6 Tests — Wheel/Winch | [x] | `tests/test_winch_ros_integration.py` plus `tests/test_winch.py` cover the winch path; `tests/test_wheel.py` now covers unified speed publishing, state updates, error transitions, and timeout availability |
+| 3.7 Tests — ESP32/Teensy | [x] | `tests/test_esp32_valve.py` covers command clamping, keepalive gating, raw UDP messages, and status publishing; `tests/test_teensy.py` covers status parsing, user-field preservation, relay publishing, thrust updates, and force publishing |
 | 3.8 CI/CD pipeline | [x] | `.github/workflows/ci.yml`: lint gates both pytest and ROS2 build jobs. `pyproject.toml` with ruff/pytest/coverage config. `requirements-dev.txt` updated. |
 | 3.9 Fix build system | [x] | `CMakeLists.txt` stripped to pure `ament_cmake` wrapper (C++/Qt5/GStreamer deps removed). `package.xml` cleaned to 0.1.0, C++ deps removed. `requirements.txt` switched to `~=` pins. |
 
 ## Current Checkpoint
 
-- **Test infrastructure stabilized (2026-04-21)**: Qt fixture conflict resolved: `qt_core_app` is now an alias of `qt_app`; `QT_QPA_PLATFORM` forced to `offscreen`; `_flush_qt_events` autouse fixture added
+- **Test infrastructure stabilized**: Qt fixture conflict resolved: `qt_core_app` is now an alias of `qt_app`; `QT_QPA_PLATFORM` forced to `offscreen`; `_flush_qt_events` autouse fixture added
 - FakePublisher hardened with `isinstance` type check; FakeRosBus delivers `copy.copy(msg)` instead of shared reference
 - Controller fakes added to `fakes.py`: `FakeWheel`, `FakeWinch`, `FakeTeensy`, `FakeEsp32Valve`, `FakeOverlay`, `FakeHeartbeatHandler`, `FakeStateStore`
 - Stub drift-check tests added to `test_test_infrastructure.py`
 - `test_control_processor.py` (31 tests) and `test_qt_bridge.py` (13 tests) completed
-- `winch.py` logger routing bug fixed (4 `move_*` methods now use `self._node.get_logger().warning()`)
-- **100 tests, all passing** as of 2026-04-21
+- BF-1..BF-4 are complete: the winch unavailable guards are fixed, SystemMonitor startup is worker-thread-safe, and wheel error handling is queued off the ROS thread
+- `3.0` is complete: package `__init__.py` files no longer re-export the heavy Qt/ROS module graph
+- `3.6` is complete: WheelController now has dedicated unit coverage alongside the existing winch tests
+- `3.7` is complete: ESP32ValveController and TeensyController now have direct regression coverage, and the spray-gun leveling state now persists across ROS status callbacks
+- Recent targeted validation for the controller hardening batches is green; revalidate any full-suite claim with a fresh local pytest run instead of relying on older fixed test-count snapshots
 - Task 1.1 (SettingsManager QML registration): verified done — registered in `application.py`, validated in POST-1 loop
+- **Approved queue change**: remaining Phase 3 controller/input hardening still takes priority over design-system work
+- **Deferred backlog**: `2.5b`, `2.5c`, `2.6a-c`, and `2.7` stay in the plan but are intentionally postponed until the active hardening queue is complete
 - **Next tasks** (priority order):
-  1. `1.11a required props — buttons` — design system hardening
-  2. `2.5c Design system — video overlays`
-  3. `3.7 Tests — ESP32/Teensy`
-  4. `3.0 Clean __init__.py imports`
+  1. `3.5 Tests — Input/SteamDeck` — finish HID parsing coverage
+  2. `1.11a-e required props` — after the test safety net is stronger
+  3. `2.8 Fix page naming`
 
 ---
 
 ## Dependency Graph
 
 ```
-Phase 0: 0.1 → 0.2 → 0.3    (0.4 parallel with 0.2/0.3)
+Completed this batch: BF-1..BF-4, 3.0, 3.6, and 3.7
          ↓
-Phase 1: PRE-1 — Machine-verify QML mapping table
+Phase 3 hardening (remaining): 3.5 (finish SteamDeck HID parsing coverage)
          ↓
-         1.0 (StateStore — establishes pattern)
+Phase 1 cleanup: 1.11a-e (`required` props) after the test safety net is stronger
          ↓
-Validation Gate: 3.1 (pytest infrastructure) + 3.8 (CI pipeline)
-         ↓
-Phase 1 completed enough for runtime: 1.0, 1.2, 1.9, and 1.10 done; 1.1 plus 1.11 remain as cleanup work; 1.3-1.8 cancelled because PySide6 singleton registration is broken
-         ↓
-         1.10 (versionless imports — BEFORE 1.9) ✅
-         ↓
-         1.9 (qmldir manifests — after versionless imports) ✅
-         ↓
-         1.11a-e (required props — after stable qmldir/import cleanup)
-         ↓
-         POST-1 — Startup context property validation
-         ↓
-Phase 2: 2.0 (CommonStyle token system) → 2.1-2.6 (sequential by batch)
-         2.7, 2.8 (independent, anytime)
-         ↓
-Phase 3 (remaining): 3.0 → 3.2-3.7 (parallel test writing)
-         3.9 (independent, anytime)
+Cosmetic cleanup: 2.8 (page naming)
+
+Deferred backlog: 2.5b, 2.5c, 2.6a-c, and 2.7 remain tracked but are intentionally postponed until the active hardening queue is complete
 ```
 
 ---
@@ -142,13 +137,20 @@ Phase 3 (remaining): 3.0 → 3.2-3.7 (parallel test writing)
 | 1.10 Versionless imports | LOW | Mechanical sed replace |
 | 1.9 qmldir manifests | **HIGH** | ~20 new files, module naming critical |
 | 1.11a-e Required props | MEDIUM | Each `required` is breaking if caller misses it |
+| BF-1 Winch load-detection guard | HIGH | Safety bug: unavailable winch currently can still publish load-detection commands |
+| BF-2 SystemMonitor thread affinity | MEDIUM | Wrong-thread timer startup can block UI and undermines worker-thread isolation |
+| BF-3 Wheel error queued handling | MEDIUM | Current direct callback path runs UI-side reactions from the ROS thread |
+| BF-4 Winch logger consistency | LOW | Remaining `print()` guards bypass structured ROS logging |
+| BF-5 MainWindow startup import fix | ~~HIGH~~ | ✅ DONE — stale `../pages/workflow` import removed and startup validated headlessly through `MainWindow QML loaded` |
+| 3.6 WheelController tests | ~~HIGH~~ | ✅ DONE — dedicated WheelController coverage now exists in `tests/test_wheel.py` |
+| 3.7 ESP32/Teensy tests | ~~HIGH~~ | ✅ DONE — dedicated ESP32 and Teensy coverage now exists in `tests/test_esp32_valve.py` and `tests/test_teensy.py` |
 | 2.0 Expand CommonStyle | ~~MEDIUM~~ | ✅ DONE — DPI approach resolved (fixed scaleFactor at 1.0) |
 
 ---
 
 ## Reference Patterns
 
-### Context Property Pattern (CURRENT — all 24 runtime objects use this)
+### Context Property Pattern (CURRENT — all 22 runtime objects use this)
 ```python
 # In application.py main(), AFTER engine creation, BEFORE engine.load()
 ctx = engine.rootContext()
@@ -226,17 +228,16 @@ import "../pages/home"         // still relative until qmldir rollout
 
 Used for Phase 1 tasks. Shows which QML files must be updated per controller registration.
 
-> **IMPORTANT (Audit R10)**: Before continuing Phase 1, run `for prop in stateStore settingsManager backend overlayController workFlowHandler workFlowRunner warningHandler baseStreamHandler wheelController winchController steamDeckHandler windMonitor teensyController esp32ValveController lidarController actionConfig heartbeatHandler controlProcessor sshHandler systemMonitor screenRecorder rosBagRecorder screenManager baseTopViewController; do echo "==$prop=="; grep -rl "$prop" qml/; done` and compare against this table. Fix any discrepancies.
+> **IMPORTANT (Audit R10)**: Before continuing Phase 1, run `for prop in stateStore settingsManager backend overlayController workFlowRunner warningHandler baseStreamHandler wheelController winchController steamDeckHandler windMonitor teensyController esp32ValveController lidarController heartbeatHandler controlProcessor sshHandler systemMonitor screenRecorder rosBagRecorder screenManager baseTopViewController; do echo "==$prop=="; grep -rl "$prop" qml/; done` and compare against this table. Fix any discrepancies.
 
 | Identifier | QML Files That Reference It |
 |---|---|
 | `backend` | EmergencyOverlay, PageSpray, MainSettingsPage |
-| `stateStore` | TopBar, PageWorkFlow, ExecutorPageStatus, PlannerPageStatus |
+| `stateStore` | TopBar, ExecutorPageStatus, PlannerPageStatus |
 | `overlayController` | MainWindow, MultiScreenListUI, SystemControlMenu |
-| `workFlowHandler` | SequenceList, WorkFlowControl, PageWorkFlow |
 | `workFlowRunner` | WorkFlowTab, EditWorkFlowTab, WorkFlowStatusOverlay |
 | `warningHandler` | TopBar |
-| `baseStreamHandler` | PageWheel, PageHome, VideoFullscreenOverlay, DeviceControlTab, PageWorkFlow |
+| `baseStreamHandler` | PageWheel, PageHome, VideoFullscreenOverlay, DeviceControlTab |
 | `wheelController` | PageWheel, BaseFrontOverlay, WheelsCard, DeviceControlTab, ConnectionStatusPanel, ExecutorPageStatus, PlannerPageStatus, WheelStatus |
 | `winchController` | PageWinch, PageStatus, EndEffectorOverlay, VideoOverlayTopBar, WinchCard, ConnectionStatusPanel, DeviceControlTab, CommandTab, MoveLengthButton, PlannerPageStatus, ExecutorPageStatus |
 | `steamDeckHandler` | *(no QML refs — Python-only, still register for consistency)* |
@@ -244,7 +245,6 @@ Used for Phase 1 tasks. Shows which QML files must be updated per controller reg
 | `teensyController` | PageTuning, EndEffectorOverlay, VideoOverlayTopBar, SettingsTab, TeensyArmCard, IMUCard, MonitorHeader, ConnectionStatusPanel, CommandTab, DeviceControlTab, ExecutorPageStatus, PlannerPageStatus, TeensyStatus |
 | `esp32ValveController` | EndEffectorOverlay, ValvesCard |
 | `lidarController` | LidarOverlay, Lidar2DView, Lidar3DView, WallDetectionOverlay, PageMonitor |
-| `actionConfig` | ActionSequence, ActionItem, PageWorkFlow |
 | `heartbeatHandler` | ConnectionStatusPanel, DeviceControlTab, PageHome |
 | `controlProcessor` | VideoFullscreenOverlay |
 | `sshHandler` | PageHome, PageLauncher, VideoOverlayTopBar |
@@ -316,7 +316,7 @@ grep -n "RobotController" core/__init__.py __init__.py
 
 **Goal**: Remove 2 redundant `setContextProperty` aliases and fix a slot return type bug.
 
-> **C++ Deprecation Notice (Audit R2)**: The C++ binary (`paint_controller_cpp`) shares the same QML files and sets `baseStreamer`/`backend` context properties. It is formally deprecated. Do NOT update `paint_controller.cpp` during modernization. The C++ path only sets 2 of the 24 runtime objects required by the full UI and is already non-functional for normal operation. QML changes will break it; this is acceptable.
+> **Historical Runtime Note (Audit R2)**: The old C++ UI/runtime path is no longer part of the live tree. Do not plan modernization work around `paint_controller_cpp` or a top-level `src/` UI path; the active runtime is the Python/QML application only.
 
 **Files to modify**:
 - `core/application.py` — Remove these 2 lines from the context property block (~L868-895):
@@ -374,9 +374,9 @@ grep -n "\.node = " core/application.py
 **Script**:
 ```bash
 cd python/paint_controller
-for prop in stateStore settingsManager backend overlayController workFlowHandler workFlowRunner \
+for prop in stateStore settingsManager backend overlayController workFlowRunner \
   warningHandler baseStreamHandler wheelController winchController steamDeckHandler windMonitor \
-  teensyController esp32ValveController lidarController actionConfig heartbeatHandler \
+  teensyController esp32ValveController lidarController heartbeatHandler \
   controlProcessor sshHandler systemMonitor screenRecorder rosBagRecorder screenManager \
   baseTopViewController; do
   echo "==$prop=="
@@ -397,9 +397,8 @@ done
 **Python changes**:
 - `core/application.py` — Uses `ctx.setContextProperty("stateStore", state_store)` (already existed, kept as-is)
 
-**QML files** (4 files): Access via `stateStore.xyz` (lowercase, no import needed)
+**QML files** (3 files): Access via `stateStore.xyz` (lowercase, no import needed)
 - `navigation/TopBar.qml`
-- `pages/workflow/PageWorkFlow.qml`
 - `pages/status/components/ExecutorPageStatus.qml`
 - `pages/status/components/PlannerPageStatus.qml`
 
@@ -486,8 +485,7 @@ The tree now has `qmldir` manifests for the component/page/overlay directories t
 - `navigation/`
 - `components/buttons/`, `components/displays/`, `components/inputs/`, `components/panels/`, `components/popups/`, `components/specialized/pointcloud/`
 - `overlays/`, `overlays/lidar/`, `overlays/video/`, `overlays/video/components/`
-- `pages/home/`, `pages/misc/`, `pages/settings/`, `pages/settings/components/`, `pages/settings/pages/`, `pages/spray/`, `pages/status/`, `pages/status/components/`, `pages/tuning/`, `pages/wheel/`, `pages/winch/`, `pages/workflow/`
-- `widgets/actions/`
+- `pages/home/`, `pages/misc/`, `pages/settings/`, `pages/settings/components/`, `pages/settings/pages/`, `pages/spray/`, `pages/status/`, `pages/status/components/`, `pages/tuning/`, `pages/wheel/`, `pages/winch/`
 
 **qmldir format used** (for `components/buttons/`):
 ```
@@ -525,7 +523,7 @@ required property string settingKey
 - **1.11b**: `components/inputs/` (5 files)
 - **1.11c**: `components/displays/` (19 files) — largest batch
 - **1.11d**: `components/panels/` + `components/popups/` (4 files)
-- **1.11e**: `widgets/actions/` (3 files)
+- **1.11e**: `components/specialized/pointcloud/` (2 files)
 
 **For each**: Read the component, identify properties that MUST be set by callers (not internal state), add `required`. Then check all usages to ensure they set the property.
 
@@ -543,14 +541,13 @@ required property string settingKey
 ```python
 # Verify all context properties are wired correctly
 _EXPECTED_CONTEXT_PROPERTIES = [
-  "stateStore", "backend", "overlayController", "workFlowHandler",
-  "workFlowRunner", "warningHandler", "baseStreamHandler",
-  "wheelController", "winchController", "steamDeckHandler",
-  "windMonitor", "teensyController", "esp32ValveController",
-  "lidarController", "actionConfig", "heartbeatHandler",
-  "controlProcessor", "sshHandler", "systemMonitor",
-  "screenRecorder", "rosBagRecorder", "settingsManager",
-  "screenManager", "baseTopViewController",
+  "stateStore", "backend", "overlayController", "workFlowRunner",
+  "warningHandler", "baseStreamHandler", "wheelController",
+  "winchController", "steamDeckHandler", "windMonitor",
+  "teensyController", "esp32ValveController", "lidarController",
+  "heartbeatHandler", "controlProcessor", "sshHandler",
+  "systemMonitor", "screenRecorder", "rosBagRecorder",
+  "settingsManager", "screenManager", "baseTopViewController",
 ]
 for name in _EXPECTED_CONTEXT_PROPERTIES:
   if ctx.contextProperty(name) is None:
@@ -629,7 +626,7 @@ grep -rn 'font.pointSize:' qml/
 - **2.5c**: `overlays/video/`, `overlays/video/components/`, `overlays/lidar/`
 - **2.6a**: `pages/home/`, `pages/spray/`, `pages/wheel/`, `pages/winch/`, `pages/tuning/`, `pages/misc/`
 - **2.6b**: `pages/settings/`, `pages/settings/pages/`, `pages/settings/components/`
-- **2.6c**: `pages/status/`, `pages/status/components/`, `pages/workflow/`
+- **2.6c**: `pages/status/`, `pages/status/components/`
 
 ---
 

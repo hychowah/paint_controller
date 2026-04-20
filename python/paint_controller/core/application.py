@@ -21,7 +21,7 @@ os.environ['QT_IM_MODULE'] = 'none'
 import rclpy
 from rclpy.node import Node
 
-from PySide6.QtCore import QTimer, QUrl, Signal, QThread
+from PySide6.QtCore import QTimer, QUrl, Signal, QThread, Qt
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWidgets import QApplication
 
@@ -310,7 +310,10 @@ def main():
             qt_bridge.show_popup("MOTOR ERROR", error_message, "error", 5000)
             qt_bridge.emergency_triggered.emit()
 
-    bundle.wheel_controller.error_state_changed.connect(_handle_wheel_motor_error)
+    bundle.wheel_controller.error_state_changed.connect(
+        _handle_wheel_motor_error,
+        Qt.QueuedConnection,
+    )
 
     # Timer callback: process controller inputs
     def _timer_callback():

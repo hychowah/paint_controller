@@ -2,6 +2,46 @@
 
 ---
 
+### 2026-04-20 21:46 - First-Principles Plan Reprioritization
+
+**Goal**: Reconcile the active modernization plan with the approved first-principles review before implementation resumes
+**Issues**: `01_MASTER_PLAN.md` still pointed future sessions at design-system work first, carried stale test-count language, and still listed two low-value debt items that were intentionally dropped after review
+**Tried**: Updated the master plan queue to front-load BF-1..BF-4 and Phase 3 hardening, marked the remaining Phase 2 theming work as deferred, corrected the required-props scope away from deleted workflow/widgets paths, and synchronized `00_README.md` plus `docs/tech-debt.md`
+**Result**: ✅ The planning docs now agree on the active queue: hotfixes → `3.0` → `3.6` → `3.7` → `3.5` → `1.11a-e` → `2.8`, with theming intentionally deferred until the hardening queue is complete
+**Files**: `PLANNING.md`, `docs/plan/00_README.md`, `docs/plan/01_MASTER_PLAN.md`, `docs/tech-debt.md`
+
+### 2026-04-20 21:52 - Hotfix Queue + Import Cleanup + Wheel Coverage
+
+**Goal**: Start implementation with the highest-value approved batch: BF-1..BF-4, task `3.0`, and the missing WheelController coverage in `3.6`
+**Issues**: `set_load_detection_mode()` still published when the winch was unavailable, `SystemMonitorWorker` started its timer from the wrong thread, wheel error handling was connected directly from the ROS thread, package `__init__.py` files still re-exported heavy modules, and WheelController had no dedicated unit tests
+**Tried**: Replaced remaining unavailable winch guard `print()` calls with node logger warnings and added the missing early return, moved SystemMonitor timer ownership/startup fully onto the worker-thread path, connected wheel error handling with `Qt.QueuedConnection`, removed subpackage re-exports, expanded the test stubs/fakes for wheel messages and logger formatting, and added focused tests for WinchController, SystemMonitor, and WheelController behavior
+**Result**: ✅ Focused validation is green: `tests/test_winch.py` (8 passed), `tests/test_system_monitor.py` (1 passed), and `tests/test_wheel.py` + `tests/test_test_infrastructure.py` (11 passed combined). The active queue now starts at `3.7`.
+**Files**: `python/paint_controller/controllers/winch.py`, `python/paint_controller/controllers/system_monitor.py`, `python/paint_controller/core/application.py`, `python/paint_controller/core/__init__.py`, `python/paint_controller/handlers/__init__.py`, `python/paint_controller/controllers/__init__.py`, `tests/conftest.py`, `tests/fakes.py`, `tests/test_winch.py`, `tests/test_system_monitor.py`, `tests/test_wheel.py`, `docs/plan/00_README.md`, `docs/plan/01_MASTER_PLAN.md`, `docs/tech-debt.md`, `PLANNING.md`
+
+### 2026-04-20 22:05 - ESP32 + Teensy Controller Coverage
+
+**Goal**: Complete task `3.7` with direct regression coverage for `ESP32ValveController` and `TeensyController`
+**Issues**: The harness lacked stubs for `Float32`, multi-array/int ROS messages, `geometry_msgs`, `ValveStatus`, `TeensyStatus`, and `TeensyYaw`; the new Teensy tests also exposed that `setSprayGunLevelingEnabled()` updated a member flag but did not persist that user-controlled value into `_status`, so the next ROS callback wiped it out
+**Tried**: Expanded the test-only message stubs in `tests/conftest.py`, added focused ESP32 tests for command clamping, keepalive gating, raw UDP payloads, and status publishing, added focused Teensy tests for status parsing, user-controlled-field preservation, relay publishing, thrust-force settings/ramping, and force publishing, then fixed the spray-gun leveling persistence bug in `teensy.py`
+**Result**: ✅ Focused validation is green: `tests/test_esp32_valve.py` + `tests/test_teensy.py` (10 passed), and the shared harness still passes alongside them (`tests/test_test_infrastructure.py` + new 3.7 tests → 16 passed). The active queue now starts at `3.5`.
+**Files**: `python/paint_controller/controllers/teensy.py`, `tests/conftest.py`, `tests/test_esp32_valve.py`, `tests/test_teensy.py`, `docs/plan/00_README.md`, `docs/plan/01_MASTER_PLAN.md`, `docs/tech-debt.md`, `DEVNOTES.md`, `PLANNING.md`
+
+### 2026-04-20 22:24 - Pre-Commit Doc Sync + MainWindow Startup Hotfix Tracking
+
+**Goal**: Make the authoritative docs truthful before commit and record the newly discovered QML startup blocker in the active queue
+**Issues**: `INDEX.md`, `README.md`, `AGENTS.md`, and the plan docs still carried stale fixed test-count claims, references to deleted workflow/widget/C++ paths, and `01_MASTER_PLAN.md` still resumed at `3.5` even though `paint_controller` currently fails at startup because `MainWindow.qml` imports the deleted `../pages/workflow` directory
+**Tried**: Audited the doc set against `INDEX.md`, the live workspace tree, and `application.py` context-property registrations; removed deleted-path references, corrected the context-property total back to 22, replaced brittle fixed-count wording with revalidation guidance, and inserted `BF-5` ahead of `3.5` in the active queue
+**Result**: ✅ The session-start docs now point at the live tree and current queue. Commit preparation no longer depends on stale workflow/widget/C++ references, and future sessions should see the MainWindow startup import issue before resuming the test-hardening queue.
+**Files**: `INDEX.md`, `AGENTS.md`, `README.md`, `docs/plan/00_README.md`, `docs/plan/01_MASTER_PLAN.md`, `docs/plan/03_QML_BINDINGS.md`, `DEVNOTES.md`, `PLANNING.md`
+
+### 2026-04-20 22:36 - MainWindow Startup Import Fix Validation
+
+**Goal**: Verify that removing the stale `../pages/workflow` import from `MainWindow.qml` actually clears the startup failure
+**Issues**: A normal `paint_controller` launch in this shell still aborts earlier on the local XCB display/plugin path, which masks QML-load validation
+**Tried**: Re-ran the app with `QT_QPA_PLATFORM=offscreen` so the QML engine could load headlessly, then watched for the previous failure point and the root-window load log
+**Result**: ✅ BF-5 is fixed. The offscreen launch gets past the deleted-workflow import failure and reaches `MainWindow QML loaded` plus the normal event-loop startup logs. Offscreen mode still reports a non-blocking Qt Quick 3D rendering limitation, but the root QML file now loads successfully.
+**Files**: `python/paint_controller/qml/core/MainWindow.qml`, `docs/plan/00_README.md`, `docs/plan/01_MASTER_PLAN.md`, `DEVNOTES.md`, `PLANNING.md`
+
 ### 2026-04-20 - Phase 1A + 1C + 1E: Dead Code Removal
 
 **Goal**: Remove C++ source, BirdView dead service, and backward-compat `__init__.py` re-exports

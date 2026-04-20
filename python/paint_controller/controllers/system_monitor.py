@@ -11,7 +11,7 @@ import re
 import os
 from typing import Optional
 
-from PySide6.QtCore import QObject, Signal, Property, QTimer, QThread
+from PySide6.QtCore import QObject, Signal, Property, QTimer, QThread, Qt, Slot
 
 logger = logging.getLogger(__name__)
 
@@ -34,10 +34,11 @@ class SystemMonitorWorker(QObject):
         self._running = False
         
         # Timer runs in the worker's thread (not main thread)
-        self.update_timer = QTimer()
+        self.update_timer = QTimer(self)
         self.update_timer.timeout.connect(self._update_system_metrics)
         self.update_timer.setSingleShot(False)
     
+    @Slot(int)
     def start_monitoring(self, interval_ms: int = 1000) -> None:
         """
         Start periodic monitoring in worker thread.
@@ -51,6 +52,7 @@ class SystemMonitorWorker(QObject):
         # Then start timer for subsequent updates
         self.update_timer.start(interval_ms)
     
+    @Slot()
     def stop_monitoring(self) -> None:
         """Stop periodic monitoring"""
         self._running = False
@@ -261,6 +263,8 @@ class SystemMonitor(QObject):
     battery_remaining_time_changed = Signal(str)
     cpu_temperature_changed = Signal(float)
     power_status_changed = Signal(str)
+    start_monitoring_requested = Signal(int)
+    stop_monitoring_requested = Signal()
     
     def __init__(self):
         super().__init__()
@@ -283,6 +287,8 @@ class SystemMonitor(QObject):
         self.worker.battery_remaining_time_updated.connect(self._on_battery_remaining_time_updated)
         self.worker.cpu_temperature_updated.connect(self._on_cpu_temperature_updated)
         self.worker.power_status_updated.connect(self._on_power_status_updated)
+        self.start_monitoring_requested.connect(self.worker.start_monitoring, Qt.QueuedConnection)
+        self.stop_monitoring_requested.connect(self.worker.stop_monitoring, Qt.QueuedConnection)
         
         # Start the worker thread
         self.worker_thread.started.connect(lambda: None)  # Cleanup slot
@@ -333,12 +339,11 @@ class SystemMonitor(QObject):
         Args:
             interval_ms: Update interval in milliseconds (default: 1000ms = 1s)
         """
-        # Call worker's start_monitoring from main thread (queued call)
-        self.worker.start_monitoring(interval_ms)
+        self.start_monitoring_requested.emit(interval_ms)
     
     def stop_monitoring(self) -> None:
         """Stop periodic system monitoring"""
-        self.worker.stop_monitoring()
+        self.stop_monitoring_requested.emit()
     
     def cleanup(self) -> None:
         """Clean up worker thread and resources"""

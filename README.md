@@ -4,9 +4,9 @@ ROS 2 + PySide6/QML control application for the paint robot.
 
 ## Current Status
 
-- Python runtime is the primary path; the old C++ UI path is retained only as reference and is no longer built.
+- Python runtime is the only live application path in this repository; the old C++ UI path has been removed from the tree.
 - Runtime objects are exposed to QML through `setContextProperty()`. Do not use `qmlRegisterSingletonInstance()` in this repo.
-- Full suite passes: `python/paint_controller/venv/bin/python -m pytest tests -q` reports **100 passed**. The Qt fixture conflict (`QT_QPA_PLATFORM`, dual-app abort) was resolved in the test infrastructure hardening pass.
+- Recent targeted pytest slices for the controller hardening work are green. Re-run `python/paint_controller/venv/bin/python -m pytest tests -q` locally before committing if you need a fresh full-suite claim.
 - Active modernization status is tracked in `docs/plan/01_MASTER_PLAN.md`.
 
 ## Prerequisites
@@ -149,7 +149,7 @@ Note: If `QT_QPA_PLATFORM` is set to `xcb` in your shell environment, `conftest.
 - `python/config/` — runtime configuration JSON
 - `tests/` — pytest suite
 - `docs/plan/` — modernization tracker and architecture docs
-- `src/` — deprecated C++ reference path
+- Historical C++ sources have been removed from the live repo; no `src/` runtime path remains
 
 ## Documentation Map
 
@@ -163,7 +163,7 @@ Note: If `QT_QPA_PLATFORM` is set to `xcb` in your shell environment, `conftest.
 ## Operational Notes
 
 - Multi-screen behavior is managed by `ScreenManager` and the QML shell; the primary behavior is documented in `docs/plan/02_ARCHITECTURE.md`.
-- The repository still contains reference C++ sources, but the build system is now a pure `ament_cmake` wrapper around the Python package.
+- The build system is now a pure `ament_cmake` wrapper around the Python package; no live C++ UI/runtime path remains in the repo.
 
 ## Troubleshooting
 

@@ -13,53 +13,20 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 **Priority**: medium  
 **Effort**: medium (5 sub-tasks across component categories)  
 **Why it matters**: Without `required`, QML silently ignores missing bindings. Components accept `undefined` values with no runtime error, making integration bugs invisible until runtime visual failures occur.  
-**What to do**: Add `required` keyword to all bindable properties across buttons, inputs, displays, panels/popups, and widgets.  
+**What to do**: Add `required` keyword to all bindable properties across buttons, inputs, displays, panels/popups, and the surviving specialized reusable QML components. Run this only after the controller/input safety-test queue is stronger.  
 **Related tasks**: `1.11a–e` in `docs/plan/01_MASTER_PLAN.md`  
-**Files**: `qml/components/buttons/`, `qml/components/inputs/`, `qml/components/displays/`, `qml/components/panels/`, `qml/widgets/`
+**Files**: `qml/components/buttons/`, `qml/components/inputs/`, `qml/components/displays/`, `qml/components/panels/`, `qml/components/popups/`, `qml/components/specialized/`
 
 ---
 
 ### TD-002 — Design system incomplete (video overlays, settings/status pages)
 **Area**: QML UI  
-**Priority**: medium  
+**Priority**: low  
 **Effort**: medium  
 **Why it matters**: Hardcoded colours, spacing, and font sizes in un-migrated files will diverge from the rest of the UI and make theme-wide changes expensive later.  
-**What to do**: Migrate remaining QML to `CommonStyle` tokens: video overlays (`2.5c`), settings pages (`2.6b`), status/workflow pages (`2.6c`), systemcontrol tabs remainder (`2.5b`), `OverlayLayer` dedup (`2.7`), page renaming (`2.8`).  
-**Related tasks**: `2.5b`, `2.5c`, `2.6b`, `2.6c`, `2.7`, `2.8` in `docs/plan/01_MASTER_PLAN.md`  
+**What to do**: Resume the remaining `CommonStyle` rollout only after the active bug-fix and controller/input test-hardening queue is complete. Remaining scope: video overlays (`2.5c`), settings pages (`2.6b`), status/workflow pages (`2.6c`), systemcontrol tabs remainder (`2.5b`), and `OverlayLayer` dedup (`2.7`).  
+**Related tasks**: `2.5b`, `2.5c`, `2.6b`, `2.6c`, `2.7` in `docs/plan/01_MASTER_PLAN.md`  
 **Files**: `qml/overlays/video/`, `qml/pages/settings/`, `qml/pages/status/`, `qml/overlays/systemcontrol/`, `qml/overlays/OverlayLayer.qml`
-
----
-
-### TD-003 — `__init__.py` re-exports pollute import graph
-**Area**: Python packaging  
-**Priority**: medium  
-**Effort**: low  
-**Why it matters**: Package `__init__.py` files re-export heavy dependencies (PySide6, rclpy) causing the full import chain to load in tests and any partial-import scenario. Test isolation currently relies on conftest namespace stubs as a workaround.  
-**What to do**: Empty or remove cross-package re-exports from `__init__.py` files. Move shared symbols to lightweight `utils/` modules.  
-**Related tasks**: `3.0` in `docs/plan/01_MASTER_PLAN.md`  
-**Files**: `python/paint_controller/core/__init__.py`, `python/paint_controller/handlers/__init__.py`, `python/paint_controller/controllers/__init__.py`
-
----
-
-### TD-005 — WheelController has no unit tests
-**Area**: Testing  
-**Priority**: medium  
-**Effort**: low  
-**Why it matters**: WheelController handles safety-critical commands (wheel speed, emergency stop). The absence of tests leaves command-rejection guards and clamping unverified.  
-**What to do**: Add unit tests following the `test_winch.py` pattern — fake bus transport, availability guards, clamp behaviour.  
-**Related tasks**: `3.6` in `docs/plan/01_MASTER_PLAN.md`  
-**Files**: `tests/test_wheel.py` (to create), `python/paint_controller/controllers/wheel.py`
-
----
-
-### TD-006 — ESP32ValveController and TeensyController have no unit tests
-**Area**: Testing  
-**Priority**: medium  
-**Effort**: medium  
-**Why it matters**: Hardware controllers are safety-adjacent (valve position commands, relay/enable state). No tests means regression risk on socket, keepalive, or range-conversion bugs.  
-**What to do**: Add unit tests for UDP keepalive, range conversion (×10/÷100), socket lock behaviour (ESP32), and user-field preservation (Teensy).  
-**Related tasks**: `3.7` in `docs/plan/01_MASTER_PLAN.md`  
-**Files**: `tests/test_esp32_valve.py` (to create), `tests/test_teensy.py` (to create), `python/paint_controller/controllers/esp32_valve.py`, `python/paint_controller/controllers/teensy.py`
 
 ---
 
@@ -71,16 +38,6 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 **What to do**: Add unit tests for `steam_deck.py` HID parsing: button bitmask extraction, axis normalisation, edge cases (all-zero, all-max, disconnected).  
 **Related tasks**: `3.5` in `docs/plan/01_MASTER_PLAN.md`  
 **Files**: `tests/test_steam_deck.py` (to create), `python/paint_controller/handlers/steam_deck.py`
-
----
-
-### TD-008 — `toggle_multiscreen_window()` still uses `engine.rootObjects()[0]`
-**Area**: Python / QML boundary  
-**Priority**: low  
-**Effort**: low  
-**Why it matters**: Direct `rootObjects()` access is fragile — it couples Python to the QML object tree position and bypasses the signal/context-property pattern used everywhere else.  
-**What to do**: Replace with a signal or context-property callable, matching the pattern established in task 1.2.  
-**Files**: `python/paint_controller/core/application.py` (`toggle_multiscreen_window`)
 
 ---
 
@@ -104,16 +61,6 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 
 ---
 
-### TD-017 — `show_popup_fn` constructor coupling
-**Area**: Python architecture  
-**Priority**: low  
-**Effort**: low  
-**Why it matters**: `show_popup_fn` is threaded through 7 class constructors. Already bound to `QtBridge.show_popup`. Not blocking, but adds constructor complexity.  
-**What to do**: Evaluate whether classes could receive `QtBridge` directly; or leave as-is (simple and functional).  
-**Files**: `python/paint_controller/core/controller_factory.py`
-
----
-
 ## Resolved Debt
 
 | ID | Title | Resolved | Notes |
@@ -124,6 +71,11 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 | — | Dual-inheritance `RobotController` god class | pre-2026-04-17 | Split into `PaintRosNode`, `StateStore`, `QtBridge`, `ControllerFactory` |
 | — | Hardcoded ESP32 MAC/IP in source | pre-2026-04-17 | Externalised to `python/config/esp32_valve.json` |
 | TD-004 | `workflow_legacy.py` not removed | 2026-04-20 | Deleted in Phase 1B along with full legacy workflow system (11 files) |
+| TD-003 | `__init__.py` re-exports pollute import graph | 2026-04-20 | Fixed in task `3.0` — subpackage `__init__.py` files are now lightweight and no longer re-export heavy Qt/ROS modules |
+| TD-005 | WheelController has no unit tests | 2026-04-20 | Fixed in task `3.6` — `tests/test_wheel.py` now covers unified speed publishing, status updates, error transitions, and timeout availability |
+| TD-006 | ESP32ValveController and TeensyController have no unit tests | 2026-04-20 | Fixed in task `3.7` — `tests/test_esp32_valve.py` and `tests/test_teensy.py` now cover protocol conversion, keepalive/status behavior, user-field preservation, and thrust/force publishing |
 | TD-012 | Workflow executor thread safety | 2026-04-20 | Fixed in Phase 0A — `threading.Lock` + `threading.Event` property wrappers |
 | TD-013 | Workflow DI bypass (hardware controllers silently `None`) | 2026-04-20 | Fixed in Phase 0B — `HardwareControllers.from_controllers()` explicit DI |
 | TD-015 | `BirdViewService` dead code | 2026-04-20 | Deleted in Phase 1C — `bird_view_service.py` + `PointEditorOverlay.qml` removed |
+| TD-008 | `toggle_multiscreen_window()` still uses `engine.rootObjects()[0]` | 2026-04-20 | Dropped from the active debt list after review — single stable call site, not worth replacing right now |
+| TD-017 | `show_popup_fn` constructor coupling | 2026-04-20 | Dropped from the active debt list after review — callable injection is acceptable DI, not harmful debt |

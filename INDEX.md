@@ -51,10 +51,9 @@ paint_controller_ros2/
 │   ├── qml/                       # All QML UI components
 │   │   ├── core/                  # MainWindow, CommonStyle theme tokens
 │   │   ├── navigation/            # TopBar, SelectBar
-│   │   ├── pages/                 # Full-page views (home, spray, workflow, settings, etc.)
+│   │   ├── pages/                 # Full-page views (home, spray, wheel, winch, settings, status, etc.)
 │   │   ├── overlays/              # Overlay layers (video, emergency, system control)
 │   │   ├── components/            # Reusable UI components (buttons, inputs, displays, popups)
-│   │   └── widgets/               # Standalone widget components
 │   ├── config/                    # SSH/bash config JSON
 │   └── resource/                  # Workflow JSON definitions
 │
@@ -119,5 +118,5 @@ python/paint_controller/venv/bin/python -m pytest tests/test_control_processor.p
 
 - **VS Code interpreter**: pinned to `python/paint_controller/venv/bin/python` in `.vscode/settings.json`
 - **`QT_QPA_PLATFORM`**: force-assigned `"offscreen"` in `tests/conftest.py` — overrides any shell-level `xcb`
-- **Test suite**: 100 tests collected; run cleanly with the venv python, not the system python
+- **Test suite**: use the venv python and revalidate the current full-suite status before commit; historical fixed test-count snapshots in older docs can drift
 - If PySide6 or pytest appear missing in-editor, check the selected interpreter first

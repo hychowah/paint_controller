@@ -17,17 +17,23 @@ class FakeLogRecord:
 class FakeLogger:
     records: List[FakeLogRecord] = field(default_factory=list)
 
-    def debug(self, message: str) -> None:
-        self.records.append(FakeLogRecord("debug", message))
+    @staticmethod
+    def _format(message: str, *args: Any) -> str:
+        if not args:
+            return message
+        return message % args
 
-    def info(self, message: str) -> None:
-        self.records.append(FakeLogRecord("info", message))
+    def debug(self, message: str, *args: Any) -> None:
+        self.records.append(FakeLogRecord("debug", self._format(message, *args)))
 
-    def warning(self, message: str) -> None:
-        self.records.append(FakeLogRecord("warning", message))
+    def info(self, message: str, *args: Any) -> None:
+        self.records.append(FakeLogRecord("info", self._format(message, *args)))
 
-    def error(self, message: str) -> None:
-        self.records.append(FakeLogRecord("error", message))
+    def warning(self, message: str, *args: Any) -> None:
+        self.records.append(FakeLogRecord("warning", self._format(message, *args)))
+
+    def error(self, message: str, *args: Any) -> None:
+        self.records.append(FakeLogRecord("error", self._format(message, *args)))
 
 
 @dataclass

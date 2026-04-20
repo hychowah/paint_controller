@@ -1,19 +1,5 @@
-"""Core application components including startup orchestration and settings."""
+"""Core application package.
 
-from .application import RosThread, main
-from .controller_factory import ControllerBundle, create_controllers
-from .qt_bridge import QtBridge
-from .ros_node import PaintRosNode
-from .settings import SettingsManager
-from .state_store import StateStore
-
-__all__ = [
-    'RosThread',
-    'SettingsManager',
-    'main',
-    'ControllerBundle',
-    'create_controllers',
-    'QtBridge',
-    'PaintRosNode',
-    'StateStore',
-]
+Keep this package init lightweight so submodule imports do not pull PySide6,
+ROS, or startup orchestration code through package-level re-exports.
+"""

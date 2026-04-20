@@ -6,14 +6,13 @@
 
 ## Project Overview
 
-ROS2 node with PySide6/QML UI for robotic paint controller on Steam Deck. Hybrid Python + C++ codebase.
+ROS2 node with PySide6/QML UI for robotic paint controller on Steam Deck. Python-first codebase; the historical C++ UI path has been removed from the live tree.
 
-**Stack**: ROS2 (Humble/Jazzy), Python 3.10+, PySide6, QML, C++
+**Stack**: ROS2 (Humble/Jazzy), Python 3.10+, PySide6, QML
 
 **Key Paths**:
 - `python/paint_controller/` — Main Python application
 - `python/paint_controller/qml/` — QML UI components
-- `src/` — C++ nodes (deprecated)
 - `launch/` — ROS2 launch files
 
 ## Build & Run
