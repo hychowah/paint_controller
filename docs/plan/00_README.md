@@ -6,17 +6,14 @@
 
 ## For Future LLM Sessions
 
-This is the canonical session-start index for the repo documentation. In a fresh prompt session, start here before reading the larger tracker or any historical files.
+> **Start at `INDEX.md` (repo root)** — it is the canonical session-start map for the whole repo. This file covers only the plan-documentation subset.
 
-Read files in this order:
+For plan-docs navigation, read in this order:
 
-1. **`01_MASTER_PLAN.md`** — Authoritative task tracker, dependency graph, progress table, and next-task gate. Start here.
-2. **`DEVNOTES.md`** (repo root) — Most recent completed work, validation results, and environment notes.
-3. **`KNOWLEDGE.md`** (repo root) — Qt/Python gotchas and reusable patterns.
-4. **`02_ARCHITECTURE.md`** — Current runtime architecture reference.
-5. **`03_QML_BINDINGS.md`** — Current QML↔Python registration state and remaining import/qmldir cleanup scope.
-6. **`04_AUDIT_REPORT.md`** — Historical pre-mortem rationale, not current status.
-7. **`REFACTOR_TRACKER.md`** (repo root) — Optional historical context only; not the active tracker.
+1. **`01_MASTER_PLAN.md`** — Authoritative task tracker, dependency graph, progress table, and next-task gate.
+2. **`02_ARCHITECTURE.md`** — Current runtime architecture reference.
+3. **`03_QML_BINDINGS.md`** — Current QML↔Python registration state and remaining import/qmldir cleanup scope.
+4. **`04_AUDIT_REPORT.md`** — Historical pre-mortem rationale, not current status.
 
 ## Authority Hierarchy
 

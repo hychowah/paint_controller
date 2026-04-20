@@ -1,10 +1,33 @@
-# Copilot Instructions for Paint Controller
+# Agent Instructions — Paint Controller
 
-All project instructions are in **`AGENTS.md`** at the repository root.
+> **Start every session by reading `INDEX.md` first.** It gives orientation, the read-order checklist, and the authority hierarchy.
 
-Read `INDEX.md` first for orientation, then `AGENTS.md` for workflow rules.
+---
 
-See [../AGENTS.md](../AGENTS.md).
+## Project Overview
+
+ROS2 node with PySide6/QML UI for robotic paint controller on Steam Deck. Hybrid Python + C++ codebase.
+
+**Stack**: ROS2 (Humble/Jazzy), Python 3.10+, PySide6, QML, C++
+
+**Key Paths**:
+- `python/paint_controller/` — Main Python application
+- `python/paint_controller/qml/` — QML UI components
+- `src/` — C++ nodes (deprecated)
+- `launch/` — ROS2 launch files
+
+## Build & Run
+
+```bash
+# Build ROS2 packages
+cd ~/ros2_ws && colcon build --packages-select paint_interfaces paint_controller_ros2
+
+# Run application
+paint_controller
+
+# Run tests
+python/paint_controller/venv/bin/python -m pytest tests -q
+```
 
 ---
 
@@ -36,7 +59,7 @@ Create or update `PLANNING.md` in the repository root with this template:
 
 **File Classification**:
 - [ ] QML component → checked layout rules, property conflicts
-- [ ] Python signal handler → identified async boundaries  
+- [ ] Python signal handler → identified async boundaries
 - [ ] ROS2/Hardware → verified controller abstraction
 
 **Affected Files**:
@@ -67,7 +90,7 @@ Before merging PR, MUST delete `PLANNING.md`. This file is temporary and should 
 
 ---
 
-### Stop and Ask Triggers
+## Stop and Ask Triggers
 
 You MUST pause and ask for explicit guidance before:
 
@@ -79,40 +102,9 @@ You MUST pause and ask for explicit guidance before:
 
 ---
 
-### Planning Example
-
-```markdown
-## Task: Fix joystick deadzone not persisting
-
-**Understanding**: Joystick deadzone resets to default when switching controller modes
-**Complexity**: Medium
-**KNOWLEDGE.md Check**: "Signal Timing" — Python signals may fire before Qt state updates
-
-**File Classification**:
-- [x] Python signal handler → identified async boundaries
-
-**Affected Files**:
-- `python/paint_controller/handlers/input.py` — deadzone state management
-  - Callers: MainWindow.qml (mode switch buttons)
-  - Callees: settings.py (persistence layer)
-- `python/paint_controller/core/settings.py` — verify save/load timing
-
-**Cross-Layer Impact**: QML↔Python (mode switch signal triggers Python handler)
-
-**Approach**:
-1. Trace where deadzone is initialized vs loaded from settings
-2. Check if mode switch resets state before settings load completes
-3. Add explicit load after mode switch, or preserve state across switches
-
-**Risks**: Other input settings might have same issue
-**Rollback Plan**: Revert input.py changes; deadzone will reset but app functional
-```
-
----
-
 ## DEVNOTES.md Rules
 
-Development notes track what was tried, issues encountered, and solutions found.
+Development notes track what was tried, issues encountered, and solutions found. DEVNOTES is an **inbox**, not an archive.
 
 ### Format
 
@@ -131,32 +123,41 @@ Development notes track what was tried, issues encountered, and solutions found.
 1. **Be concise** — Focus on actionable information
 2. **One timestamp per feature/session** — Group related work together
 3. **Code snippets**: Keep short (3-5 lines), show before/after pattern
-4. **Size limit**: If file exceeds 1500 lines, ask user before deleting oldest entries
 
-### Example Entry
+### Rotation Policy (90-day rolling window)
 
-```markdown
-### 2026-01-19 14:30 - Fix Screen Detection Timing
+DEVNOTES entries have a maximum age of **90 days**. Older entries must be triaged and rotated out.
 
-**Goal**: Update UI when monitors connected/disconnected
-**Issues**: `Qt.application.screens` had stale data when Python signal fired
-**Tried**: Direct property binding → failed; immediate refresh → failed
-**Result**: ✅ 100ms Timer delay lets Qt update internal state first
-**Files**: `qml/core/MainWindow.qml`
-```
+**Rotation trigger**: Any entry older than 90 days, OR file exceeds ~300 lines.
+
+**Triage steps** (for each entry older than 90 days):
+1. Read the entry fully
+2. Does it contain a reusable pattern, gotcha, anti-pattern, or design decision not yet in KNOWLEDGE.md?
+   - Yes → propose the extracted entry to the user for confirmation, then add to KNOWLEDGE.md
+   - No → proceed to step 3
+3. Move the full entry verbatim to `docs/devnotes/YYYY-QN.md` (quarterly archive):
+   - Q1 = Jan–Mar, Q2 = Apr–Jun, Q3 = Jul–Sep, Q4 = Oct–Dec
+   - Create the file if it does not exist
+4. Remove the entry from DEVNOTES.md
+
+**What to extract → KNOWLEDGE.md**: gotchas, design decisions, anti-patterns, timing rules, discovered constraints
+
+**What to archive only**: step-by-step implementation narratives, file lists, "tried X failed" detail
+
+**What git handles** (do not duplicate in DEVNOTES): exact line changes, before/after code diffs
 
 ---
 
 ## KNOWLEDGE.md Rules
 
-Reusable learnings extracted from DEVNOTES.md for future reference.
+Reusable learnings extracted from DEVNOTES.md or discovered during debugging.
 
 ### When to Add
 
 After completing a DEVNOTES entry, evaluate:
 - Is this a reusable pattern or gotcha?
 - Would this help avoid the same mistake in future?
-- Is it project-agnostic or broadly applicable?
+- Is it broadly applicable beyond this specific feature?
 
 **Always ask user for confirmation before adding to KNOWLEDGE.md.**
 
@@ -171,3 +172,5 @@ Short title + 2-4 line explanation. Group by category.
 1. **No standalone documentation files** unless user explicitly requests
 2. **Check KNOWLEDGE.md** before debugging — solution may already exist
 3. **Update DEVNOTES.md** after significant debugging sessions or feature work
+4. **INDEX.md is the session-start map** — consult it in any fresh session before any other file
+5. **Update `docs/tech-debt.md`** when new debt is discovered or existing items are resolved — move resolved items to the Resolved table with date and one-line note

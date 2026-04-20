@@ -88,3 +88,73 @@ When an external monitor is connected:
 - Main UI moves to external display (index 1)
 - Industrial monitor appears fullscreen on built-in 7-inch display (index 0)
 - When external disconnected, main UI returns to built-in display
+
+### QML Context Property Over Prop Drilling for Shared Managers
+When a reusable QML component needs access to a Python manager (`settingsManager`, `teensyController`), inject it via `engine.rootContext().setContextProperty()` rather than threading it as a property through every intermediate parent. Context properties are globally available to all QML files without any import. Keep special-case logic outside the reusable component rather than adding conditional paths inside it.
+
+### Dynamic Signal Connect/Disconnect for Lazy Frame Processing
+For CPU-intensive frame pipelines (e.g. image transforms), add an `enabled` property whose setter calls `signal.connect(worker)` or `signal.disconnect(worker)`. When disabled, zero CPU is spent — no polling or flag-checks needed. Connect lazily on first enable if the upstream signal may not exist at construction time.
+
+### QThread Worker Frame-Skip Flag for Real-Time Pipelines
+In a QThread image worker, add a `_processing: bool` flag. If a new frame arrives while `_processing` is True, drop it rather than queuing it. This keeps latency bounded. A queue causes lag that appears as a growing delay rather than clean dropped frames.
+
+### Reuse Existing Camera Stream Signal — Avoid Duplicate ROS Subscriptions
+When adding a second consumer of a camera feed, connect to the existing `VideoStreamHandler` stream's `frameReady` signal instead of creating a new `rclpy` subscription for the same topic. Duplicate subscriptions double network traffic and introduce independent timing jitter between consumers.
+
+### Touchscreen-Bound Controls in Dual-Monitor Setup
+Interactive controls requiring touch must live on the secondary window that owns the touchscreen (built-in display), not the main UI on the external non-touch monitor. Use `visible: screenCount <= 1` on the main-window instance and add the same component to the secondary window. The secondary window always maps to the built-in screen.
+
+---
+
+## Architecture / Design Patterns
+
+### Strangler Pattern for Dual-Inheritance God Class
+A class inheriting from both a ROS `Node` and `QObject` becomes untestable and grows without bound. Split into focused single-inheritance classes (`PaintRosNode`, `StateStore`, `QtBridge`) with an explicit DI coordinator. Use the strangler pattern: create new classes alongside the old, rewire callers incrementally, then remove the old — safe rollback at every step.
+
+### Explicit DI Bundle Over God-Object Attribute Access
+Controllers that accept a large facade object and access arbitrary attributes create hidden coupling and prevent isolated testing. Replace with an explicit dataclass (e.g. `ControllerBundle`) that lists exactly which dependencies are required. Constructors become self-documenting and each controller is independently testable.
+
+---
+
+## Python Patterns (extended)
+
+### MagicMock Fails for PySide6 Stubs — Use ModuleType Instead
+`MagicMock` as a PySide6 stub fails with `typing.ForwardRef` errors at import time because PySide6 uses forward references internally. Use real (empty) stub modules via `types.ModuleType` + `sys.modules` pre-registration (the namespace-only pattern in `conftest.py`) rather than `MagicMock`.
+
+### Preserving User-Controlled Fields Across ROS Status Callbacks
+When a status callback replaces the full status dict on every incoming message, user-toggled fields not driven by hardware are silently overwritten each cycle. Define a constant tuple `_USER_CONTROLLED_FIELDS` and copy those values from the previous dict before replacing it. Prevents state loss for fields the operator manually enables/disables.
+
+### Joystick Accumulation vs Direct Mapping
+For position-based joystick controls (e.g. wheel travel distance), always accumulate: `value += joystick * scale * dt`. Direct mapping (`value = joystick * scale`) gives rate-like control where value mirrors stick position and resets to zero when the stick is released. Getting this wrong produces a control mode that behaves correctly during a sweep but resets when the stick centers.
+
+### Dispatch Table for Control Mode Handlers
+Replace if/elif chains on control mode names with a `_control_handlers: dict[str, Callable]` mapping mode strings to handler functions. New modes require one dict entry instead of a new elif branch. The dispatch path is independently testable and the set of handled modes is visible at a glance.
+
+---
+
+## Hardware / Controllers
+
+### UDP Range Conversion: Document Scale Factors Inline
+Hardware protocols often use different numeric ranges from ROS conventions (e.g. ESP32 feedback 0–10000 = 0.01% steps; command 0–1000 = 0.1% steps; application 0–100%). Add inline comments at every conversion site documenting both ranges and the formula. Silent factor errors produce calibration drift that is hard to trace without the formulas in context.
+
+### QThread for Non-Blocking Hardware I/O
+UDP `recvfrom()` and similar blocking socket calls should run in a `QThread` worker, not a `threading.Thread`. QThread integrates with Qt's signal/slot system so signals emitted from the worker arrive in the correct thread context without extra `QMetaObject.invokeMethod` plumbing.
+
+### Conditional Keepalive for Hardware Commands
+For hardware requiring a periodic heartbeat, re-send the last command only if idle > N seconds rather than on every timer tick. Track the last-send timestamp and gate re-sends behind an idle check. Avoids unnecessary bus traffic while keeping the connection alive.
+
+### Deadzone Timeout Pattern for Continuous Motor Commands
+When publishing continuous motor/speed commands, stop transmitting after the joystick stays in the deadzone for > N seconds (e.g. 1 s). Resume immediately when the stick exits. Prevents command flooding when the operator leaves the stick centered and reduces bus load during idle periods.
+
+### QTimer-Based Hardware Command Ramping
+For actuators that cannot handle step changes (e.g. thrust force), implement a QTimer that steps `_current` toward `_target` at a configurable `ramp_rate` (units/second) on each tick. Keep a separate `set_instant()` path for cases that must bypass the ramp. Expose `ramp_rate` as a user-configurable setting.
+
+---
+
+## Workflow / Scheduler
+
+### Separate Original Schedule from Execution State for Loop Restarts
+In a workflow executor, store the complete original schedule (`all_scheduled`) separately from the mutable execution-state copy (`_pending_position_triggers`). On loop restart, rebuild position triggers by filtering `all_scheduled` rather than only clearing the mutable list. Clearing without rebuilding silently drops all position-triggered actions after the first loop iteration.
+
+### Implicit Dependency Tracking: Auto-Mark Reference Actions as Must-Complete
+When a position-triggered action fires early (before its reference action finishes), the workflow engine must not proceed to completion. Automatically mark reference actions with a `must_complete_before_workflow_end` flag in the scheduler rather than requiring explicit entries in workflow YAML. The executor waits for all such actions before looping or ending. Matches the Kubernetes/Airflow job-dependency pattern.
