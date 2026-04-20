@@ -171,4 +171,21 @@ class HardwareControllers:
         if hasattr(robot_controller, 'winch_controller') and robot_controller.winch_controller:
             winch = WinchControllerAdapter(robot_controller.winch_controller)
 
-        return cls(teensy, winch)
+        return cls(teensy_controller=teensy, winch_controller=winch)
+
+    @classmethod
+    def from_controllers(cls, teensy_ctrl, winch_ctrl, esp32_valve_ctrl=None):
+        """
+        Create HardwareControllers with explicit controller injection.
+
+        Args:
+            teensy_ctrl: TeensyController instance (or None)
+            winch_ctrl: WinchController instance (or None)
+            esp32_valve_ctrl: ESP32ValveController instance (or None)
+
+        Returns:
+            HardwareControllers instance with adapters wrapping the provided controllers
+        """
+        teensy = TeensyControllerAdapter(teensy_ctrl, esp32_valve_ctrl) if teensy_ctrl else None
+        winch = WinchControllerAdapter(winch_ctrl) if winch_ctrl else None
+        return cls(teensy_controller=teensy, winch_controller=winch)

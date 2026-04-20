@@ -36,10 +36,6 @@ class FakeControlProcessor:
         self.reset_winch_activation_calls += 1
 
 
-class FakeWorkflowHandler:
-    pass
-
-
 class FakeStateStore:
     def __init__(self, control_mode: str) -> None:
         self.control_mode = control_mode
@@ -58,7 +54,6 @@ def _build_handler(
         teensy=FakeTeensy(),
         overlay=overlay,
         control_processor=control_processor,
-        workflow_handler=FakeWorkflowHandler(),
         settings_manager=None,
         state_store=state_store,
         show_popup_fn=lambda title, message, popup_type: popup_calls.append((title, message, popup_type)),

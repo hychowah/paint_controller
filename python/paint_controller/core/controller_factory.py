@@ -18,12 +18,11 @@ from paint_controller.handlers.heartbeat import UIHeartbeatHandler
 from paint_controller.handlers.input import UIInputHandler
 from paint_controller.handlers.steam_deck import SteamDeckHandler
 from paint_controller.handlers.warnings import WarningHandler
-from paint_controller.models.action_config import ActionConfigPython
 from paint_controller.services.ros_bag_recorder import RosBagRecorder
 from paint_controller.services.screen_manager import ScreenManager
 from paint_controller.services.screen_recorder import ScreenRecorder
+from paint_controller.services.workflow.hardware import HardwareControllers
 from paint_controller.services.workflow.workflow_runner import WorkFlowRunner
-from paint_controller.services.workflow_legacy import WorkFlowHandler
 from paint_controller.ui.overlay import OverlayController
 
 
@@ -47,7 +46,6 @@ class ControllerBundle:
     # Cross-controller handlers
     overlay_controller: OverlayController
     control_processor: ControlProcessor
-    action_config: ActionConfigPython
     input_handler: UIInputHandler
     emergency_handler: EmergencyButtonHandler
 
@@ -57,12 +55,11 @@ class ControllerBundle:
     screen_recorder: ScreenRecorder
     ros_bag_recorder: RosBagRecorder
     workflow_runner: WorkFlowRunner
-    workflow_handler: WorkFlowHandler
 
     def cleanup(self, logger=None):
         """Cleanup all controllers in reverse creation order."""
         cleanup_order = [
-            'workflow_handler', 'workflow_runner',
+            'workflow_runner',
             'ros_bag_recorder', 'screen_recorder', 'screen_manager',
             'ssh_controller',
             'emergency_handler', 'input_handler',
@@ -142,23 +139,13 @@ def create_controllers(
     )
     overlay.set_control_processor(control_processor)
 
-    action_config = ActionConfigPython(winch_controller=winch)
-
-    workflow_handler = WorkFlowHandler(
-        node,
-        heartbeat_handler=heartbeat,
-        teensy=teensy,
-        winch=winch,
-        show_popup_fn=show_popup_fn,
-        action_config=action_config,
-    )
-    workflow_runner = WorkFlowRunner(node)
+    hardware = HardwareControllers.from_controllers(teensy, winch, esp32_valve)
+    workflow_runner = WorkFlowRunner(node, hardware)
 
     input_handler = UIInputHandler(
         teensy=teensy,
         overlay=overlay,
         control_processor=control_processor,
-        workflow_handler=workflow_handler,
         settings_manager=settings_manager,
         state_store=state_store,
         show_popup_fn=show_popup_fn,
@@ -194,7 +181,6 @@ def create_controllers(
         heartbeat_handler=heartbeat,
         overlay_controller=overlay,
         control_processor=control_processor,
-        action_config=action_config,
         input_handler=input_handler,
         emergency_handler=emergency,
         ssh_controller=ssh,
@@ -202,5 +188,4 @@ def create_controllers(
         screen_recorder=screen_rec,
         ros_bag_recorder=ros_bag,
         workflow_runner=workflow_runner,
-        workflow_handler=workflow_handler,
     )

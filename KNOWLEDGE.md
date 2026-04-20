@@ -65,6 +65,9 @@ When QML accesses Python data via dict-style access (e.g., `model.all_status["fi
 ### Test Imports: Namespace-Only Module Pre-Registration
 When `package/__init__.py` re-exports heavy dependencies (PySide6, rclpy, hid), tests fail on import. Fix: In `conftest.py`, pre-register the package as a namespace-only module via `types.ModuleType` + `sys.modules` before any test imports. This lets tests import submodules directly without triggering the full `__init__.py` chain.
 
+### py_compile Guard for Bypassed __init__.py
+Conftest namespace stubs (`sys.modules["paint_controller"] = types.ModuleType(...)`) prevent pytest from ever executing `__init__.py`, so `SyntaxError` there is invisible to the test suite. Fix: Add a `py_compile.compile(path, doraise=True)` call in a dedicated test. This checks syntax without importing, bypasses no stubs, and fails immediately on any syntax error.
+
 ---
 
 ## Debugging Techniques

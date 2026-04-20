@@ -268,15 +268,6 @@ Rectangle {
             z: 1
         }
         
-        // Point editor overlay (disabled)
-        PointEditorOverlay {
-            id: pointEditor
-            anchors.fill: parent
-            z: 200
-            visible: false
-            enabled: false
-        }
-        
         // Tap to open settings (only when not in edit mode)
         MouseArea {
             anchors.fill: parent

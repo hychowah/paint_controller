@@ -192,11 +192,6 @@ ApplicationWindow {
     }
 
     Component {
-        id: page7Component
-        PageWorkFlow {}
-    }
-
-    Component {
         id: settingPageComponent
         PageSettings {}
     }

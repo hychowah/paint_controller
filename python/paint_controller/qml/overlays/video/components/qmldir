@@ -2,7 +2,6 @@ BaseFrontOverlay 1.0 BaseFrontOverlay.qml
 BaseTopViewSettingsPopup 1.0 BaseTopViewSettingsPopup.qml
 ControlInfoPanel 1.0 ControlInfoPanel.qml
 EndEffectorOverlay 1.0 EndEffectorOverlay.qml
-PointEditorOverlay 1.0 PointEditorOverlay.qml
 VideoOverlayStyle 1.0 VideoOverlayStyle.qml
 VideoOverlayTopBar 1.0 VideoOverlayTopBar.qml
 WallDetectionOverlay 1.0 WallDetectionOverlay.qml

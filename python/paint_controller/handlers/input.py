@@ -11,13 +11,12 @@ logger = logging.getLogger(__name__)
 
 
 class UIInputHandler(QObject):
-    def __init__(self, teensy, overlay, control_processor, workflow_handler,
+    def __init__(self, teensy, overlay, control_processor,
                  settings_manager, state_store, show_popup_fn, close_popup_fn):
         super().__init__()
         self._teensy = teensy
         self._overlay = overlay
         self._control_processor = control_processor
-        self._workflow_handler = workflow_handler
         self._settings_manager = settings_manager
         self._state_store = state_store
         self._show_popup_fn = show_popup_fn
@@ -133,15 +132,11 @@ class UIInputHandler(QObject):
     def on_left_pressed(self):
         if self._overlay.is_showing_menu():
             self._overlay.move_to_first()
-        else:
-            self._workflow_handler.switch_to_page(0)
 
     @Slot()
     def on_right_pressed(self):
         if self._overlay.is_showing_menu():
             self._overlay.move_to_last()
-        else:
-            self._workflow_handler.switch_to_page(1)
 
     @Slot()
     def on_r4_pressed(self):

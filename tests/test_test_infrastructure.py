@@ -1,8 +1,16 @@
 """Harness validation tests for shared fake ROS/Qt test primitives."""
 
+import py_compile
 import sys
+from pathlib import Path
 
 from tests.fakes import FakeNode, FakeRosBus
+
+
+def test_package_init_has_no_syntax_errors() -> None:
+    """Catch SyntaxError in __init__.py (conftest stubs bypass real import)."""
+    init_path = Path(__file__).resolve().parent.parent / "python" / "paint_controller" / "__init__.py"
+    py_compile.compile(str(init_path), doraise=True)
 
 
 def test_fake_node_tracks_publishers_subscriptions_and_timers() -> None:

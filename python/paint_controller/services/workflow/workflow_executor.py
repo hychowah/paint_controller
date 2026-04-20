@@ -11,6 +11,7 @@ Key improvements:
 """
 
 import time
+import threading
 import yaml
 from typing import Dict, List, Optional, Any
 from enum import Enum
@@ -43,24 +44,36 @@ class WorkFlowExecutionThread(QThread):
         self.executor = executor
         self.scheduled_actions = scheduled_actions
         self.all_scheduled = all_scheduled  # Store all actions for loop rebuilding
-        self._stop_requested = False
+        self._stop_event = threading.Event()
     
+    # Property wrapper so all existing self._stop_requested reads/writes work unchanged
+    @property
+    def _stop_requested(self) -> bool:
+        return self._stop_event.is_set()
+
+    @_stop_requested.setter
+    def _stop_requested(self, value: bool) -> None:
+        if value:
+            self._stop_event.set()
+        else:
+            self._stop_event.clear()
+
     def run(self):
         """Run workflow execution."""
         try:
             self.executor._execute_scheduled_actions(self.scheduled_actions)
-            if not self._stop_requested:
+            if not self._stop_event.is_set():
                 self.execution_finished.emit()
         except Exception as e:
             self.execution_error.emit(str(e))
     
     def request_stop(self):
         """Request thread to stop."""
-        self._stop_requested = True
+        self._stop_event.set()
     
     def is_stop_requested(self) -> bool:
         """Check if stop was requested."""
-        return self._stop_requested
+        return self._stop_event.is_set()
 
 
 class WorkFlowExecutor:
@@ -74,28 +87,32 @@ class WorkFlowExecutor:
     - Proper error handling and state management
     """
 
-    def __init__(self, ros_node, logger=None):
+    def __init__(self, ros_node, hardware: HardwareControllers, logger=None):
         """
         Initialize workflow executor.
 
         Args:
-            ros_node: ROS2 node instance with access to controllers
+            ros_node: ROS2 node instance (for logger and popup access)
+            hardware: Pre-built HardwareControllers with wired controller adapters
             logger: Optional logger instance
         """
+        # Threading primitives must be created first (properties depend on them)
+        self._state_lock = threading.Lock()
+        self._stop_event = threading.Event()
+
         self.ros_node = ros_node
         self.logger = logger or ros_node.get_logger()
 
         # Initialize subsystems
-        self.hardware = HardwareControllers.from_robot_controller(ros_node)
+        self.hardware = hardware
         self.action_registry = ActionRegistry(self.hardware, self.logger, ros_node)
         self.scheduler = ActionScheduler(self.logger, self.hardware)
 
-        # State management
+        # State management (backing stores for thread-safe properties)
         self.current_workflow: Optional[Dict[str, Any]] = None
-        self.current_state = ExecutionState.IDLE
-        self.current_action_index = -1
+        self._current_state = ExecutionState.IDLE
+        self._current_action_index_val = -1
         self.execution_thread: Optional[WorkFlowExecutionThread] = None
-        self._stop_requested = False
         self._loop_enabled = False
         self._loop_iteration = 0
         
@@ -110,6 +127,39 @@ class WorkFlowExecutor:
         
         # Must-complete action tracking (industry pattern: implicit dependencies)
         self._must_complete_actions: Dict[str, ScheduledAction] = {}  # action_id -> action (currently running and must finish)
+
+    # --- Thread-safe property wrappers ---
+
+    @property
+    def current_state(self) -> ExecutionState:
+        with self._state_lock:
+            return self._current_state
+
+    @current_state.setter
+    def current_state(self, value: ExecutionState) -> None:
+        with self._state_lock:
+            self._current_state = value
+
+    @property
+    def current_action_index(self) -> int:
+        with self._state_lock:
+            return self._current_action_index_val
+
+    @current_action_index.setter
+    def current_action_index(self, value: int) -> None:
+        with self._state_lock:
+            self._current_action_index_val = value
+
+    @property
+    def _stop_requested(self) -> bool:
+        return self._stop_event.is_set()
+
+    @_stop_requested.setter
+    def _stop_requested(self, value: bool) -> None:
+        if value:
+            self._stop_event.set()
+        else:
+            self._stop_event.clear()
 
     def load_workflow(self, yaml_path: str) -> bool:
         """
@@ -301,8 +351,9 @@ class WorkFlowExecutor:
             
             # Check if we should loop
             if self._loop_enabled and not self._stop_requested:
-                self._loop_iteration += 1
-                self.logger.info(f"Starting loop iteration {self._loop_iteration}")
+                with self._state_lock:
+                    self._loop_iteration += 1
+                self.logger.info(f"Starting loop iteration {self.get_loop_iteration()}")
                 
                 # Reset state for next iteration and rebuild position trigger lists
                 self._active_position_triggers = {}
@@ -685,26 +736,11 @@ class WorkFlowExecutor:
     
     def get_loop_iteration(self) -> int:
         """Get current loop iteration number (1-indexed, 0 if not looping)."""
-        return self._loop_iteration
+        with self._state_lock:
+            return self._loop_iteration
 
     def cleanup(self) -> None:
         """Clean up executor resources."""
         self.stop()
 
-    # Legacy compatibility methods
-    def set_controllers(self, teensy_controller, winch_controller, valve_controller=None) -> None:
-        """
-        Set controller references (legacy compatibility).
-        
-        Args:
-            teensy_controller: Teensy controller instance
-            winch_controller: Winch controller instance
-            valve_controller: ESP32 valve controller instance (optional)
-        """
-        # Update hardware controllers
-        from .hardware import TeensyControllerAdapter, WinchControllerAdapter
-        
-        if teensy_controller:
-            self.hardware.teensy = TeensyControllerAdapter(teensy_controller, valve_controller)
-        if winch_controller:
-            self.hardware.winch = WinchControllerAdapter(winch_controller)
+

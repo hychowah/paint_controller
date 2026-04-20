@@ -40,7 +40,7 @@
 
 **Evidence**: Verified. C++ binary shares `qml/core/MainWindow.qml`. Has its own launch file. But only sets 2 of the 24 runtime objects required by the full UI — already non-functional for normal operation.
 
-**Verdict**: VALID. User decision: **Deprecate C++ path.** Added deprecation notice to Task 0.3.
+**Verdict**: VALID. User decision executed — **C++ path deleted in Phase 1A.** Source files (`src/*.cpp`, `include/paint_controller/*.hpp`) removed entirely.
 
 ---
 

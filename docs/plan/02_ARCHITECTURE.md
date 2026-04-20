@@ -24,8 +24,8 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Owns boot order and runtime wiring
 - Creates the Qt app, ROS node, settings/state objects, Steam Deck handler, video services, QML engine, bridge, and controller bundle
 - Exposes all runtime objects through `setContextProperty()` (NOT `qmlRegisterSingletonInstance` — broken in PySide6, see KNOWLEDGE.md)
-- 24 context properties registered before `engine.load()`
-- Post-load validation loop checks all 24 properties for `None`
+- 22 context properties registered before `engine.load()`
+- Post-load validation loop checks all 22 properties for `None`
 - Starts timers, ROS thread, system monitor, and shutdown cleanup
 - Video streams deferred via `QTimer.singleShot(200, ...)` to avoid blocking first render
 - Startup instrumented with `time.perf_counter()` markers (`[startup +NNN.N ms] stage`)
@@ -68,10 +68,10 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Backward compatibility with defaults
 
 **Runtime registration state**
-- All 24 live runtime objects are exposed via `setContextProperty()`
+- All 22 live runtime objects are exposed via `setContextProperty()`
 - The singleton-registration track was cancelled because `qmlRegisterSingletonInstance()` is broken in this PySide6 setup
 - Remaining Phase 1 work is import/qmldir/property cleanup, not controller singleton migration
-- The deprecated C++ path under `src/paint_controller.cpp` still has its own `RobotController` type, but it is no longer the primary runtime
+- The C++ source files (`src/*.cpp`, `include/paint_controller/*.hpp`) were deleted in Phase 1A
 
 ---
 
@@ -206,13 +206,6 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - `start_all_streams()` is idempotent (`_streams_started` flag) with per-stream timing logs
 - Startup deferred 200ms after QML load to avoid blocking first render
 
-#### **Bird's Eye View Service** - ~350 lines
-- 150° fisheye undistortion + perspective transform
-- Parameters: Zoom (0.606), pan (x:0.026, y:0.474), crop (90% width)
-- Source trapezoid: Normalized coords scaled to resolution
-- Output: 300×400 vertical road view with optional cropping
-- Settings integration: All parameters bound to SettingsManager
-
 #### **Base Top View Service** - ~400 lines
 - Fisheye correction for base camera (1920×1080 @ calibration)
 - Parameters: k1=-0.389, k2=0.142 (distortion coefficients)
@@ -234,11 +227,6 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 #### **ROS Bag Recorder** - ~50 lines
 - Topic recording via rosbag2
 
-#### **Workflow Legacy** - `WorkFlowHandler(QObject) + ActionWorker(QThread)` ~200 lines
-- Legacy workflow execution (kept for backward compatibility)
-- Service client pattern for PaintAction ROS service
-- Component online/idle checking
-
 #### **Workflow Runner** - New pattern
 - Replaces legacy handler with improved error handling
 - Explicit state tracking + QML-exposed properties
@@ -246,13 +234,6 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 ---
 
 ### 5. Models & UI Controllers (`python/paint_controller/models/`, `ui/`)
-
-#### **ActionConfigPython** - ~150 lines
-- Centralized action definitions (move winch, descend+spray, extend arm, etc.)
-- 5 action types with field metadata
-- Default value generation based on current hardware state
-- QML-callable interface
-- **NOTE (Audit D5)**: No `cleanup()` method — intentionally omitted from `ControllerBundle.cleanup()`
 
 #### **OverlayController** - ~300 lines
 - Dual joystick menu system (left/right/system)
@@ -288,7 +269,7 @@ qml/
     lidar/            → 3D lidar 2D/3D views
     EmergencyOverlay  → Hold-to-activate visual
     OverlayLayer      → Master coordinator
-  widgets/actions/    → Workflow action sequencing
+  widgets/
 ```
 
 **Key QML Patterns** (from KNOWLEDGE.md):
@@ -320,14 +301,11 @@ qml/
 
 ---
 
-### 7. C++ Path (REMOVED FROM BUILD)
+### 7. C++ Path (DELETED — Phase 1A)
 
-**Location**: `src/paint_controller.cpp`
-
-- Source files retained for reference but **no longer built** — `CMakeLists.txt` stripped of all C++ targets
-- Sets only 2 of the 24 runtime objects required by the full UI (`backend`, `baseStreamer`)
-- `package.xml` no longer lists C++ dependencies (rclcpp, Qt5, GStreamer, HID)
-- Build system is now a pure `ament_cmake` wrapper for the Python package
+- Source files deleted in Phase 1A: `src/*.cpp` (paint_controller, steam_deck_handler, steam_deck_test), `include/paint_controller/*.hpp`
+- `CMakeLists.txt` is a pure `ament_cmake` wrapper for the Python package; had no C++ build targets when deleted
+- `package.xml` does not list C++ dependencies (rclcpp, Qt5, GStreamer, HID)
 
 ---
 
@@ -384,7 +362,7 @@ ImageProvider (updates internal QImage, signals frameReady)
   ↓
 QML Image (refreshes from image provider)
   ↓
-BirdViewTransformer/BaseTopViewTransformer (CPU processing)
+BaseTopViewTransformer (CPU processing)
   ↓ [Settings/parameters from SettingsManager]
 Output image
 ```

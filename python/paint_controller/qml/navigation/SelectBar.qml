@@ -160,7 +160,6 @@ Rectangle {
                 case 4: targetComponent = page4Component; break;
                 case 5: targetComponent = page5Component; break;
                 case 6: targetComponent = page6Component; break;
-                case 7: targetComponent = page7Component; break;
                 case 8: targetComponent = settingPageComponent; break;
             }
             
@@ -272,16 +271,6 @@ Rectangle {
                 pageIndex: 5
                 isSelected: selectBar.selectedButton === "buttonPage5"
                 iconScale: 0.7
-            }
-
-            // Page 7 Button - Spray
-            NavigationButton {
-                id: buttonPage7
-                buttonId: "buttonPage7"
-                buttonText: "Spray"
-                iconSource: "../../resource/spray.png"
-                pageIndex: 7
-                isSelected: selectBar.selectedButton === "buttonPage7"
             }
 
             // Page Settings Button

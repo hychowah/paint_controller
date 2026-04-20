@@ -2,6 +2,52 @@
 
 ---
 
+### 2026-04-20 - Phase 1A + 1C + 1E: Dead Code Removal
+
+**Goal**: Remove C++ source, BirdView dead service, and backward-compat `__init__.py` re-exports
+**Issues**: None — targets pre-verified by audit subagents before execution
+**Result**: ✅ 100 tests pass.
+- **Phase 1A**: Deleted `src/` (3 .cpp) and `include/paint_controller/` (2 .hpp). CMakeLists.txt needed no changes — had no C++ build targets.
+- **Phase 1C**: Deleted `services/bird_view_service.py` (~590 lines) and `qml/overlays/video/components/PointEditorOverlay.qml`. Removed disabled `PointEditorOverlay {}` block from `BaseFrontOverlay.qml`; removed entry from `qml/overlays/video/components/qmldir`.
+- **Phase 1E**: `python/paint_controller/__init__.py` thinned to 3 lines (docstring + `__version__ = '0.1.0'`). All backward-compat re-exports (UILidarController, UIWheelController, etc.) removed — no callers.
+- **Phase 1D SKIPPED**: `Numpad.qml` has live caller in `MoveLengthButton.qml`; would need migration first.
+**Files deleted**: `src/*.cpp` (3 files), `include/paint_controller/*.hpp` (2 files), `services/bird_view_service.py`, `qml/overlays/video/components/PointEditorOverlay.qml`
+**Files modified**: `qml/overlays/video/components/BaseFrontOverlay.qml`, `qml/overlays/video/components/qmldir`, `python/paint_controller/__init__.py`
+
+---
+
+### 2026-04-20 - Syntax Fix + Test Guard for __init__.py
+
+**Goal**: Fix SyntaxError in `__init__.py` (unterminated triple-quoted string from partial edit); add test to prevent future regressions
+**Issues**: `replace_string_in_file` only replaced the opening `"""` line, leaving the old file body intact. Conftest namespace stub (`sys.modules["paint_controller"] = types.ModuleType(...)`) bypassed the real `__init__.py`, so pytest never caught it — error only surfaced when running `paint_controller` directly.
+**Result**: ✅ Rewrote `__init__.py` to 3 lines. Added `test_package_init_has_no_syntax_errors()` using `py_compile.compile(path, doraise=True)`. Pattern added to KNOWLEDGE.md.
+**Files**: `python/paint_controller/__init__.py`, `tests/test_test_infrastructure.py`
+
+---
+
+### 2026-04-20 - Phase 0A+0B: Thread Safety + DI Fix in Workflow Executor
+
+**Goal**: Fix two production bugs: (1) `HardwareControllers.from_robot_controller(ros_node)` passing `PaintRosNode` which lacks controller attributes → `teensy=None, winch=None`; (2) `current_state`, `current_action_index`, `_stop_requested`, `_loop_iteration` accessed cross-thread with no locking
+**Issues**: None during implementation
+**Result**: ✅ 100 tests pass. 
+- **0B DI fix**: Added `HardwareControllers.from_controllers(teensy, winch, esp32_valve)` classmethod; changed `WorkFlowExecutor.__init__` and `WorkFlowRunner.__init__` to accept `hardware: HardwareControllers`; factory builds it explicitly from bundle controllers
+- **0A thread safety**: Used Python property wrappers — zero call-site changes needed. `_stop_requested` delegates to `threading.Event` in both executor and thread. `current_state` / `current_action_index` delegate to `threading.Lock`-guarded backing stores. `get_loop_iteration()` uses lock; `_loop_iteration += 1` in worker uses explicit lock context.
+- Also fixed `_emergency_shutdown()` in WorkFlowRunner to use `executor.hardware` instead of broken `ros_node.winch_controller` hasattr check
+- Removed `set_controllers()` legacy compat method from executor
+**Files**: `services/workflow/hardware.py`, `services/workflow/workflow_executor.py`, `services/workflow/workflow_runner.py`, `core/controller_factory.py`
+
+---
+
+### 2026-04-20 - Legacy Workflow Deletion (Phase 1B)
+
+**Goal**: Remove the entire legacy workflow system (`workflow_legacy.py`, `ActionConfigPython`, `workFlowHandler` context prop) while preserving the current workflow system (`services/workflow/`, `workFlowRunner`)
+**Issues**: None — full deletion plan was pre-verified by team of subagents before execution
+**Result**: ✅ 11 files deleted, 10 files modified. 100 tests pass. Zero legacy symbol references in source files.
+**Files deleted**: `services/workflow_legacy.py`, `models/action_config.py`, `resource/workflow.json`, `qml/pages/workflow/` (3 files), `qml/widgets/actions/` (4 files), `qml/components/inputs/TrajNumpad.qml`
+**Files modified**: `core/controller_factory.py`, `core/application.py`, `services/__init__.py`, `__init__.py`, `models/__init__.py`, `handlers/input.py`, `qml/core/MainWindow.qml`, `qml/navigation/SelectBar.qml`, `qml/components/inputs/qmldir`, `tests/test_input_handler.py`
+
+---
+
 ### 2026-04-21 - Qt Fixture Stabilisation + Safety-Critical Test Coverage
 
 **Goal**: Stop the full test suite from aborting; add first-principles coverage for the two largest untested modules (ControlProcessor, QtBridge)

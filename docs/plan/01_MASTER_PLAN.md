@@ -36,7 +36,7 @@ Last Modified: 2026-04-20
 | 0.4 Winch safety + ScreenManager | [x] | Re-enabled 4 winch move-command availability guards with logger warnings; ScreenManager now takes `node` in constructor |
 | PRE-1 Machine-verify QML mapping | [x] | Mapping table refreshed to live identifiers; lowercase `stateStore` and aliases removed |
 | 1.0 Register StateStore | [x] | `StateStore` exposed via `setContextProperty`. `qmlRegisterSingletonInstance` abandoned (PySide6 bug — see KNOWLEDGE.md) |
-| 1.1 Register SettingsManager | [ ] | |
+| 1.1 Register SettingsManager | [x] | Confirmed done — registered in `application.py`, validated in POST-1 loop |
 | 1.2 Register QtBridge + kill findChild | [x] | All `findChild` replaced with signals (`showPopupRequested`, `closePopupRequested`, `toggleSidebarRequested`, `toggleVideoOverlayRequested`, `updateVideoSourceRequested`). `input.py` uses `close_popup_fn` callable. `QmlObjectName` enum deleted. `objectName` removed from popup/selectBar/videoOverlay. Only remaining QML object access: `engine.rootObjects()[0]` in `toggle_multiscreen_window()`. |
 | 1.3 Register isolated controllers | [x] | CANCELLED — singleton-registration track abandoned; these objects already work via `setContextProperty()` |
 | 1.4 Register wheelController | [x] | CANCELLED — `wheelController` already exposed via context property |
@@ -44,7 +44,7 @@ Last Modified: 2026-04-20
 | 1.6 Register winchController | [x] | CANCELLED — `winchController` already exposed via context property |
 | 1.7a Register controllers batch A | [x] | CANCELLED — runtime stays on context properties; no PySide6 singleton migration |
 | 1.7b Register controllers batch B | [x] | CANCELLED — runtime stays on context properties; no PySide6 singleton migration |
-| 1.8 Register workflow handlers | [x] | CANCELLED — runtime stays on context properties; workflow work shifts to consolidation/removal of `workflow_legacy.py` |
+| 1.8 Register workflow handlers | [x] | CANCELLED — runtime stays on context properties; `workflow_legacy.py` deleted in Phase 1B |
 | 1.10 Qt6 versionless imports | [x] | All QML files now use versionless Qt imports; `PageSpray.qml` uses `Qt5Compat.GraphicalEffects` for the Qt6 compatibility path |
 | 1.9 Add qmldir manifests | [x] | Type-export `qmldir` files added across the QML tree; no bare `module PaintController`, and no new `module ...` declarations yet while runtime stays on relative imports |
 | 1.11a required props — buttons | [ ] | After 1.9 and stable import cleanup |
@@ -52,10 +52,10 @@ Last Modified: 2026-04-20
 | 1.11c required props — displays | [ ] | |
 | 1.11d required props — panels/popups | [ ] | |
 | 1.11e required props — widgets | [ ] | |
-| POST-1 Startup context property validation | [x] | Validation loop in `application.py` checks all 24 context properties for `None` after `engine.load()` |
+| POST-1 Startup context property validation | [x] | Validation loop in `application.py` checks all 22 context properties for `None` after `engine.load()` |
 | 2.0 Expand CommonStyle | [x] | Token-based design system with scales, colors, spacing, typography, motion, and fixed shell tokens. `scaleFactor` defaults to 1.0 (runtime DPI removed — caused 2x on Steam Deck). `qmldir` singleton added. |
 | 2.1 Design system — core/nav | [x] | `MainWindow`, `TopBar`, `SelectBar` migrated. Shell chrome uses fixed tokens. |
-| 2.2 Design system — buttons/inputs | [x] | `ActionButton`, `TouchSwitch`, `NumpadButton`, `NumpadNew`, `KeyboardPopup`, `SettingInputField`, `TrajNumpad` migrated |
+| 2.2 Design system — buttons/inputs | [x] | `ActionButton`, `TouchSwitch`, `NumpadButton`, `NumpadNew`, `KeyboardPopup`, `SettingInputField` migrated; `TrajNumpad.qml` deleted in Phase 1B |
 | 2.3 Design system — displays | [x] | Display folder migrated to `CommonStyle` for the shared visual system; a few responsive size/motion literals still remain in specialized visualizers/dials |
 | 2.4 Design system — panels/popups | [x] | `ControlPanel`, `ConnectionStatusPanel`, `SettingsSection`, `CustomPopup` migrated |
 | 2.5a Design system — root overlays | [x] | `OverlayLayer`, `EmergencyOverlay` migrated |

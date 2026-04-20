@@ -35,7 +35,7 @@ engine.load(QUrl.fromLocalFile(qml_path))
 
 ## Current Runtime Registration State
 
-As of 2026-04-17, all 24 runtime objects are exposed via `setContextProperty()`. A validation loop in `application.py` verifies all 24 are non-`None` after `engine.load()`.
+As of 2026-04-20, all 22 runtime objects are exposed via `setContextProperty()`. A validation loop in `application.py` verifies all 22 are non-`None` after `engine.load()`.
 
 > **⚠️ DO NOT USE `qmlRegisterSingletonInstance()` in PySide6.**
 > It corrupts the QML type system when combined with implicit directory imports (no `qmldir`).
@@ -66,7 +66,6 @@ As of 2026-04-17, all 24 runtime objects are exposed via `setContextProperty()`.
 ### Services
 | Property Name | Source | Type | Migration Task |
 |---|---|---|---|
-| `workFlowHandler` | `bundle.workflow_handler` | `WorkFlowHandler` | Context property retained for now; slated for workflow consolidation/removal |
 | `workFlowRunner` | `bundle.workflow_runner` | `WorkFlowRunner` | Context property retained; active runtime path |
 | `baseStreamHandler` | `video_stream_handler` | `VideoStreamHandler` | Context property retained; no singleton migration planned |
 | `baseTopViewController` | `base_top_view_service` | `BaseTopViewService` | Context property retained; no singleton migration planned |
@@ -82,7 +81,6 @@ As of 2026-04-17, all 24 runtime objects are exposed via `setContextProperty()`.
 | `screenRecorder` | `bundle.screen_recorder` | `ScreenRecorder` | Context property retained; no singleton migration planned |
 | `rosBagRecorder` | `bundle.ros_bag_recorder` | `RosBagRecorder` | Context property retained; no singleton migration planned |
 | `settingsManager` | `settings_manager` | `SettingsManager` | Context property retained; no singleton migration planned |
-| `actionConfig` | `bundle.action_config` | `ActionConfigPython` | Context property retained; no singleton migration planned |
 
 ### Removed Aliases
 | Identifier | Status |
@@ -221,10 +219,6 @@ qml/
 │           ├── PointCloudGeometry.qml
 │           └── PointCloudEffect.qml
 └── widgets/
-    └── actions/
-        ├── ActionSequence.qml
-        ├── ActionItem.qml
-        └── SequenceList.qml
 ```
 
 ### qmldir State
@@ -238,8 +232,7 @@ Added during Task 1.9:
 - `navigation/`
 - `components/buttons/`, `components/displays/`, `components/inputs/`, `components/panels/`, `components/popups/`, `components/specialized/pointcloud/`
 - `overlays/`, `overlays/lidar/`, `overlays/video/`, `overlays/video/components/`
-- `pages/home/`, `pages/misc/`, `pages/settings/`, `pages/settings/components/`, `pages/settings/pages/`, `pages/spray/`, `pages/status/`, `pages/status/components/`, `pages/tuning/`, `pages/wheel/`, `pages/winch/`, `pages/workflow/`
-- `widgets/actions/`
+- `pages/home/`, `pages/misc/`, `pages/settings/`, `pages/settings/components/`, `pages/settings/pages/`, `pages/spray/`, `pages/status/`, `pages/status/components/`, `pages/tuning/`, `pages/wheel/`, `pages/winch/`
 
 The current rollout is intentionally conservative: these files provide type export entries only. The runtime still uses relative imports (for example `import "../pages/home"`) and does not yet depend on dotted URI-module imports. That avoids reintroducing the import/type-system instability that previously blocked singleton-registration work.
 
@@ -352,21 +345,11 @@ The live Python runtime no longer uses `findChild()` to reach QML objects.
 
 ---
 
-## C++ Paint Controller Bindings (DEPRECATED)
+## C++ Paint Controller Bindings (DELETED — Phase 1A)
 
-**Location**: `src/paint_controller.cpp`
+**Location**: ~~`src/paint_controller.cpp`~~ (deleted)
 
-```cpp
-// Only 2 of the 24 runtime objects required by the full UI are set
-engine.rootContext()->setContextProperty("backend", controller.get());
-engine.rootContext()->setContextProperty("baseStreamer", controller.get());
-
-// Also uses findChild for same objects
-QObject* select_bar = root->findChild<QObject*>("selectBar");
-QObject* popup = root->findChild<QObject*>("messagePopup");
-```
-
-**Status**: Formally deprecated per user decision (Audit R2). The shared QML has already moved past the old `baseStreamer` alias, so this path is retained only as reference. See deprecation notice in [01_MASTER_PLAN.md](01_MASTER_PLAN.md).
+Source files (`src/*.cpp`, `include/paint_controller/*.hpp`) were deleted in Phase 1A. For historical context: the C++ path set only 2 of the 22 runtime context properties (`backend`, `baseStreamer`) and used `findChild` directly. See Section 7 of [02_ARCHITECTURE.md](02_ARCHITECTURE.md).
 
 ---
 

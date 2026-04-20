@@ -41,16 +41,6 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 
 ---
 
-### TD-004 — `workflow_legacy.py` not removed
-**Area**: Services  
-**Priority**: low  
-**Effort**: low  
-**Why it matters**: Dead code adds cognitive overhead, inflates search results, and may confuse agents about which workflow implementation is active.  
-**What to do**: Confirm `workflow_legacy.py` has no live callers; delete it.  
-**Files**: `python/paint_controller/services/workflow_legacy.py`
-
----
-
 ### TD-005 — WheelController has no unit tests
 **Area**: Testing  
 **Priority**: medium  
@@ -94,6 +84,36 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 
 ---
 
+### TD-014 — `main()` god-function
+**Area**: Python / Application  
+**Priority**: medium  
+**Effort**: medium  
+**Why it matters**: `core/application.py` `main()` is ~265 lines with 10+ responsibilities. Untestable as a unit and hard to navigate.  
+**What to do**: Extract into named functions: `_create_core_objects`, `_create_video_services`, `_setup_qml_engine`, `_register_context_properties`, `_wire_signals`, `_start_timers`, `_cleanup`. Move `RosThread` to `core/ros_node.py`.  
+**Files**: `python/paint_controller/core/application.py`
+
+---
+
+### TD-016 — `VideoOverlayStyle.qml` parallel style system
+**Area**: QML UI  
+**Priority**: low  
+**Effort**: low  
+**Why it matters**: `VideoOverlayStyle.qml` is a ~30-token style system that duplicates tokens in `CommonStyle`. Two style sources make theme-wide changes require double edits.  
+**What to do**: Merge into `CommonStyle` or make a domain-specific extension that derives from it (co-located tokens, shared base).  
+**Files**: `python/paint_controller/qml/overlays/video/components/VideoOverlayStyle.qml`
+
+---
+
+### TD-017 — `show_popup_fn` constructor coupling
+**Area**: Python architecture  
+**Priority**: low  
+**Effort**: low  
+**Why it matters**: `show_popup_fn` is threaded through 7 class constructors. Already bound to `QtBridge.show_popup`. Not blocking, but adds constructor complexity.  
+**What to do**: Evaluate whether classes could receive `QtBridge` directly; or leave as-is (simple and functional).  
+**Files**: `python/paint_controller/core/controller_factory.py`
+
+---
+
 ## Resolved Debt
 
 | ID | Title | Resolved | Notes |
@@ -103,3 +123,7 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 | — | 4 winch move-command guards disabled | 2026-04-20 | Re-enabled with `get_logger().warning()` + early return |
 | — | Dual-inheritance `RobotController` god class | pre-2026-04-17 | Split into `PaintRosNode`, `StateStore`, `QtBridge`, `ControllerFactory` |
 | — | Hardcoded ESP32 MAC/IP in source | pre-2026-04-17 | Externalised to `python/config/esp32_valve.json` |
+| TD-004 | `workflow_legacy.py` not removed | 2026-04-20 | Deleted in Phase 1B along with full legacy workflow system (11 files) |
+| TD-012 | Workflow executor thread safety | 2026-04-20 | Fixed in Phase 0A — `threading.Lock` + `threading.Event` property wrappers |
+| TD-013 | Workflow DI bypass (hardware controllers silently `None`) | 2026-04-20 | Fixed in Phase 0B — `HardwareControllers.from_controllers()` explicit DI |
+| TD-015 | `BirdViewService` dead code | 2026-04-20 | Deleted in Phase 1C — `bird_view_service.py` + `PointEditorOverlay.qml` removed |

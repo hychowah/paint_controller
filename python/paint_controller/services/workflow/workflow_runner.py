@@ -15,6 +15,7 @@ from pathlib import Path
 from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer, QFileSystemWatcher
 
 from .workflow_executor import WorkFlowExecutor, ExecutionState
+from .hardware import HardwareControllers
 
 
 class WorkFlowRunner(QObject):
@@ -36,19 +37,20 @@ class WorkFlowRunner(QObject):
     loop_enabled_changed = Signal(bool)  # Loop enabled state changed
     error_occurred = Signal(str)  # Error message
 
-    def __init__(self, ros_node, logger=None):
+    def __init__(self, ros_node, hardware: HardwareControllers, logger=None):
         """
         Initialize workflow runner.
 
         Args:
-            ros_node: ROS2 node instance (RobotController)
+            ros_node: ROS2 node instance
+            hardware: Pre-built HardwareControllers with wired controller adapters
             logger: Optional logger (uses ros_node.get_logger() if None)
         """
         super().__init__()
         self.ros_node = ros_node
         self.logger = logger or ros_node.get_logger()
 
-        self.executor = WorkFlowExecutor(ros_node, self.logger)
+        self.executor = WorkFlowExecutor(ros_node, hardware, self.logger)
         self._workflow_list: List[str] = []
         self._current_workflow_name = ""
         self._current_action_index = -1
@@ -385,18 +387,20 @@ class WorkFlowRunner(QObject):
         Each controller is stopped independently so a failure in one
         does not prevent the others from being stopped.
         """
+        hardware = self.executor.hardware
+
         # Stop winch immediately
         try:
-            if hasattr(self.ros_node, 'winch_controller') and self.ros_node.winch_controller:
-                self.ros_node.winch_controller.setSpeed(0.0)
-                self.logger.info("Emergency stop: Winch speed set to 0")
+            if hardware.winch:
+                hardware.winch.move_absolute(0, 1)  # Move to 0mm at minimum speed
+                self.logger.info("Emergency stop: Winch moving to retracted position")
         except Exception as e:
             self.logger.error(f"Emergency stop: Failed to stop winch: {e}")
         
         # Close valve immediately
         try:
-            if hasattr(self.ros_node, 'esp32_valve_controller') and self.ros_node.esp32_valve_controller:
-                self.ros_node.esp32_valve_controller.setValveTurn(0.0)
+            if hardware.teensy:
+                hardware.teensy.set_valve_turn(0.0)
                 self.logger.info("Emergency stop: Valve closed")
         except Exception as e:
             self.logger.error(f"Emergency stop: Failed to close valve: {e}")

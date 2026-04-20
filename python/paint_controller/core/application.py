@@ -325,7 +325,6 @@ def main():
     ctx.setContextProperty("stateStore", state_store)
     ctx.setContextProperty("backend", qt_bridge)
     ctx.setContextProperty("overlayController", bundle.overlay_controller)
-    ctx.setContextProperty("workFlowHandler", bundle.workflow_handler)
     ctx.setContextProperty("workFlowRunner", bundle.workflow_runner)
     ctx.setContextProperty("warningHandler", bundle.warning_handler)
     ctx.setContextProperty("baseStreamHandler", video_stream_handler)
@@ -336,7 +335,6 @@ def main():
     ctx.setContextProperty("teensyController", bundle.teensy_controller)
     ctx.setContextProperty("esp32ValveController", bundle.esp32_valve_controller)
     ctx.setContextProperty("lidarController", bundle.lidar_controller)
-    ctx.setContextProperty("actionConfig", bundle.action_config)
     ctx.setContextProperty("heartbeatHandler", bundle.heartbeat_handler)
     ctx.setContextProperty("controlProcessor", bundle.control_processor)
     ctx.setContextProperty("sshHandler", bundle.ssh_controller)
@@ -354,11 +352,11 @@ def main():
 
     # Validate all context properties are set (catches typos / missing wiring)
     _EXPECTED_CONTEXT_PROPERTIES = [
-        "stateStore", "backend", "overlayController", "workFlowHandler",
+        "stateStore", "backend", "overlayController",
         "workFlowRunner", "warningHandler", "baseStreamHandler",
         "wheelController", "winchController", "steamDeckHandler",
         "windMonitor", "teensyController", "esp32ValveController",
-        "lidarController", "actionConfig", "heartbeatHandler",
+        "lidarController", "heartbeatHandler",
         "controlProcessor", "sshHandler", "systemMonitor",
         "screenRecorder", "rosBagRecorder", "settingsManager",
         "screenManager", "baseTopViewController",

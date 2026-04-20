@@ -44,7 +44,7 @@ paint_controller_ros2/
 │   ├── core/                      # Application bootstrap, ROS node, Qt bridge, state, settings
 │   ├── controllers/               # Hardware controllers (ESP32, Teensy, winch, wheel, etc.)
 │   ├── handlers/                  # Input processing, emergency, heartbeat, warnings
-│   ├── services/                  # Video streaming, bird-view, workflow execution, screen mgr
+│   ├── services/                  # Video streaming, workflow execution, screen mgr
 │   ├── models/                    # Action/workflow config data models
 │   ├── ui/                        # Overlay controller (non-QML)
 │   ├── utils/                     # Pure utilities: CRC, input math, constants
@@ -60,8 +60,6 @@ paint_controller_ros2/
 │
 ├── python/config/                 # Hardware config JSON (ESP32, settings defaults)
 │
-├── src/                           # C++ nodes (deprecated — not built in current setup)
-├── include/                       # C++ headers (deprecated)
 ├── launch/                        # ROS2 launch files
 ├── tests/                         # pytest test suite
 │   ├── conftest.py                # Fixtures, namespace stubs, Qt/ROS fakes setup
@@ -114,7 +112,6 @@ python/paint_controller/venv/bin/python -m pytest tests/test_control_processor.p
 | `REFACTOR_TRACKER.md` | Historical context only; `01_MASTER_PLAN.md` + `docs/tech-debt.md` are the active trackers |
 | `docs/plan/04_AUDIT_REPORT.md` | Pre-mortem rationale; some recommendations were superseded |
 | `PLANNING.md` | Temporary active-task scratch; should not exist between sessions |
-| `src/`, `include/` | C++ nodes deprecated; not built in current setup |
 
 ---
 
