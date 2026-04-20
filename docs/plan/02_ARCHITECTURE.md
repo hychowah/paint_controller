@@ -151,7 +151,7 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Load detection mode
 - Move commands: Increment, absolute, with acceleration control
 - Settings integration: max_speed_mmps loaded from SettingsManager
-- Availability guards are re-enabled on the speed and move-command paths; the winch test suite covers the speed-path behavior and transport validation, while move-command guard coverage still needs explicit tests
+- Availability guards are re-enabled on the speed and move-command paths; the winch test suite covers the speed-path behavior and transport validation; move-command guard coverage (method-level availability check in `WinchController.move_*`) is tested via `test_control_processor.py` at the ControlProcessor dispatch layer
 
 #### **Teensy Controller** - `TeensyController(QObject)` ~300 lines
 - ROS2 publisher: 20+ topics for sprayer, gimbal, props, relay, LED

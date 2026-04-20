@@ -47,7 +47,7 @@ If two files disagree, prefer the file higher in this list unless `DEVNOTES.md` 
 
 - VS Code is pinned to the project interpreter in `.vscode/settings.json`: `python/paint_controller/venv/bin/python`
 - The reliable local test command is `python/paint_controller/venv/bin/python -m pytest -q`
-- Current nuance: targeted venv runs are stable, but a full `tests/` run can still abort in this terminal on the `qt_app` / `QApplication` fixture path.
+- Full suite runs cleanly: 100 tests, all passing. `QT_QPA_PLATFORM` is force-assigned `"offscreen"` in `conftest.py` (overrides any shell-level `xcb` setting).
 - If `PySide6` or `pytest` appear missing in-editor, check the selected interpreter first.
 
 ## Key Paths

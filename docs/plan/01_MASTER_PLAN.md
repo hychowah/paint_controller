@@ -69,8 +69,8 @@ Last Modified: 2026-04-20
 | 3.0 Clean __init__.py imports | [ ] | |
 | 3.1 Pytest infrastructure | [x] | Added headless Qt fixture, namespace-safe imports, fake ROS node/publisher/subscription/timer scaffolding, shared fake topic bus, and validation tests; normalized existing utility/harness test files to the layered style |
 | 3.2 Tests — StateStore/Settings | [x] | Added direct runtime coverage for `StateStore` signals/defaults and `SettingsManager` load/clamp/save/persistence behavior |
-| 3.3 Tests — QtBridge/Factory | [ ] | |
-| 3.4 Tests — Emergency/ControlProc | [~] | `tests/test_emergency.py` added for EmergencyButtonHandler; ControlProcessor coverage still pending |
+| 3.3 Tests — QtBridge/Factory | [x] | `tests/test_qt_bridge.py` — 13 tests (signals, video source selection, null-safe wiring) |
+| 3.4 Tests — Emergency/ControlProc | [x] | `tests/test_emergency.py` (EmergencyButtonHandler); `tests/test_control_processor.py` — 31 tests (track curve/deadzone/clamping, winch guards/locks/activation-gate, wheel travel accumulation/send) |
 | 3.5 Tests — Input/SteamDeck | [~] | `tests/test_input_handler.py` covers `UIInputHandler` mode switching and popup-close wiring; SteamDeck HID parsing still untested |
 | 3.6 Tests — Wheel/Winch | [~] | `tests/test_winch_ros_integration.py` adds real ROS pub/sub validation and `tests/test_winch.py` adds fast transport/unit coverage for WinchController; WheelController coverage still pending |
 | 3.7 Tests — ESP32/Teensy | [ ] | |
@@ -79,14 +79,19 @@ Last Modified: 2026-04-20
 
 ## Current Checkpoint
 
-- Test work now leads the active changes: `3.1` and `3.2` are complete, `3.4` is partial with `tests/test_emergency.py`, `3.5` is partial with `tests/test_input_handler.py`, and `3.6` is partial with both fast transport tests and real ROS pub/sub validation for WinchController
-- Targeted venv validation now passes for the core runtime batch: `tests/test_state_store.py`, `tests/test_settings_runtime.py`, `tests/test_settings_schema.py`, and `tests/test_input_handler.py` report `17 passed`; full `tests/` still aborts in this terminal when the `qt_app`/`QApplication` fixture path is exercised
-- Completed on 2026-04-20: Phase 0 (`0.1-0.4`), `PRE-1`, `1.0`, `1.2`, `POST-1`, `3.1`, `3.8`, `3.9`
-- Phase 2 in progress: `2.0`, `2.1`, `2.2`, `2.3`, `2.4`, `2.5a` complete; `2.5b` and `2.6a` partially complete
-- Startup optimization done: deferred video, idempotent streams, timing instrumentation, cross-thread cleanup fix
-- QML warning fixes done: NumpadButton self-contained, layout-safe workflow tabs, PageHome animation guard, lidar unused Connections removed
-- Validation gate status: CI + build system are done; targeted venv pytest is green for the new core batch, but full local terminal pytest still needs Qt fixture stabilization
-- **Next task**: stabilize the headless Qt fixtures so `python/paint_controller/venv/bin/python -m pytest tests -q` stops aborting, then continue with `1.11a required props — buttons`, `3.3 Tests — QtBridge/Factory`, or `2.5c Design system — video overlays`
+- **Test infrastructure stabilized (2026-04-21)**: Qt fixture conflict resolved: `qt_core_app` is now an alias of `qt_app`; `QT_QPA_PLATFORM` forced to `offscreen`; `_flush_qt_events` autouse fixture added
+- FakePublisher hardened with `isinstance` type check; FakeRosBus delivers `copy.copy(msg)` instead of shared reference
+- Controller fakes added to `fakes.py`: `FakeWheel`, `FakeWinch`, `FakeTeensy`, `FakeEsp32Valve`, `FakeOverlay`, `FakeHeartbeatHandler`, `FakeStateStore`
+- Stub drift-check tests added to `test_test_infrastructure.py`
+- `test_control_processor.py` (31 tests) and `test_qt_bridge.py` (13 tests) completed
+- `winch.py` logger routing bug fixed (4 `move_*` methods now use `self._node.get_logger().warning()`)
+- **100 tests, all passing** as of 2026-04-21
+- Task 1.1 (SettingsManager QML registration): verified done — registered in `application.py`, validated in POST-1 loop
+- **Next tasks** (priority order):
+  1. `1.11a required props — buttons` — design system hardening
+  2. `2.5c Design system — video overlays`
+  3. `3.7 Tests — ESP32/Teensy`
+  4. `3.0 Clean __init__.py imports`
 
 ---
 

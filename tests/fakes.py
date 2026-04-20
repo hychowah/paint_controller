@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass, field
 from typing import Any, Callable, List
 
@@ -38,6 +39,12 @@ class FakePublisher:
     published_messages: List[Any] = field(default_factory=list)
 
     def publish(self, message: Any) -> None:
+        # Validate message type matches the declared publisher type, just as
+        # real DDS would reject a type mismatch at the middleware boundary.
+        assert isinstance(message, self.msg_type), (
+            f"FakePublisher({self.topic}): expected {self.msg_type.__name__}, "
+            f"got {type(message).__name__}"
+        )
         self.published_messages.append(message)
         if self.bus is not None:
             self.bus.publish(self.topic, message)
@@ -68,8 +75,11 @@ class FakeRosBus:
             del self.subscriptions_by_topic[subscription.topic]
 
     def publish(self, topic: str, message: Any) -> None:
+        # Shallow-copy the message before delivery so that subscriber mutations
+        # do not affect the publisher's object, matching real DDS serialisation
+        # semantics where publisher and subscriber get independent copies.
         for subscription in list(self.subscriptions_by_topic.get(topic, [])):
-            subscription.callback(message)
+            subscription.callback(copy.copy(message))
 
 
 @dataclass
@@ -147,3 +157,132 @@ class FakeNode:
         self.destroyed_timers.append(timer)
         if timer in self.timers:
             self.timers.remove(timer)
+
+
+# ---------------------------------------------------------------------------
+# Controller fakes for ControlProcessor tests
+# ---------------------------------------------------------------------------
+
+class FakeWheel:
+    """Minimal WheelController double tracking every speed/position command."""
+
+    def __init__(self) -> None:
+        self.left_speed_commands: List[float] = []
+        self.right_speed_commands: List[float] = []
+        self.position_commands: List[tuple] = []
+
+    def command_left_wheel_speed(self, speed: float) -> None:
+        self.left_speed_commands.append(speed)
+
+    def command_right_wheel_speed(self, speed: float) -> None:
+        self.right_speed_commands.append(speed)
+
+    def command_position(self, left_mm: float, right_mm: float, rpm_limit: float, relative: bool) -> bool:
+        self.position_commands.append((left_mm, right_mm, rpm_limit, relative))
+        return True
+
+
+class FakeWinch:
+    """Minimal WinchController double with configurable availability/brake state."""
+
+    def __init__(self, available: bool = True, motor_brake: bool = False) -> None:
+        self._available = available
+        self._motor_brake = motor_brake
+        self.speed_commands: List[float] = []
+
+    def get_available(self) -> bool:
+        return self._available
+
+    def get_motor_brake(self) -> bool:
+        return self._motor_brake
+
+    def command_speed_mmps(self, value: float) -> None:
+        self.speed_commands.append(value)
+
+
+class FakeTeensyPublisher:
+    """Minimal publisher double for Teensy topic publishers."""
+
+    def __init__(self) -> None:
+        self.published: List[Any] = []
+
+    def publish(self, msg: Any) -> None:
+        self.published.append(msg)
+
+
+class FakeTeensy:
+    """Minimal TeensyController double tracking every command."""
+
+    def __init__(self) -> None:
+        self.prop_left_joint_pub = FakeTeensyPublisher()
+        self.prop_right_joint_pub = FakeTeensyPublisher()
+        self.ef_move_arm_rail_speed_pub = FakeTeensyPublisher()
+        self.ef_spray_trigger_pub = FakeTeensyPublisher()
+        self.ef_move_top_rail_speed_pub = FakeTeensyPublisher()
+        self.prop_left_pwm_pub = FakeTeensyPublisher()
+        self.prop_right_pwm_pub = FakeTeensyPublisher()
+        self.ef_spray_pitch_speed_pub = FakeTeensyPublisher()
+        self.yaw_commands: List[float] = []
+        self.rail_speed_commands: List[float] = []
+        self.force_commands: List[tuple] = []
+        self._imu_yaw: float = 0.0
+
+    def setYawAngle(self, angle: float) -> None:
+        self.yaw_commands.append(angle)
+
+    def setArmRailSpeed(self, value: float) -> None:
+        self.rail_speed_commands.append(value)
+
+    def set_ef_force(self, fx: float, fy: float) -> None:
+        self.force_commands.append((fx, fy))
+
+    def get_status_value(self, key: str) -> Any:
+        if key == "imu_yaw":
+            return self._imu_yaw
+        return 0.0
+
+
+class FakeEsp32Valve:
+    """Minimal ESP32ValveController double."""
+
+    def __init__(self) -> None:
+        self.valve_turn_commands: List[float] = []
+
+    def setValveTurn(self, value: float) -> None:
+        self.valve_turn_commands.append(value)
+
+
+class FakeOverlay:
+    """Minimal OverlayController double with configurable left/right option."""
+
+    def __init__(self, left: str = "None", right: str = "None") -> None:
+        self._left = left
+        self._right = right
+
+    def get_left_selected_option(self) -> str:
+        return self._left
+
+    def get_right_selected_option(self) -> str:
+        return self._right
+
+
+class FakeHeartbeatHandler:
+    """Minimal UIHeartbeatHandler double with configurable status values."""
+
+    def __init__(self, base_status: int = 0x00, ef_status: int = 0x00) -> None:
+        self._base_status = base_status
+        self._ef_status = ef_status
+
+    def get_base_status(self) -> int:
+        return self._base_status
+
+    def get_ef_status(self) -> int:
+        return self._ef_status
+
+
+class FakeStateStore:
+    """Minimal StateStore double."""
+
+    def __init__(self) -> None:
+        self.display_message: str = ""
+        self.control_mode: str = "base"

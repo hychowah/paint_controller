@@ -8,7 +8,7 @@
 
 > **Superseded Guidance Warning**: Some Phase 1 recommendations in this audit assume the earlier singleton-registration migration path. The current repo direction is `setContextProperty()` for runtime bindings plus conservative `qmldir` type exports, as tracked in `01_MASTER_PLAN.md` and `03_QML_BINDINGS.md`.
 
-> **Implemented Since This Audit**: `0.1-0.4`, `PRE-1`, `1.0`, `1.2`, `POST-1`, `3.1`, `3.8`, `3.9`, partial Phase 2 (`2.0`, `2.1`, `2.2`, `2.4`, `2.5a`), plus partial Phase 3 safety/transport tests (`3.4`, `3.6`), the subsequent test-suite/documentation normalization pass, and the final `input.py` popup-close wiring that removes the last Python-side `findChild()` lookup
+> **Implemented Since This Audit**: `0.1-0.4`, `PRE-1`, `1.0`, `1.2`, `POST-1`, `3.1`, `3.8`, `3.9`, partial Phase 2 (`2.0`, `2.1`, `2.2`, `2.4`, `2.5a`), plus partial Phase 3 safety/transport tests (`3.4`, `3.6`), the subsequent test-suite/documentation normalization pass, and the final `input.py` popup-close wiring that removes the last Python-side `findChild()` lookup. **Session 2 additions (2026-04-21)**: `test_control_processor.py` (31 tests — track curve/deadzone/clamping, winch guards/locks/activation-gate, wheel travel accumulation/send), `test_qt_bridge.py` (13 tests — signals, video source selection, null-safe wiring), `fakes.py` 7 new controller fakes + stub drift checks, `conftest.py` platform fix + fixture alias + autouse flush, `winch.py` logger routing fix (4 `move_*` methods). Full suite: **100 tests, all passing**.
 
 ---
 

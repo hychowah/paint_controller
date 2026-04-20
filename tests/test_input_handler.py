@@ -67,7 +67,7 @@ def _build_handler(
     return handler, overlay, control_processor, state_store
 
 
-def test_switch_from_base_to_ef_closes_popup_and_restores_default_ef_controls():
+def test_switch_from_base_to_ef_closes_popup_and_restores_default_ef_controls(qt_app):
     popup_calls: list[tuple[str, str, str]] = []
     closed_popups: list[bool] = []
     handler, overlay, control_processor, state_store = _build_handler(
@@ -87,7 +87,7 @@ def test_switch_from_base_to_ef_closes_popup_and_restores_default_ef_controls():
     assert popup_calls == [("Control Mode", "Switched to EF control mode", "info")]
 
 
-def test_switch_from_ef_to_base_closes_popup_and_restores_default_track_controls():
+def test_switch_from_ef_to_base_closes_popup_and_restores_default_track_controls(qt_app):
     popup_calls: list[tuple[str, str, str]] = []
     closed_popups: list[bool] = []
     handler, overlay, control_processor, state_store = _build_handler(

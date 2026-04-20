@@ -33,11 +33,18 @@ Inside `RowLayout`/`ColumnLayout`, children must NOT reference `parent.width * 0
 ### Qt Button Keyboard Activation in Multi-Window Apps
 Qt Buttons respond to Space/Enter keys when focused, even in secondary windows. In multi-monitor or multi-window setups, keyboard events can leak across windows causing unintended button activation. For critical buttons (EXIT, DELETE, etc.), use `focusPolicy: Qt.ClickFocus` (allows mouse clicks but prevents Tab navigation) and `activeFocusOnTab: false`. Add `Keys.onPressed` handler to explicitly block Space/Enter/Return keys with `event.accepted = true` to prevent keyboard triggering while preserving mouse click functionality.
 
+### QT_QPA_PLATFORM Must Be Force-Assigned in Tests
+`os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')` is silently overridden when `QT_QPA_PLATFORM=xcb` is already set in the shell (e.g. VS Code integrated terminal). `QApplication([])` then attempts a real display connection and calls `abort()`. **Fix**: Always force-assign `os.environ['QT_QPA_PLATFORM'] = 'offscreen'` at the top of `conftest.py`, before any Qt import.
+
+### pytest qt_core_app Must Be an Alias of qt_app
+Creating a second Qt application instance (e.g. a session-scoped `QCoreApplication` alongside a session-scoped `QApplication`) causes a fatal Qt assertion abort. In a pytest session, `QApplication` is a superset of `QCoreApplication`. **Fix**: `def qt_core_app(qt_app): return qt_app` — the alias satisfies any fixture requesting a core app without creating a second instance.
+
 ---
 
 ## ROS2 Tips
 
-*(Add entries as discovered)*
+### Node Logger vs Module Logger in ROS2 Controllers
+In ROS2 controller classes, `logger = logging.getLogger(__name__)` at module level routes to Python's stdlib logging sink, NOT to ROS2's node logger. During tests, `FakeLogger` only captures calls made to `self._node.get_logger()`. **Always use** `self._node.get_logger().warning(...)` / `.error(...)` etc. in controller instance methods. Module-level logger is acceptable only in pure utility modules with no node reference.
 
 ---
 

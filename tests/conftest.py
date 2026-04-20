@@ -15,7 +15,7 @@ import pytest
 
 from tests.fakes import FakeNode
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+os.environ["QT_QPA_PLATFORM"] = "offscreen"  # Force offscreen — xcb may be set in environment but requires a display
 
 # Add python/ directory to sys.path
 _python_dir = Path(__file__).resolve().parent.parent / "python"
@@ -134,7 +134,13 @@ _install_test_module_stubs()
 
 @pytest.fixture(scope="session")
 def qt_app():
-    """Create a headless Qt application for QObject-based tests."""
+    """Create a headless QApplication for the entire test session.
+
+    QApplication is a superset of QCoreApplication — using it everywhere
+    prevents the dual-app conflict that aborts the suite when test ordering
+    puts a qt_core_app user before a qt_app user (Qt allows only one app
+    instance per process).
+    """
     from PySide6.QtWidgets import QApplication
 
     app = QApplication.instance()
@@ -144,14 +150,32 @@ def qt_app():
 
 
 @pytest.fixture(scope="session")
-def qt_core_app():
-    """Create a Qt core application for QObject-based tests without widgets."""
-    from PySide6.QtCore import QCoreApplication
+def qt_core_app(qt_app):
+    """Alias of qt_app — guarantees QApplication is always created first.
 
-    app = QCoreApplication.instance()
-    if app is None:
-        app = QCoreApplication([])
-    return app
+    Tests that only need QObject/signal machinery (no widgets) can request
+    this fixture for semantic clarity without risking a second app instance.
+    """
+    return qt_app
+
+
+@pytest.fixture(autouse=True)
+def _flush_qt_events(request):
+    """Flush pending Qt events after each test.
+
+    Session-scoped QApplication persists across all tests.  Without this,
+    queued signals or timer callbacks from one test can fire during the next,
+    causing ordering-dependent failures.
+    """
+    yield
+    # Only flush if a Qt application exists (skips pure-Python tests)
+    try:
+        from PySide6.QtWidgets import QApplication
+        app = QApplication.instance()
+        if app is not None:
+            app.processEvents()
+    except Exception:  # pragma: no cover
+        pass
 
 
 @pytest.fixture

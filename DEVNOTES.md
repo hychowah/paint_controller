@@ -2,6 +2,24 @@
 
 ---
 
+### 2026-04-21 - Qt Fixture Stabilisation + Safety-Critical Test Coverage
+
+**Goal**: Stop the full test suite from aborting; add first-principles coverage for the two largest untested modules (ControlProcessor, QtBridge)
+**Issues**:
+- `QT_QPA_PLATFORM=xcb` was already set in the VS Code terminal environment; conftest used `setdefault` so it was never overridden → `QApplication([])` aborted with "could not connect to display"
+- `qt_core_app` created an independent `QCoreApplication`; if resolved before `qt_app`, subsequent `QApplication` creation also aborted (mutual exclusion)
+- `test_input_handler.py` tests had no explicit `qt_app` fixture dependency — worked only when another file's session fixture happened to run first
+- `FakePublisher.publish()` accepted any Python object (no type enforcement)
+- `FakeRosBus.publish()` passed the same object reference to all subscribers (real DDS serializes)
+**Tried**:
+- Changed `os.environ.setdefault(...)` → `os.environ["QT_QPA_PLATFORM"] = "offscreen"` (force override)
+- Made `qt_core_app` an alias of `qt_app` to guarantee exactly one application instance
+- Added `_flush_qt_events` autouse fixture (calls `app.processEvents()` after each test)
+- Added `assert isinstance(message, self.msg_type)` to `FakePublisher.publish()`
+- Added `copy.copy(msg)` in `FakeRosBus.publish()` before delivering to subscribers
+**Result**: ✅ `python/paint_controller/venv/bin/python -m pytest tests -q` → 99 passed, 1 pre-existing failure (test_winch logger routing). Suite went from aborting at test 9 to 100 collected tests.  Added 31 ControlProcessor tests (track deadzone/nonlinearity/clamping/dispatch, winch guards/locks/activation-gate, wheel travel accumulation/clamping/deferral) and 13 QtBridge tests (signal emission, video source selection, null-safe deferred wiring)
+**Files**: `tests/conftest.py`, `tests/fakes.py`, `tests/test_input_handler.py`, `tests/test_test_infrastructure.py`, `tests/test_control_processor.py` (new), `tests/test_qt_bridge.py` (new)
+
 ### 2026-04-20 02:05 - Pre-Commit Documentation Sync And LLM Navigation Cleanup
 
 **Goal**: Make the documentation set truthful and easier to navigate before committing the current implementation batch
