@@ -1,9 +1,13 @@
-"""Pure ROS2 node — no Qt dependencies."""
+"""ROS2 node and ROS-thread primitives."""
 
 from __future__ import annotations
 
+import time
+from threading import Lock
 from typing import Optional
 
+import rclpy
+from PySide6.QtCore import QThread, Signal
 from rclpy.node import Node
 from std_msgs.msg import UInt8
 
@@ -39,3 +43,64 @@ class PaintRosNode(Node):
             self.get_logger().info('PaintRosNode cleanup complete')
         except Exception as e:
             self.get_logger().error(f'Error during PaintRosNode cleanup: {e}')
+
+
+class RosThread(QThread):
+    """Isolated thread for running the ROS event loop with thread-safe shutdown."""
+
+    error_occurred = Signal(str)
+    node_started = Signal()
+    node_stopped = Signal()
+
+    def __init__(self, node: Node):
+        super().__init__()
+        self.node = node
+        self._running = False
+        self._shutdown_requested = False
+        self._lock = Lock()
+        self._last_spin_time = 0.0
+        self._spin_timeout = 5.0
+
+    def run(self) -> None:
+        try:
+            self._running = True
+            self.node_started.emit()
+
+            while True:
+                with self._lock:
+                    if self._shutdown_requested:
+                        break
+
+                if not rclpy.ok():
+                    self.error_occurred.emit(
+                        "ROS context is not valid - network may be disconnected"
+                    )
+                    time.sleep(0.5)
+                    continue
+
+                try:
+                    self._last_spin_time = time.time()
+                    rclpy.spin_once(self.node, timeout_sec=0.05)
+                except Exception as spin_error:
+                    self.error_occurred.emit(
+                        f"ROS spin error (likely network): {spin_error}"
+                    )
+                    time.sleep(0.1)
+
+            self._cleanup()
+        except Exception as error:
+            self.error_occurred.emit(f"Critical ROS thread error: {error}")
+            self._cleanup()
+        finally:
+            self._running = False
+            self.node_stopped.emit()
+
+    def request_shutdown(self) -> None:
+        with self._lock:
+            self._shutdown_requested = True
+
+    def _cleanup(self) -> None:
+        try:
+            self.node.get_logger().info('ROS thread spin loop exited')
+        except Exception as error:
+            self.node.get_logger().error(f'Error during ROS thread cleanup: {error}')

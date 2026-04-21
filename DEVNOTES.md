@@ -2,6 +2,14 @@
 
 ---
 
+### 2026-04-21 13:27 - TD-014 AppRuntime Extraction
+
+**Goal**: Decompose the bootstrap path so startup and shutdown stop living inside one large `main()` function
+**Issues**: `core/application.py` mixed process signal handling, dead config loading, ROS threading, runtime construction, QML setup, controller wiring, and shutdown teardown in one file. The `robot_config.yaml` path was also fake — the file did not exist anywhere in the repo, so the loader only masked hardcoded defaults.
+**Tried**: Replaced the dead yaml loader with `RuntimeDefaults` in `core/config.py`, moved `RosThread` into `core/ros_node.py`, extracted startup/shutdown orchestration into `core/app_runtime.py`, kept `application.py` as the public entry-point wrapper for signals and compatibility, restored early signal-handler access to the `QApplication` during bootstrap, and replaced the duplicated context-property name list with a registration table guarded by an explicit expected-name contract check. Revalidated with startup smoke, `py_compile`, full pytest, pyright, and an offscreen real-app launch.
+**Result**: ✅ TD-014 is complete. `tests/test_startup_smoke.py` stayed green, the full suite revalidated at `145 passed`, pyright stayed green (`0 errors`), and the offscreen app launch still reached `MainWindow QML loaded`. The known non-blocking Qt Quick 3D/RHI warning remains in offscreen mode.
+**Files**: `PLANNING.md`, `python/paint_controller/core/application.py`, `python/paint_controller/core/app_runtime.py`, `python/paint_controller/core/config.py`, `python/paint_controller/core/ros_node.py`, `python/paint_controller/core/controller_factory.py`, `docs/plan/00_README.md`, `docs/plan/01_MASTER_PLAN.md`, `docs/plan/02_ARCHITECTURE.md`, `docs/tech-debt.md`, `DEVNOTES.md`
+
 ### 2026-04-21 12:20 - Atomic Persistence + Teensy/SSH Thread Hardening
 
 **Goal**: Close the remaining correctness gaps below the active safety plan: non-atomic config writes, a live shared Teensy status dict crossing ROS/Qt threads, and SSH callbacks touching UI state from background threads
@@ -23,7 +31,7 @@
 **Goal**: Prove the real heartbeat-loss → halt-all convergence path and stand up the first truthful static typing gate without pretending the whole PySide-heavy core is type-ready
 **Issues**: Safety coverage was split across isolated unit tests rather than one real handler/coordinator wiring path; the first pyright attempt also showed that strict mode on PySide `Signal`/`Property` descriptor-heavy modules was dominated by framework stub noise rather than actionable typing defects; final offscreen smoke additionally exposed a runtime bug where `SafetyCoordinator` used stdlib-style `%s` logger formatting against the ROS logger API
 **Tried**: Added `tests/test_safety_integration.py` with real `UIHeartbeatHandler` + `SafetyCoordinator` and fake effectors, installed/configured pyright in CI with strict mode limited to `core/controller_factory.py` and basic visibility on selected PySide-heavy core files, suppressed the Qt `Property` redeclaration false-positive at the file boundary in `state_store.py`, and converted `SafetyCoordinator` logger calls to ROS-compatible single-string messages. Revalidated with targeted safety tests, pyright, a serial full-suite run, and a short offscreen launch
-**Result**: ✅ New safety integration coverage is in place, the initial pyright gate is green (`0 errors`), the full suite revalidated at `145 passed`, and offscreen startup still reaches `MainWindow QML loaded`. Offscreen mode still logs the known non-blocking Qt Quick 3D/RHI warning, and startup still reports the pre-existing missing `robot_config.yaml` message.
+**Result**: ✅ New safety integration coverage is in place, the initial pyright gate is green (`0 errors`), the full suite revalidated at `145 passed`, and offscreen startup still reaches `MainWindow QML loaded`. Offscreen mode still logs the known non-blocking Qt Quick 3D/RHI warning. The old missing `robot_config.yaml` startup message was later eliminated by TD-014 when the dead loader path was replaced with `RuntimeDefaults`.
 **Files**: `PLANNING.md`, `python/paint_controller/handlers/safety_coordinator.py`, `python/paint_controller/core/controller_factory.py`, `python/paint_controller/core/state_store.py`, `python/paint_controller/core/qt_bridge.py`, `requirements-dev.txt`, `.github/workflows/ci.yml`, `pyrightconfig.json`, `tests/test_safety_integration.py`, `docs/plan/00_README.md`, `docs/plan/01_MASTER_PLAN.md`, `docs/tech-debt.md`, `DEVNOTES.md`
 
 ### 2026-04-21 11:30 - Final Shutdown Thread Owner: ESP32 Valve UDP Thread

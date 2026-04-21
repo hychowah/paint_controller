@@ -45,7 +45,7 @@ paint_controller_ros2/
 │   ├── controllers/               # Hardware controllers (ESP32, Teensy, winch, wheel, etc.)
 │   ├── handlers/                  # Input processing, emergency, heartbeat, warnings
 │   ├── services/                  # Video streaming, workflow execution, screen mgr
-│   ├── models/                    # Action/workflow config data models
+│   ├── models/                    # Lightweight model namespace (currently minimal after workflow cleanup)
 │   ├── ui/                        # Overlay controller (non-QML)
 │   ├── utils/                     # Pure utilities: CRC, input math, constants
 │   ├── qml/                       # All QML UI components

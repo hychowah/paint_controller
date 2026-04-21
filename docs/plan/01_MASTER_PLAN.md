@@ -30,7 +30,7 @@ Last Modified: 2026-04-21
 
 | Task | Status | Notes |
 |------|--------|-------|
-| 0.1 Delete RobotController | [x] | RobotController + duplicate HeartbeatStatus removed; RobotConfig/ConfigLoader retained because `main()` still uses config loading |
+| 0.1 Delete RobotController | [x] | RobotController + duplicate HeartbeatStatus removed; stale `RobotConfig`/`ConfigLoader` were later deleted in `TD-014` after replacing the dead `robot_config.yaml` path with `RuntimeDefaults` |
 | 0.2 Type ControllerBundle | [x] | Concrete types added; imports moved to module scope |
 | 0.3 Remove aliases + fix bugs | [x] | C++ path formally deprecated; `baseStreamer`/`videoStreamer` removed; overlay slot returns list |
 | 0.4 Winch safety + ScreenManager | [x] | Re-enabled 4 winch move-command availability guards with logger warnings; ScreenManager now takes `node` in constructor |
@@ -45,7 +45,7 @@ Last Modified: 2026-04-21
 | BF-9 SafetyCoordinator + comms-loss failsafe | [x] | New `SafetyCoordinator` halts winch, wheel, spray trigger, and ESP32 valve; emergency, heartbeat-loss, and wheel-error now converge through the same halt-all path |
 | PRE-1 Machine-verify QML mapping | [x] | Mapping table refreshed to live identifiers; lowercase `stateStore` and aliases removed |
 | 1.0 Register StateStore | [x] | `StateStore` exposed via `setContextProperty`. `qmlRegisterSingletonInstance` abandoned (PySide6 bug — see KNOWLEDGE.md) |
-| 1.1 Register SettingsManager | [x] | Confirmed done — registered in `application.py`, validated in POST-1 loop |
+| 1.1 Register SettingsManager | [x] | Confirmed done — registered during runtime bootstrap and validated in the post-load context-property loop |
 | 1.2 Register QtBridge + kill findChild | [x] | All `findChild` replaced with signals (`showPopupRequested`, `closePopupRequested`, `toggleSidebarRequested`, `toggleVideoOverlayRequested`, `updateVideoSourceRequested`). `input.py` uses `close_popup_fn` callable. `QmlObjectName` enum deleted. `objectName` removed from popup/selectBar/videoOverlay. Only remaining QML object access: `engine.rootObjects()[0]` in `toggle_multiscreen_window()`. |
 | 1.3 Register isolated controllers | [x] | CANCELLED — singleton-registration track abandoned; these objects already work via `setContextProperty()` |
 | 1.4 Register wheelController | [x] | CANCELLED — `wheelController` already exposed via context property |
@@ -61,7 +61,7 @@ Last Modified: 2026-04-21
 | 1.11c required props — displays | [~] | Downgraded to `TD-001`; no longer in the active queue |
 | 1.11d required props — panels/popups | [~] | Downgraded to `TD-001`; no longer in the active queue |
 | 1.11e required props — specialized | [~] | Downgraded to `TD-001`; no longer in the active queue |
-| POST-1 Startup context property validation | [x] | Validation loop in `application.py` checks all 22 context properties for `None` after `engine.load()` |
+| POST-1 Startup context property validation | [x] | Post-load validation during runtime bootstrap checks all 22 context properties for `None` after `engine.load()` |
 | 2.0 Expand CommonStyle | [x] | Token-based design system with scales, colors, spacing, typography, motion, and fixed shell tokens. `scaleFactor` defaults to 1.0 (runtime DPI removed — caused 2x on Steam Deck). `qmldir` singleton added. |
 | 2.1 Design system — core/nav | [x] | `MainWindow`, `TopBar`, `SelectBar` migrated. Shell chrome uses fixed tokens. |
 | 2.2 Design system — buttons/inputs | [x] | `ActionButton`, `TouchSwitch`, `NumpadButton`, `NumpadNew`, `KeyboardPopup`, `SettingInputField` migrated; `TrajNumpad.qml` deleted in Phase 1B |
@@ -86,6 +86,7 @@ Last Modified: 2026-04-21
 | 3.8 CI/CD pipeline | [x] | `.github/workflows/ci.yml`: lint gates both pytest and ROS2 build jobs. `pyproject.toml` with ruff/pytest/coverage config. `requirements-dev.txt` updated. |
 | 3.9 Fix build system | [x] | `CMakeLists.txt` stripped to pure `ament_cmake` wrapper (C++/Qt5/GStreamer deps removed). `package.xml` cleaned to 0.1.0, C++ deps removed. `requirements.txt` switched to `~=` pins. |
 | 3.10 Static typing gate | [~] | Initial `pyright` gate added to CI: strict on `core/controller_factory.py`, basic visibility on selected PySide-heavy core files (`settings.py`, `state_store.py`, `qt_bridge.py`); handler/controller boundary expansion remains next |
+| TD-014 main() decomposition | [x] | Bootstrap moved into `core/app_runtime.py`; `core/application.py` is now a thin entry-point wrapper, `RosThread` moved to `core/ros_node.py`, the dead `robot_config.yaml` loader path was deleted in favor of `RuntimeDefaults`, and one registration table now drives both QML context-property registration and validation |
 | 4.0 Startup/emergency integration smoke test | [x] | `tests/test_startup_smoke.py` now covers both offscreen startup wiring and shutdown teardown, asserting that `MainWindow.qml` loads cleanly and that teardown introduces no new null-binding warnings |
 
 ## Current Checkpoint
@@ -104,24 +105,22 @@ Last Modified: 2026-04-21
 - **Safety integration coverage added**: `tests/test_safety_integration.py` now exercises the real `UIHeartbeatHandler` → `SafetyCoordinator` halt-all path with fake effectors, covering the convergence route that previously existed only across isolated unit tests
 - **Typing gate v1 is live**: `pyrightconfig.json` and CI now enforce an initial pyright pass; strict mode currently holds for `core/controller_factory.py` while PySide descriptor-heavy core modules stay in basic mode until the typed wrapper/stub story improves
 - **Safety hardening batch complete**: BF-6..BF-9 are implemented and covered by targeted regression tests; shutdown teardown ordering is now hardened across the QML shell, Steam Deck reader thread, and ESP32 UDP thread owner
+- **TD-014 is complete**: startup/shutdown orchestration now lives in `core/app_runtime.py`, `core/application.py` is a thin compatibility wrapper, `RosThread` now lives beside `PaintRosNode`, and the stale missing-`robot_config.yaml` warning is gone because that dead loader path was removed
 - **Validation update**: full-suite revalidation is green at `145 passed`; pyright is green (`0 errors`), and a serial offscreen launch still reaches `MainWindow QML loaded` before the expected timeout-kill. The known non-blocking Qt Quick 3D/RHI warning in offscreen mode remains.
 - Recent targeted validation for the controller hardening batches is green; revalidate any full-suite claim with a fresh local pytest run instead of relying on older fixed test-count snapshots
-- Task 1.1 (SettingsManager QML registration): verified done — registered in `application.py`, validated in POST-1 loop
-- **Approved queue change**: `1.11a-e` moves to tech debt, `TD-014` becomes the next architectural task, and `3.10` continues as a phased rollout rather than a one-shot repo-wide mandate
+- Task 1.1 (SettingsManager QML registration): verified done — still registered during runtime bootstrap and validated in POST-1 loop after the `AppRuntime` extraction
+- **Approved queue change executed**: `TD-014` is complete, `3.10` remains a phased rollout rather than a one-shot repo-wide mandate, and `2.8` remains the next cosmetic cleanup after typing work
 - **Deferred backlog**: `2.5b`, `2.5c`, `2.6a-c`, and `2.7` stay in the plan but are intentionally postponed until the active hardening queue is complete
 - **Next tasks** (priority order):
-  1. `TD-014 main() decomposition`
-  2. `3.10 Static typing gate expansion`
-  3. `2.8 Fix page naming`
+  1. `3.10 Static typing gate expansion`
+  2. `2.8 Fix page naming`
 
 ---
 
 ## Dependency Graph
 
 ```
-Completed this batch: BF-1..BF-9, 3.0, 3.5, 3.6, 3.7, 4.0, and the first `3.10` gate slice
-         ↓
-Architecture hardening: TD-014 (`main()` decomposition)
+Completed this batch: BF-1..BF-9, 3.0, 3.5, 3.6, 3.7, 4.0, the first `3.10` gate slice, and TD-014
          ↓
 Quality gate expansion: 3.10 (handler/controller boundaries beyond the current factory/core slice)
          ↓
@@ -170,7 +169,7 @@ Deferred backlog: 2.5b, 2.5c, 2.6a-c, and 2.7 remain tracked but are intentional
 
 ### Context Property Pattern (CURRENT — all 22 runtime objects use this)
 ```python
-# In application.py main(), AFTER engine creation, BEFORE engine.load()
+# In app_runtime.py runtime bootstrap, AFTER engine creation, BEFORE engine.load()
 ctx = engine.rootContext()
 ctx.setContextProperty("wheelController", bundle.wheel_controller)
 # QML accesses as global: wheelController.left_wheel_speed
@@ -286,14 +285,14 @@ Used for Phase 1 tasks. Shows which QML files must be updated per controller reg
 
 ### Task 0.1: Delete Dead RobotController Class
 
-**Goal**: Remove ~525 lines of dead code from `core/application.py`.
+**Goal**: Remove ~525 lines of dead bootstrap code that previously lived in `core/application.py`.
 
-**Implementation note (2026-04-17)**: `RobotConfig` and `ConfigLoader` were retained because `main()` still uses `ConfigLoader.load_config('robot_config.yaml')` during startup.
+**Implementation note (2026-04-17, updated 2026-04-21)**: `RobotConfig` and `ConfigLoader` were retained temporarily during Phase 0 because `main()` still referenced them. TD-014 later removed that dead path entirely after confirming `robot_config.yaml` does not exist in the repo and replacing it with `RuntimeDefaults` in `core/config.py`.
 
-**Context**: The old `RobotController(Node, QObject)` god class was replaced by `PaintRosNode`, `StateStore`, `QtBridge`, `ControllerFactory` in the previous refactor. The new `main()` function never instantiates it. Confirmed dead code — zero runtime references. Verified: no external references in `launch/`, `tests/`, `scripts/`, or `fish-eye/`.
+**Context**: The old `RobotController(Node, QObject)` god class was replaced by `PaintRosNode`, `StateStore`, `QtBridge`, `ControllerFactory` in the previous refactor. The old bootstrap path never instantiated it. Confirmed dead code — zero runtime references. Verified: no external references in `launch/`, `tests/`, `scripts/`, or `fish-eye/`.
 
 **Files to modify**:
-- `core/application.py` — Delete the `RobotController` class (starts around L221, ends around L746). Also delete the `HeartbeatStatus` enum near L85 (duplicate of the one in `core/ros_node.py`). Also delete `RobotConfig` and `ConfigLoader` classes if they exist and are unused.
+- `core/application.py` — Historical location of the deleted `RobotController` class, duplicate `HeartbeatStatus`, and temporary `RobotConfig` / `ConfigLoader` scaffolding. TD-014 later moved live bootstrap ownership into `core/app_runtime.py`.
 - `core/__init__.py` — Remove `RobotController` from imports/exports
 - `__init__.py` (package root) — Remove `RobotController`, `RobotConfig`, `ConfigLoader` from the backward-compat re-export layer
 
@@ -337,7 +336,7 @@ grep -n "RobotController" core/__init__.py __init__.py
 > **Historical Runtime Note (Audit R2)**: The old C++ UI/runtime path is no longer part of the live tree. Do not plan modernization work around `paint_controller_cpp` or a top-level `src/` UI path; the active runtime is the Python/QML application only.
 
 **Files to modify**:
-- `core/application.py` — Remove these 2 lines from the context property block (~L868-895):
+- `core/application.py` — Historical location of the context property block before TD-014 moved live registration into `core/app_runtime.py`:
   - `ctx.setContextProperty("baseStreamer", qt_bridge)` (alias of `backend`)
   - `ctx.setContextProperty("videoStreamer", video_stream_handler)` (alias of `baseStreamHandler`)
 - `qml/pages/spray/PageSpray.qml` — Find `baseStreamer` references, replace with `backend`
@@ -366,7 +365,7 @@ grep -n "result=tuple" ui/overlay.py
 **Files to modify**:
 - `controllers/winch.py` — Re-enable the 4 commented-out availability checks in `move_increment()`, `move_increment_with_accel()`, `move_absolute()`, `move_absolute_with_accel()` (around L168-L216). Replace `print()` with `self._node.get_logger().warning()`. Return `False` when not available. This matches the pattern already used in `command_speed_rpm()` and `command_speed_mmps()`.
 - `services/screen_manager.py` — Add `node` (or `logger`) as an `__init__` parameter instead of it being monkey-patched later.
-- `core/application.py` — Find `bundle.screen_manager.node = node` (around L841) and replace with passing `node` to constructor.
+- `core/application.py` — Historical bootstrap location where `bundle.screen_manager.node = node` was removed before live orchestration later moved into `core/app_runtime.py`.
 
 **How to find the code**:
 ```bash
@@ -393,7 +392,7 @@ grep -n "\.node = " core/application.py
 - `core/ros_node.py` — inject/read the current heartbeat state instead of hardcoding `IDLE`
 - `handlers/emergency.py` — set state to `ERROR` on emergency trigger and back to `IDLE` when manually cleared
 - `handlers/heartbeat.py` — set state to `WARNING` on base/EF heartbeat loss and clear it on recovery
-- `core/application.py` — route wheel motor error into the same state machine
+- `core/application.py` — historical bootstrap location that originally routed wheel motor error into the same state machine; live routing now lives in `core/app_runtime.py`
 
 **Verification**:
 - Targeted tests prove emergency, wheel-error, and heartbeat-loss transitions publish the expected `UInt8` value
@@ -407,12 +406,12 @@ grep -n "\.node = " core/application.py
 
 **Implemented**:
 - `RosThread` no longer owns `node.destroy_node()`
-- `main()` tears down the QML object tree before controller/service cleanup
+- runtime shutdown tears down the QML object tree before controller/service cleanup
 - controller/service cleanup completes before `node.cleanup()` / `destroy_node()`
 - the remaining app-owned thread owners now participate in normal cleanup, including the Steam Deck reader thread and ESP32 UDP receive thread
 
 **Files changed**:
-- `core/application.py`
+- `core/application.py` (historical wrapper location before TD-014 moved teardown orchestration into `core/app_runtime.py`)
 - `handlers/steam_deck.py`
 - `services/screen_manager.py`
 - `controllers/esp32_valve.py`
@@ -451,7 +450,7 @@ grep -n "\.node = " core/application.py
 - `handlers/emergency.py` — delegate to `SafetyCoordinator`
 - `handlers/heartbeat.py` — call the same halt path on heartbeat-loss transitions
 - `core/controller_factory.py` — inject the coordinator into dependent handlers
-- `core/application.py` — use the coordinator for wheel motor error handling
+- `core/application.py` — historical bootstrap location that was later superseded by `core/app_runtime.py` during TD-014
 
 **Verification**:
 - Tests assert emergency and heartbeat-loss each stop winch, wheel, spray trigger, and ESP32 valve even if one effector call raises
@@ -490,7 +489,7 @@ done
 **Status**: ✅ DONE. Originally attempted with `qmlRegisterSingletonInstance` but that API is broken in PySide6 (corrupts QML type system with implicit directory imports). Reverted to `setContextProperty`.
 
 **Python changes**:
-- `core/application.py` — Uses `ctx.setContextProperty("stateStore", state_store)` (already existed, kept as-is)
+- `core/app_runtime.py` — Runtime bootstrap uses `ctx.setContextProperty("stateStore", state_store)` via the shared registration table
 
 **QML files** (3 files): Access via `stateStore.xyz` (lowercase, no import needed)
 - `navigation/TopBar.qml`
@@ -503,7 +502,7 @@ done
 
 **Same setContextProperty pattern. Already exposed — verify QML access works.**
 
-**Python**: `core/settings.py` + `core/application.py`
+**Python**: `core/settings.py` + runtime bootstrap (`core/app_runtime.py`; historically `core/application.py` before TD-014)
 **QML** (3 files): `overlays/systemcontrol/SettingsTab.qml`, `components/panels/SettingsSection.qml`, `components/inputs/SettingInputField.qml`
 
 Access via `settingsManager.xyz` (lowercase, no import needed).
@@ -632,7 +631,7 @@ required property string settingKey
 
 > **Audit R5**: QML silently returns `undefined` when a runtime object name is wrong — no crash, no console error. This is dangerous for a robotic controller.
 
-**Add to `core/application.py`** after `engine.load()`:
+**Add to the runtime bootstrap** after `engine.load()`:
 ```python
 # Verify all context properties are wired correctly
 _EXPECTED_CONTEXT_PROPERTIES = [
@@ -822,7 +821,7 @@ Create `.github/workflows/ci.yml` with the current repo flow: lint first, then p
 10. **All objects use `setContextProperty`** — `qmlRegisterSingletonInstance` abandoned due to PySide6 bug. No migration needed for existing context properties.
 11. **Safety batch outranked cosmetic cleanup during the April 21 hardening pass** — this was completed; use **Current Checkpoint** for the active queue
 12. **Emergency hold duration becomes a real setting** — `emergency_hold_duration_s` defaults to `1.0` and is clamped to `[0.2, 2.0]`
-13. **Shutdown ownership stays in `main()`** — `RosThread` stops spinning, but `main()` owns final controller cleanup and `node.destroy_node()` ordering
+13. **Shutdown ownership stays in the runtime orchestration layer** — `RosThread` stops spinning, and the bootstrap owner (`AppRuntime.shutdown()` after TD-014; historically `main()`) owns final controller cleanup and `node.destroy_node()` ordering
 14. **Heartbeat is a state signal, not a metronome** — `/controller/heartbeat` must reflect `IDLE`/`ONTASK`/`WARNING`/`ERROR`
 15. **Safety behavior must converge through one halt-all path** — emergency, wheel-error, and heartbeat-loss will share a `SafetyCoordinator`
 16. **Static typing gate is added after the active safety batch** — narrow, high-signal coverage first; not a repo-wide mandate on day one

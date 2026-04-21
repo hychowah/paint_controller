@@ -1,6 +1,6 @@
 # QML ↔ Python Bindings Inventory
 
-> **Source**: Codebase review (2026-04). Updated 2026-04-17 with implementation progress.
+> **Source**: Codebase review (2026-04). Updated 2026-04-21 with the `AppRuntime` extraction.
 > **Canonical location**: `docs/plan/03_QML_BINDINGS.md`
 > **Related**: [01_MASTER_PLAN.md](01_MASTER_PLAN.md) | [02_ARCHITECTURE.md](02_ARCHITECTURE.md) | [04_AUDIT_REPORT.md](04_AUDIT_REPORT.md)
 
@@ -8,7 +8,7 @@
 
 ## QML Engine Setup
 
-**Location**: `python/paint_controller/core/application.py`
+**Location**: `python/paint_controller/core/app_runtime.py`
 
 ### Engine Initialization
 ```python
@@ -31,11 +31,13 @@ qml_path = os.path.join(qml_dir, 'core', 'MainWindow.qml')
 engine.load(QUrl.fromLocalFile(qml_path))
 ```
 
+`python/paint_controller/core/application.py` is now a thin entry-point wrapper that sets process-level environment and signal handling, then instantiates `AppRuntime`.
+
 ---
 
 ## Current Runtime Registration State
 
-As of 2026-04-20, all 22 runtime objects are exposed via `setContextProperty()`. A validation loop in `application.py` verifies all 22 are non-`None` after `engine.load()`.
+As of 2026-04-21, all 22 runtime objects are exposed via `setContextProperty()`. `AppRuntime` builds the registration table, checks it against the expected public QML contract, and then verifies all 22 are non-`None` after `engine.load()`.
 
 > **⚠️ DO NOT USE `qmlRegisterSingletonInstance()` in PySide6.**
 > It corrupts the QML type system when combined with implicit directory imports (no `qmldir`).
@@ -95,7 +97,7 @@ As of 2026-04-20, all 22 runtime objects are exposed via `setContextProperty()`.
 All Python objects are exposed to QML via `setContextProperty()`:
 
 ```python
-# In application.py — register all objects BEFORE engine.load()
+# In app_runtime.py — register all objects BEFORE engine.load()
 ctx = engine.rootContext()
 ctx.setContextProperty("stateStore", state_store)
 ctx.setContextProperty("wheelController", bundle.wheel_controller)

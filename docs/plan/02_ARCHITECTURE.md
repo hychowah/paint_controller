@@ -21,15 +21,22 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 **Current orchestration is split across focused core units**
 
 **`main()` in `core/application.py`**
+- Thin entry-point wrapper only
+- Sets process-level environment and signal handling, then instantiates `AppRuntime`
+- Preserves the public `paint_controller.core.application:main` entry point for `setup.py` and `python -m paint_controller`
+
+**`AppRuntime` in `core/app_runtime.py`**
 - Owns boot order and runtime wiring
 - Creates the Qt app, ROS node, settings/state objects, Steam Deck handler, video services, QML engine, bridge, and controller bundle
 - Exposes all runtime objects through `setContextProperty()` (NOT `qmlRegisterSingletonInstance` — broken in PySide6, see KNOWLEDGE.md)
-- 22 context properties registered before `engine.load()`
-- Post-load validation loop checks all 22 properties for `None`
-- Starts timers, ROS thread, system monitor, and shutdown cleanup
-- Video streams deferred via `QTimer.singleShot(200, ...)` to avoid blocking first render
-- Startup instrumented with `time.perf_counter()` markers (`[startup +NNN.N ms] stage`)
-- Cleanup runs on main Qt thread (not background thread) to avoid cross-thread `QTimer` warnings
+- Uses one context-property registration table plus an explicit expected-name contract check before post-load validation
+- Starts timers, ROS thread, system monitor, and deferred video startup
+- Owns shutdown cleanup on the main Qt thread to avoid cross-thread `QTimer` warnings
+- Startup/shutdown remain instrumented with `time.perf_counter()` markers (`[startup +NNN.N ms] stage`, `[shutdown +NNN.N ms] stage`)
+
+**`RuntimeDefaults` in `core/config.py`**
+- Small non-persisted bootstrap defaults (`video_port`, `update_rate`, `joystick_deadzone`)
+- Replaces the stale `robot_config.yaml` loader path that never resolved to a real file in the repo
 
 **`PaintRosNode(Node)`**
 - Pure ROS2 node with no Qt inheritance
@@ -56,9 +63,10 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 
 **ROS2 Thread**: `RosThread(QThread)`
 - Isolated event loop (non-blocking `spin_once`)
-- Network error recovery with exponential backoff
-- Watchdog timeout detection (5s)
+- Fixed-delay retry after ROS-context or `spin_once()` failures
+- Stores last-spin timestamp / timeout fields, but does not currently enforce a separate watchdog timeout path
 - Graceful cleanup on shutdown
+- Now co-located with `PaintRosNode` in `core/ros_node.py` so ROS lifecycle primitives live in one module
 
 **Settings Management**: `SettingsManager(QObject)` - ~500 lines
 - Centralized config persistence (JSON: `~/ros2_ws/src/paint_controller_ros2/python/config/settings.json`)
@@ -76,7 +84,7 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 **Runtime registration state**
 - All 22 live runtime objects are exposed via `setContextProperty()`
 - The singleton-registration track was cancelled because `qmlRegisterSingletonInstance()` is broken in this PySide6 setup
-- Remaining Phase 1 cleanup is mostly deferred or debt-tracked: import/qmldir cleanup is complete, `required property` work now lives in `TD-001`, and the active queue has moved to `TD-014`, `3.10` expansion, and `2.8`
+- Remaining Phase 1 cleanup is mostly deferred or debt-tracked: import/qmldir cleanup is complete, `required property` work now lives in `TD-001`, and the active queue has moved to `3.10` expansion and `2.8`
 - The C++ source files (`src/*.cpp`, `include/paint_controller/*.hpp`) were deleted in Phase 1A
 
 ---
@@ -119,7 +127,7 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Settings-driven: Scale factors, min/max bounds dynamically loaded
 
 #### **Emergency Handler** - `EmergencyButtonHandler(QObject)` ~150 lines
-- Steam button hold-to-trigger (200ms default)
+- Steam button hold-to-trigger (1.0s default via `emergency_hold_duration_s`, clamped to `[0.2, 2.0]`)
 - Progressive overlay feedback (duration/target_duration)
 - Cooldown: 1s between activations
 - Actions: Winch/wheel stop, spray trigger disable, error popup
@@ -224,9 +232,10 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 
 #### **Screen Manager** - `ScreenManager(QObject)` ~150 lines
 - Real-time multi-display detection
-- Qt signal integration: `screens_changed`, `screen_added`, `screen_removed`
+- Qt signal integration: `screens_changed`, `screen_added`, `screen_removed`, `primary_screen_changed`
 - Polling: 1s interval for dynamic changes
-- Properties per screen: Name, resolution, DPI, refresh rate, primary flag
+- Properties per screen: index, name, manufacturer, model, serial number, resolution, virtual position, device pixel ratio, refresh rate, primary flag
+- Helper queries: primary-screen lookup, per-screen dictionaries, and virtual desktop size
 
 #### **Screen Recorder** - ~100 lines
 - Desktop capture via ffmpeg
@@ -351,7 +360,7 @@ SteamDeckHandler (USB HID)
   ↓ [100Hz input_state_changed]
 UIInputHandler (maps buttons to actions)
   ↓ [slots: on_up_pressed, on_switch_pressed, etc.]
-StateStore / QtBridge / main() wiring
+StateStore / QtBridge / runtime bootstrap wiring
   ↓
 ControlProcessor (processes joystick state)
   ↓ [publishes to ROS2 topics]
@@ -390,8 +399,8 @@ QML reflects new limits/values
 
 ## Critical Coupling Points
 
-1. **`main()` + ControllerFactory → Everything**
-  - Runtime composition is explicit now, but `application.py` still performs the final orchestration step
+1. **`AppRuntime` + ControllerFactory → Everything**
+  - Runtime composition is explicit now, with `core/app_runtime.py` performing the final orchestration step while `application.py` stays a thin entry wrapper
   - `create_controllers()` centralizes most constructor dependency wiring
   - This is a major improvement over the old god class, but it remains the main coordination hotspot
 
@@ -454,7 +463,7 @@ The repo now uses a layered test model instead of one generic mocking style for 
 
 **ROS2 Spin**: 
 - 50ms timeout per `spin_once()` call
-- Watchdog: 5s timeout for network detection
+- Fixed-delay retry on ROS-context or `spin_once()` failure; timeout metadata exists but no separate watchdog enforcement is currently active
 
 **GStreamer Pipeline**:
 - Real-time H264 decoding

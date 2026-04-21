@@ -90,7 +90,6 @@ def create_controllers(
     steam_deck_handler: SteamDeckHandler,
     show_popup_fn: Any,
     close_popup_fn: Any,
-    config: Any,
 ) -> ControllerBundle:
     """
     Create all controllers with explicit dependency injection.
@@ -101,7 +100,6 @@ def create_controllers(
         state_store: StateStore instance (shared mutable state)
         steam_deck_handler: SteamDeckHandler instance
         show_popup_fn: Callable for showing UI popups (QtBridge.show_popup)
-        config: RobotConfig with hardware configuration
 
     Returns:
         ControllerBundle with all controllers wired together
