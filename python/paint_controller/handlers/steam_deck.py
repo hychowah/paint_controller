@@ -7,9 +7,9 @@ import math
 import time
 import threading
 import hid
-import struct
 
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer, QThread, QMutex, QMutexLocker
+from paint_controller.utils.steam_deck_hid import parse_hid_frame
 
 logger = logging.getLogger(__name__)
 
@@ -213,14 +213,6 @@ class SteamDeckHandler(QObject):
         self._reader_thread = SteamDeckReaderThread(self)
         self._reader_thread.data_read.connect(self._process_input)
     
-    def __del__(self):
-        """Destructor to ensure cleanup on object deletion"""
-        try:
-            self._cleanup_resources()
-        except:
-            # Silently fail in destructor to avoid issues during interpreter shutdown
-            pass
-        
     def start(self):
         """Initialize and start the Steam Deck HID connection"""
         # Prevent starting if already running
@@ -449,7 +441,8 @@ class SteamDeckHandler(QObject):
     @Slot(bytes)
     def _process_input(self, data):
         """Process the raw HID input data"""
-        if len(data) < 64:
+        parsed_frame = parse_hid_frame(data)
+        if parsed_frame is None:
             return
             
         # Update the last input time
@@ -465,88 +458,45 @@ class SteamDeckHandler(QObject):
         with QMutexLocker(self._mutex):
             # Store previous state for change detection
             self._prev_input_state = self._input_state.copy()
-                
-            # Process byte 8 (first button byte)
-            button_byte1 = data[8]
-            r2_click = bool(button_byte1 & (1 << 0))
-            l2_click = bool(button_byte1 & (1 << 1))
-            r1 = bool(button_byte1 & (1 << 2))
-            l1 = bool(button_byte1 & (1 << 3))
-            y = bool(button_byte1 & (1 << 4))
-            b = bool(button_byte1 & (1 << 5))
-            x = bool(button_byte1 & (1 << 6))
-            a = bool(button_byte1 & (1 << 7))
-            
-            # Process byte 9 (second button byte)
-            button_byte2 = data[9]
-            dpad_up = bool(button_byte2 & (1 << 0))
-            dpad_right = bool(button_byte2 & (1 << 1))
-            dpad_left = bool(button_byte2 & (1 << 2))
-            dpad_down = bool(button_byte2 & (1 << 3))
-            switch = bool(button_byte2 & (1 << 4))
-            steam = bool(button_byte2 & (1 << 5))
-            menu = bool(button_byte2 & (1 << 6))
-            l5 = bool(button_byte2 & (1 << 7))
-            
-            # Process byte 10 (third button byte)
-            button_byte3 = data[10]
-            r5 = bool(button_byte3 & (1 << 0))
-            left_touchpad_touch = bool(button_byte3 & (1 << 3))
-            right_touchpad_touch = bool(button_byte3 & (1 << 4))
-            l3 = bool(button_byte3 & (1 << 6))
 
-            # Process byte 13 (fourth button byte)
-            button_byte4 = data[13]
-            l4 = bool(button_byte4 & (1 << 1))
-            r4 = bool(button_byte4 & (1 << 2))
-
-            button_byte5 = data[14]
-            dot_button = bool(button_byte5 & (1 << 2))
-            
-            # Process analog inputs
-            imu_pitch = struct.unpack('<h', bytes([data[38], data[39]]))[0]
-            imu_roll = struct.unpack('<h', bytes([data[40], data[41]]))[0]
-            imu_yaw = struct.unpack('<h', bytes([data[42], data[43]]))[0]
-            left_trigger = struct.unpack('<h', bytes([data[44], data[45]]))[0]
-            right_trigger = struct.unpack('<h', bytes([data[46], data[47]]))[0]
-            left_stick_x = struct.unpack('<h', bytes([data[48], data[49]]))[0]
-            left_stick_y = struct.unpack('<h', bytes([data[50], data[51]]))[0]
-            right_stick_x = struct.unpack('<h', bytes([data[52], data[53]]))[0]
-            right_stick_y = struct.unpack('<h', bytes([data[54], data[55]]))[0]
+            buttons = parsed_frame['buttons']
+            imu = parsed_frame['imu']
+            triggers = parsed_frame['triggers']
+            sticks = parsed_frame['sticks']
             
             # Update the input state dictionary
             self._input_state = {
-                'left_stick': self._process_stick(left_stick_x, left_stick_y, 'left_stick'),
-                'right_stick': self._process_stick(right_stick_x, right_stick_y, 'right_stick'),
+                'left_stick': self._process_stick(sticks['left']['x'], sticks['left']['y'], 'left_stick'),
+                'right_stick': self._process_stick(sticks['right']['x'], sticks['right']['y'], 'right_stick'),
                 'triggers': {
-                    'left': left_trigger,
-                    'right': right_trigger
+                    'left': triggers['left'],
+                    'right': triggers['right']
                 },
                 'buttons': {
-                    'up': dpad_up,
-                    'down': dpad_down,
-                    'left': dpad_left,
-                    'right': dpad_right,
-                    'a': a,
-                    'b': b,
-                    'x': x,
-                    'y': y,
-                    'l1': l1,
-                    'r1': r1,
-                    'l4': l4,
-                    'r4': r4,
-                    'l5': l5,
-                    'r5': r5,
-                    'l3': l3,
-                    'menu': menu,
-                    'switch': switch,
-                    'steam': steam,
-                    'dot': dot_button
+                    'up': buttons['up'],
+                    'down': buttons['down'],
+                    'left': buttons['left'],
+                    'right': buttons['right'],
+                    'a': buttons['a'],
+                    'b': buttons['b'],
+                    'x': buttons['x'],
+                    'y': buttons['y'],
+                    'l1': buttons['l1'],
+                    'r1': buttons['r1'],
+                    'l4': buttons['l4'],
+                    'r4': buttons['r4'],
+                    'l5': buttons['l5'],
+                    'r5': buttons['r5'],
+                    'l3': buttons['l3'],
+                    'menu': buttons['menu'],
+                    'switch': buttons['switch'],
+                    'steam': buttons['steam'],
+                    'dot': buttons['dot']
                 },
                 'imu': {
-                    'pitch': imu_pitch,
-                    'roll': imu_roll,
-                    'yaw': imu_yaw
+                    'pitch': imu['pitch'],
+                    'roll': imu['roll'],
+                    'yaw': imu['yaw']
                 }
             }
             

@@ -1,7 +1,7 @@
 # Paint Controller Modernization — Plan Documentation
 
 > **Created**: 2026-04-16
-> **Validated**: 2026-04-17 (post-implementation + test/documentation sync)
+> **Validated**: 2026-04-21 (post-implementation + test/documentation sync)
 > **Branch**: `refactor`
 
 ## For Future LLM Sessions
@@ -17,14 +17,14 @@ For plan-docs navigation, read in this order:
 
 ## Authority Hierarchy
 
-- **Session-start navigator**: `docs/plan/00_README.md`
+- **This file is a plan-doc navigator only**; repo-wide authority starts at `INDEX.md`
 - **Authoritative progress and next-task source**: `docs/plan/01_MASTER_PLAN.md`
 - **What was actually completed and validated**: `DEVNOTES.md`
 - **Reusable technical gotchas and patterns**: `KNOWLEDGE.md`
 - **Active task scratch only**: `PLANNING.md`
 - **Historical context only**: `REFACTOR_TRACKER.md`, `docs/plan/04_AUDIT_REPORT.md`
 
-If two files disagree, prefer the file higher in this list unless `DEVNOTES.md` documents a more recent verified result.
+If two files disagree, prefer `INDEX.md`'s repo-wide authority hierarchy first. Within the plan-doc subset, prefer the file higher in this list unless `DEVNOTES.md` documents a more recent verified result.
 
 ## Current Status Sources
 
@@ -43,7 +43,7 @@ If two files disagree, prefer the file higher in this list unless `DEVNOTES.md` 
 
 ## Environment Note
 
-- VS Code is pinned to the project interpreter in `.vscode/settings.json`: `python/paint_controller/venv/bin/python`
+- Use the project interpreter `python/paint_controller/venv/bin/python` for editor tooling and tests
 - The reliable local test command is `python/paint_controller/venv/bin/python -m pytest -q`
 - The test inventory has moved well past the older `100 passed` snapshot. Revalidate any full-suite claim with a fresh local pytest run rather than trusting fixed counts in historical notes.
 - `QT_QPA_PLATFORM` is force-assigned `"offscreen"` in `conftest.py` (overrides any shell-level `xcb` setting).
@@ -51,7 +51,7 @@ If two files disagree, prefer the file higher in this list unless `DEVNOTES.md` 
 
 ## Active Queue Snapshot
 
-- Immediate priority: `3.5`, then `3.10 Static typing gate`, then `1.11a-e`, and finally `2.8`
+- Immediate priority: `TD-014 main() decomposition`, then `3.10 Static typing gate expansion`, then `2.8`
 - Deferred backlog: remaining Phase 2 theming work (`2.5b`, `2.5c`, `2.6a-c`, `2.7`) stays documented but is intentionally postponed until the hardening queue is complete
 
 ## Key Paths

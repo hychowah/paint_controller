@@ -1,5 +1,9 @@
 """Qt/QML UI bridge — owns signals, popup, and toggle methods."""
 
+from __future__ import annotations
+
+from typing import Any
+
 from PySide6.QtCore import QMetaObject, QObject, Signal, Slot
 
 
@@ -18,27 +22,33 @@ class QtBridge(QObject):
     toggleVideoOverlayRequested = Signal(bool, str)  # active, videoSource
     updateVideoSourceRequested = Signal(str)  # videoSource
 
-    def __init__(self, engine, state_store, logger=None, parent=None):
+    def __init__(
+        self,
+        engine: Any,
+        state_store: Any,
+        logger: Any = None,
+        parent: QObject | None = None,
+    ) -> None:
         super().__init__(parent)
         self.engine = engine
         self._state_store = state_store
         self._logger = logger
-        self._base_top_view_service = None
-        self._input_handler = None
+        self._base_top_view_service: Any | None = None
+        self._input_handler: Any | None = None
 
-    def set_base_top_view_service(self, service):
+    def set_base_top_view_service(self, service: Any) -> None:
         """Set after factory creates controllers (deferred wiring)."""
         self._base_top_view_service = service
 
-    def set_input_handler(self, handler):
+    def set_input_handler(self, handler: Any) -> None:
         """Set after factory creates controllers (deferred wiring)."""
         self._input_handler = handler
 
-    def _log_info(self, msg):
+    def _log_info(self, msg: str) -> None:
         if self._logger:
             self._logger.info(msg)
 
-    def _log_error(self, msg):
+    def _log_error(self, msg: str) -> None:
         if self._logger:
             self._logger.error(msg)
 

@@ -85,10 +85,7 @@ class SafetyCoordinator:
         if self._logger is not None:
             if failures:
                 self._logger.error(
-                    'Safety halt for %s completed with %d failure(s): %s',
-                    reason,
-                    len(failures),
-                    '; '.join(failures),
+                    f"Safety halt for {reason} completed with {len(failures)} failure(s): {'; '.join(failures)}"
                 )
             else:
-                self._logger.warning('Safety halt executed: %s', reason)
+                self._logger.warning(f'Safety halt executed: {reason}')

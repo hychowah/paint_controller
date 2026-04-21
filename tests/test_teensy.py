@@ -81,6 +81,40 @@ def test_set_relay_enabled_updates_status_and_publishes(qt_app, fake_node):
     assert controller.get_status()["relay_enabled"] is True
 
 
+def test_status_changed_emits_defensive_snapshot(qt_app, fake_node):
+    controller = _teensy_controller_class()(fake_node)
+    emitted_statuses = []
+
+    controller.status_changed.connect(emitted_statuses.append)
+
+    controller.setRelayEnabled(True)
+
+    assert emitted_statuses[-1]["relay_enabled"] is True
+    emitted_statuses[-1]["relay_enabled"] = False
+    assert controller.get_status()["relay_enabled"] is True
+
+
+def test_get_all_status_returns_copy(qt_app, fake_node):
+    controller = _teensy_controller_class()(fake_node)
+    controller.setRelayEnabled(True)
+
+    snapshot = controller.get_all_status()
+    snapshot["relay_enabled"] = False
+
+    assert controller.get_status()["relay_enabled"] is True
+
+
+def test_spray_gun_leveling_emits_status_snapshot(qt_app, fake_node):
+    controller = _teensy_controller_class()(fake_node)
+    emitted_statuses = []
+
+    controller.status_changed.connect(emitted_statuses.append)
+
+    controller.setSprayGunLevelingEnabled(True)
+
+    assert emitted_statuses[-1]["spray_gun_leveling_enabled"] is True
+
+
 def test_thrust_force_setting_change_clamps_value(qt_app, fake_node):
     settings = FakeSettingsManager(thrust_force=-0.4, thrust_ramp_rate=1.0)
     controller = _teensy_controller_class()(fake_node, settings_manager=settings)
@@ -113,3 +147,13 @@ def test_set_ef_force_publishes_twist_message(qt_app, fake_node):
     assert published.linear.x == 1.5
     assert published.linear.y == -0.75
     assert published.linear.z == 0.0
+
+
+def test_get_formatted_value_reads_status_via_locking_snapshot(qt_app, fake_node):
+    controller = _teensy_controller_class()(fake_node)
+    status = _teensy_status_class()()
+    status.temperature = 23.456
+
+    controller._status_callback(status)
+
+    assert controller.get_formatted_value("temperature") == "23.5"

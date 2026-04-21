@@ -107,7 +107,7 @@ paint_controller
 ### Manual Run
 
 ```bash
-source /opt/ros/humble/setup.bash
+source /opt/ros/jazzy/setup.bash 2>/dev/null || source /opt/ros/humble/setup.bash
 source ~/ros2_ws/install/setup.bash
 source ~/ros2_ws/src/paint_controller_ros2/python/paint_controller/venv/bin/activate
 cd ~/ros2_ws/src/paint_controller_ros2/python
@@ -139,7 +139,8 @@ Note: If `QT_QPA_PLATFORM` is set to `xcb` in your shell environment, `conftest.
 - Core runtime state and persistence: `tests/test_state_store.py`, `tests/test_settings_runtime.py`
 - Safety-critical command dispatch: `tests/test_control_processor.py`
 - Qt signal bridge: `tests/test_qt_bridge.py`
-- Component and handler behavior: `tests/test_emergency.py`, `tests/test_input_handler.py`, `tests/test_winch.py`
+- Component and handler behavior: `tests/test_emergency.py`, `tests/test_input_handler.py`, `tests/test_steam_deck_hid.py`, `tests/test_winch.py`, `tests/test_ssh.py`
+- Safety convergence wiring: `tests/test_safety_integration.py`
 - Real ROS transport: `tests/test_winch_ros_integration.py`
 
 ## Repository Layout
@@ -153,7 +154,8 @@ Note: If `QT_QPA_PLATFORM` is set to `xcb` in your shell environment, `conftest.
 
 ## Documentation Map
 
-- `docs/plan/00_README.md` — start here in a fresh LLM or handoff session; authority order and doc navigation
+- `INDEX.md` — start here in a fresh LLM or handoff session; repo authority order and doc navigation
+- `docs/plan/00_README.md` — plan-doc navigation after `INDEX.md`
 - `docs/plan/01_MASTER_PLAN.md` — authoritative modernization tracker
 - `docs/plan/02_ARCHITECTURE.md` — runtime architecture reference
 - `docs/plan/03_QML_BINDINGS.md` — QML/Python binding inventory

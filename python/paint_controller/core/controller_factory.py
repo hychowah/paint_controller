@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any, cast
 
 from paint_controller.controllers.esp32_valve import ESP32ValveController
 from paint_controller.controllers.lidar import LidarController
@@ -58,7 +59,7 @@ class ControllerBundle:
     ros_bag_recorder: RosBagRecorder
     workflow_runner: WorkFlowRunner
 
-    def cleanup(self, logger=None):
+    def cleanup(self, logger: Any = None) -> None:
         """Cleanup all controllers in reverse creation order."""
         cleanup_order = [
             'workflow_runner',
@@ -83,14 +84,14 @@ class ControllerBundle:
 
 
 def create_controllers(
-    node,
-    settings_manager,
-    state_store,
+    node: Any,
+    settings_manager: Any,
+    state_store: Any,
     steam_deck_handler: SteamDeckHandler,
-    show_popup_fn,
-    close_popup_fn,
-    config,
-):
+    show_popup_fn: Any,
+    close_popup_fn: Any,
+    config: Any,
+) -> ControllerBundle:
     """
     Create all controllers with explicit dependency injection.
 
@@ -147,9 +148,9 @@ def create_controllers(
         settings_manager=settings_manager,
         state_store=state_store,
     )
-    overlay.set_control_processor(control_processor)
+    cast(Any, overlay).set_control_processor(control_processor)
 
-    hardware = HardwareControllers.from_controllers(teensy, winch, esp32_valve)
+    hardware = cast(Any, HardwareControllers).from_controllers(teensy, winch, esp32_valve)
     workflow_runner = WorkFlowRunner(node, hardware)
 
     input_handler = UIInputHandler(

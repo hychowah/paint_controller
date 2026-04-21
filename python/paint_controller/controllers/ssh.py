@@ -2,6 +2,7 @@ from PySide6.QtCore import QObject, Slot, Signal, QTimer, Property, QRunnable, Q
 import logging
 import os
 import json
+import tempfile
 import paramiko
 import threading
 import subprocess
@@ -9,6 +10,43 @@ import time
 import platform
 
 logger = logging.getLogger(__name__)
+
+
+def _fsync_parent_directory(path: str) -> None:
+    if not hasattr(os, "O_DIRECTORY"):
+        return
+
+    directory_fd = os.open(os.path.dirname(path), os.O_DIRECTORY)
+    try:
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
+
+
+def _atomic_write_json(path: str, data, *, indent: int) -> None:
+    temp_path = None
+    directory = os.path.dirname(path)
+    os.makedirs(directory, exist_ok=True)
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=directory,
+            prefix=f".{os.path.basename(path)}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temp_path = handle.name
+            json.dump(data, handle, indent=indent)
+            handle.flush()
+            os.fsync(handle.fileno())
+
+        os.replace(temp_path, path)
+        _fsync_parent_directory(path)
+    except Exception:
+        if temp_path and os.path.exists(temp_path):
+            os.unlink(temp_path)
+        raise
 
 class SSHLauncher:
     def __init__(self, hostname, username, password=None, key_path=None, port=22):
@@ -21,6 +59,7 @@ class SSHLauncher:
     def run_script(self, command, callback=None):
         def _execute():
             logger.info("Connecting to %s@%s:%s", self.username, self.hostname, self.port)
+            client = None
             try:
                 client = paramiko.SSHClient()
                 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -28,10 +67,26 @@ class SSHLauncher:
                 if self.key_path:
                     logger.info("Using private key: %s", self.key_path)
                     key = paramiko.RSAKey.from_private_key_file(self.key_path)
-                    client.connect(self.hostname, port=self.port, username=self.username, pkey=key)
+                    client.connect(
+                        self.hostname,
+                        port=self.port,
+                        username=self.username,
+                        pkey=key,
+                        timeout=5,
+                        banner_timeout=5,
+                        auth_timeout=5,
+                    )
                 else:
                     logger.info("Using password authentication")
-                    client.connect(self.hostname, port=self.port, username=self.username, password=self.password)
+                    client.connect(
+                        self.hostname,
+                        port=self.port,
+                        username=self.username,
+                        password=self.password,
+                        timeout=5,
+                        banner_timeout=5,
+                        auth_timeout=5,
+                    )
 
                 logger.info("Executing command:\n%s", command)
                 stdin, stdout, stderr = client.exec_command(command)
@@ -40,15 +95,19 @@ class SSHLauncher:
                 logger.info("STDOUT:\n%s", out)
                 logger.info("STDERR:\n%s", err)
 
-                client.close()
                 if callback:
                     callback(out, err)
             except Exception as e:
                 logger.error("SSH exception: %s", e)
                 if callback:
                     callback("", str(e))
+            finally:
+                if client is not None:
+                    client.close()
 
-        threading.Thread(target=_execute).start()
+        thread = threading.Thread(target=_execute, daemon=True)
+        thread.start()
+        return thread
 
 class AvailabilityCheckRunnable(QRunnable):
     def __init__(self, device_name, hostname, timeout, callback):
@@ -97,6 +156,8 @@ class UISSHController(QObject):
     deviceAvailable = Signal(str, bool, str)  # device_name, is_available, message
     devicePingTime = Signal(str, float)  # device_name, ping_time_ms
     deviceAvailabilityChanged = Signal()
+    availabilityResultReady = Signal(str, bool, str, float)
+    commandResultReady = Signal(str, str, str, str)
 
     def __init__(self, show_popup_fn=None, parent=None):
         super().__init__(parent)
@@ -105,6 +166,9 @@ class UISSHController(QObject):
         self._deviceAvailability = {}  # Backing store for device_availability property: {device_name: bool}
         self._devicePingTimes = {}  # Backing store for ping times: {device_name: float}
         self._is_cleaning_up = False  # Flag to prevent signal emission during cleanup
+        self._command_threads = []
+        self.availabilityResultReady.connect(self._handle_availability_result)
+        self.commandResultReady.connect(self._handle_command_result)
 
         # Store config paths - resolve to absolute path
         config_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "config"))
@@ -130,12 +194,14 @@ class UISSHController(QObject):
 
     def _save_json_file(self, path, data):
         try:
-            with open(path, 'w') as f:
-                json.dump(data, f, indent=4)
+            _atomic_write_json(path, data, indent=4)
             return True
         except Exception as e:
             logger.error("Failed to save JSON config to %s: %s", path, e)
             return False
+
+    def _prune_command_threads(self):
+        self._command_threads = [thread for thread in self._command_threads if thread.is_alive()]
 
     def _load_ssh_config(self, path):
         ssh_config = self._load_json_file(path)
@@ -144,22 +210,39 @@ class UISSHController(QObject):
             for name, info in ssh_config.items()
         }
 
+    @Slot(str, bool, str, float)
+    def _handle_availability_result(self, device_name: str, is_available: bool, message: str, ping_time: float):
+        if self._is_cleaning_up:
+            return
+
+        self._deviceAvailability[device_name] = is_available
+        self._devicePingTimes[device_name] = ping_time
+        self.deviceAvailabilityChanged.emit()
+        self.deviceAvailable.emit(device_name, is_available, message)
+        self.devicePingTime.emit(device_name, ping_time)
+
+    @Slot(str, str, str, str)
+    def _handle_command_result(self, device_name: str, command: str, stdout: str, stderr: str):
+        if self._show_popup_fn:
+            self._show_popup_fn(
+                title="Device Command",
+                message=f"Command executed on {device_name}:\n{command}",
+                popup_type="info"
+            )
+        if stderr:
+            logger.warning("[%s] STDERR:\n%s", device_name, stderr.strip())
+        else:
+            logger.info("[%s] STDOUT:\n%s", device_name, stdout.strip() or 'Done.')
+
     def _check_device_availability(self, device_name: str, hostname: str, port: int = 22, timeout: float = 0.5):
         def handle_result(name, is_available, message, ping_time):
             # Skip if cleanup is in progress - object may be deleted
             if self._is_cleaning_up:
                 return
-            
+
             try:
-                previous = self._deviceAvailability.get(name)
-                self._deviceAvailability[name] = is_available
-                self._devicePingTimes[name] = ping_time  # Store ping time
-                # Always emit to notify property changes
-                self.deviceAvailabilityChanged.emit()
-                self.deviceAvailable.emit(name, is_available, message)
-                self.devicePingTime.emit(name, ping_time)
+                self.availabilityResultReady.emit(name, is_available, message, ping_time)
             except RuntimeError as e:
-                # Catch "Internal C++ object already deleted" errors
                 if "already deleted" in str(e):
                     logger.debug("Object being destroyed, skipping signal emission for %s", name)
                 else:
@@ -319,21 +402,18 @@ class UISSHController(QObject):
             return
 
         def callback(stdout, stderr):
-            if self._show_popup_fn:
-                self._show_popup_fn(
-                    title="Device Command",
-                    message=f"Command executed on {device_name}:\n{command}",
-                    popup_type="info"
-                )
-            if stderr:
-                logger.warning("[%s] STDERR:\n%s", device_name, stderr.strip())
-            else:
-                logger.info("[%s] STDOUT:\n%s", device_name, stdout.strip() or 'Done.')
+            self.commandResultReady.emit(device_name, command, stdout, stderr)
 
-        launcher.run_script(command, callback)
+        thread = launcher.run_script(command, callback)
+        self._command_threads.append(thread)
+        self._prune_command_threads()
 
     def cleanup(self):
         """Cleanup SSH controller resources"""
         self._is_cleaning_up = True
         self._stop_all_availability_checks()
+        self._prune_command_threads()
+        for thread in self._command_threads:
+            thread.join(timeout=2)
+        self._command_threads.clear()
         logger.info("Cleanup complete")

@@ -152,3 +152,25 @@ def test_section_expansion_state_persists_and_unknown_defaults_true(monkeypatch,
     reloaded_manager, _ = _make_manager(monkeypatch, tmp_path)
     assert reloaded_manager.getSectionExpanded("device_winch") is False
     assert reloaded_manager.getSectionExpanded("unknown_section") is True
+
+
+def test_save_all_keeps_last_good_file_when_json_dump_fails(monkeypatch, tmp_path, qt_core_app):
+    manager, config_path = _make_manager(monkeypatch, tmp_path)
+    config_path.write_text(json.dumps({"winch_max_speed_mmps": 123.0}))
+
+    settings_module = __import__("paint_controller.core.settings", fromlist=["json"])
+    original_dump = settings_module.json.dump
+
+    def faulty_dump(payload, handle, indent=2):
+        handle.write('{"broken": ')
+        raise RuntimeError("simulated write failure")
+
+    monkeypatch.setattr(settings_module.json, "dump", faulty_dump)
+
+    success, message = manager.save_all()
+
+    assert success is False
+    assert "Failed to save settings" in message
+    assert json.loads(config_path.read_text()) == {"winch_max_speed_mmps": 123.0}
+    assert list(config_path.parent.glob("*.tmp")) == []
+    monkeypatch.setattr(settings_module.json, "dump", original_dump)

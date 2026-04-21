@@ -1,6 +1,6 @@
 # Paint Controller Architecture Reference
 
-> **Source**: Codebase review (2026-04). Updated 2026-04-17 with audit findings, implementation progress, and test/documentation sync.
+> **Source**: Codebase review (2026-04). Updated 2026-04-21 with audit findings, implementation progress, and test/documentation sync.
 > **Canonical location**: `docs/plan/02_ARCHITECTURE.md`
 > **Related**: [01_MASTER_PLAN.md](01_MASTER_PLAN.md) | [03_QML_BINDINGS.md](03_QML_BINDINGS.md) | [04_AUDIT_REPORT.md](04_AUDIT_REPORT.md)
 
@@ -8,9 +8,9 @@
 
 ## Project Overview
 
-Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. Hybrid Python + C++ codebase for controlling a multi-DOF painting robot with cameras, winch, wheels, propellers, Lidar, and spray systems.
+Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. The live repo is Python-first; the historical C++ UI/runtime path was removed from the tree during Phase 1A. The app controls a multi-DOF painting robot with cameras, winch, wheels, propellers, Lidar, and spray systems.
 
-**Tech Stack**: ROS2 (Humble/Jazzy), Python 3.10+, PySide6 (Qt 6), QML, C++, OpenCV, GStreamer, VTK, UDP
+**Tech Stack**: ROS2 (Humble/Jazzy), Python 3.10+, PySide6 (Qt 6), QML, OpenCV, GStreamer, VTK, UDP
 
 ---
 
@@ -66,11 +66,17 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Qt signal/property pattern for QML binding
 - Validation with min/max/type metadata
 - Backward compatibility with defaults
+- Atomic persistence: writes now go through temp-file + flush/fsync + `os.replace` so a failed write does not corrupt the last good file
+
+**Quality gate status**
+- Pyright gate v1 is live in CI
+- Strict typing currently covers `core/controller_factory.py`
+- Selected PySide-heavy core files (`settings.py`, `state_store.py`, `qt_bridge.py`) are included in basic visibility mode until descriptor-heavy typing is expanded further
 
 **Runtime registration state**
 - All 22 live runtime objects are exposed via `setContextProperty()`
 - The singleton-registration track was cancelled because `qmlRegisterSingletonInstance()` is broken in this PySide6 setup
-- Remaining Phase 1 work is import/qmldir/property cleanup, not controller singleton migration
+- Remaining Phase 1 cleanup is mostly deferred or debt-tracked: import/qmldir cleanup is complete, `required property` work now lives in `TD-001`, and the active queue has moved to `TD-014`, `3.10` expansion, and `2.8`
 - The C++ source files (`src/*.cpp`, `include/paint_controller/*.hpp`) were deleted in Phase 1A
 
 ---
@@ -80,6 +86,7 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 #### **Steam Deck Input Handler** - `SteamDeckHandler(QObject)` ~400 lines
 - **HID Device Layer**: Valve USB interface (`0x28DE:0x1205`)
 - Multi-threaded: `SteamDeckReaderThread(QThread)` for non-blocking USB reads
+- Raw HID byte decoding is now isolated in `utils/steam_deck_hid.py`; the handler owns stateful shaping, debounce/hold timing, and Qt emission on top of that pure parser
 - State tracking:
   - **Joysticks**: Left/right with smoothing + dead-zone (configurable 0.1 default)
   - **Buttons**: 20 buttons with debounce timing, hold callbacks
@@ -191,6 +198,7 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Ping-based device availability (0.5s timeout)
 - QThreadPool for non-blocking network checks
 - Device manager: Up to 10 remote systems
+- JSON config writes are atomic, SSH connect/auth/banner timeouts are bounded, and background availability/command results marshal back through Qt signals before touching QObject state
 
 ---
 
@@ -244,7 +252,7 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 
 ---
 
-### 6. QML UI Layer (`python/paint_controller/qml/`) - 90 files
+### 6. QML UI Layer (`python/paint_controller/qml/`)
 
 **Directory Structure**:
 ```
@@ -269,7 +277,6 @@ qml/
     lidar/            → 3D lidar 2D/3D views
     EmergencyOverlay  → Hold-to-activate visual
     OverlayLayer      → Master coordinator
-  widgets/
 ```
 
 **Key QML Patterns** (from KNOWLEDGE.md):
@@ -332,6 +339,7 @@ qml/
 - `QMutex` for image provider access (video frames)
 - `threading.RLock()` for camera stream pipeline state
 - ROS2 client/service calls: Direct (library handles thread safety)
+- `TeensyController` status snapshots are now copied under lock before crossing from ROS callbacks to Qt consumers
 
 ---
 

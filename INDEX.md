@@ -1,6 +1,6 @@
 # Paint Controller — Repo Index
 
-ROS2 node with PySide6/QML UI for robotic paint control on a Steam Deck. Hybrid Python + C++ codebase targeting ROS2 Humble/Jazzy, Python 3.10+, and PySide6/Qt6.
+ROS2 node with PySide6/QML UI for robotic paint control on a Steam Deck. The live runtime is Python-first; the historical C++ UI path has been removed from the tree. Targets ROS2 Humble/Jazzy, Python 3.10+, and PySide6/Qt6.
 
 ---
 
@@ -116,7 +116,7 @@ python/paint_controller/venv/bin/python -m pytest tests/test_control_processor.p
 
 ## Environment Notes
 
-- **VS Code interpreter**: pinned to `python/paint_controller/venv/bin/python` in `.vscode/settings.json`
+- **VS Code interpreter**: use `python/paint_controller/venv/bin/python` for editor tooling and tests
 - **`QT_QPA_PLATFORM`**: force-assigned `"offscreen"` in `tests/conftest.py` — overrides any shell-level `xcb`
 - **Test suite**: use the venv python and revalidate the current full-suite status before commit; historical fixed test-count snapshots in older docs can drift
 - If PySide6 or pytest appear missing in-editor, check the selected interpreter first

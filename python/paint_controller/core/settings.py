@@ -9,12 +9,51 @@ to ~/ros2_ws/src/paint_controller_ros2/python/config/settings.json and can be mo
 import os
 import json
 import logging
+import tempfile
 import threading
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from PySide6.QtCore import QObject, Signal, Slot, Property
 
 logger = logging.getLogger(__name__)
+
+
+def _fsync_parent_directory(path: Path) -> None:
+    """Best-effort directory fsync so the rename is durable after power loss."""
+    if not hasattr(os, "O_DIRECTORY"):
+        return
+
+    directory_fd = os.open(path.parent, os.O_DIRECTORY)
+    try:
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
+
+
+def _atomic_write_json(path: Path, payload: Dict[str, Any], *, indent: int) -> None:
+    """Write JSON atomically so a failed write cannot corrupt the last good file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path: Optional[Path] = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temp_path = Path(handle.name)
+            json.dump(payload, handle, indent=indent)
+            handle.flush()
+            os.fsync(handle.fileno())
+
+        os.replace(temp_path, path)
+        _fsync_parent_directory(path)
+    except Exception:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
+        raise
 
 # Settings schema — defines metadata for all settings (default, min, max, type, etc.)
 _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
@@ -477,9 +516,8 @@ class SettingsManager(QObject):
         try:
             with self._values_lock:
                 values_snapshot = self._values.copy()
-            
-            with open(config_path, 'w') as f:
-                json.dump(values_snapshot, f, indent=2)
+
+            _atomic_write_json(config_path, values_snapshot, indent=2)
             
             logger.info("Saved settings to %s", config_path)
             return (True, "Settings saved successfully")

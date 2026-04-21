@@ -1,5 +1,9 @@
 """Shared mutable state that multiple components read/write."""
 
+# pyright: reportRedeclaration=false
+
+from __future__ import annotations
+
 import threading
 from PySide6.QtCore import QObject, Signal, Property
 
@@ -22,7 +26,7 @@ class StateStore(QObject):
     right_control_info_changed = Signal(str, str)   # mode, value
     controller_heartbeat_state_changed = Signal(int)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._lock = threading.Lock()
         self._control_mode = "base"
@@ -37,12 +41,12 @@ class StateStore(QObject):
 
     # --- control_mode ---
     @Property(str, notify=control_mode_changed)
-    def control_mode(self):
+    def control_mode(self) -> str:
         with self._lock:
             return self._control_mode
 
     @control_mode.setter
-    def control_mode(self, mode):
+    def control_mode(self, mode: str) -> None:
         with self._lock:
             if self._control_mode == mode:
                 return
@@ -51,12 +55,12 @@ class StateStore(QObject):
 
     # --- display_message ---
     @Property(str, notify=display_message_changed)
-    def display_message(self):
+    def display_message(self) -> str:
         with self._lock:
             return self._display_message
 
     @display_message.setter
-    def display_message(self, message):
+    def display_message(self, message: str) -> None:
         with self._lock:
             if self._display_message == message:
                 return
@@ -65,12 +69,12 @@ class StateStore(QObject):
 
     # --- left_joystick_control ---
     @Property(str, notify=left_joystick_control_changed)
-    def left_joystick_control(self):
+    def left_joystick_control(self) -> str:
         with self._lock:
             return self._left_joystick_control
 
     @left_joystick_control.setter
-    def left_joystick_control(self, mode):
+    def left_joystick_control(self, mode: str) -> None:
         with self._lock:
             if self._left_joystick_control == mode:
                 return
@@ -79,12 +83,12 @@ class StateStore(QObject):
 
     # --- right_joystick_control ---
     @Property(str, notify=right_joystick_control_changed)
-    def right_joystick_control(self):
+    def right_joystick_control(self) -> str:
         with self._lock:
             return self._right_joystick_control
 
     @right_joystick_control.setter
-    def right_joystick_control(self, mode):
+    def right_joystick_control(self, mode: str) -> None:
         with self._lock:
             if self._right_joystick_control == mode:
                 return
@@ -93,12 +97,12 @@ class StateStore(QObject):
 
     # --- left_control_mode ---
     @Property(str, notify=left_control_info_changed)
-    def left_control_mode(self):
+    def left_control_mode(self) -> str:
         with self._lock:
             return self._left_control_mode
 
     @left_control_mode.setter
-    def left_control_mode(self, mode):
+    def left_control_mode(self, mode: str) -> None:
         with self._lock:
             if self._left_control_mode == mode:
                 return
@@ -108,12 +112,12 @@ class StateStore(QObject):
 
     # --- left_control_value ---
     @Property(str, notify=left_control_info_changed)
-    def left_control_value(self):
+    def left_control_value(self) -> str:
         with self._lock:
             return self._left_control_value
 
     @left_control_value.setter
-    def left_control_value(self, value):
+    def left_control_value(self, value: str) -> None:
         with self._lock:
             if self._left_control_value == value:
                 return
@@ -123,12 +127,12 @@ class StateStore(QObject):
 
     # --- right_control_mode ---
     @Property(str, notify=right_control_info_changed)
-    def right_control_mode(self):
+    def right_control_mode(self) -> str:
         with self._lock:
             return self._right_control_mode
 
     @right_control_mode.setter
-    def right_control_mode(self, mode):
+    def right_control_mode(self, mode: str) -> None:
         with self._lock:
             if self._right_control_mode == mode:
                 return
@@ -138,12 +142,12 @@ class StateStore(QObject):
 
     # --- right_control_value ---
     @Property(str, notify=right_control_info_changed)
-    def right_control_value(self):
+    def right_control_value(self) -> str:
         with self._lock:
             return self._right_control_value
 
     @right_control_value.setter
-    def right_control_value(self, value):
+    def right_control_value(self, value: str) -> None:
         with self._lock:
             if self._right_control_value == value:
                 return
@@ -153,12 +157,12 @@ class StateStore(QObject):
 
     # --- controller_heartbeat_state ---
     @Property(int, notify=controller_heartbeat_state_changed)
-    def controller_heartbeat_state(self):
+    def controller_heartbeat_state(self) -> int:
         with self._lock:
             return self._controller_heartbeat_state
 
     @controller_heartbeat_state.setter
-    def controller_heartbeat_state(self, value):
+    def controller_heartbeat_state(self, value: int) -> None:
         with self._lock:
             if self._controller_heartbeat_state == value:
                 return

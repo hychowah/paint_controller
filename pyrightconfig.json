@@ -1,0 +1,19 @@
+{
+  "pythonVersion": "3.10",
+  "pythonPlatform": "Linux",
+  "typeCheckingMode": "basic",
+  "extraPaths": [
+    "python"
+  ],
+  "reportMissingImports": false,
+  "reportMissingTypeStubs": false,
+  "strict": [
+    "python/paint_controller/core/controller_factory.py"
+  ],
+  "include": [
+    "python/paint_controller/core/controller_factory.py",
+    "python/paint_controller/core/qt_bridge.py",
+    "python/paint_controller/core/settings.py",
+    "python/paint_controller/core/state_store.py"
+  ]
+}

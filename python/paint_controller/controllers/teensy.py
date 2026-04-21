@@ -293,6 +293,15 @@ class TeensyController(QObject):
             self._available = True
             self._node.get_logger().info("Teensy connection established")
             self.connection_changed.emit(True)
+
+    def _get_status_snapshot(self) -> TeensyStatusDict:
+        with self._status_lock:
+            return self._status.copy()
+
+    def _update_status_fields(self, **fields: Any) -> TeensyStatusDict:
+        with self._status_lock:
+            self._status.update(fields)
+            return self._status.copy()
     
     def _status_callback(self, msg: TeensyStatus):
         """Process incoming TeensyStatus messages from ROS"""
@@ -359,6 +368,7 @@ class TeensyController(QObject):
                 for field in _USER_CONTROLLED_FIELDS:
                     new_status[field] = self._status.get(field, False)
                 self._status = new_status
+                status_snapshot = self._status.copy()
 
             current_time = time.time()
             self._last_status_update_time = current_time
@@ -368,15 +378,14 @@ class TeensyController(QObject):
             time_since_last_update = current_time - self._last_ui_update_time
             if time_since_last_update > self._last_ui_update_interval:
                 self._last_ui_update_time = current_time
-                self.status_changed.emit(new_status)
+                self.status_changed.emit(status_snapshot)
             
         except Exception as e:
             self._node.get_logger().error("Error in Teensy status callback: %s" % e)
     
     def get_status(self) -> TeensyStatusDict:
         """Get current Teensy status"""
-        with self._status_lock:
-            return self._status.copy()
+        return self._get_status_snapshot()
     
     @Slot(str, result='QVariant')
     def get_status_value(self, key: str) -> Any:
@@ -387,7 +396,7 @@ class TeensyController(QObject):
     @Slot(str, result=str)
     def get_formatted_value(self, key: str) -> str:
         """Get a specific status value formatted as a string"""
-        value = self._status.get(key)
+        value = self.get_status_value(key)
         
         # Handle numeric values with appropriate formatting
         if isinstance(value, float):
@@ -410,16 +419,16 @@ class TeensyController(QObject):
         """Enable/disable Teensy control"""
         self._publish_bool(self.teensy_enable_pub, enabled)
         self._node.get_logger().info(f'Teensy {"enabled" if enabled else "disabled"}')
-        self.status_changed.emit(self._status)
+        self.status_changed.emit(self._get_status_snapshot())
     
     @Slot(bool)
     def setRelayEnabled(self, enabled: bool):
         """Enable/disable Teensy relay"""
         self._relay_enabled = enabled
-        self._status['relay_enabled'] = enabled
+        status_snapshot = self._update_status_fields(relay_enabled=enabled)
         self._publish_bool(self.teensy_relay_pub, enabled)
         self._node.get_logger().info(f'Teensy relay {"enabled" if enabled else "disabled"}')
-        self.status_changed.emit(self._status)
+        self.status_changed.emit(status_snapshot)
     
     @Slot(float)
     def setTopRailSpeed(self, speed: float):
@@ -485,8 +494,9 @@ class TeensyController(QObject):
         self._node.get_logger().info(f'Spray gun leveling {"enabled" if enabled else "disabled"}')
         self._publish_bool(self.ef_spray_level_enable_pub, enabled)
         self._spray_gun_leveling_enabled = enabled
-        self._status['spray_gun_leveling_enabled'] = enabled
+        status_snapshot = self._update_status_fields(spray_gun_leveling_enabled=enabled)
         self.spray_gun_leveling_changed.emit(enabled)
+        self.status_changed.emit(status_snapshot)
 
     @Slot(float, float)
     def setSprayGunPitchAngle(self, angle: float, speed: float):
@@ -522,11 +532,11 @@ class TeensyController(QObject):
     def setStabilityEnabled(self, enabled: bool):
         """Enable/disable stability controller (master enable for force and yaw control)"""
         self._stability_enabled = enabled
-        self._status['stability_enabled'] = enabled
+        status_snapshot = self._update_status_fields(stability_enabled=enabled)
         self._publish_bool(self.stability_enable_pub, enabled)
         self._node.get_logger().info(f'Stability controller {"enabled" if enabled else "disabled"}')
         self.stability_enabled_changed.emit(enabled)
-        self.status_changed.emit(self._status)
+        self.status_changed.emit(status_snapshot)
 
     @Slot(bool)
     def setYawEnabled(self, enabled: bool):
@@ -537,31 +547,31 @@ class TeensyController(QObject):
     def setAutoCorrectonEnabled(self, enabled: bool):
         """Enable/disable yaw auto correction"""
         self._auto_correction_enabled = enabled
-        self._status['auto_correction_enabled'] = enabled
+        status_snapshot = self._update_status_fields(auto_correction_enabled=enabled)
         self._publish_bool(self.stability_auto_correction_enable_pub, enabled)
         self._node.get_logger().info(f'Auto correction {"enabled" if enabled else "disabled"}')
         self.auto_correction_enabled_changed.emit(enabled)
-        self.status_changed.emit(self._status)
+        self.status_changed.emit(status_snapshot)
 
     @Slot(bool)
     def setRollerSteeringEnabled(self, enabled: bool):
         """Enable/disable roller steering"""
         self._roller_steering_enabled = enabled
-        self._status['roller_steering_enabled'] = enabled
+        status_snapshot = self._update_status_fields(roller_steering_enabled=enabled)
         self._publish_bool(self.roller_steering_enable_pub, enabled)
         self._node.get_logger().info(f'Roller steering {"enabled" if enabled else "disabled"}')
         self.roller_steering_enabled_changed.emit(enabled)
-        self.status_changed.emit(self._status)
+        self.status_changed.emit(status_snapshot)
 
     @Slot(bool)
     def setSwingDampingEnabled(self, enabled: bool):
         """Enable/disable swing damping"""
         self._swing_damping_enabled = enabled
-        self._status['swing_damping_enabled'] = enabled
+        status_snapshot = self._update_status_fields(swing_damping_enabled=enabled)
         self._publish_bool(self.swing_damping_enable_pub, enabled)
         self._node.get_logger().info(f'Swing damping {"enabled" if enabled else "disabled"}')
         self.swing_damping_enabled_changed.emit(enabled)
-        self.status_changed.emit(self._status)
+        self.status_changed.emit(status_snapshot)
 
     @Slot(float)
     def setYawAngle(self, angle: float):
@@ -643,7 +653,7 @@ class TeensyController(QObject):
     
     # Define a property to expose the entire status dictionary
     def get_all_status(self) -> TeensyStatusDict:
-        return self._status
+        return self._get_status_snapshot()
     
     # Define a property for availability
     def get_available(self) -> bool:

@@ -24,20 +24,9 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 **Priority**: low  
 **Effort**: medium  
 **Why it matters**: Hardcoded colours, spacing, and font sizes in un-migrated files will diverge from the rest of the UI and make theme-wide changes expensive later.  
-**What to do**: Resume the remaining `CommonStyle` rollout only after the active bug-fix and controller/input test-hardening queue is complete. Remaining scope: video overlays (`2.5c`), settings pages (`2.6b`), status/workflow pages (`2.6c`), systemcontrol tabs remainder (`2.5b`), and `OverlayLayer` dedup (`2.7`).  
-**Related tasks**: `2.5b`, `2.5c`, `2.6b`, `2.6c`, `2.7` in `docs/plan/01_MASTER_PLAN.md`  
-**Files**: `qml/overlays/video/`, `qml/pages/settings/`, `qml/pages/status/`, `qml/overlays/systemcontrol/`, `qml/overlays/OverlayLayer.qml`
-
----
-
-### TD-007 — SteamDeck HID input parsing untested
-**Area**: Testing  
-**Priority**: low  
-**Effort**: low  
-**Why it matters**: Raw HID byte parsing is error-prone. Silent mis-mapping of buttons would cause incorrect commands without any visible failure.  
-**What to do**: Add unit tests for `steam_deck.py` HID parsing: button bitmask extraction, axis normalisation, edge cases (all-zero, all-max, disconnected).  
-**Related tasks**: `3.5` in `docs/plan/01_MASTER_PLAN.md`  
-**Files**: `tests/test_steam_deck.py` (to create), `python/paint_controller/handlers/steam_deck.py`
+**What to do**: Resume the remaining `CommonStyle` rollout only after the active bug-fix, architecture, and typing queue is complete. Remaining scope: systemcontrol tabs remainder (`2.5b`), video overlays (`2.5c`), pages batch 1 (`2.6a`), settings pages (`2.6b`), status pages (`2.6c`), and `OverlayLayer` dedup (`2.7`).  
+**Related tasks**: `2.5b`, `2.5c`, `2.6a`, `2.6b`, `2.6c`, `2.7` in `docs/plan/01_MASTER_PLAN.md`  
+**Files**: `qml/overlays/systemcontrol/`, `qml/overlays/video/`, `qml/pages/home/`, `qml/pages/spray/`, `qml/pages/wheel/`, `qml/pages/winch/`, `qml/pages/tuning/`, `qml/pages/misc/`, `qml/pages/settings/`, `qml/pages/status/`, `qml/overlays/OverlayLayer.qml`
 
 ---
 
@@ -73,6 +62,10 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 | TD-020 | Emergency halt path incomplete and fragmented | 2026-04-21 | Fixed in `BF-9` + `4.0` — `SafetyCoordinator` halts winch, wheel, spray trigger, and ESP32 valve; offscreen smoke test added |
 | TD-021 | QML teardown left null-binding warnings during exit | 2026-04-21 | Fixed in shutdown hardening — `application.py` now tears down the QML runtime before backend cleanup and `tests/test_startup_smoke.py` asserts no new teardown-time null-binding warnings |
 | TD-022 | ESP32 UDP thread did not participate in normal shutdown | 2026-04-21 | Fixed in shutdown hardening — `ESP32ValveController.cleanup()` now stops timers and joins the UDP receive thread; covered in `tests/test_esp32_valve.py` |
+| TD-023 | JSON config writes were non-atomic | 2026-04-21 | `settings.json` and `ssh_config.json` now write via temp file + flush/fsync + `os.replace`, keeping the last good file intact on write failure |
+| TD-024 | Teensy status dict crossed ROS and Qt threads unsafely | 2026-04-21 | `TeensyController` now guards `_status` consistently and emits defensive copies instead of the live shared dict |
+| TD-025 | SSH worker callbacks touched Qt/UI from background threads | 2026-04-21 | Availability and command results now marshal back through Qt signals on the controller thread before touching state or popups |
+| TD-007 | SteamDeck HID input parsing untested | 2026-04-21 | Fixed in task `3.5` — raw HID decoding now lives in `utils/steam_deck_hid.py` with direct parser tests, and cleanup coverage remains green without destructor-side crashes |
 | — | Dual-inheritance `RobotController` god class | pre-2026-04-17 | Split into `PaintRosNode`, `StateStore`, `QtBridge`, `ControllerFactory` |
 | — | Hardcoded ESP32 MAC/IP in source | pre-2026-04-17 | Externalised to `python/config/esp32_valve.json` |
 | TD-004 | `workflow_legacy.py` not removed | 2026-04-20 | Deleted in Phase 1B along with full legacy workflow system (11 files) |

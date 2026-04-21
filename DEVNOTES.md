@@ -2,6 +2,30 @@
 
 ---
 
+### 2026-04-21 12:20 - Atomic Persistence + Teensy/SSH Thread Hardening
+
+**Goal**: Close the remaining correctness gaps below the active safety plan: non-atomic config writes, a live shared Teensy status dict crossing ROS/Qt threads, and SSH callbacks touching UI state from background threads
+**Issues**: `SettingsManager.save_all()` and `UISSHController._save_json_file()` still rewrote JSON in place, `TeensyController` emitted and returned the live `_status` dict while ROS callbacks could replace it, and SSH command / availability callbacks were mutating Qt-facing state directly from worker threads
+**Tried**: Switched both JSON write paths to temp-file + flush/fsync + `os.replace` with parent-directory fsync, added SSH connect/auth/banner timeouts plus daemon worker tracking, marshaled SSH results back through Qt signals, and changed Teensy status readers/writers to lock consistently and emit defensive snapshots. Added focused regressions in `tests/test_settings_runtime.py`, `tests/test_teensy.py`, and new `tests/test_ssh.py`
+**Result**: ✅ First hardening batch is green. Focused regressions passed at `19 passed`, and the later full-suite run stayed green at `145 passed`
+**Files**: `PLANNING.md`, `python/paint_controller/core/settings.py`, `python/paint_controller/controllers/ssh.py`, `python/paint_controller/controllers/teensy.py`, `tests/test_settings_runtime.py`, `tests/test_teensy.py`, `tests/test_ssh.py`
+
+### 2026-04-21 12:35 - Steam Deck HID Parser Extraction + Cleanup Stability
+
+**Goal**: Finish task `3.5` by making Steam Deck HID decoding directly testable without dragging Qt threads and HID devices into every parser test
+**Issues**: `_process_input()` mixed raw byte decoding, stick shaping, button debounce/hold timing, callback scheduling, and Qt signal emission in one function. Initial parser tests passed, but the existing cleanup regression still exposed a segmentation fault at interpreter shutdown because `SteamDeckHandler.__del__()` was touching QObject/QThread state too late
+**Tried**: Extracted a pure `parse_hid_frame()` helper into `utils/steam_deck_hid.py`, rewired `_process_input()` to consume that decoder while leaving all stateful timing/callback logic in place, added `tests/test_steam_deck_hid.py`, isolated the shutdown crash to the old destructor path, and removed destructor-side cleanup in favor of the explicit cleanup lifecycle already owned by app shutdown/tests
+**Result**: ✅ Steam Deck parsing now has direct coverage and cleanup stability is improved. `tests/test_steam_deck_hid.py` + `tests/test_steam_deck_handler.py` passed together at `5 passed` with no segfault
+**Files**: `PLANNING.md`, `python/paint_controller/utils/steam_deck_hid.py`, `python/paint_controller/handlers/steam_deck.py`, `tests/test_steam_deck_hid.py`, `tests/test_steam_deck_handler.py`
+
+### 2026-04-21 12:50 - Safety Integration Coverage + Initial Pyright Gate
+
+**Goal**: Prove the real heartbeat-loss → halt-all convergence path and stand up the first truthful static typing gate without pretending the whole PySide-heavy core is type-ready
+**Issues**: Safety coverage was split across isolated unit tests rather than one real handler/coordinator wiring path; the first pyright attempt also showed that strict mode on PySide `Signal`/`Property` descriptor-heavy modules was dominated by framework stub noise rather than actionable typing defects; final offscreen smoke additionally exposed a runtime bug where `SafetyCoordinator` used stdlib-style `%s` logger formatting against the ROS logger API
+**Tried**: Added `tests/test_safety_integration.py` with real `UIHeartbeatHandler` + `SafetyCoordinator` and fake effectors, installed/configured pyright in CI with strict mode limited to `core/controller_factory.py` and basic visibility on selected PySide-heavy core files, suppressed the Qt `Property` redeclaration false-positive at the file boundary in `state_store.py`, and converted `SafetyCoordinator` logger calls to ROS-compatible single-string messages. Revalidated with targeted safety tests, pyright, a serial full-suite run, and a short offscreen launch
+**Result**: ✅ New safety integration coverage is in place, the initial pyright gate is green (`0 errors`), the full suite revalidated at `145 passed`, and offscreen startup still reaches `MainWindow QML loaded`. Offscreen mode still logs the known non-blocking Qt Quick 3D/RHI warning, and startup still reports the pre-existing missing `robot_config.yaml` message.
+**Files**: `PLANNING.md`, `python/paint_controller/handlers/safety_coordinator.py`, `python/paint_controller/core/controller_factory.py`, `python/paint_controller/core/state_store.py`, `python/paint_controller/core/qt_bridge.py`, `requirements-dev.txt`, `.github/workflows/ci.yml`, `pyrightconfig.json`, `tests/test_safety_integration.py`, `docs/plan/00_README.md`, `docs/plan/01_MASTER_PLAN.md`, `docs/tech-debt.md`, `DEVNOTES.md`
+
 ### 2026-04-21 11:30 - Final Shutdown Thread Owner: ESP32 Valve UDP Thread
 
 **Goal**: Eliminate the remaining real-app exit abort after QML teardown had already been fixed
