@@ -62,8 +62,55 @@ def _install_test_module_stubs() -> None:
         rclpy_pkg = sys.modules.setdefault("rclpy", types.ModuleType("rclpy"))
         node_mod = types.ModuleType("rclpy.node")
 
+        from tests.fakes import FakeLogger, FakePublisher, FakeSubscription, FakeTimer
+
         class Node:
-            pass
+            def __init__(self, *args, **kwargs):
+                self.logger = FakeLogger()
+                self.publishers = []
+                self.subscriptions = []
+                self.timers = []
+                self.destroyed_publishers = []
+                self.destroyed_subscriptions = []
+                self.destroyed_timers = []
+                self.destroyed = False
+
+            def get_logger(self):
+                return self.logger
+
+            def create_publisher(self, msg_type, topic, qos):
+                publisher = FakePublisher(msg_type=msg_type, topic=topic, qos=qos)
+                self.publishers.append(publisher)
+                return publisher
+
+            def create_subscription(self, msg_type, topic, callback, qos):
+                subscription = FakeSubscription(msg_type=msg_type, topic=topic, callback=callback, qos=qos)
+                self.subscriptions.append(subscription)
+                return subscription
+
+            def create_timer(self, interval_sec, callback):
+                timer = FakeTimer(interval_sec=interval_sec, callback=callback)
+                self.timers.append(timer)
+                return timer
+
+            def destroy_publisher(self, publisher):
+                self.destroyed_publishers.append(publisher)
+                if publisher in self.publishers:
+                    self.publishers.remove(publisher)
+
+            def destroy_subscription(self, subscription):
+                self.destroyed_subscriptions.append(subscription)
+                if subscription in self.subscriptions:
+                    self.subscriptions.remove(subscription)
+
+            def destroy_timer(self, timer):
+                timer.cancel()
+                self.destroyed_timers.append(timer)
+                if timer in self.timers:
+                    self.timers.remove(timer)
+
+            def destroy_node(self):
+                self.destroyed = True
 
         node_mod.Node = Node
         rclpy_pkg.node = node_mod
@@ -99,12 +146,21 @@ def _install_test_module_stubs() -> None:
             def __init__(self):
                 self.data = False
 
+        class UInt8:
+            def __init__(self):
+                self.data = 0
+
+        class Empty:
+            pass
+
         msg_mod.Float32 = Float32
         msg_mod.Float64 = Float64
         msg_mod.Float32MultiArray = Float32MultiArray
         msg_mod.Int32 = Int32
         msg_mod.Int32MultiArray = Int32MultiArray
         msg_mod.Bool = Bool
+        msg_mod.UInt8 = UInt8
+        msg_mod.Empty = Empty
         std_msgs_pkg.msg = msg_mod
         sys.modules["std_msgs.msg"] = msg_mod
 

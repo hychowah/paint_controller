@@ -21,7 +21,7 @@ os.environ['QT_IM_MODULE'] = 'none'
 import rclpy
 from rclpy.node import Node
 
-from PySide6.QtCore import QTimer, QUrl, Signal, QThread, Qt
+from PySide6.QtCore import QCoreApplication, QEvent, QTimer, QUrl, Signal, QThread, Qt
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWidgets import QApplication
 
@@ -32,26 +32,72 @@ from paint_controller.core.settings import SettingsManager
 
 # Global reference for signal handler
 _app_instance = None
+_shutdown_requested = False
+_EXPECTED_CONTEXT_PROPERTIES = [
+    "stateStore", "backend", "overlayController",
+    "workFlowRunner", "warningHandler", "baseStreamHandler",
+    "wheelController", "winchController", "steamDeckHandler",
+    "windMonitor", "teensyController", "esp32ValveController",
+    "lidarController", "heartbeatHandler",
+    "controlProcessor", "sshHandler", "systemMonitor",
+    "screenRecorder", "rosBagRecorder", "settingsManager",
+    "screenManager", "baseTopViewController",
+]
+
+
+def _teardown_qml_runtime(engine: QQmlApplicationEngine, app: QApplication, log_shutdown) -> None:
+    """Destroy QML root objects before backend QObject cleanup begins."""
+    try:
+        root_objects = list(engine.rootObjects())
+
+        for root in root_objects:
+            try:
+                close = getattr(root, "close", None)
+                if callable(close):
+                    close()
+            except Exception as exc:
+                logger.debug("Error closing QML root object: %s", exc)
+
+        for root in root_objects:
+            try:
+                root.deleteLater()
+            except Exception as exc:
+                logger.debug("Error deleting QML root object: %s", exc)
+
+        engine.clearComponentCache()
+        engine.deleteLater()
+
+        for _ in range(5):
+            app.processEvents()
+            QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+            app.processEvents()
+
+        log_shutdown(f"QML runtime torn down ({len(root_objects)} root object(s))")
+    except Exception as exc:
+        logger.error("Error tearing down QML runtime: %s", exc)
 
 def signal_handler(signum, frame):
-    """Handle SIGINT (Ctrl+C) gracefully - force immediate exit"""
+    """Handle SIGINT (Ctrl+C) gracefully and force-exit on repeat."""
+    global _shutdown_requested
+
     print("\n\nReceived interrupt signal (Ctrl+C)...")
-    print("Forcing immediate shutdown...")
-    
-    # Don't try to cleanup from signal handler - just force exit
-    # The finally block in main() will handle cleanup if app.exec() exits normally
-    # But if we're here, something is stuck, so just exit
+    if _shutdown_requested:
+        print("Forced shutdown complete.")
+        os._exit(1)
+
+    _shutdown_requested = True
+    print("Requesting graceful shutdown...")
+
     try:
-        # Try to stop the Qt app first
         global _app_instance
         if _app_instance is not None:
             _app_instance.quit()
-    except:
+            return
+    except Exception:
         pass
-    
-    # Force exit immediately - don't wait for cleanup
-    print("Forced shutdown complete.")
-    os._exit(1)  # Use os._exit to bypass cleanup that might be stuck
+
+    print("No active QApplication; forcing shutdown.")
+    os._exit(1)
 
 @dataclass
 class RobotConfig:
@@ -162,23 +208,13 @@ class RosThread(QThread):
 
     def _cleanup(self) -> None:
         """
-        Clean up ROS node resources.
-        
-        Called when thread is shutting down to properly destroy the node.
-        This is now called both on normal exit AND on exceptions.
+        Clean up thread-local ROS resources only.
+
+        The shared ROS node is cleaned up by `main()` after controllers/services
+        have sent any final stop commands and released subscriptions safely.
         """
         try:
-            if self.node:
-                # First trigger cleanup on the node itself (calls cleanup on all sub-components)
-                if hasattr(self.node, 'cleanup'):
-                    try:
-                        self.node.cleanup()
-                    except Exception as e:
-                        logger.error("Error calling node cleanup method: %s", e)
-                
-                # Then destroy the node to clean up all ROS resources
-                self.node.destroy_node()
-                logger.info("ROS node destroyed successfully")
+            logger.info("ROS thread spin loop exited")
         except Exception as e:
             logger.error("Error during ROS thread cleanup: %s", e)
 
@@ -217,11 +253,12 @@ def main():
     from paint_controller.core.state_store import StateStore
     from paint_controller.core.qt_bridge import QtBridge
     from paint_controller.core.controller_factory import create_controllers
+    from paint_controller.utils.constants import HeartbeatStatus
 
-    node = PaintRosNode()
+    state_store = StateStore()
+    node = PaintRosNode(state_store=state_store)
     log_startup("PaintRosNode created")
     settings_manager = SettingsManager(show_popup_fn=None)  # Wire show_popup after QtBridge
-    state_store = StateStore()
     steam_deck_handler = SteamDeckHandler(deadzone=config.joystick_deadzone)
     log_startup("Core state/services created")
 
@@ -304,9 +341,10 @@ def main():
     def _handle_wheel_motor_error(has_error, error_message):
         if has_error:
             node.get_logger().error(f'Wheel motor error detected: {error_message}')
-            bundle.wheel_controller.emergency_stop()
-            bundle.winch_controller.command_speed_rpm(0)
-            bundle.teensy_controller.setSprayTrigger(1000)
+            bundle.safety_coordinator.halt_all_effectors(
+                f"Wheel motor error detected: {error_message}",
+                heartbeat_state=HeartbeatStatus.ERROR,
+            )
             qt_bridge.show_popup("MOTOR ERROR", error_message, "error", 5000)
             qt_bridge.emergency_triggered.emit()
 
@@ -354,16 +392,6 @@ def main():
     log_startup("MainWindow QML loaded")
 
     # Validate all context properties are set (catches typos / missing wiring)
-    _EXPECTED_CONTEXT_PROPERTIES = [
-        "stateStore", "backend", "overlayController",
-        "workFlowRunner", "warningHandler", "baseStreamHandler",
-        "wheelController", "winchController", "steamDeckHandler",
-        "windMonitor", "teensyController", "esp32ValveController",
-        "lidarController", "heartbeatHandler",
-        "controlProcessor", "sshHandler", "systemMonitor",
-        "screenRecorder", "rosBagRecorder", "settingsManager",
-        "screenManager", "baseTopViewController",
-    ]
     for name in _EXPECTED_CONTEXT_PROPERTIES:
         if ctx.contextProperty(name) is None:
             node.get_logger().error(f"Missing QML context property: {name}")
@@ -417,6 +445,10 @@ def main():
         except Exception as e:
             logger.error("Error stopping timers: %s", e)
 
+        # Step 1b: Destroy the QML object tree while backend QObjects are still valid.
+        _teardown_qml_runtime(engine, app, log_shutdown)
+        engine = None
+
         # Step 2: Request ROS thread shutdown and wait
         try:
             ros_thread.request_shutdown()
@@ -441,16 +473,23 @@ def main():
         except Exception as e:
             logger.error("Error during cleanup: %s", e)
 
-        # Step 4: Shutdown ROS context
+        # Step 4: Cleanup the shared ROS node after controllers/services are done
         try:
-            rclpy.shutdown()
+            node.cleanup()
+            node.destroy_node()
+            log_shutdown("ROS node cleaned up and destroyed")
+        except Exception as e:
+            logger.error("Error during ROS node cleanup: %s", e)
+
+        # Step 5: Shutdown ROS context
+        try:
+            if rclpy.ok():
+                rclpy.shutdown()
             log_shutdown("ROS context shutdown complete")
         except Exception as e:
             logger.error("Error during ROS shutdown: %s", e)
 
         logger.info("Emergency shutdown sequence complete")
-        logger.info("Forcing application exit...")
-        os._exit(0)
 
 if __name__ == '__main__':
     main()

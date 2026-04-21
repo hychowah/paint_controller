@@ -216,7 +216,7 @@ class SteamDeckHandler(QObject):
     def __del__(self):
         """Destructor to ensure cleanup on object deletion"""
         try:
-            self.cleanup()
+            self._cleanup_resources()
         except:
             # Silently fail in destructor to avoid issues during interpreter shutdown
             pass
@@ -284,7 +284,7 @@ class SteamDeckHandler(QObject):
         self.connection_status_changed.emit(False)
         logger.info("Steam Deck HID connection stopped")
     
-    def cleanup(self):
+    def _cleanup_resources(self):
         """Comprehensive cleanup of all Steam Deck handler resources.
         
         This method ensures proper cleanup of:
@@ -308,9 +308,8 @@ class SteamDeckHandler(QObject):
         self.stop()
         
         # Wait for reader thread to fully terminate
-        if self._reader_thread and self._reader_thread.isRunning():
-            if not self._reader_thread.wait(2000):  # Wait up to 2 seconds
-                logger.warning("Steam Deck reader thread did not terminate in time")
+        if self._reader_thread:
+            self._reader_thread.cleanup()
         
         # Clear all callbacks
         with QMutexLocker(self._mutex):
@@ -323,6 +322,10 @@ class SteamDeckHandler(QObject):
         self._available = False
         
         logger.info("Steam Deck handler cleanup complete")
+
+    def cleanup(self):
+        """Clean up resources when shutting down."""
+        self._cleanup_resources()
     
     def register_button_callback(self, button: str, callback: Callable[[], None]):
         """
@@ -847,8 +850,3 @@ class SteamDeckHandler(QObject):
     imu = Property(dict, get_imu, notify=imu_changed)
     available = Property(bool, get_available, notify=connection_status_changed)
     
-    def cleanup(self):
-        """Clean up resources when shutting down"""
-        self.stop()
-        if hasattr(self, '_availability_timer') and self._availability_timer.isActive():
-            self._availability_timer.stop()

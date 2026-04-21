@@ -75,6 +75,7 @@ class ScreenManager(QObject):
         super().__init__(parent)
 
         self.node = node
+        self._app = QGuiApplication.instance()
         
         self._screens: List[QScreen] = []
         self._screen_count = 0
@@ -89,11 +90,10 @@ class ScreenManager(QObject):
         self._detect_screens()
         
         # Connect to Qt screen signals
-        app = QGuiApplication.instance()
-        if app:
-            app.screenAdded.connect(self._on_screen_added)
-            app.screenRemoved.connect(self._on_screen_removed)
-            app.primaryScreenChanged.connect(self._on_primary_screen_changed)
+        if self._app:
+            self._app.screenAdded.connect(self._on_screen_added)
+            self._app.screenRemoved.connect(self._on_screen_removed)
+            self._app.primaryScreenChanged.connect(self._on_primary_screen_changed)
     
     def _log_info(self, message: str) -> None:
         """Helper method for logging that checks if logger is available"""
@@ -246,3 +246,16 @@ class ScreenManager(QObject):
         """Clean up resources"""
         if self._monitor_timer:
             self._monitor_timer.stop()
+
+        if self._app:
+            for signal, handler in (
+                (self._app.screenAdded, self._on_screen_added),
+                (self._app.screenRemoved, self._on_screen_removed),
+                (self._app.primaryScreenChanged, self._on_primary_screen_changed),
+            ):
+                try:
+                    signal.disconnect(handler)
+                except (RuntimeError, TypeError):
+                    pass
+
+            self._app = None

@@ -26,7 +26,7 @@
 
 ## Progress Tracker
 
-Last Modified: 2026-04-20
+Last Modified: 2026-04-21
 
 | Task | Status | Notes |
 |------|--------|-------|
@@ -39,6 +39,10 @@ Last Modified: 2026-04-20
 | BF-3 Wheel error queued handling | [x] | `error_state_changed` now uses `Qt.QueuedConnection` so UI-side reactions stay off the ROS thread |
 | BF-4 Winch logger consistency | [x] | Remaining availability guards in `winch.py` now use the node logger instead of `print()` |
 | BF-5 MainWindow startup import fix | [x] | Stale `../pages/workflow` import removed from `MainWindow.qml`; validated in `QT_QPA_PLATFORM=offscreen` mode through `MainWindow QML loaded` |
+| BF-6 Heartbeat state machine | [x] | `StateStore.controller_heartbeat_state` now drives `/controller/heartbeat`; `UIHeartbeatHandler`, emergency, and wheel-error paths update `IDLE`/`ONTASK`/`WARNING`/`ERROR` coherently |
+| BF-7 Safe-state shutdown ordering | [x] | Shutdown now tears down the QML shell before backend cleanup, keeps controller/service cleanup ahead of ROS node destruction, and explicitly cleans up late thread owners including the ESP32 UDP thread |
+| BF-8 Emergency hold duration from settings | [x] | `emergency_hold_duration_s` added to `SettingsManager` with default `1.0` and clamp `[0.2, 2.0]`; `EmergencyButtonHandler` updates live from the setting signal |
+| BF-9 SafetyCoordinator + comms-loss failsafe | [x] | New `SafetyCoordinator` halts winch, wheel, spray trigger, and ESP32 valve; emergency, heartbeat-loss, and wheel-error now converge through the same halt-all path |
 | PRE-1 Machine-verify QML mapping | [x] | Mapping table refreshed to live identifiers; lowercase `stateStore` and aliases removed |
 | 1.0 Register StateStore | [x] | `StateStore` exposed via `setContextProperty`. `qmlRegisterSingletonInstance` abandoned (PySide6 bug — see KNOWLEDGE.md) |
 | 1.1 Register SettingsManager | [x] | Confirmed done — registered in `application.py`, validated in POST-1 loop |
@@ -78,9 +82,11 @@ Last Modified: 2026-04-20
 | 3.4 Tests — Emergency/ControlProc | [x] | `tests/test_emergency.py` (EmergencyButtonHandler); `tests/test_control_processor.py` — 31 tests (track curve/deadzone/clamping, winch guards/locks/activation-gate, wheel travel accumulation/send) |
 | 3.5 Tests — Input/SteamDeck | [~] | `tests/test_input_handler.py` covers `UIInputHandler` mode switching and popup-close wiring; SteamDeck HID parsing still untested |
 | 3.6 Tests — Wheel/Winch | [x] | `tests/test_winch_ros_integration.py` plus `tests/test_winch.py` cover the winch path; `tests/test_wheel.py` now covers unified speed publishing, state updates, error transitions, and timeout availability |
-| 3.7 Tests — ESP32/Teensy | [x] | `tests/test_esp32_valve.py` covers command clamping, keepalive gating, raw UDP messages, and status publishing; `tests/test_teensy.py` covers status parsing, user-field preservation, relay publishing, thrust updates, and force publishing |
+| 3.7 Tests — ESP32/Teensy | [x] | `tests/test_esp32_valve.py` covers command clamping, keepalive gating, raw UDP messages, status publishing, and shutdown cleanup of the UDP receive thread; `tests/test_teensy.py` covers status parsing, user-field preservation, relay publishing, thrust updates, and force publishing |
 | 3.8 CI/CD pipeline | [x] | `.github/workflows/ci.yml`: lint gates both pytest and ROS2 build jobs. `pyproject.toml` with ruff/pytest/coverage config. `requirements-dev.txt` updated. |
 | 3.9 Fix build system | [x] | `CMakeLists.txt` stripped to pure `ament_cmake` wrapper (C++/Qt5/GStreamer deps removed). `package.xml` cleaned to 0.1.0, C++ deps removed. `requirements.txt` switched to `~=` pins. |
+| 3.10 Static typing gate | [ ] | Add a mypy/pyright CI gate after the active safety batch, starting with `core/`, `controller_factory`, and handler/controller boundaries |
+| 4.0 Startup/emergency integration smoke test | [x] | `tests/test_startup_smoke.py` now covers both offscreen startup wiring and shutdown teardown, asserting that `MainWindow.qml` loads cleanly and that teardown introduces no new null-binding warnings |
 
 ## Current Checkpoint
 
@@ -93,23 +99,28 @@ Last Modified: 2026-04-20
 - `3.0` is complete: package `__init__.py` files no longer re-export the heavy Qt/ROS module graph
 - `3.6` is complete: WheelController now has dedicated unit coverage alongside the existing winch tests
 - `3.7` is complete: ESP32ValveController and TeensyController now have direct regression coverage, and the spray-gun leveling state now persists across ROS status callbacks
+- **Safety hardening batch complete**: BF-6..BF-9 are implemented and covered by targeted regression tests; shutdown teardown ordering is now hardened across the QML shell, Steam Deck reader thread, and ESP32 UDP thread owner
+- **Validation update**: full-suite revalidation is green at `133 passed`; `tests/test_startup_smoke.py` now includes a shutdown smoke assertion and `tests/test_esp32_valve.py` covers the final thread-owner cleanup path
 - Recent targeted validation for the controller hardening batches is green; revalidate any full-suite claim with a fresh local pytest run instead of relying on older fixed test-count snapshots
 - Task 1.1 (SettingsManager QML registration): verified done — registered in `application.py`, validated in POST-1 loop
 - **Approved queue change**: remaining Phase 3 controller/input hardening still takes priority over design-system work
 - **Deferred backlog**: `2.5b`, `2.5c`, `2.6a-c`, and `2.7` stay in the plan but are intentionally postponed until the active hardening queue is complete
 - **Next tasks** (priority order):
-  1. `3.5 Tests — Input/SteamDeck` — finish HID parsing coverage
-  2. `1.11a-e required props` — after the test safety net is stronger
-  3. `2.8 Fix page naming`
+  1. `3.5 Tests — Input/SteamDeck`
+  2. `3.10 Static typing gate`
+  3. `1.11a-e required props`
+  4. `2.8 Fix page naming`
 
 ---
 
 ## Dependency Graph
 
 ```
-Completed this batch: BF-1..BF-4, 3.0, 3.6, and 3.7
+Completed this batch: BF-1..BF-9, 3.0, 3.6, 3.7, and 4.0
          ↓
 Phase 3 hardening (remaining): 3.5 (finish SteamDeck HID parsing coverage)
+         ↓
+Quality gate expansion: 3.10 (static typing)
          ↓
 Phase 1 cleanup: 1.11a-e (`required` props) after the test safety net is stronger
          ↓
@@ -137,14 +148,20 @@ Deferred backlog: 2.5b, 2.5c, 2.6a-c, and 2.7 remain tracked but are intentional
 | 1.10 Versionless imports | LOW | Mechanical sed replace |
 | 1.9 qmldir manifests | **HIGH** | ~20 new files, module naming critical |
 | 1.11a-e Required props | MEDIUM | Each `required` is breaking if caller misses it |
+| BF-6 Heartbeat state machine | ~~HIGH~~ | ✅ DONE — controller heartbeat now publishes live runtime state from `StateStore` |
+| BF-7 Safe-state shutdown ordering | ~~HIGH~~ | ✅ DONE — QML teardown, controller/service cleanup, and late thread-owner cleanup now all complete before final ROS node destruction |
+| BF-8 Emergency hold duration from settings | ~~HIGH~~ | ✅ DONE — emergency hold duration is now an explicit clamped setting with a 1.0s default |
+| BF-9 SafetyCoordinator + comms-loss failsafe | ~~HIGH~~ | ✅ DONE — all halt-all paths now include the ESP32 valve and share one coordinator |
 | BF-1 Winch load-detection guard | HIGH | Safety bug: unavailable winch currently can still publish load-detection commands |
 | BF-2 SystemMonitor thread affinity | MEDIUM | Wrong-thread timer startup can block UI and undermines worker-thread isolation |
 | BF-3 Wheel error queued handling | MEDIUM | Current direct callback path runs UI-side reactions from the ROS thread |
 | BF-4 Winch logger consistency | LOW | Remaining `print()` guards bypass structured ROS logging |
 | BF-5 MainWindow startup import fix | ~~HIGH~~ | ✅ DONE — stale `../pages/workflow` import removed and startup validated headlessly through `MainWindow QML loaded` |
 | 3.6 WheelController tests | ~~HIGH~~ | ✅ DONE — dedicated WheelController coverage now exists in `tests/test_wheel.py` |
-| 3.7 ESP32/Teensy tests | ~~HIGH~~ | ✅ DONE — dedicated ESP32 and Teensy coverage now exists in `tests/test_esp32_valve.py` and `tests/test_teensy.py` |
+| 3.7 ESP32/Teensy tests | ~~HIGH~~ | ✅ DONE — dedicated ESP32 and Teensy coverage now exists, including ESP32 shutdown cleanup regression coverage |
 | 2.0 Expand CommonStyle | ~~MEDIUM~~ | ✅ DONE — DPI approach resolved (fixed scaleFactor at 1.0) |
+| 3.10 Static typing gate | MEDIUM | `ControllerBundle` and several handler/controller boundaries are typed only informally today; no CI gate enforces drift |
+| 4.0 Startup/emergency integration smoke test | ~~MEDIUM~~ | ✅ DONE — `tests/test_startup_smoke.py` now exercises both offscreen shell load and shutdown teardown without new null-binding warnings |
 
 ---
 
@@ -360,6 +377,83 @@ grep -n "\.node = " core/application.py
 - Winch page loads, winch commands work (if hardware available)
 - Screen detection works on app startup
 - Multi-monitor switching works
+
+---
+
+### Task BF-6: Heartbeat State Machine
+
+**Goal**: Replace the hardcoded controller heartbeat with a live state machine that downstream systems can trust.
+
+**Problem**: `PaintRosNode.publish_heartbeat()` currently publishes `IDLE` unconditionally, even during emergency or communication loss. That makes `/controller/heartbeat` a timer tick, not a safety signal.
+
+**Files to modify**:
+- `core/state_store.py` — add `controller_heartbeat_state` property + changed signal
+- `utils/constants.py` — define `IDLE`, `ONTASK`, `WARNING`, `ERROR` heartbeat constants in one place
+- `core/ros_node.py` — inject/read the current heartbeat state instead of hardcoding `IDLE`
+- `handlers/emergency.py` — set state to `ERROR` on emergency trigger and back to `IDLE` when manually cleared
+- `handlers/heartbeat.py` — set state to `WARNING` on base/EF heartbeat loss and clear it on recovery
+- `core/application.py` — route wheel motor error into the same state machine
+
+**Verification**:
+- Targeted tests prove emergency, wheel-error, and heartbeat-loss transitions publish the expected `UInt8` value
+- Headless app smoke still reaches `MainWindow QML loaded`
+
+---
+
+### Task BF-7: Safe-State Shutdown Ordering
+
+**Outcome**: Controller cleanup now runs while the shared ROS node is still valid, and the QML shell is torn down before backend QObject cleanup begins.
+
+**Implemented**:
+- `RosThread` no longer owns `node.destroy_node()`
+- `main()` tears down the QML object tree before controller/service cleanup
+- controller/service cleanup completes before `node.cleanup()` / `destroy_node()`
+- the remaining app-owned thread owners now participate in normal cleanup, including the Steam Deck reader thread and ESP32 UDP receive thread
+
+**Files changed**:
+- `core/application.py`
+- `handlers/steam_deck.py`
+- `services/screen_manager.py`
+- `controllers/esp32_valve.py`
+
+**Verification**:
+- live shutdown logs now complete without QML null-binding spam or `QThread: Destroyed while thread is still running`
+- targeted shutdown regressions cover QML teardown, Steam Deck cleanup, and ESP32 cleanup
+
+---
+
+### Task BF-8: Emergency Hold Duration From Settings
+
+**Goal**: Remove ambiguity from the emergency hold duration by making it an explicit safety setting.
+
+**Problem**: `EmergencyButtonHandler` currently uses `0.2` seconds while the code comment still says "1 second". That is a safety contract mismatch.
+
+**Files to modify**:
+- `core/settings.py` — add `emergency_hold_duration_s` with default `1.0` and clamp range `[0.2, 2.0]`
+- `handlers/emergency.py` — read/update the duration from settings instead of a literal
+- `tests/test_settings_runtime.py`, `tests/test_emergency.py` — cover clamp + runtime behavior
+
+**Verification**:
+- Changing the setting updates the handler behavior without restart
+- Tests cover both clamp behavior and hold-to-trigger timing
+
+---
+
+### Task BF-9: SafetyCoordinator + Comms-Loss Failsafe
+
+**Goal**: Centralize "halt all effectors" behavior so emergency, heartbeat-loss, and wheel-error cannot drift apart.
+
+**Problem**: The current emergency path stops winch, spray, and wheel only; the ESP32 valve is still omitted, and heartbeat-loss only updates status without enforcing a stop.
+
+**Files to modify**:
+- `handlers/safety_coordinator.py` — new contained extraction with `halt_all_effectors(reason)`
+- `handlers/emergency.py` — delegate to `SafetyCoordinator`
+- `handlers/heartbeat.py` — call the same halt path on heartbeat-loss transitions
+- `core/controller_factory.py` — inject the coordinator into dependent handlers
+- `core/application.py` — use the coordinator for wheel motor error handling
+
+**Verification**:
+- Tests assert emergency and heartbeat-loss each stop winch, wheel, spray trigger, and ESP32 valve even if one effector call raises
 
 ---
 
@@ -681,6 +775,36 @@ Create `.github/workflows/ci.yml` with the current repo flow: lint first, then p
 - `CMakeLists.txt`: add `ament_python_install_package()`, fix Qt5→Qt6, modernize
 - `requirements.txt`: pin with `~=`
 
+### Task 3.10: Static Typing Gate
+
+**Goal**: Add a semantics-aware typing gate after the active safety batch so controller/handler wiring regressions are caught before runtime.
+
+**Scope**:
+- Start with `core/`, `controller_factory.py`, and the handler/controller constructor boundaries touched by the safety batch
+- Prefer a narrow mypy or pyright configuration over an all-or-nothing repo-wide rollout
+- Add the gate to CI after the active safety batch and startup smoke test are green
+
+**Verification**:
+- CI fails on newly introduced type regressions in the covered modules
+
+---
+
+## Phase 4: Runtime Safety Verification
+
+### Task 4.0: Startup/Emergency Integration Smoke Test
+
+**Outcome**: The smoke gate now validates both startup integrity and shutdown teardown behavior for the QML shell.
+
+**What it covers now**:
+- offscreen `MainWindow.qml` load
+- all 22 context properties resolving at startup
+- no fatal QML startup warnings
+- shutdown teardown producing no new null-binding / undefined-assignment warnings after the teardown helper runs
+
+**Verification**:
+- `tests/test_startup_smoke.py` passes in the full suite
+- full-suite validation after the shutdown fixes is green at `133 passed`
+
 ---
 
 ## Key Decisions (Agreed With User)
@@ -695,3 +819,9 @@ Create `.github/workflows/ci.yml` with the current repo flow: lint first, then p
 8. **Test direction: layered suite** — pure logic, harness validation, component behavior, and thin real ROS transport checks
 9. **QtBridge SRP deferred to Phase 4** — known concern, adding signals as-is for now (Audit R13)
 10. **All objects use `setContextProperty`** — `qmlRegisterSingletonInstance` abandoned due to PySide6 bug. No migration needed for existing context properties.
+11. **Safety batch outranks cosmetic cleanup** — `BF-6`..`BF-9` and `4.0` now take priority over `3.5`, `1.11a-e`, and `2.8`
+12. **Emergency hold duration becomes a real setting** — `emergency_hold_duration_s` defaults to `1.0` and is clamped to `[0.2, 2.0]`
+13. **Shutdown ownership stays in `main()`** — `RosThread` stops spinning, but `main()` owns final controller cleanup and `node.destroy_node()` ordering
+14. **Heartbeat is a state signal, not a metronome** — `/controller/heartbeat` must reflect `IDLE`/`ONTASK`/`WARNING`/`ERROR`
+15. **Safety behavior must converge through one halt-all path** — emergency, wheel-error, and heartbeat-loss will share a `SafetyCoordinator`
+16. **Static typing gate is added after the active safety batch** — narrow, high-signal coverage first; not a repo-wide mandate on day one

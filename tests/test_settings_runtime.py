@@ -86,6 +86,31 @@ def test_settings_manager_rejects_unknown_and_invalid_values_without_signals(mon
     assert generic_events == []
 
 
+def test_emergency_hold_duration_defaults_clamps_and_emits(monkeypatch, tmp_path, qt_core_app):
+    manager, _ = _make_manager(monkeypatch, tmp_path)
+    specific_events = []
+    generic_events = []
+
+    manager.emergency_hold_duration_s_changed.connect(specific_events.append)
+    manager.setting_changed.connect(lambda key, value: generic_events.append((key, value)))
+
+    assert manager.get("emergency_hold_duration_s") == 1.0
+
+    success, _ = manager.set("emergency_hold_duration_s", 9.5)
+    assert success is True
+    assert manager.get("emergency_hold_duration_s") == 2.0
+
+    success, _ = manager.set("emergency_hold_duration_s", 0.01)
+    assert success is True
+    assert manager.get("emergency_hold_duration_s") == 0.2
+
+    assert specific_events == [2.0, 0.2]
+    assert generic_events == [
+        ("emergency_hold_duration_s", 2.0),
+        ("emergency_hold_duration_s", 0.2),
+    ]
+
+
 def test_save_setting_emits_operation_result_saved_signal_and_popup(monkeypatch, tmp_path, qt_core_app):
     popup_calls = []
     manager, config_path = _make_manager(monkeypatch, tmp_path, show_popup_fn=lambda *args: popup_calls.append(args))

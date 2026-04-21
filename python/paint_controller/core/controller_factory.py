@@ -16,6 +16,7 @@ from paint_controller.handlers.control_processor import ControlProcessor
 from paint_controller.handlers.emergency import EmergencyButtonHandler
 from paint_controller.handlers.heartbeat import UIHeartbeatHandler
 from paint_controller.handlers.input import UIInputHandler
+from paint_controller.handlers.safety_coordinator import SafetyCoordinator
 from paint_controller.handlers.steam_deck import SteamDeckHandler
 from paint_controller.handlers.warnings import WarningHandler
 from paint_controller.services.ros_bag_recorder import RosBagRecorder
@@ -42,6 +43,7 @@ class ControllerBundle:
     winch_controller: WinchController
     teensy_controller: TeensyController
     heartbeat_handler: UIHeartbeatHandler
+    safety_coordinator: SafetyCoordinator
 
     # Cross-controller handlers
     overlay_controller: OverlayController
@@ -114,11 +116,19 @@ def create_controllers(
     esp32_valve = ESP32ValveController(node)
     lidar = LidarController(node)
     wind_monitor = WindMonitor(node)
-    heartbeat = UIHeartbeatHandler(node)
 
     # === Layer 3: ROS2 + settings controllers ===
     winch = WinchController(node, settings_manager=settings_manager)
     teensy = TeensyController(node, settings_manager=settings_manager, winch_controller=winch, show_popup_fn=show_popup_fn)
+    safety_coordinator = SafetyCoordinator(
+        winch=winch,
+        teensy=teensy,
+        wheel=wheel,
+        esp32_valve=esp32_valve,
+        state_store=state_store,
+        logger=logger,
+    )
+    heartbeat = UIHeartbeatHandler(node, state_store=state_store, safety_coordinator=safety_coordinator)
 
     # === Layer 4: Cross-controller handlers ===
     # OverlayController and ControlProcessor have a circular dependency:
@@ -159,6 +169,10 @@ def create_controllers(
         wheel=wheel,
         show_popup_fn=show_popup_fn,
         logger=logger,
+        settings_manager=settings_manager,
+        state_store=state_store,
+        safety_coordinator=safety_coordinator,
+        esp32_valve=esp32_valve,
     )
 
     # === Layer 5: Services ===
@@ -179,6 +193,7 @@ def create_controllers(
         winch_controller=winch,
         teensy_controller=teensy,
         heartbeat_handler=heartbeat,
+        safety_coordinator=safety_coordinator,
         overlay_controller=overlay,
         control_processor=control_processor,
         input_handler=input_handler,

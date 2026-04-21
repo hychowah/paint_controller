@@ -19,6 +19,32 @@ class FakeSocket:
         self.closed = True
 
 
+class FakeTimer:
+    def __init__(self) -> None:
+        self.stopped = False
+
+    def stop(self) -> None:
+        self.stopped = True
+
+
+class FakeUdpThread:
+    def __init__(self, wait_result: bool = True) -> None:
+        self.stop_calls = 0
+        self.wait_calls = []
+        self.terminate_calls = 0
+        self.wait_result = wait_result
+
+    def stop(self) -> None:
+        self.stop_calls += 1
+
+    def wait(self, timeout: int) -> bool:
+        self.wait_calls.append(timeout)
+        return self.wait_result
+
+    def terminate(self) -> None:
+        self.terminate_calls += 1
+
+
 def _esp32_controller_class():
     return importlib.import_module("paint_controller.controllers.esp32_valve").ESP32ValveController
 
@@ -142,3 +168,32 @@ def test_command_callback_clamps_percent_and_sends_raw_position(monkeypatch, qt_
         assert controller._last_command == 100.0
     finally:
         controller._disconnect()
+
+
+def test_cleanup_stops_timers_and_udp_thread(monkeypatch, qt_app, fake_node):
+    controller_cls = _esp32_controller_class()
+    monkeypatch.setattr(controller_cls, "_discover_and_connect", lambda self: None)
+    controller = controller_cls(fake_node)
+    reconnect_timer = FakeTimer()
+    keepalive_timer = FakeTimer()
+    publish_timer = FakeTimer()
+    udp_thread = FakeUdpThread(wait_result=True)
+    fake_socket = FakeSocket()
+
+    controller._reconnect_timer = reconnect_timer
+    controller._keepalive_timer = keepalive_timer
+    controller._publish_timer = publish_timer
+    controller._udp_thread = udp_thread
+    controller._sock = fake_socket
+
+    controller.cleanup()
+
+    assert reconnect_timer.stopped is True
+    assert keepalive_timer.stopped is True
+    assert publish_timer.stopped is True
+    assert udp_thread.stop_calls == 1
+    assert udp_thread.wait_calls == [1000]
+    assert udp_thread.terminate_calls == 0
+    assert fake_socket.closed is True
+    assert controller._udp_thread is None
+    assert controller._sock is None

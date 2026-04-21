@@ -51,7 +51,7 @@ If two files disagree, prefer the file higher in this list unless `DEVNOTES.md` 
 
 ## Active Queue Snapshot
 
-- Immediate priority: `3.5`, then `1.11a-e`, and finally `2.8`
+- Immediate priority: `3.5`, then `3.10 Static typing gate`, then `1.11a-e`, and finally `2.8`
 - Deferred backlog: remaining Phase 2 theming work (`2.5b`, `2.5c`, `2.6a-c`, `2.7`) stays documented but is intentionally postponed until the hardening queue is complete
 
 ## Key Paths

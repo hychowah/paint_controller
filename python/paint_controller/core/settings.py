@@ -106,6 +106,14 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "requires_restart": False,
         "description": "Fixed RPM for wheel travel commands"
     },
+    "emergency_hold_duration_s": {
+        "default": 1.0,
+        "min": 0.2,
+        "max": 2.0,
+        "type": "float",
+        "requires_restart": False,
+        "description": "Hold duration required to trigger emergency stop (seconds)"
+    },
     "ui_section_states": {
         "default": {},
         "type": "dict",
@@ -242,6 +250,7 @@ class SettingsManager(QObject):
     wheel_travel_max_changed, wheel_travel_max = _make_setting_pair("wheel_travel_max")
     wheel_travel_rate_changed, wheel_travel_rate = _make_setting_pair("wheel_travel_rate")
     wheel_travel_rpm_changed, wheel_travel_rpm = _make_setting_pair("wheel_travel_rpm")
+    emergency_hold_duration_s_changed, emergency_hold_duration_s = _make_setting_pair("emergency_hold_duration_s")
     base_top_view_zoom_changed, base_top_view_zoom = _make_setting_pair("base_top_view_zoom")
     base_top_view_offset_x_changed, base_top_view_offset_x = _make_setting_pair("base_top_view_offset_x")
     base_top_view_offset_y_changed, base_top_view_offset_y = _make_setting_pair("base_top_view_offset_y")

@@ -3,6 +3,8 @@
 import time
 from PySide6.QtCore import QObject, Signal
 
+from paint_controller.utils.constants import HeartbeatStatus
+
 class EmergencyButtonHandler(QObject):
     """Handler for emergency button functionality"""
     
@@ -11,15 +13,31 @@ class EmergencyButtonHandler(QObject):
     emergency_triggered = Signal()
     
     def __init__(self, steam_deck_handler, winch, teensy, wheel,
-                 show_popup_fn=None, logger=None):
+                 show_popup_fn=None, logger=None, settings_manager=None,
+                 state_store=None, safety_coordinator=None, esp32_valve=None):
         super().__init__()
         
         self.steam_deck_handler = steam_deck_handler
         self._winch = winch
         self._teensy = teensy
         self._wheel = wheel
+        self._esp32_valve = esp32_valve
         self._show_popup_fn = show_popup_fn
         self._logger = logger
+        self._settings_manager = settings_manager
+        self._state_store = state_store
+        self._safety_coordinator = safety_coordinator
+
+        duration_target = 1.0
+        if self._settings_manager is not None:
+            try:
+                duration_target = float(self._settings_manager.get("emergency_hold_duration_s", 1.0))
+            except Exception:
+                duration_target = 1.0
+
+            signal = getattr(self._settings_manager, 'emergency_hold_duration_s_changed', None)
+            if signal is not None:
+                signal.connect(self.set_duration_target)
         
         # Emergency state tracking
         self._state = {
@@ -27,11 +45,25 @@ class EmergencyButtonHandler(QObject):
             'hold_start_time': 0,
             'overlay_visible': False,
             'completed': False,
-            'duration_target': 0.2,  # 1 second
+            'duration_target': duration_target,
             'last_steam_state': False,
             'cooldown_start': 0,    # When emergency was last triggered
             'cooldown_duration': 1.0  # Minimum time between emergency activations
         }
+
+    def _set_heartbeat_state(self, state: int, *, force: bool = False) -> None:
+        if self._safety_coordinator is not None:
+            if force:
+                self._safety_coordinator.clear_error_state()
+            return
+
+        if self._state_store is None:
+            return
+
+        current_state = self._state_store.controller_heartbeat_state
+        if current_state == HeartbeatStatus.ERROR.value and state != HeartbeatStatus.ERROR.value and not force:
+            return
+        self._state_store.controller_heartbeat_state = state
     
     def check_emergency_button(self, button_state):
         """Check and update emergency button state"""
@@ -84,14 +116,23 @@ class EmergencyButtonHandler(QObject):
             self._state['overlay_visible'] = False
             self._state['is_holding'] = False
             self.overlay_changed.emit(False, 0, 0)
-            
-            self._winch.command_speed_rpm(0)
-            self._teensy.setSprayTrigger(1000)
-            if self._wheel is not None:
-                if hasattr(self._wheel, 'emergency_stop'):
-                    self._wheel.emergency_stop()
-                elif hasattr(self._wheel, 'setSpeed'):
-                    self._wheel.setSpeed(0, 0)
+
+            if self._safety_coordinator is not None:
+                self._safety_coordinator.halt_all_effectors(
+                    "Emergency activated by user",
+                    heartbeat_state=HeartbeatStatus.ERROR,
+                )
+            else:
+                self._winch.command_speed_rpm(0)
+                self._teensy.setSprayTrigger(1000)
+                if self._wheel is not None:
+                    if hasattr(self._wheel, 'emergency_stop'):
+                        self._wheel.emergency_stop()
+                    elif hasattr(self._wheel, 'setSpeed'):
+                        self._wheel.setSpeed(0, 0)
+                if self._esp32_valve is not None:
+                    self._esp32_valve.setValveTurn(0.0)
+                self._set_heartbeat_state(HeartbeatStatus.ERROR.value)
             
             # Show emergency popup
             if self._show_popup_fn:
@@ -140,10 +181,11 @@ class EmergencyButtonHandler(QObject):
             'cooldown_start': 0,
             'cooldown_duration': self._state['cooldown_duration']  # Preserve cooldown
         }
+        self._set_heartbeat_state(HeartbeatStatus.IDLE.value, force=True)
     
     def set_duration_target(self, duration):
         """Set the required hold duration for emergency activation"""
-        self._state['duration_target'] = duration
+        self._state['duration_target'] = max(0.2, min(2.0, float(duration)))
     
     def set_cooldown_duration(self, duration):
         """Set the cooldown period between emergency activations"""

@@ -1,20 +1,12 @@
 #!/usr/bin/env python3
 
 import time
-from enum import Enum
-from typing import Dict, Optional
+from typing import Optional
 from rclpy.node import Node
 from std_msgs.msg import UInt8, Empty
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 
-
-class HeartbeatStatus(Enum):
-    """Enum for heartbeat status codes used in the system"""
-    IDLE = 0x00      # System is off or not initialized
-    ONTASK = 0x01    # Normal operation
-    WARNING = 0x02   # Minor issue detected
-    ERROR = 0x03     # Critical error
-    CLEAR_ERROR = 0x04  # Command to clear error state (legacy)
+from paint_controller.utils.constants import HeartbeatStatus
 
 
 class UIHeartbeatHandler(QObject):
@@ -38,7 +30,7 @@ class UIHeartbeatHandler(QObject):
     ef_online_changed = Signal()
     status_message_changed = Signal()
     
-    def __init__(self, node: Node):
+    def __init__(self, node: Node, state_store=None, safety_coordinator=None):
         """
         Initialize the heartbeat handler.
         
@@ -47,9 +39,11 @@ class UIHeartbeatHandler(QObject):
         """
         super().__init__()
         self._node = node
+        self._state_store = state_store
+        self._safety_coordinator = safety_coordinator
         
         # Initialize property values
-        self._controller_status = HeartbeatStatus.IDLE.value
+        self._controller_status = int(getattr(state_store, 'controller_heartbeat_state', HeartbeatStatus.IDLE.value))
         self._base_status = HeartbeatStatus.IDLE.value
         self._ef_status = HeartbeatStatus.IDLE.value
         self._controller_online = False
@@ -73,6 +67,57 @@ class UIHeartbeatHandler(QObject):
         self._availability_timer.start(200)  # Check every 200ms
         
         self._node.get_logger().info('UIHeartbeatHandler initialized')
+
+    def _set_runtime_state(self, value: int, *, allow_downgrade_from_error: bool = False) -> None:
+        if self._state_store is None:
+            return
+
+        try:
+            new_state = HeartbeatStatus(value)
+        except ValueError:
+            return
+
+        try:
+            current_state = HeartbeatStatus(self._state_store.controller_heartbeat_state)
+        except (TypeError, ValueError):
+            current_state = HeartbeatStatus.IDLE
+
+        if current_state == HeartbeatStatus.ERROR and new_state != HeartbeatStatus.ERROR and not allow_downgrade_from_error:
+            return
+
+        self._state_store.controller_heartbeat_state = int(new_state)
+
+    def _refresh_runtime_state(self) -> None:
+        if self._state_store is None:
+            return
+
+        try:
+            current_state = HeartbeatStatus(self._state_store.controller_heartbeat_state)
+        except (TypeError, ValueError):
+            current_state = HeartbeatStatus.IDLE
+
+        if current_state == HeartbeatStatus.ERROR:
+            return
+
+        if self.are_any_components_in_error():
+            self._set_runtime_state(HeartbeatStatus.ERROR.value)
+        elif not self._base_online or not self._ef_online:
+            self._set_runtime_state(HeartbeatStatus.WARNING.value)
+        elif self.are_any_components_in_warning():
+            self._set_runtime_state(HeartbeatStatus.WARNING.value)
+        elif self._controller_online and self._base_online and self._ef_online:
+            self._set_runtime_state(HeartbeatStatus.ONTASK.value)
+
+    def _handle_heartbeat_loss(self, message: str) -> None:
+        self.set_status_message(message)
+        if self._safety_coordinator is not None:
+            self._safety_coordinator.halt_all_effectors(
+                message,
+                heartbeat_state=HeartbeatStatus.WARNING,
+            )
+        else:
+            self._set_runtime_state(HeartbeatStatus.WARNING.value)
+        self._node.get_logger().warning(message)
     
     def _setup_publishers(self):
         """Setup ROS publishers for heartbeat and clear error commands"""
@@ -131,22 +176,19 @@ class UIHeartbeatHandler(QObject):
         if current_time - self._controller_last_seen > self._heartbeat_timeout:
             if self._controller_online:
                 self.set_controller_online(False)
-                self.set_status_message("Controller heartbeat lost")
-                self._node.get_logger().warning('Controller heartbeat lost')
+                self._handle_heartbeat_loss("Controller heartbeat lost")
         
         # Check base heartbeat
         if current_time - self._base_last_seen > self._heartbeat_timeout:
             if self._base_online:
                 self.set_base_online(False)
-                self.set_status_message("Base robot heartbeat lost")
-                self._node.get_logger().warning('Base heartbeat lost')
+                self._handle_heartbeat_loss("Base robot heartbeat lost")
         
         # Check ef heartbeat
         if current_time - self._ef_last_seen > self._heartbeat_timeout:
             if self._ef_online:
                 self.set_ef_online(False)
-                self.set_status_message("End effector heartbeat lost")
-                self._node.get_logger().warning('EF heartbeat lost')
+                self._handle_heartbeat_loss("End effector heartbeat lost")
     
     def _controller_heartbeat_callback(self, msg: UInt8):
         """
@@ -176,6 +218,8 @@ class UIHeartbeatHandler(QObject):
                     self.set_status_message("Controller warning")
                 elif msg.data == HeartbeatStatus.ERROR.value:
                     self.set_status_message("Controller error")
+                self._set_runtime_state(msg.data)
+            self._refresh_runtime_state()
                 
         except Exception as e:
             self._node.get_logger().error(f'Error in controller heartbeat callback: {str(e)}')
@@ -208,6 +252,7 @@ class UIHeartbeatHandler(QObject):
                     self.set_status_message("Base robot warning")
                 elif msg.data == HeartbeatStatus.ERROR.value:
                     self.set_status_message("Base robot error")
+            self._refresh_runtime_state()
                 
         except Exception as e:
             self._node.get_logger().error(f'Error in base heartbeat callback: {str(e)}')
@@ -240,6 +285,7 @@ class UIHeartbeatHandler(QObject):
                     self.set_status_message("End effector warning")
                 elif msg.data == HeartbeatStatus.ERROR.value:
                     self.set_status_message("End effector error")
+            self._refresh_runtime_state()
                 
         except Exception as e:
             self._node.get_logger().error(f'Error in EF heartbeat callback: {str(e)}')
@@ -476,6 +522,11 @@ class UIHeartbeatHandler(QObject):
             self._node.get_logger().info('Published CLEAR_ERROR via heartbeat (legacy method)')
         except Exception as e:
             self._node.get_logger().error(f'Error publishing to controller heartbeat: {str(e)}')
+
+        if self._safety_coordinator is not None:
+            self._safety_coordinator.clear_error_state()
+        else:
+            self._set_runtime_state(HeartbeatStatus.IDLE.value, allow_downgrade_from_error=True)
         
         # Update status message for UI feedback
         self.set_status_message("Clearing errors...")

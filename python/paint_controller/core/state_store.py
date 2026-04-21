@@ -3,6 +3,8 @@
 import threading
 from PySide6.QtCore import QObject, Signal, Property
 
+from paint_controller.utils.constants import HeartbeatStatus
+
 
 class StateStore(QObject):
     """Holds application state shared across controllers and UI.
@@ -18,6 +20,7 @@ class StateStore(QObject):
     right_joystick_control_changed = Signal(str)
     left_control_info_changed = Signal(str, str)   # mode, value
     right_control_info_changed = Signal(str, str)   # mode, value
+    controller_heartbeat_state_changed = Signal(int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -30,6 +33,7 @@ class StateStore(QObject):
         self._left_control_value = ""
         self._right_control_mode = "None"
         self._right_control_value = ""
+        self._controller_heartbeat_state = int(HeartbeatStatus.IDLE)
 
     # --- control_mode ---
     @Property(str, notify=control_mode_changed)
@@ -146,3 +150,17 @@ class StateStore(QObject):
             self._right_control_value = value
             mode = self._right_control_mode
         self.right_control_info_changed.emit(mode, value)
+
+    # --- controller_heartbeat_state ---
+    @Property(int, notify=controller_heartbeat_state_changed)
+    def controller_heartbeat_state(self):
+        with self._lock:
+            return self._controller_heartbeat_state
+
+    @controller_heartbeat_state.setter
+    def controller_heartbeat_state(self, value):
+        with self._lock:
+            if self._controller_heartbeat_state == value:
+                return
+            self._controller_heartbeat_state = value
+        self.controller_heartbeat_state_changed.emit(value)

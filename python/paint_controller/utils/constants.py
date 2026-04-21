@@ -4,7 +4,7 @@ All magic strings used across the codebase are defined here as enums
 to prevent silent failures from typos and enable IDE autocompletion.
 """
 
-from enum import Enum
+from enum import Enum, IntEnum
 
 
 class ControlMode(str, Enum):
@@ -34,5 +34,15 @@ class JoystickControl(str, Enum):
     EF_FORCE = "EF Force"
     VALVE_TURN = "Valve Turn"
     ARM_RAIL_SPEED = "Arm Rail Speed"
+
+
+class HeartbeatStatus(IntEnum):
+    """Controller heartbeat status values shared across UI and ROS."""
+
+    IDLE = 0x00
+    ONTASK = 0x01
+    WARNING = 0x02
+    ERROR = 0x03
+    CLEAR_ERROR = 0x04
 
 

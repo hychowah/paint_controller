@@ -28,7 +28,10 @@ def test_start_monitoring_runs_in_worker_thread(qt_app):
         monitor.start_monitoring(5000)
         assert calls == []
 
-        QTest.qWait(50)
+        for _ in range(20):
+            if calls:
+                break
+            QTest.qWait(10)
 
         assert calls == [True]
     finally:

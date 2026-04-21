@@ -114,6 +114,7 @@ class FakeNode:
         self.destroyed_publishers: List[FakePublisher] = []
         self.destroyed_subscriptions: List[FakeSubscription] = []
         self.destroyed_timers: List[FakeTimer] = []
+        self.destroyed = False
 
     def get_logger(self) -> FakeLogger:
         return self.logger
@@ -164,6 +165,9 @@ class FakeNode:
         if timer in self.timers:
             self.timers.remove(timer)
 
+    def destroy_node(self) -> None:
+        self.destroyed = True
+
 
 # ---------------------------------------------------------------------------
 # Controller fakes for ControlProcessor tests
@@ -176,6 +180,7 @@ class FakeWheel:
         self.left_speed_commands: List[float] = []
         self.right_speed_commands: List[float] = []
         self.position_commands: List[tuple] = []
+        self.emergency_stop_calls = 0
 
     def command_left_wheel_speed(self, speed: float) -> None:
         self.left_speed_commands.append(speed)
@@ -187,6 +192,9 @@ class FakeWheel:
         self.position_commands.append((left_mm, right_mm, rpm_limit, relative))
         return True
 
+    def emergency_stop(self) -> None:
+        self.emergency_stop_calls += 1
+
 
 class FakeWinch:
     """Minimal WinchController double with configurable availability/brake state."""
@@ -195,6 +203,7 @@ class FakeWinch:
         self._available = available
         self._motor_brake = motor_brake
         self.speed_commands: List[float] = []
+        self.rpm_commands: List[float] = []
 
     def get_available(self) -> bool:
         return self._available
@@ -204,6 +213,9 @@ class FakeWinch:
 
     def command_speed_mmps(self, value: float) -> None:
         self.speed_commands.append(value)
+
+    def command_speed_rpm(self, value: float) -> None:
+        self.rpm_commands.append(value)
 
 
 class FakeTeensyPublisher:
@@ -231,6 +243,7 @@ class FakeTeensy:
         self.yaw_commands: List[float] = []
         self.rail_speed_commands: List[float] = []
         self.force_commands: List[tuple] = []
+        self.trigger_values: List[int] = []
         self._imu_yaw: float = 0.0
 
     def setYawAngle(self, angle: float) -> None:
@@ -241,6 +254,9 @@ class FakeTeensy:
 
     def set_ef_force(self, fx: float, fy: float) -> None:
         self.force_commands.append((fx, fy))
+
+    def setSprayTrigger(self, value: int) -> None:
+        self.trigger_values.append(value)
 
     def get_status_value(self, key: str) -> Any:
         if key == "imu_yaw":
@@ -292,3 +308,4 @@ class FakeStateStore:
     def __init__(self) -> None:
         self.display_message: str = ""
         self.control_mode: str = "base"
+        self.controller_heartbeat_state: int = 0

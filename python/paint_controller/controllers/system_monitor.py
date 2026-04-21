@@ -11,7 +11,7 @@ import re
 import os
 from typing import Optional
 
-from PySide6.QtCore import QObject, Signal, Property, QTimer, QThread, Qt, Slot
+from PySide6.QtCore import QObject, Signal, Property, QTimer, QThread, Qt, Slot, QMetaObject, Q_ARG
 
 logger = logging.getLogger(__name__)
 
@@ -274,6 +274,8 @@ class SystemMonitor(QObject):
         self._battery_remaining_time = "N/A"
         self._cpu_temperature = 0.0
         self._power_status = "Unknown"
+        self._worker_ready = False
+        self._pending_interval_ms: Optional[int] = None
         
         # Create worker and thread
         self.worker = SystemMonitorWorker()
@@ -291,8 +293,19 @@ class SystemMonitor(QObject):
         self.stop_monitoring_requested.connect(self.worker.stop_monitoring, Qt.QueuedConnection)
         
         # Start the worker thread
-        self.worker_thread.started.connect(lambda: None)  # Cleanup slot
+        self.worker_thread.started.connect(self._on_worker_thread_started)
         self.worker_thread.start()
+
+    def _on_worker_thread_started(self) -> None:
+        self._worker_ready = True
+        if self._pending_interval_ms is not None:
+            QMetaObject.invokeMethod(
+                self.worker,
+                "start_monitoring",
+                Qt.QueuedConnection,
+                Q_ARG(int, self._pending_interval_ms),
+            )
+            self._pending_interval_ms = None
     
     # Properties with change signals
     @Property(int, notify=battery_level_changed)
@@ -339,11 +352,20 @@ class SystemMonitor(QObject):
         Args:
             interval_ms: Update interval in milliseconds (default: 1000ms = 1s)
         """
-        self.start_monitoring_requested.emit(interval_ms)
+        if not self._worker_ready:
+            self._pending_interval_ms = interval_ms
+            return
+
+        QMetaObject.invokeMethod(
+            self.worker,
+            "start_monitoring",
+            Qt.QueuedConnection,
+            Q_ARG(int, interval_ms),
+        )
     
     def stop_monitoring(self) -> None:
         """Stop periodic system monitoring"""
-        self.stop_monitoring_requested.emit()
+        QMetaObject.invokeMethod(self.worker, "stop_monitoring", Qt.QueuedConnection)
     
     def cleanup(self) -> None:
         """Clean up worker thread and resources"""
@@ -355,5 +377,7 @@ class SystemMonitor(QObject):
                 logger.warning("Worker thread did not exit cleanly, forcing termination")
                 self.worker_thread.terminate()
                 self.worker_thread.wait()
+            self._worker_ready = False
+            self._pending_interval_ms = None
         except Exception as e:
             logger.error("Error cleaning up SystemMonitor: %s", e)

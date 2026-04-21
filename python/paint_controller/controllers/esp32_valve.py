@@ -440,7 +440,10 @@ class ESP32ValveController(QObject):
             # Acquire lock to ensure recvfrom has exited before closing socket
             with self._sock_lock:
                 pass  # Forces wait for any in-flight recvfrom
-            self._udp_thread.wait(1000)
+            if not self._udp_thread.wait(1000):
+                logging.warning("ESP32 UDP receive thread did not exit cleanly, forcing termination")
+                self._udp_thread.terminate()
+                self._udp_thread.wait(500)
             self._udp_thread = None
         
         with self._sock_lock:
@@ -449,10 +452,25 @@ class ESP32ValveController(QObject):
                 self._sock = None
         
         self._esp32_ip = None
+
+    def cleanup(self):
+        """Public cleanup hook so app shutdown can stop the UDP thread deterministically."""
+        for timer_attr in ("_reconnect_timer", "_keepalive_timer", "_publish_timer"):
+            timer = getattr(self, timer_attr, None)
+            if timer is not None:
+                try:
+                    timer.stop()
+                except RuntimeError:
+                    pass
+
+        self._disconnect()
     
     def __del__(self):
         """Cleanup on destruction"""
-        self._disconnect()
+        try:
+            self.cleanup()
+        except Exception:
+            pass
     
     # Qt Properties for QML binding
     valve_position = Property(float, lambda self: self._valve_position, notify=valve_position_changed)

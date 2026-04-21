@@ -2,6 +2,38 @@
 
 ---
 
+### 2026-04-21 11:30 - Final Shutdown Thread Owner: ESP32 Valve UDP Thread
+
+**Goal**: Eliminate the remaining real-app exit abort after QML teardown had already been fixed
+**Issues**: The app still ended with `QThread: Destroyed while thread is still running` even after the QML teardown and Steam Deck fixes. Thread-owner review showed `ESP32ValveController` starts `UDPReceiveThread` but had no public `cleanup()` method, so normal `ControllerBundle.cleanup()` never reached that thread. It only stopped during object destruction, which was too late.
+**Tried**: Added explicit `ESP32ValveController.cleanup()` to stop timers and disconnect/join the UDP thread, upgraded `_disconnect()` to warn and force-terminate if the thread does not exit in time, and added regression coverage in `tests/test_esp32_valve.py`. Then made the destructor tolerant of already-deleted Qt timers.
+**Result**: ✅ Remaining app-owned thread now participates in normal shutdown. Focused shutdown regressions passed and the full suite revalidated at `133 passed`
+**Files**: `PLANNING.md`, `python/paint_controller/controllers/esp32_valve.py`, `tests/test_esp32_valve.py`
+
+### 2026-04-21 11:25 - Shutdown Smoke Harness For QML Teardown
+
+**Goal**: Add an automated shutdown regression test for the real `MainWindow.qml` shell so termination bugs stop depending on manual app exits to reproduce
+**Issues**: The first teardown fix still left post-exit QML `Cannot read property ... of null` warnings in the real app, so startup-only smoke coverage was insufficient. The original teardown helper also touched `QQmlApplicationEngine` after scheduling it for deletion.
+**Tried**: Strengthened `_teardown_qml_runtime()` to clear the component cache before `engine.deleteLater()` and flush deferred deletes with `QCoreApplication.sendPostedEvents(...)`; added a shutdown-side smoke test in `tests/test_startup_smoke.py` that loads real `MainWindow.qml`, records baseline warnings, runs the teardown helper, and fails on new post-teardown `Cannot read property` / `Unable to assign [undefined]` warnings.
+**Result**: ✅ Shutdown teardown now has direct regression coverage and the full suite revalidated at `132 passed`
+**Files**: `PLANNING.md`, `python/paint_controller/core/application.py`, `tests/test_startup_smoke.py`
+
+### 2026-04-21 11:20 - Shutdown Teardown Ordering Regression
+
+**Goal**: Fix the post-exit termination regression where shutdown logged many QML `Cannot read property ... of null` errors and then aborted with `QThread: Destroyed while thread is still running`
+**Issues**: The QML engine/root object tree outlived backend QObject cleanup, so bindings were still reevaluating while Python context-property objects were already being torn down. Separately, `SteamDeckHandler.cleanup()` had been accidentally defined twice, and the later weaker version overrode the real cleanup path so the HID reader thread was not reliably waited/joined during shutdown.
+**Tried**: Added explicit QML teardown in `application.py` to close/delete root objects and flush Qt events before controller/service cleanup, restored a single authoritative Steam Deck cleanup path that always delegates to the reader-thread cleanup helper, and made `ScreenManager.cleanup()` disconnect its global `QGuiApplication` screen signals.
+**Result**: ✅ Shutdown lifetime ordering is fixed at the Python side; targeted shutdown tests passed and the full suite revalidated at `131 passed`
+**Files**: `PLANNING.md`, `python/paint_controller/core/application.py`, `python/paint_controller/handlers/steam_deck.py`, `python/paint_controller/services/screen_manager.py`, `tests/test_steam_deck_handler.py`
+
+### 2026-04-21 11:04 - Safety Hardening Batch A + Offscreen Startup Smoke
+
+**Goal**: Implement the approved first-principles safety batch: live controller heartbeat state, safe shutdown ordering, settings-backed emergency hold duration, unified halt-all behavior, and a headless startup smoke gate
+**Issues**: `PaintRosNode.publish_heartbeat()` always published `IDLE`; `RosThread._cleanup()` destroyed the shared node before controller cleanup; `EmergencyButtonHandler` used `0.2` seconds despite a "1 second" contract comment; emergency missed the ESP32 valve and heartbeat-loss halt path; full-suite validation also exposed a flaky `SystemMonitor` worker-start timing assumption
+**Tried**: Added `HeartbeatStatus` constants and `StateStore.controller_heartbeat_state`, moved ROS-node cleanup into `main()` after service/controller shutdown, added `emergency_hold_duration_s` to `SettingsManager`, introduced `SafetyCoordinator.halt_all_effectors(reason)`, wired emergency/heartbeat/wheel-error through it, added `tests/test_startup_smoke.py` plus new focused safety tests, then made `SystemMonitor` worker start deterministic and hardened its test to poll briefly instead of assuming a fixed 50ms budget
+**Result**: ✅ Safety batch complete. Targeted safety/startup tests are green, the offscreen `MainWindow.qml` smoke gate now exists, and the full suite revalidated at `130 passed`
+**Files**: `PLANNING.md`, `docs/plan/00_README.md`, `docs/plan/01_MASTER_PLAN.md`, `docs/tech-debt.md`, `python/paint_controller/core/application.py`, `python/paint_controller/core/controller_factory.py`, `python/paint_controller/core/ros_node.py`, `python/paint_controller/core/settings.py`, `python/paint_controller/core/state_store.py`, `python/paint_controller/controllers/system_monitor.py`, `python/paint_controller/handlers/emergency.py`, `python/paint_controller/handlers/heartbeat.py`, `python/paint_controller/handlers/safety_coordinator.py`, `python/paint_controller/utils/constants.py`, `tests/conftest.py`, `tests/fakes.py`, `tests/test_emergency.py`, `tests/test_heartbeat.py`, `tests/test_ros_node.py`, `tests/test_safety_coordinator.py`, `tests/test_settings_runtime.py`, `tests/test_startup_smoke.py`, `tests/test_state_store.py`, `tests/test_system_monitor.py`
+
 ### 2026-04-20 21:46 - First-Principles Plan Reprioritization
 
 **Goal**: Reconcile the active modernization plan with the approved first-principles review before implementation resumes
