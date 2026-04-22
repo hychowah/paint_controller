@@ -3,13 +3,13 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "."
-import "../../core"
+import "../../../core"
 
 IndustrialCard {
     id: winchCard
     title: "Winch Data"
-    
-    property real maxWinchCurrent: 10.0
+
+    required property real maxWinchCurrent
     
     // Consistent sizing for all metrics
     property int metricValueSize: CommonStyle.fontDisplay + CommonStyle.spacingXs

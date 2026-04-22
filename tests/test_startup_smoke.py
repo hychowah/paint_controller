@@ -63,6 +63,31 @@ class BlankImageProvider(QQuickImageProvider):
         return image
 
 
+def _teensy_all_status() -> DynamicObject:
+    return DynamicObject(
+        voltage=24.0,
+        current=0.0,
+        temperature=35.0,
+        run_time=0.0,
+        loop_time=1000.0,
+        loop_time_counter=1.0,
+        relay_on=False,
+        enabled=True,
+        arm_extension_dist=0.0,
+        arm_rail_current=0.0,
+        gimbal_pitch_motor_current=0.0,
+        imu_pitch=0.0,
+        imu_roll=0.0,
+        imu_yaw=0.0,
+        imu_acc_x=0.0,
+        imu_acc_y=0.0,
+        imu_acc_z=0.0,
+        imu_angular_acc_x=0.0,
+        imu_angular_acc_y=0.0,
+        imu_angular_acc_z=0.0,
+    )
+
+
 def _settings_manager(monkeypatch, tmp_path: Path) -> SettingsManager:
     config_path = tmp_path / "config" / "settings.json"
     config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -87,12 +112,33 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
         "workFlowRunner": DynamicObject(is_running=False),
         "warningHandler": DynamicObject(active_warning=""),
         "baseStreamHandler": FakeStreamHandler(),
-        "wheelController": DynamicObject(available=True, left_wheel_speed=0.0, right_wheel_speed=0.0),
-        "winchController": DynamicObject(available=True),
+        "wheelController": DynamicObject(
+            available=True,
+            enabled=True,
+            left_motor_available=True,
+            right_motor_available=True,
+            left_wheel_speed=0.0,
+            right_wheel_speed=0.0,
+            left_wheel_current=0.0,
+            right_wheel_current=0.0,
+        ),
+        "winchController": DynamicObject(
+            available=True,
+            cable_length=0.0,
+            cable_speed=0.0,
+            motor_voltage=24.0,
+            motor_temperature=25.0,
+            winch_torque=0.0,
+        ),
         "steamDeckHandler": DynamicObject(),
         "windMonitor": DynamicObject(speed=0.0, direction=0.0),
-        "teensyController": DynamicObject(available=True),
-        "esp32ValveController": DynamicObject(valve_position=0.0),
+        "teensyController": DynamicObject(available=True, all_status=_teensy_all_status()),
+        "esp32ValveController": DynamicObject(
+            valve_position=0.0,
+            valve_rate=0.0,
+            valve_motor_current=0.0,
+            total_volume=0.0,
+        ),
         "lidarController": DynamicObject(distance=0.0, angle=0.0),
         "heartbeatHandler": DynamicObject(
             controller_online=True,
@@ -198,3 +244,32 @@ def test_main_window_teardown_does_not_emit_null_binding_warnings(monkeypatch, t
         null_binding_fragment in warning.lower() or undefined_assignment_fragment in warning.lower()
         for warning in teardown_warnings
     ), teardown_warnings
+
+
+def test_multi_screen_monitor_window_loads_offscreen(monkeypatch, tmp_path, qt_app):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    qml_path = qml_dir / "overlays" / "MultiScreenListUI.qml"
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    engine.load(QUrl.fromLocalFile(str(qml_path)))
+    qt_app.processEvents()
+
+    assert engine.rootObjects(), "MultiScreenListUI.qml failed to load"
+
+    fatal_warning_fragments = (
+        "failed to load component",
+        "no such file or directory",
+        "is not a type",
+    )
+    assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings

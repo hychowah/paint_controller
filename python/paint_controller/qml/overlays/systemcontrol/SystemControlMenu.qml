@@ -1,17 +1,15 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "../../components/panels"
 import "../../components/popups"
 import "../../navigation"
 
 Item {
     id: systemControlMenu
 
-    // These properties can now be directly bound to the overlayController
-    property bool showOverlay: overlayController.show_overlay
-    property string activeMenu: overlayController.active_menu
-    property bool showSystemMenu: showOverlay && activeMenu === "system"
+    required property bool showOverlay
+    required property string activeMenu
+    readonly property bool showSystemMenu: showOverlay && activeMenu === "system"
 
     // Ensure the menu is visible
     visible: true

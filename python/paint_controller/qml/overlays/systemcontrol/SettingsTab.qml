@@ -1,15 +1,13 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "../../components/buttons"
-import "../../components/panels"
-import "../../components/inputs"
+import "./components"
 
 Item {
     id: settingsTab
     
     // Popup reference passed from parent
-    property var confirmationPopup: null
+    required property var confirmationPopup
     
     // Helper function to create setting input field
     function createSettingRow(key, label, currentValue, minVal, maxVal, isFloat) {

@@ -5,20 +5,14 @@ import QtQuick.Window
 import QtCharts
 import Qt5Compat.GraphicalEffects
 import "../pages/home"
-import "../pages/spray"
 import "../pages/wheel"
 import "../pages/winch"
 import "../pages/tuning"
 import "../pages/settings"
 import "../pages/status"
-import "../pages/misc"
 import "../navigation"
-import "../components/buttons"
-import "../components/inputs"
 import "../components/displays"
-import "../components/panels"
 import "../components/popups"
-import "../components/specialized/pointcloud"
 import "../overlays"
 import "../overlays/systemcontrol"
 import "../overlays/video"
@@ -258,7 +252,7 @@ ApplicationWindow {
         id: messagePopup
     }
 
-    OverlayLayer {
+    JoystickOverlay {
         anchors.fill: parent
         z: 1000
         showOverlay: overlayController.show_overlay

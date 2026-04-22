@@ -7,8 +7,7 @@ Item {
     width: 180
     height: 120
     
-    // Property for pitch data binding
-    property real currentPitch: 0.0
+    required property real currentPitch
     
     // Opacity for the background, 0.0 (fully transparent) to 1.0 (fully opaque)
     property real backgroundOpacity: 0.6
@@ -18,6 +17,7 @@ Item {
     
     // Pitch scale factor (pixels per degree)
     property real pitchScale: 4.5
+    readonly property string pitchText: (root.currentPitch >= 0 ? "+" : "") + root.currentPitch.toFixed(1) + "°"
     
     Rectangle {
         id: container
@@ -156,7 +156,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: pitchLabel.bottom
             anchors.topMargin: 25
-            text: (root.currentPitch >= 0 ? "+" : "") + root.currentPitch.toFixed(1) + "°"
+            text: root.pitchText
             color: CommonStyle.textPrimary
             font.pixelSize: CommonStyle.fontLabel
             font.bold: true

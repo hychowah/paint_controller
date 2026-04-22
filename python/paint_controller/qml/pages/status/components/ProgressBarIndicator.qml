@@ -1,16 +1,16 @@
 // Horizontal progress bar for showing load/current indicators
 import QtQuick
-import "../../core"
+import "../../../core"
 
 Item {
     id: root
     
-    // Properties
-    property real value: 0.0
-    property real maxValue: 100.0
+    required property real value
+    required property real maxValue
     property color barColor: CommonStyle.statusSuccess
     property color backgroundColor: CommonStyle.inputBackground
     property int barHeight: CommonStyle.spacingMd
+    readonly property real normalizedValue: maxValue > 0 ? Math.max(0, Math.min(value / maxValue, 1)) : 0
     
     height: barHeight
     
@@ -23,7 +23,7 @@ Item {
     
     // Progress bar
     Rectangle {
-        width: Math.max(0, Math.min(parent.width * (value / maxValue), parent.width))
+        width: parent.width * root.normalizedValue
         height: parent.height
         color: barColor
         radius: barHeight / 2

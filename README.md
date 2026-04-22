@@ -5,6 +5,8 @@ ROS 2 + PySide6/QML control application for the paint robot.
 ## Current Status
 
 - This repository is currently in a **refactor-first** phase on the `refactor` branch. The intent is to improve architecture, safety, shutdown/threading behavior, tests, and typing gates before resuming net-new feature development.
+- `TD-001` Stage 1 is complete: verified-dead QML was removed, false shared-component folders were flattened, constructor-driven QML surfaces were hardened with `required` / `readonly`, offscreen startup/import smoke coverage was expanded, and warn-only `qmllint` CI is in place.
+- The next structural refactor stage is `TD-031`: the deeper QML rebuild (`systemcontrol` promotion, feature extraction, singleton/theme relocation, and page-registry cleanup). Treat it as a separate high-complexity stage rather than a continuation of Stage 1.
 - Python runtime is the only live application path in this repository; the old C++ UI path has been removed from the tree.
 - Runtime objects are exposed to QML through `setContextProperty()`. Do not use `qmlRegisterSingletonInstance()` in this repo.
 - Recent targeted pytest slices for the controller hardening work are green. Re-run `python/paint_controller/venv/bin/python -m pytest tests -q` locally before committing if you need a fresh full-suite claim.

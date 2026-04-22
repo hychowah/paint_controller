@@ -18,12 +18,12 @@ Rectangle {
     VideoOverlayStyle { id: style }
     
     // EF Battery: 7S Li-ion (21V min, 29.4V max)
-    property real efBatteryMin: 21.0
-    property real efBatteryMax: 29.4
+    readonly property real efBatteryMin: 21.0
+    readonly property real efBatteryMax: 29.4
     
     // Base Battery: 13S Li-ion (39V min, 54.6V max)
-    property real baseBatteryMin: 39.0
-    property real baseBatteryMax: 54.6
+    readonly property real baseBatteryMin: 39.0
+    readonly property real baseBatteryMax: 54.6
     
         // Network ping times (in milliseconds) - bind to sshHandler's devicePingTimes
     property real efPingMs: {

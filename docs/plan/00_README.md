@@ -44,7 +44,9 @@ If two files disagree, prefer `INDEX.md`'s repo-wide authority hierarchy first. 
 ## Avoid / Defer
 
 - Do not start net-new feature work unless the user explicitly reprioritizes it over refactoring.
-- Current next priority is `TD-001`, then the low-priority Phase 2 theming backlog (`2.5b`, `2.5c`, `2.6a-c`, `2.7`) plus `TD-016`.
+- **`TD-001` Stage 1 is complete**: QML structural flatten, constructor-surface hardening, offscreen smoke coverage, and warn-only `qmllint` CI are all in place.
+- Current next structural priority is **`TD-031`**: the deeper QML rebuild (`systemcontrol` promotion, feature extraction, `CommonStyle` relocation, optional root-file rename, and page-registry cleanup). Treat it as a new high-complexity stage, not a continuation of Stage 1.
+- Explicitly defer **Stage 2 deep QML rebuild** until Stage 1 is green: `overlays/systemcontrol/` promotion, `features/` extraction for video/lidar, `CommonStyle` singleton relocation, optional `MainWindow` rename, and page-registry refactor.
 - Keep using `setContextProperty()`; do not re-open singleton-registration work with `qmlRegisterSingletonInstance()`.
 - Treat `PLANNING.md` as session scratch only. If it conflicts with `DEVNOTES.md` or `01_MASTER_PLAN.md`, it loses.
 
@@ -58,10 +60,9 @@ If two files disagree, prefer `INDEX.md`'s repo-wide authority hierarchy first. 
 
 ## Active Queue Snapshot
 
-- Just completed: `3.10 Static typing gate expansion`, `2.8 Fix page naming`
-- Just completed: `TD-030 runtime/workflow/service validation hardening`
-- Immediate priority: `TD-001 QML required properties`
-- Non-blocking backlog: `2.5b`, `2.5c`, `2.6a-c`, `2.7`, `TD-016`
+- Just completed: `3.10 Static typing gate expansion`, `2.8 Fix page naming`, `TD-030 runtime/workflow/service validation hardening`, `TD-001 Stage 1 QML structural flatten + hardening + validation gates`
+- Immediate structural follow-up: `TD-031` deep QML structural rebuild (`systemcontrol` promotion, `features/` extraction, singleton/theme/root-file moves, page-registry cleanup)
+- Non-blocking backlog after `TD-031`: `2.5b`, `2.5c`, `2.6a-c`, `2.7`, `TD-016`
 
 ## Branch Exit Bar
 

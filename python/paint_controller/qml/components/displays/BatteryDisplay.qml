@@ -11,13 +11,13 @@ Item {
     width: 100
     height: 40
     
-    // Properties
-    property real batteryPercent: 0
+    required property real batteryPercent
     property real borderWidth: 1
     property real iconWidth: 28
     property real iconHeight: 14
     property color borderColor: CommonStyle.textSecondary
     property color dividerColor: CommonStyle.textDisabled
+    readonly property real clampedBatteryPercent: Math.max(0, Math.min(batteryPercent, 100))
     
     // Functions
     function getBatteryColor(percent) {
@@ -43,9 +43,9 @@ Item {
             
             // Battery fill
             Rectangle {
-                width: parent.width * (batteryDisplay.batteryPercent / 100)
+                width: parent.width * (batteryDisplay.clampedBatteryPercent / 100)
                 height: parent.height - 2
-                color: batteryDisplay.getBatteryColor(batteryDisplay.batteryPercent)
+                color: batteryDisplay.getBatteryColor(batteryDisplay.clampedBatteryPercent)
                 radius: 1
                 anchors.left: parent.left
                 anchors.leftMargin: 1
@@ -55,8 +55,8 @@ Item {
         
         // Battery percentage text
         Text {
-            text: Math.round(batteryDisplay.batteryPercent) + "%"
-            color: batteryDisplay.getBatteryColor(batteryDisplay.batteryPercent)
+            text: Math.round(batteryDisplay.clampedBatteryPercent) + "%"
+            color: batteryDisplay.getBatteryColor(batteryDisplay.clampedBatteryPercent)
             font.pixelSize: CommonStyle.fontLabel
             font.bold: true
             font.family: CommonStyle.fontMono

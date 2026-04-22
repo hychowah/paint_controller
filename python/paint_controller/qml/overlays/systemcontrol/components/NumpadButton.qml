@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Controls
-import "../../core"
+import "../../../core"
 
 Rectangle {
     id: button
@@ -9,7 +9,7 @@ Rectangle {
     border.width: 1
     radius: radiusValue
     
-    property string text: ""
+    required property string text
     property bool isSpecial: false
     property color normalColor: CommonStyle.cardBackground
     property color specialColor: CommonStyle.backgroundL1

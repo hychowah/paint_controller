@@ -3,9 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../../core"
 import "../../../components/buttons"
-import "../../../components/inputs"
 import "../../../components/displays"
-import "../../../components/panels"
 
 Rectangle {
     id: teensyStatusRect

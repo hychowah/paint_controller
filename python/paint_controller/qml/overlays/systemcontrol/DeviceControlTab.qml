@@ -1,8 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "../../components/buttons"
-import "../../components/panels"
+import "./components"
 
 Item {
     id: deviceControlTab
@@ -525,6 +524,7 @@ Item {
                     ControlPanel {
                         Layout.fillWidth: true
                         controlName: "Lidar Power"
+                        controlStatus: enabledState ? "On" : "Off"
                         iconText: "LID"
                         selfContained: true 
                         

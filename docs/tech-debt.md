@@ -8,23 +8,22 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 
 ## Active Debt
 
-### TD-001 — QML `required` properties not enforced
-**Area**: QML UI  
-**Priority**: medium  
-**Effort**: medium (5 sub-tasks across component categories)  
-**Why it matters**: Without `required`, QML silently ignores missing bindings. Components accept `undefined` values with no runtime error, making integration bugs invisible until runtime visual failures occur.  
-**What to do**: Add `required` keyword to all bindable properties across buttons, inputs, displays, panels/popups, and the surviving specialized reusable QML components. This is now the immediate feature-blocking refactor priority.  
-**Related tasks**: `1.11a–e` in `docs/plan/01_MASTER_PLAN.md`  
-**Files**: `python/paint_controller/qml/components/buttons/`, `python/paint_controller/qml/components/inputs/`, `python/paint_controller/qml/components/displays/`, `python/paint_controller/qml/components/panels/`, `python/paint_controller/qml/components/popups/`, `python/paint_controller/qml/components/specialized/`
+### TD-031 — Deep QML structural rebuild still deferred after Stage 1
+**Area**: QML UI
+**Priority**: medium
+**Effort**: high
+**Why it matters**: Even after Stage 1, the tree will still carry deeper conceptual mismatches: `overlays/systemcontrol/` is effectively a page, video/lidar are feature-sized subtrees rather than generic overlays, `CommonStyle.qml` still lives beside `MainWindow.qml`, and `SelectBar` still owns a fragile page-registry switch-case. Those are real architectural cleanups, but they should not be mixed into the safer Stage 1 batch.
+**What to do**: In a follow-up stage, promote `overlays/systemcontrol/` into a page/feature root, extract `overlays/video/` and lidar/pointcloud into explicit feature subtrees, relocate `CommonStyle.qml` in one atomic singleton move, optionally rename the app root file, and replace the cross-file page-id switch-case with an explicit page registry.
+**Files**: `python/paint_controller/qml/core/`, `python/paint_controller/qml/navigation/`, `python/paint_controller/qml/overlays/systemcontrol/`, `python/paint_controller/qml/overlays/video/`, `python/paint_controller/qml/overlays/lidar/`, `python/paint_controller/qml/components/specialized/pointcloud/`, `python/paint_controller/qml/pages/`
 
 ---
 
 ### TD-002 — Design system incomplete (video overlays, settings/status pages)
-**Area**: QML UI  
-**Priority**: low  
-**Effort**: medium  
-**Why it matters**: Hardcoded colours, spacing, and font sizes in un-migrated files will diverge from the rest of the UI and make theme-wide changes expensive later.  
-**What to do**: Resume the remaining `CommonStyle` rollout after `TD-001` unless the user explicitly reprioritizes it. Remaining scope: systemcontrol tabs remainder (`2.5b`), video overlays (`2.5c`), pages batch 1 (`2.6a`), settings pages (`2.6b`), status pages (`2.6c`), and `OverlayLayer` dedup (`2.7`). This backlog is low priority and is not the default feature-blocking path.  
+**Area**: QML UI
+**Priority**: low
+**Effort**: medium
+**Why it matters**: Hardcoded colours, spacing, and font sizes in un-migrated files will diverge from the rest of the UI and make theme-wide changes expensive later.
+**What to do**: Resume the remaining `CommonStyle` rollout after `TD-031` unless the user explicitly reprioritizes it. Remaining scope: systemcontrol tabs remainder (`2.5b`), video overlays (`2.5c`), pages batch 1 (`2.6a`), settings pages (`2.6b`), status pages (`2.6c`), and `OverlayLayer` dedup (`2.7`). This backlog is low priority and is not the default feature-blocking path.
 **Related tasks**: `2.5b`, `2.5c`, `2.6a`, `2.6b`, `2.6c`, `2.7` in `docs/plan/01_MASTER_PLAN.md`  
 **Files**: `python/paint_controller/qml/overlays/systemcontrol/`, `python/paint_controller/qml/overlays/video/`, `python/paint_controller/qml/pages/home/`, `python/paint_controller/qml/pages/spray/`, `python/paint_controller/qml/pages/wheel/`, `python/paint_controller/qml/pages/winch/`, `python/paint_controller/qml/pages/tuning/`, `python/paint_controller/qml/pages/misc/`, `python/paint_controller/qml/pages/settings/`, `python/paint_controller/qml/pages/status/`, `python/paint_controller/qml/overlays/OverlayLayer.qml`
 
@@ -44,6 +43,7 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 
 | ID | Title | Resolved | Notes |
 |---|---|---|---|
+| TD-001 | QML structural flatten + `required` properties not enforced | 2026-04-22 | Stage 1 complete: verified-dead QML deleted, false shared folders flattened, constructor-driven surfaces hardened with `required` / `readonly`, `tests/test_startup_smoke.py` now covers the `MultiScreenListUI` path, and warn-only `qmllint` CI was added. Remaining no-`required` files were classified as global-context, imperative, style-singleton, or otherwise non-constructor-driven surfaces rather than unfinished Stage 1 work |
 | — | `qmlRegisterSingletonInstance` crashes | 2026-04-17 | Replaced with `setContextProperty` — see KNOWLEDGE.md |
 | — | `findChild()` Python-side QML lookup | 2026-04-20 | Replaced with injected `close_popup_fn` callable |
 | — | 4 winch move-command guards disabled | 2026-04-20 | Re-enabled with `get_logger().warning()` + early return |

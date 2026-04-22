@@ -2,15 +2,14 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "../../core"
+import "../core"
 
 Rectangle {
     id: connectionStatusPanel
     width: parent.width
     color: CommonStyle.sidebarBackground
     
-    // Properties
-    property bool expanded: true
+    required property bool expanded
     property bool showDeviceStatus: true
     property int titleFontSize: CommonStyle.shellStatusTitleFont
     property int metaFontSize: CommonStyle.shellStatusMetaFont

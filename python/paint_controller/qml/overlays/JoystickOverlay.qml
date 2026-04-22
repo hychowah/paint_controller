@@ -11,11 +11,11 @@ Item {
     }
     
     // Properties to be bound from parent
-    property bool showOverlay: false
-    property int leftSelectedIndex: 0
-    property int rightSelectedIndex: 0
-    property string activeMenu: ""
-    property var controlOptions: []
+    required property bool showOverlay
+    required property int leftSelectedIndex
+    required property int rightSelectedIndex
+    required property string activeMenu
+    required property var controlOptions
     property bool showLeftMenu: showOverlay && activeMenu === "left"
     property bool showRightMenu: showOverlay && activeMenu === "right"
 

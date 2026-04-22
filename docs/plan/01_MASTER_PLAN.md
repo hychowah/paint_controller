@@ -30,7 +30,7 @@
 ## Branch Gate
 
 **Feature-blocking refactor work**
-- `TD-001` QML `required` properties
+- `TD-031` — Deep QML structural rebuild (`systemcontrol` promotion, feature extraction, singleton/theme relocation, page-registry cleanup)
 
 **Branch exit criteria**
 - No open medium/high-priority debt remains in `docs/tech-debt.md`
@@ -41,8 +41,8 @@
 - No known unresolved shutdown, thread-affinity, or safety-path defect remains active
 
 **Active next stage**
-1. `TD-001` QML `required` properties
-2. Non-blocking backlog: `2.5b`, `2.5c`, `2.6a-c`, `2.7`, `TD-016`
+1. `TD-031` — deep QML rebuild (`systemcontrol` promotion, `features/` extraction, `CommonStyle` relocation, optional `MainWindow` rename, page-registry cleanup)
+2. Non-blocking backlog after `TD-031`: `2.5b`, `2.5c`, `2.6a-c`, `2.7`, `TD-016`
 
 ---
 
@@ -112,6 +112,7 @@ Status legend: `[x]` completed | `[c]` cancelled or superseded | `[~]` partial o
 | 3.10 Static typing gate | [x] | `pyrightconfig.json` now covers `handlers/` + `controllers/` in basic mode; strict now holds for `core/config.py`, `core/controller_factory.py`, `handlers/safety_coordinator.py`, and `utils/steam_deck_hid.py`. `EmergencyButtonHandler` intentionally remains in basic mode because strict surfaced PySide stub noise rather than actionable defects. Final gate is green at `0 errors` |
 | TD-030 Runtime/workflow/service validation hardening | [x] | Direct tests now cover ActionScheduler, ActionRegistry/workflow handlers, HardwareControllers adapters, WorkFlowRunner, WorkFlowExecutor, `create_controllers()`, bounded `AppRuntime` seams, `ScreenManager`, and `BaseTopViewTransformer`; focused TD-030 batch is green at `22 passed` |
 | TD-014 main() decomposition | [x] | Bootstrap moved into `core/app_runtime.py`; `core/application.py` is now a thin entry-point wrapper, `RosThread` moved to `core/ros_node.py`, the dead `robot_config.yaml` loader path was deleted in favor of `RuntimeDefaults`, and one registration table now drives both QML context-property registration and validation |
+| TD-001 Stage 1 QML structural flatten + hardening + validation gates | [x] | Verified-dead QML deleted; false shared-component folders flattened; surviving constructor-driven surfaces hardened with `required` / `readonly`; `tests/test_startup_smoke.py` covers both main shell and `MultiScreenListUI`; warn-only `qmllint` CI job added; remaining no-`required` files were classified as global-context, imperative, style-singleton, or otherwise non-constructor-driven surfaces |
 | 4.0 Startup/emergency integration smoke test | [x] | `tests/test_startup_smoke.py` now covers both offscreen startup wiring and shutdown teardown, asserting that `MainWindow.qml` loads cleanly and that teardown introduces no new null-binding warnings |
 
 ## Current Checkpoint
@@ -138,11 +139,11 @@ Status legend: `[x]` completed | `[c]` cancelled or superseded | `[~]` partial o
 - Recent targeted validation for the controller hardening batches is green; revalidate any full-suite claim with a fresh local pytest run instead of relying on older fixed test-count snapshots
 - Task 1.1 (SettingsManager QML registration): verified done — still registered during runtime bootstrap and validated in POST-1 loop after the `AppRuntime` extraction
 - **TD-030 is complete**: direct tests now cover ActionScheduler, ActionRegistry/workflow handlers, HardwareControllers adapters, WorkFlowRunner, WorkFlowExecutor, `create_controllers()`, bounded `AppRuntime` seams, `ScreenManager`, and `BaseTopViewTransformer`, with the focused runtime/workflow/service batch green at `22 passed`.
-- **Primary branch gate has shifted**: `TD-001` QML `required` properties is now the immediate feature-blocking refactor task.
-- **Feature-blocking backlog**: `TD-001`.
-- **Non-blocking backlog**: `2.5b`, `2.5c`, `2.6a-c`, `2.7`, and `TD-016` remain backlog but do not block feature work by default once the branch gate is green.
+- **TD-001 Stage 1 is complete**: dead-QML verification/deletion, false shared-folder flattening, constructor-surface `required` / `readonly` hardening, direct offscreen smoke coverage, and warn-only `qmllint` CI are all in place.
+- **Next structural stage**: `TD-031` now owns the deeper QML rebuild (`systemcontrol` promotion, `features/` extraction, `CommonStyle` move, optional root-file rename, page-registry cleanup). Treat it as a separate high-complexity stage.
+- **Non-blocking backlog**: `2.5b`, `2.5c`, `2.6a-c`, `2.7`, and `TD-016` remain backlog after `TD-031`.
 - **Next tasks** (priority order):
-  1. `TD-001 QML required properties`
+  1. `TD-031` deep QML rebuild
   2. Low-priority backlog: `2.5b`, `2.5c`, `2.6a-c`, `2.7`, `TD-016`
 
 ---
@@ -150,13 +151,13 @@ Status legend: `[x]` completed | `[c]` cancelled or superseded | `[~]` partial o
 ## Dependency Graph
 
 ```
-Completed this batch: BF-1..BF-9, 3.0, 3.5, 3.6, 3.7, 4.0, TD-014, full `3.10`, `2.8`, the `RosStatusController` extraction, the SSH teardown race hardening, and TD-030 runtime/workflow/service validation hardening
+Completed this batch: BF-1..BF-9, 3.0, 3.5, 3.6, 3.7, 4.0, TD-014, full `3.10`, `2.8`, the `RosStatusController` extraction, the SSH teardown race hardening, TD-030 runtime/workflow/service validation hardening, and TD-001 Stage 1
          ↓
-Defensive QML debt: TD-001 (`required` properties)
+Feature-blocking deep QML rebuild: TD-031 (`systemcontrol` promotion, `features/` extraction, singleton/root-file moves, page-registry cleanup)
          ↓
 Non-blocking UI consistency backlog: 2.5b, 2.5c, 2.6a-c, 2.7, then TD-016
 
-`1.11a-e` now flows through `TD-001` rather than the old Phase 1 task IDs
+`1.11a-e` were closed through `TD-001` Stage 1 after the structural flatten trimmed dead/page-scoped files out of the target set
 ```
 
 ---
@@ -178,7 +179,7 @@ Non-blocking UI consistency backlog: 2.5b, 2.5c, 2.6a-c, 2.7, then TD-016
 | 1.10 Versionless imports | LOW | Mechanical sed replace |
 | 1.9 qmldir manifests | **HIGH** | ~20 new files, module naming critical |
 | TD-030 Runtime/workflow/service validation hardening | ~~HIGH~~ | ✅ DONE — direct tests now cover the workflow stack, runtime composition root seams, and selected service lifecycles; focused validation is green at `22 passed` |
-| 1.11a-e Required props | MEDIUM | Silent missing QML bindings are still worth fixing, and they are now the immediate feature-blocking refactor task |
+| 1.11a-e Required props | MEDIUM | Silent missing QML bindings are still worth fixing, but the task now includes a safe structural flatten first so `required` work lands on the surviving reusable surfaces rather than dead or page-scoped files |
 | BF-6 Heartbeat state machine | ~~HIGH~~ | ✅ DONE — controller heartbeat now publishes live runtime state from `StateStore` |
 | BF-7 Safe-state shutdown ordering | ~~HIGH~~ | ✅ DONE — QML teardown, controller/service cleanup, and late thread-owner cleanup now all complete before final ROS node destruction |
 | BF-8 Emergency hold duration from settings | ~~HIGH~~ | ✅ DONE — emergency hold duration is now an explicit clamped setting with a 1.0s default |

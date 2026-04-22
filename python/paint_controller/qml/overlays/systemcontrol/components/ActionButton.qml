@@ -1,12 +1,12 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "../../core"
+import "../../../core"
 
 Rectangle {
     id: actionButton
-    property string buttonText: "Action"
-    property string buttonDescription: "Perform action"
+    required property string buttonText
+    required property string buttonDescription
     property string iconColor: CommonStyle.statusSuccess
     property string iconType: "reset" // "reset", "warning", "info", etc.
     

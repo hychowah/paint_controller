@@ -89,7 +89,7 @@ The current branch is **refactor-first**: architecture cleanup, safety correctne
 **Runtime registration state**
 - All 22 live runtime objects are exposed via `setContextProperty()`
 - The singleton-registration track was cancelled because `qmlRegisterSingletonInstance()` is broken in this PySide6 setup
-- Remaining Phase 1 cleanup is mostly deferred or debt-tracked: import/qmldir cleanup is complete, `TD-030` runtime/workflow/service validation is complete, and `required property` work in `TD-001` is now the immediate queue ahead of the remaining low-priority Phase 2 theming backlog
+- Remaining Phase 1 cleanup is mostly deferred or debt-tracked: import/qmldir cleanup is complete, `TD-030` runtime/workflow/service validation is complete, and `TD-001` Stage 1 QML hardening is complete; the next structural refactor stage is `TD-031`, with the remaining theming backlog still low priority
 - The C++ source files (`src/*.cpp`, `include/paint_controller/*.hpp`) were deleted in Phase 1A
 
 ---

@@ -1,13 +1,12 @@
 // Industrial-styled card component with dark theme
 import QtQuick
 import QtQuick.Controls
-import "../../core"
+import "../../../core"
 
 Rectangle {
     id: root
     
-    // Properties
-    property string title: ""
+    required property string title
     property bool showTitle: title !== ""
     
     // Industrial dark theme colors

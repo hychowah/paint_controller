@@ -3,16 +3,16 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "."
-import "../../core"
+import "../../../core"
 
 IndustrialCard {
     id: valvesCard
     title: "Valves"
     
     // Consistent sizing for all metrics
-    property int metricValueSize: CommonStyle.fontDisplay + CommonStyle.spacingXs
-    property int metricLabelSize: CommonStyle.fontCaption
-    property int metricUnitSize: CommonStyle.fontLabel
+    readonly property int metricValueSize: CommonStyle.fontDisplay + CommonStyle.spacingXs
+    readonly property int metricLabelSize: CommonStyle.fontCaption
+    readonly property int metricUnitSize: CommonStyle.fontLabel
     
     ColumnLayout {
         anchors.fill: parent

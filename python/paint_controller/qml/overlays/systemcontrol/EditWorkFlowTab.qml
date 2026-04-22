@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "../../components/inputs"
+import "./components"
 
 Item {
     id: editWorkFlowTab
@@ -13,7 +13,7 @@ Item {
     property var actions: []
     property int selectedActionIndex: -1
     property var actionIdList: []
-    property int paramFieldHeight: 55
+    readonly property int paramFieldHeight: 55
 
     ColumnLayout {
         anchors.fill: parent
@@ -90,14 +90,14 @@ Item {
                     }
                 }
 
-                CustomButton {
+                WorkflowCustomButton {
                     text: "Load"
                     buttonWidth: 100
                     buttonHeight: 50
                     onClicked: workflowSelector.open()
                 }
 
-                CustomButton {
+                WorkflowCustomButton {
                     text: "Save"
                     buttonWidth: 100
                     buttonHeight: 50
@@ -441,7 +441,7 @@ Item {
     }
 
     // Custom Button Component
-    component CustomButton: Rectangle {
+    component WorkflowCustomButton: Rectangle {
         property string text: ""
         property bool enabled: true
         property int buttonWidth: text.length > 3 ? 80 : 40
@@ -535,7 +535,7 @@ Item {
                 }
             }
 
-            CustomButton {
+            WorkflowCustomButton {
                 text: "Cancel"
                 Layout.alignment: Qt.AlignRight
                 onClicked: workflowSelector.close()
@@ -583,12 +583,12 @@ Item {
                 Layout.alignment: Qt.AlignRight
                 spacing: 10
 
-                CustomButton {
+                WorkflowCustomButton {
                     text: "Cancel"
                     onClicked: saveAsDialog.close()
                 }
 
-                CustomButton {
+                WorkflowCustomButton {
                     text: "Save"
                     onClicked: {
                         if (saveAsNameField.text.trim() !== "") {

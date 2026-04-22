@@ -11,9 +11,8 @@ Rectangle {
     border.color: CommonStyle.cardBorder
     border.width: CommonStyle.borderWidthThin
 
-    // Properties that can be set from outside
-    property real windSpeed: 0
-    property real windDirection: 0
+    required property real windSpeed
+    required property real windDirection
     
     // Responsive properties based on available space
     property bool isCompact: height < 300

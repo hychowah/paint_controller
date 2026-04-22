@@ -1,14 +1,14 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "../../core"
+import "../../../core"
 
 Rectangle {
     id: controlPanel
-    property string controlName: "Control"
-    property string controlStatus: "Unknown"
+    required property string controlName
+    required property string controlStatus
     property bool enabledState: false
-    property string iconText: "X"
+    required property string iconText
     property bool selfContained: false
     
     signal clicked()

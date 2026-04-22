@@ -3,10 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtCharts
 import "../../core"
-import "../../components/buttons"
-import "../../components/inputs"
 import "../../components/displays"
-import "../../components/panels"
 
 Item {
     id: pidTuningPage

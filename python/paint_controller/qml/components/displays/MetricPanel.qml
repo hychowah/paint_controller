@@ -13,13 +13,13 @@ Rectangle {
     border.color: CommonStyle.cardBorder
     border.width: CommonStyle.borderWidthThin
     
-    // Properties that can be set from outside
-    property string title: "METRIC"
-    property double value: 0
+    required property string title
+    required property real value
     property string unit: ""
-    property double maxValue: 1
+    required property real maxValue
     property color barColor: CommonStyle.accentPrimary
-    property int decimalPlaces: 3  // New property for decimal places
+    property int decimalPlaces: 3
+    readonly property real normalizedValue: maxValue > 0 ? Math.min(Math.abs(Number(value)) / maxValue, 1) : 0
     
     ColumnLayout {
         anchors.fill: parent
@@ -65,7 +65,7 @@ Rectangle {
                 color: CommonStyle.inputBackground
                 
                 Rectangle {
-                    width: parent.width * Math.min(Math.abs(Number(value)) / maxValue, 1)
+                    width: parent.width * metricPanel.normalizedValue
                     height: parent.height
                     color: barColor
                     radius: 3

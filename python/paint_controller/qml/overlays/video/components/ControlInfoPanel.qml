@@ -11,10 +11,10 @@ Rectangle {
     id: panel
 
     // Public properties
-    property string controlMode: "None"
-    property string controlValue: "12.7 km/h" // Example value to match image style
-    property string title: "H.S" // Example title to match image style
-    property string position: "left"
+    required property string controlMode
+    required property string controlValue
+    required property string title
+    required property string position
     property int leftMargin: 20
     property int rightMargin: 20
     property int bottomMargin: 20
@@ -29,9 +29,9 @@ Rectangle {
     property int cornerRadius: 6
 
     // Dynamic font sizes based on panel height - adjusted for new emphasis
-    property real titleFontSize: Math.max(8, panel.height * 0.12) // Slightly smaller
-    property real modeFontSize: Math.max(12, panel.height * 0.16) // Slightly smaller
-    property real valueFontSize: Math.max(10, panel.height * 0.25) // <--- Larger for emphasis
+    readonly property real titleFontSize: Math.max(8, panel.height * 0.12) // Slightly smaller
+    readonly property real modeFontSize: Math.max(12, panel.height * 0.16) // Slightly smaller
+    readonly property real valueFontSize: Math.max(10, panel.height * 0.25) // <--- Larger for emphasis
 
     radius: cornerRadius
     color: backgroundColor

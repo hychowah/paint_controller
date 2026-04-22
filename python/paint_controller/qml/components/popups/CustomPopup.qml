@@ -19,7 +19,7 @@ Popup {
     property string messageType: "info"  // Can be "info", "warning", "error"
     
     // Apply different styles based on popup type
-    property color headerColor: {
+    readonly property color headerColor: {
         switch(messageType) {
             case "warning": return CommonStyle.statusWarning;
             case "error": return CommonStyle.statusError;

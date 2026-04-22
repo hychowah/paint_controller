@@ -3,13 +3,13 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "."
-import "../../core"
+import "../../../core"
 
 IndustrialCard {
     title: "Teensy Arm"
-    
-    property real maxArmCurrent: 200
-    property real maxArmExtension: 1500
+
+    required property real maxArmCurrent
+    required property real maxArmExtension
     
     ColumnLayout {
         anchors.fill: parent

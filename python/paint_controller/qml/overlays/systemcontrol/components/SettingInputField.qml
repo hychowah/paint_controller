@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "../../core"
+import "../../../core"
 
 ColumnLayout {
     id: root
@@ -9,12 +9,12 @@ ColumnLayout {
     spacing: CommonStyle.spacingSm
     
     // Component properties
-    property string label: ""
-    property string settingKey: ""
+    required property string label
+    required property string settingKey
     property int decimalPlaces: 1
     property string unitSuffix: ""
     property string defaultValue: "0"
-    property var numberPadTarget: null
+    required property var numberPadTarget
     property var confirmationPopup: null
     property int fieldHeight: CommonStyle.itemHeight
     property int buttonWidth: Math.round(220 * CommonStyle.scaleFactor)

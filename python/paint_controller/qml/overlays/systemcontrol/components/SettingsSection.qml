@@ -2,13 +2,13 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "../../core"
+import "../../../core"
 
 Rectangle {
     id: settingsSection
     
     // Properties
-    property string title: "Section Title"
+    required property string title
     property string description: ""
     property string sectionId: ""  // Unique ID for state persistence
     property bool expanded: true

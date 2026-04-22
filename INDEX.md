@@ -4,7 +4,9 @@ ROS2 node with PySide6/QML UI for robotic paint control on a Steam Deck. The liv
 
 ## Current Strategy
 
-- This branch is **refactor-first**. Runtime/workflow/service validation hardening is complete, and the current priority is defensive QML API hardening (`TD-001`).
+- This branch is **refactor-first**. Runtime/workflow/service validation hardening is complete, and **`TD-001` Stage 1 is complete**: verified-dead QML was removed, false shared-component folders were flattened, constructor-driven QML surfaces were hardened with `required` / `readonly`, startup/import smoke coverage was expanded, and warn-only `qmllint` CI is now in place.
+- The next structural refactor stage is **`TD-031`**: the deeper QML rebuild (`systemcontrol` promotion, feature-subtree extraction, singleton/theme relocation, and page-registry cleanup). Treat it as a separate high-complexity stage rather than a continuation of Stage 1 cleanup.
+- The QML cleanup is intentionally split into **two stages**. Stage 1 is the safe flatten + hardening batch; Stage 2 is the deeper rebuild (`TD-031`) for `systemcontrol` promotion, `features/` extraction, singleton/theme relocation, and page-registry cleanup.
 - **Net-new feature work is intentionally deferred** until medium/high-priority debt is closed and the validation gates stay green (pytest, pyright for covered scope, ROS build, and offscreen startup/shutdown smoke).
 - Low-priority design-system backlog may remain backlog. By default it is **not** the feature-blocking path unless the user explicitly reprioritizes.
 

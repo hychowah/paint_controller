@@ -3,12 +3,12 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "."
-import "../../core"
+import "../../../core"
 
 IndustrialCard {
     title: "Wheels"
-    
-    property real maxWheelCurrent: 10.0
+
+    required property real maxWheelCurrent
     
     RowLayout {
         anchors.fill: parent

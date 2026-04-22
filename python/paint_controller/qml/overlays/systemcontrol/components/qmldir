@@ -1,0 +1,6 @@
+ActionButton 1.0 ActionButton.qml
+ControlPanel 1.0 ControlPanel.qml
+NumpadButton 1.0 NumpadButton.qml
+NumpadNew 1.0 NumpadNew.qml
+SettingInputField 1.0 SettingInputField.qml
+SettingsSection 1.0 SettingsSection.qml

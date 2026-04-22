@@ -1,4 +1,11 @@
-ExecutorPageStatus 1.0 ExecutorPageStatus.qml
-PlannerPageStatus 1.0 PlannerPageStatus.qml
+IMUCard 1.0 IMUCard.qml
+IndustrialCard 1.0 IndustrialCard.qml
+MetricValue 1.0 MetricValue.qml
+MonitorHeader 1.0 MonitorHeader.qml
+ProgressBarIndicator 1.0 ProgressBarIndicator.qml
+TeensyArmCard 1.0 TeensyArmCard.qml
 TeensyStatus 1.0 TeensyStatus.qml
+ValvesCard 1.0 ValvesCard.qml
+WheelsCard 1.0 WheelsCard.qml
 WheelStatus 1.0 WheelStatus.qml
+WinchCard 1.0 WinchCard.qml

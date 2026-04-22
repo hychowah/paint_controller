@@ -1,14 +1,13 @@
 // MetricValue - Reusable centered label/value/unit display
 import QtQuick
 import QtQuick.Layouts
-import "../../core"
+import "../../../core"
 
 ColumnLayout {
     id: root
     
-    // Required properties
-    property string label: "Label"
-    property string value: "0.0"
+    required property string label
+    required property string value
     property string unit: ""
     
     // Optional styling

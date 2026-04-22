@@ -1,15 +1,13 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "../../components/buttons"
-import "../../components/panels"
-import "../../components/inputs"
+import "./components"
 
 Item {
     id: commandTab
 
     // Command definitions with their parameters
-    property var commandDefinitions: {
+    readonly property var commandDefinitions: {
         "Move to Position": {
             description: "Move robot to specific coordinates",
             parameters: [

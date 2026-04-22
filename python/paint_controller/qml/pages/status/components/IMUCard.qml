@@ -3,18 +3,18 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "."
-import "../../core"
+import "../../../core"
 
 IndustrialCard {
     id: imuCard
     title: "IMU"
     
     // === CONFIGURABLE SIZES (adjust these for different displays) ===
-    property int labelFontSize: CommonStyle.fontBody      // Header and row labels
-    property int valueFontSize: CommonStyle.fontHeading   // Data values
-    property int labelWidth: 100                          // "Data Type" column width
-    property int valueWidth: 60                           // X, Y, Z column widths
-    property int rowSpacing: CommonStyle.spacingSm        // Spacing between elements
+    readonly property int labelFontSize: CommonStyle.fontBody      // Header and row labels
+    readonly property int valueFontSize: CommonStyle.fontHeading   // Data values
+    readonly property int labelWidth: 100                          // "Data Type" column width
+    readonly property int valueWidth: 60                           // X, Y, Z column widths
+    readonly property int rowSpacing: CommonStyle.spacingSm        // Spacing between elements
     
     ColumnLayout {
         anchors.fill: parent

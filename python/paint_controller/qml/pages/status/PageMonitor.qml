@@ -4,8 +4,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtCharts
 import "../../core"
-import "../../components/buttons"
-import "../../components/displays"
+import "./components"
 
 Rectangle {
     id: monitorPage

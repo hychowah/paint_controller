@@ -3,11 +3,10 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../core"
-import "../components/panels"
 
 Rectangle {
     id: selectBar
-    property var stackView
+    required property var stackView
     property string selectedButton: "buttonHome"
     property int expandedWidth: CommonStyle.shellSidebarExpandedWidth
     property int collapsedWidth: CommonStyle.shellSidebarCollapsedWidth

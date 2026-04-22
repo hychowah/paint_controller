@@ -369,7 +369,7 @@ Source files (`src/*.cpp`, `include/paint_controller/*.hpp`) were deleted in Pha
 
 ### What's Being Migrated To Or Tracked As Follow-Up
 - ✅ `qmldir` manifests for module organization
-- ◻ `required property` for explicit dependencies — now tracked as `TD-001`, not part of the active queue
+- ✅ `required property` / `readonly` hardening for constructor-driven surfaces completed in `TD-001` Stage 1; global-context and imperatively configured surfaces were intentionally left without `required`
 - ✅ Versionless Qt6 imports (`import QtQuick` not `import QtQuick 2.15`)
 - ❌ NOT using `qmlRegisterSingletonInstance()` (broken in PySide6 — see KNOWLEDGE.md)
 - ❌ NOT using `@QmlElement` or `@QmlSingleton` (Audit R1 — incompatible with factory pattern)

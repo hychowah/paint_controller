@@ -6,8 +6,7 @@ import "../../core"
 Rectangle {
     id: touchSwitchContainer
     
-    // Exposed properties
-    property bool checked: false
+    required property bool checked
     property color activeColor: CommonStyle.statusSuccess
     property color inactiveColor: CommonStyle.textDisabled
     property color activeBorderColor: CommonStyle.statusSuccess
