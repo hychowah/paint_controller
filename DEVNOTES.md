@@ -2,6 +2,14 @@
 
 ---
 
+### 2026-04-21 14:15 - First-Touch UI Freeze + Main-Thread Reconnect Jank
+
+**Goal**: Eliminate the 5–20s whole-UI freeze on the first page switch after startup and remove the recurring ESP32 reconnect hitch that could still jank the UI while hardware was disconnected
+**Issues**: Non-Home pages lazily instantiated on first navigation and some of them imported heavyweight QML modules (`QtMultimedia`, `QtCharts`, `Qt5Compat.GraphicalEffects`) even when the page did not use those types. That meant the first user touch paid plugin-init cost on the GUI thread. Separately, `ESP32ValveController` ran `arp -a` discovery and a UDP thread wait from the main thread during reconnect attempts, and `/controller/heartbeat` publishing still depended on a Qt timer so a GUI stall self-reported as heartbeat loss
+**Tried**: Removed dead heavyweight imports from `PageWheel.qml` and `PageSpray.qml`, pre-warmed the still-needed `QtCharts` and `Qt5Compat.GraphicalEffects` modules inside `MainWindow.qml`, moved controller heartbeat publishing onto a ROS-side timer in `PaintRosNode`, dropped the dead `signal_timer`, moved ESP32 ARP discovery onto a background thread, and made normal reconnect stop/close the old UDP socket without waiting on the Qt thread. Added `tests/test_qml_imports.py` plus focused ROS/ESP32 regressions and revalidated startup smoke
+**Result**: ✅ The targeted regression set passed at `13 passed`, the full suite revalidated at `148 passed`, and an offscreen runtime launch still reached `MainWindow QML loaded`, entered the event loop, and completed deferred video startup. The first-navigation stall should now be paid at startup only for the genuinely-used chart/effect modules, while the unused `QtMultimedia` import path is gone entirely. The known non-blocking Qt Quick 3D/RHI warning remains in offscreen mode
+**Files**: `PLANNING.md`, `python/paint_controller/qml/core/MainWindow.qml`, `python/paint_controller/qml/pages/wheel/PageWheel.qml`, `python/paint_controller/qml/pages/spray/PageSpray.qml`, `python/paint_controller/core/app_runtime.py`, `python/paint_controller/core/ros_node.py`, `python/paint_controller/controllers/esp32_valve.py`, `tests/test_qml_imports.py`, `tests/test_ros_node.py`, `tests/test_esp32_valve.py`, `DEVNOTES.md`, `docs/plan/02_ARCHITECTURE.md`, `docs/tech-debt.md`
+
 ### 2026-04-21 13:27 - TD-014 AppRuntime Extraction
 
 **Goal**: Decompose the bootstrap path so startup and shutdown stop living inside one large `main()` function

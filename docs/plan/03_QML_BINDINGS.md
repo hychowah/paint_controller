@@ -51,6 +51,7 @@ As of 2026-04-21, all 22 runtime objects are exposed via `setContextProperty()`.
 ### Core Objects
 | Property Name | Source | Type | Migration Task |
 |---|---|---|---|
+| `stateStore` | `state_store` | `StateStore` | Context property retained; authoritative shared UI/runtime state |
 | `backend` | `qt_bridge` | `QtBridge` | Task 1.2 ✅ (signals implemented, findChild eliminated) |
 | `overlayController` | `bundle.overlay_controller` | `OverlayController` | Context property retained; no singleton migration planned |
 | `controlProcessor` | `bundle.control_processor` | `ControlProcessor` | Context property retained; no singleton migration planned |
@@ -75,6 +76,7 @@ As of 2026-04-21, all 22 runtime objects are exposed via `setContextProperty()`.
 ### System & UI
 | Property Name | Source | Type | Migration Task |
 |---|---|---|---|
+| `steamDeckHandler` | `steam_deck_handler` | `SteamDeckHandler` | Context property retained; Python-first input runtime stays exposed for consistency |
 | `warningHandler` | `bundle.warning_handler` | `WarningHandler` | Context property retained; no singleton migration planned |
 | `heartbeatHandler` | `bundle.heartbeat_handler` | `UIHeartbeatHandler` | Context property retained; no singleton migration planned |
 | `sshHandler` | `bundle.ssh_controller` | `UISSHController` | Context property retained; no singleton migration planned |

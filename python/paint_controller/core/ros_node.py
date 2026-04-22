@@ -21,6 +21,7 @@ class PaintRosNode(Node):
         super().__init__(node_name)
         self._state_store = state_store
         self.heartbeat_pub = self.create_publisher(UInt8, '/controller/heartbeat', 10)
+        self._heartbeat_timer = self.create_timer(0.5, self.publish_heartbeat)
         self._cleanup_done = False
 
     def publish_heartbeat(self):
@@ -39,6 +40,7 @@ class PaintRosNode(Node):
             return
         self._cleanup_done = True
         try:
+            self.destroy_timer(self._heartbeat_timer)
             self.destroy_publisher(self.heartbeat_pub)
             self.get_logger().info('PaintRosNode cleanup complete')
         except Exception as e:

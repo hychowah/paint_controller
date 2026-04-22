@@ -9,7 +9,7 @@
 
 ## ⚠️ INSTRUCTIONS FOR FUTURE LLM SESSIONS
 
-1. **Read `00_README.md`** for file reading order
+1. **Read `INDEX.md` first**, then `00_README.md` for the plan-doc read order
 2. **Read this file** for the task list and progress tracker
 3. **Read `KNOWLEDGE.md`** in repo root for Qt/Python gotchas
 4. **Use the Current Checkpoint + Dependency Graph**, not row order alone, to choose the next task
@@ -105,12 +105,13 @@ Last Modified: 2026-04-21
 - **Safety integration coverage added**: `tests/test_safety_integration.py` now exercises the real `UIHeartbeatHandler` → `SafetyCoordinator` halt-all path with fake effectors, covering the convergence route that previously existed only across isolated unit tests
 - **Typing gate v1 is live**: `pyrightconfig.json` and CI now enforce an initial pyright pass; strict mode currently holds for `core/controller_factory.py` while PySide descriptor-heavy core modules stay in basic mode until the typed wrapper/stub story improves
 - **Safety hardening batch complete**: BF-6..BF-9 are implemented and covered by targeted regression tests; shutdown teardown ordering is now hardened across the QML shell, Steam Deck reader thread, and ESP32 UDP thread owner
+- **First-touch freeze hotfix complete**: unused heavy QML imports were removed from lazy-loaded pages, `MainWindow.qml` now pre-warms the remaining chart/effects modules at startup, `PaintRosNode` owns the 500ms heartbeat timer on the ROS side, `ESP32ValveController` ARP discovery now runs off-thread, and `tests/test_qml_imports.py` blocks unused heavy page imports from reappearing
 - **TD-014 is complete**: startup/shutdown orchestration now lives in `core/app_runtime.py`, `core/application.py` is a thin compatibility wrapper, `RosThread` now lives beside `PaintRosNode`, and the stale missing-`robot_config.yaml` warning is gone because that dead loader path was removed
-- **Validation update**: full-suite revalidation is green at `145 passed`; pyright is green (`0 errors`), and a serial offscreen launch still reaches `MainWindow QML loaded` before the expected timeout-kill. The known non-blocking Qt Quick 3D/RHI warning in offscreen mode remains.
+- **Validation update**: full-suite revalidation is green at `148 passed`; pyright is green (`0 errors`), and a serial offscreen launch still reaches `MainWindow QML loaded` before the expected timeout-kill. The known non-blocking Qt Quick 3D/RHI warning in offscreen mode remains.
 - Recent targeted validation for the controller hardening batches is green; revalidate any full-suite claim with a fresh local pytest run instead of relying on older fixed test-count snapshots
 - Task 1.1 (SettingsManager QML registration): verified done — still registered during runtime bootstrap and validated in POST-1 loop after the `AppRuntime` extraction
 - **Approved queue change executed**: `TD-014` is complete, `3.10` remains a phased rollout rather than a one-shot repo-wide mandate, and `2.8` remains the next cosmetic cleanup after typing work
-- **Deferred backlog**: `2.5b`, `2.5c`, `2.6a-c`, and `2.7` stay in the plan but are intentionally postponed until the active hardening queue is complete
+- **Deferred backlog**: `2.5b`, `2.5c`, `2.6a-c`, and `2.7` stay in the plan but are intentionally postponed behind the current `3.10` typing expansion and `2.8` naming cleanup
 - **Next tasks** (priority order):
   1. `3.10 Static typing gate expansion`
   2. `2.8 Fix page naming`
@@ -126,7 +127,7 @@ Quality gate expansion: 3.10 (handler/controller boundaries beyond the current f
          ↓
 Cosmetic cleanup: 2.8 (page naming)
 
-Deferred backlog: 2.5b, 2.5c, 2.6a-c, and 2.7 remain tracked but are intentionally postponed until the active hardening queue is complete; `1.11a-e` is now tracked as `TD-001` rather than an active queue item
+Deferred backlog: 2.5b, 2.5c, 2.6a-c, and 2.7 remain tracked but are intentionally postponed behind the current `3.10` typing expansion and `2.8` naming cleanup; `1.11a-e` is now tracked as `TD-001` rather than an active queue item
 ```
 
 ---
@@ -152,10 +153,10 @@ Deferred backlog: 2.5b, 2.5c, 2.6a-c, and 2.7 remain tracked but are intentional
 | BF-7 Safe-state shutdown ordering | ~~HIGH~~ | ✅ DONE — QML teardown, controller/service cleanup, and late thread-owner cleanup now all complete before final ROS node destruction |
 | BF-8 Emergency hold duration from settings | ~~HIGH~~ | ✅ DONE — emergency hold duration is now an explicit clamped setting with a 1.0s default |
 | BF-9 SafetyCoordinator + comms-loss failsafe | ~~HIGH~~ | ✅ DONE — all halt-all paths now include the ESP32 valve and share one coordinator |
-| BF-1 Winch load-detection guard | HIGH | Safety bug: unavailable winch currently can still publish load-detection commands |
-| BF-2 SystemMonitor thread affinity | MEDIUM | Wrong-thread timer startup can block UI and undermines worker-thread isolation |
-| BF-3 Wheel error queued handling | MEDIUM | Current direct callback path runs UI-side reactions from the ROS thread |
-| BF-4 Winch logger consistency | LOW | Remaining `print()` guards bypass structured ROS logging |
+| BF-1 Winch load-detection guard | ~~HIGH~~ | ✅ DONE — unavailable winch no longer publishes load-detection commands |
+| BF-2 SystemMonitor thread affinity | ~~MEDIUM~~ | ✅ DONE — worker timer ownership/startup now stays off the UI thread |
+| BF-3 Wheel error queued handling | ~~MEDIUM~~ | ✅ DONE — wheel error handling now reaches UI-side reactions through `Qt.QueuedConnection` |
+| BF-4 Winch logger consistency | ~~LOW~~ | ✅ DONE — remaining guards now route through structured ROS logging |
 | BF-5 MainWindow startup import fix | ~~HIGH~~ | ✅ DONE — stale `../pages/workflow` import removed and startup validated headlessly through `MainWindow QML loaded` |
 | 3.6 WheelController tests | ~~HIGH~~ | ✅ DONE — dedicated WheelController coverage now exists in `tests/test_wheel.py` |
 | 3.7 ESP32/Teensy tests | ~~HIGH~~ | ✅ DONE — dedicated ESP32 and Teensy coverage now exists, including ESP32 shutdown cleanup regression coverage |
@@ -384,7 +385,7 @@ grep -n "\.node = " core/application.py
 
 **Goal**: Replace the hardcoded controller heartbeat with a live state machine that downstream systems can trust.
 
-**Problem**: `PaintRosNode.publish_heartbeat()` currently publishes `IDLE` unconditionally, even during emergency or communication loss. That makes `/controller/heartbeat` a timer tick, not a safety signal.
+**Historical problem (fixed 2026-04-21)**: `PaintRosNode.publish_heartbeat()` published `IDLE` unconditionally, even during emergency or communication loss. That made `/controller/heartbeat` a timer tick rather than a safety signal.
 
 **Files to modify**:
 - `core/state_store.py` — add `controller_heartbeat_state` property + changed signal
@@ -426,7 +427,7 @@ grep -n "\.node = " core/application.py
 
 **Goal**: Remove ambiguity from the emergency hold duration by making it an explicit safety setting.
 
-**Problem**: `EmergencyButtonHandler` currently uses `0.2` seconds while the code comment still says "1 second". That is a safety contract mismatch.
+**Historical problem (fixed 2026-04-21)**: `EmergencyButtonHandler` used `0.2` seconds while the code comment still said "1 second". That was a safety contract mismatch.
 
 **Files to modify**:
 - `core/settings.py` — add `emergency_hold_duration_s` with default `1.0` and clamp range `[0.2, 2.0]`
@@ -443,7 +444,7 @@ grep -n "\.node = " core/application.py
 
 **Goal**: Centralize "halt all effectors" behavior so emergency, heartbeat-loss, and wheel-error cannot drift apart.
 
-**Problem**: The current emergency path stops winch, spray, and wheel only; the ESP32 valve is still omitted, and heartbeat-loss only updates status without enforcing a stop.
+**Historical problem (fixed 2026-04-21)**: The emergency path stopped winch, spray, and wheel only; the ESP32 valve was omitted, and heartbeat-loss only updated status without enforcing a stop.
 
 **Files to modify**:
 - `handlers/safety_coordinator.py` — new contained extraction with `halt_all_effectors(reason)`

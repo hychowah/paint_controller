@@ -2,6 +2,8 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
+import QtCharts
+import Qt5Compat.GraphicalEffects
 import "../pages/home"
 import "../pages/spray"
 import "../pages/wheel"
@@ -50,6 +52,52 @@ ApplicationWindow {
     width: screen ? screen.width : 1280
     height: screen ? screen.height : 800
     color: CommonStyle.windowBackground
+
+    // Warm up heavy QML modules during startup so the first page navigation stays responsive.
+    Loader {
+        id: chartModuleWarmup
+        active: true
+        visible: false
+        sourceComponent: Component {
+            Item {
+                width: 1
+                height: 1
+                opacity: 0.0
+
+                ChartView {
+                    anchors.fill: parent
+                    antialiasing: false
+                    legend.visible: false
+                }
+            }
+        }
+    }
+
+    Loader {
+        id: graphicalEffectsWarmup
+        active: true
+        visible: false
+        sourceComponent: Component {
+            Item {
+                width: 1
+                height: 1
+                opacity: 0.0
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: "white"
+                    layer.enabled: true
+                    layer.effect: DropShadow {
+                        horizontalOffset: 0
+                        verticalOffset: 0
+                        radius: 1
+                        samples: 3
+                        color: "#00000000"
+                    }
+                }
+            }
+        }
+    }
 
     // Controller bindings
     property bool showOverlay: overlayController.show_overlay

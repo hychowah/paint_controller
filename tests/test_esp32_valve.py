@@ -45,6 +45,31 @@ class FakeUdpThread:
         self.terminate_calls += 1
 
 
+class FakeSignal:
+    def __init__(self) -> None:
+        self._callbacks = []
+
+    def connect(self, callback) -> None:
+        self._callbacks.append(callback)
+
+    def emit(self) -> None:
+        for callback in list(self._callbacks):
+            callback()
+
+
+class FakeRetiredThread:
+    def __init__(self, *, running: bool) -> None:
+        self._running = running
+        self.finished = FakeSignal()
+        self.delete_later_calls = 0
+
+    def isRunning(self) -> bool:
+        return self._running
+
+    def deleteLater(self) -> None:
+        self.delete_later_calls += 1
+
+
 def _esp32_controller_class():
     return importlib.import_module("paint_controller.controllers.esp32_valve").ESP32ValveController
 
@@ -197,3 +222,36 @@ def test_cleanup_stops_timers_and_udp_thread(monkeypatch, qt_app, fake_node):
     assert fake_socket.closed is True
     assert controller._udp_thread is None
     assert controller._sock is None
+
+
+def test_check_reconnect_does_not_wait_for_udp_thread(monkeypatch, qt_app, fake_node):
+    controller_cls = _esp32_controller_class()
+    monkeypatch.setattr(controller_cls, "_discover_and_connect", lambda self: None)
+    controller = controller_cls(fake_node)
+    udp_thread = FakeUdpThread(wait_result=True)
+    fake_socket = FakeSocket()
+    discover_calls = []
+
+    controller._esp32_connected = False
+    controller._udp_thread = udp_thread
+    controller._sock = fake_socket
+    monkeypatch.setattr(controller, "_discover_and_connect", lambda: discover_calls.append(True))
+
+    controller._check_reconnect()
+
+    assert udp_thread.stop_calls == 1
+    assert udp_thread.wait_calls == []
+    assert fake_socket.closed is True
+    assert discover_calls == [True]
+
+
+def test_track_retired_thread_skips_already_finished_threads(monkeypatch, qt_app, fake_node):
+    controller_cls = _esp32_controller_class()
+    monkeypatch.setattr(controller_cls, "_discover_and_connect", lambda self: None)
+    controller = controller_cls(fake_node)
+    retired_thread = FakeRetiredThread(running=False)
+
+    controller._track_retired_thread(retired_thread)
+
+    assert controller._retired_udp_threads == []
+    assert retired_thread.delete_later_calls == 1

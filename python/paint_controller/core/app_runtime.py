@@ -104,12 +104,10 @@ class AppRuntime:
         self.video_stream_handler: VideoStreamHandler | None = None
         self.base_top_view_service: BaseTopViewService | None = None
         self.ros_thread: RosThread | None = None
-        self.signal_timer: QTimer | None = None
         self.engine: QQmlApplicationEngine | None = None
         self.qt_bridge = None
         self.bundle = None
         self.status_timer: QTimer | None = None
-        self.heartbeat_timer: QTimer | None = None
         self.qml_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'qml')
 
         self._bootstrap()
@@ -140,7 +138,6 @@ class AppRuntime:
         self.ros_thread.start()
         self._log_startup("ROS thread started")
 
-        self._start_signal_timer()
         self._setup_qml_engine()
         self._create_controller_bundle()
         self._wire_steam_deck_callbacks()
@@ -171,12 +168,6 @@ class AppRuntime:
             settings_manager=self.settings_manager,
         )
         self._log_startup("Video and camera services created")
-
-    def _start_signal_timer(self) -> None:
-        self.signal_timer = QTimer()
-        self.signal_timer.start(500)
-        self.signal_timer.timeout.connect(lambda: None)
-        self._log_startup("Qt signal timer started")
 
     def _setup_qml_engine(self) -> None:
         from paint_controller.core.qt_bridge import QtBridge
@@ -356,17 +347,12 @@ class AppRuntime:
 
     def _start_timers(self) -> None:
         assert self.bundle is not None
-        assert self.node is not None
         assert self.qt_bridge is not None
 
         self.status_timer = QTimer()
         self.status_timer.timeout.connect(self.qt_bridge.status_updated.emit)
         self.status_timer.start(int(1000 / self.config.update_rate))
-
-        self.heartbeat_timer = QTimer()
-        self.heartbeat_timer.timeout.connect(self.node.publish_heartbeat)
-        self.heartbeat_timer.start(500)
-        self._log_startup("Status and heartbeat timers started")
+        self._log_startup("Status timer started")
 
         self.bundle.system_monitor.start_monitoring(interval_ms=1000)
         self._log_startup("System monitoring started")
@@ -403,10 +389,6 @@ class AppRuntime:
         try:
             if self.status_timer is not None:
                 self.status_timer.stop()
-            if self.heartbeat_timer is not None:
-                self.heartbeat_timer.stop()
-            if self.signal_timer is not None:
-                self.signal_timer.stop()
             log_shutdown("Qt timers stopped")
         except Exception as error:
             logger.error("Error stopping timers: %s", error)

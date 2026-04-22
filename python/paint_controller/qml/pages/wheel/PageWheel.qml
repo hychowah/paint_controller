@@ -1,8 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtCharts
-import QtMultimedia
 import Qt5Compat.GraphicalEffects
 import "../../core"
 import "../../components/buttons"

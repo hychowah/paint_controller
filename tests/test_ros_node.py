@@ -26,7 +26,9 @@ class FakePublisher:
 class FakeNode:
     def __init__(self, *args, **kwargs) -> None:
         self.publishers = []
+        self.timers = []
         self.destroyed_publishers = []
+        self.destroyed_timers = []
         self.logger = FakeLogger()
 
     def create_publisher(self, msg_type, topic, qos):
@@ -36,6 +38,14 @@ class FakeNode:
 
     def destroy_publisher(self, publisher) -> None:
         self.destroyed_publishers.append(publisher)
+
+    def create_timer(self, interval, callback):
+        timer = {"interval": interval, "callback": callback}
+        self.timers.append(timer)
+        return timer
+
+    def destroy_timer(self, timer) -> None:
+        self.destroyed_timers.append(timer)
 
     def get_logger(self):
         return self.logger
@@ -71,3 +81,4 @@ def test_cleanup_is_idempotent_and_destroys_publisher_once(monkeypatch):
     node.cleanup()
 
     assert len(node.destroyed_publishers) == 1
+    assert len(node.destroyed_timers) == 1

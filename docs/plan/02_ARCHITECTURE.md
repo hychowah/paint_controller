@@ -30,7 +30,8 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Creates the Qt app, ROS node, settings/state objects, Steam Deck handler, video services, QML engine, bridge, and controller bundle
 - Exposes all runtime objects through `setContextProperty()` (NOT `qmlRegisterSingletonInstance` — broken in PySide6, see KNOWLEDGE.md)
 - Uses one context-property registration table plus an explicit expected-name contract check before post-load validation
-- Starts timers, ROS thread, system monitor, and deferred video startup
+- Starts the Qt status timer, ROS thread, system monitor, and deferred video startup
+- Pre-warms the heavy QML modules that are genuinely used on lazily-instantiated pages so the first navigation does not block the UI on plugin initialization
 - Owns shutdown cleanup on the main Qt thread to avoid cross-thread `QTimer` warnings
 - Startup/shutdown remain instrumented with `time.perf_counter()` markers (`[startup +NNN.N ms] stage`, `[shutdown +NNN.N ms] stage`)
 
@@ -40,7 +41,7 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 
 **`PaintRosNode(Node)`**
 - Pure ROS2 node with no Qt inheritance
-- Owns the controller heartbeat publisher and ROS cleanup hook
+- Owns the controller heartbeat publisher, ROS-side heartbeat timer, and ROS cleanup hook
 - Keeps ROS lifecycle separate from QML/UI concerns
 
 **`StateStore(QObject)`**
@@ -130,7 +131,7 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Steam button hold-to-trigger (1.0s default via `emergency_hold_duration_s`, clamped to `[0.2, 2.0]`)
 - Progressive overlay feedback (duration/target_duration)
 - Cooldown: 1s between activations
-- Actions: Winch/wheel stop, spray trigger disable, error popup
+- Actions: delegates halt-all behavior through `SafetyCoordinator`, including winch/wheel stop, spray trigger disable, ESP32 valve stop, and error popup handling
 - State machine: idle → holding → triggered → cooldown
 
 #### **Heartbeat Monitor** - `UIHeartbeatHandler(QObject)` ~200 lines
@@ -180,12 +181,13 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 
 #### **ESP32 Valve Controller** - `ESP32ValveController(QObject)` ~300 lines
 - UDP-based (ports 8888/8889)
-- ARP-based IP discovery with fallback (hardcoded 192.168.101.102)
+- ARP-based IP discovery with fallback (hardcoded 192.168.101.102) now runs off the Qt main thread
 - `UDPReceiveThread(QThread)` for non-blocking recv
 - Valve position: 0-100% command → 0-1000 ESP32 (×10 multiplier)
 - Feedback: 0-10000 ESP32 → 0-100% ROS (÷100)
 - Keep-alive: Only resend if idle >1s
 - CRC validation (polynomial 0x07, init 0xFF)
+- Normal reconnect no longer waits on the UDP thread from the Qt main thread; deterministic waiting still happens during cleanup
 
 #### **Lidar Controller** - Simple (~100 lines)
 - ROS2 subscriber: `/ef/lidar/wall_detection/distance` + `filtered_angle`
@@ -331,7 +333,7 @@ qml/
 - QML rendering, UI updates
 - Signal/slot delivery
 - Steam Deck button callbacks (debounced)
-- Timer-based polling (200ms heartbeat, 100ms thrust ramp, etc.)
+- Timer-based UI polling and ramps (for example 200ms availability checks and 100ms thrust ramp updates); `/controller/heartbeat` publish now runs on `PaintRosNode`'s 500ms ROS timer
 
 **ROS2 Thread** (`RosThread`):
 - `rclpy.spin_once()` with 50ms timeout
@@ -445,7 +447,7 @@ The repo now uses a layered test model instead of one generic mocking style for 
 - `tests/test_winch_ros_integration.py` proves the published command reaches a real `rclpy` subscriber callback
 
 **Local validation status**
-- Current documented local result: targeted venv validation for the new core batch is green, while a full `python/paint_controller/venv/bin/python -m pytest tests -q` run still aborts in this terminal on the Qt application fixture path
+- Current documented local result: full `python/paint_controller/venv/bin/python -m pytest tests -q` revalidation is green at `148 passed`; offscreen startup smoke and the first-touch freeze hotfix regressions are also covered
 
 ---
 

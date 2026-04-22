@@ -52,7 +52,7 @@ If two files disagree, prefer `INDEX.md`'s repo-wide authority hierarchy first. 
 ## Active Queue Snapshot
 
 - Immediate priority: `3.10 Static typing gate expansion`, then `2.8`
-- Deferred backlog: remaining Phase 2 theming work (`2.5b`, `2.5c`, `2.6a-c`, `2.7`) stays documented but is intentionally postponed until the hardening queue is complete
+- Deferred backlog: remaining Phase 2 theming work (`2.5b`, `2.5c`, `2.6a-c`, `2.7`) stays documented but is intentionally postponed behind the current `3.10` typing expansion and `2.8` naming cleanup
 
 ## Key Paths
 

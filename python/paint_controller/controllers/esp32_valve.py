@@ -148,6 +148,7 @@ class ESP32ValveController(QObject):
     valve_motor_connected_changed = Signal()
     flow_meter_connected_changed = Signal()
     esp32_connected_changed = Signal()
+    discovery_completed = Signal(object)
     
     # UDP protocol constants
     START_BYTE = 0xAA
@@ -180,10 +181,15 @@ class ESP32ValveController(QObject):
         self._sock = None
         self._sock_lock = threading.Lock()
         self._udp_thread = None
+        self._discovery_inflight = False
+        self._cleanup_requested = False
+        self._retired_udp_threads = []
         
         # Throttle variables
         self._last_publish_time = 0
         self._min_publish_interval = 0.2  # 5Hz = 200ms
+
+        self.discovery_completed.connect(self._finish_discovery_and_connect, Qt.QueuedConnection)
         
         # Setup ROS communication
         self._setup_publishers()
@@ -274,12 +280,29 @@ class ESP32ValveController(QObject):
             return self.ESP32_IP_FALLBACK
     
     def _discover_and_connect(self):
-        """Discover ESP32 and establish UDP connection"""
-        # Discover IP
-        self._esp32_ip = self._discover_esp32_ip()
+        """Discover ESP32 and establish UDP connection without blocking the UI thread."""
+        if self._cleanup_requested or self._discovery_inflight:
+            return
+
+        self._discovery_inflight = True
+        threading.Thread(target=self._resolve_esp32_ip, daemon=True).start()
+
+    def _resolve_esp32_ip(self):
+        esp32_ip = self._discover_esp32_ip()
+        self.discovery_completed.emit(esp32_ip)
+
+    @Slot(object)
+    def _finish_discovery_and_connect(self, esp32_ip):
+        """Finish socket creation on the Qt thread once IP discovery completes."""
+        self._discovery_inflight = False
+
+        if self._cleanup_requested or self._sock is not None:
+            return
+
+        self._esp32_ip = esp32_ip
         if not self._esp32_ip:
             return
-        
+
         # Create UDP socket
         try:
             self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -347,9 +370,9 @@ class ESP32ValveController(QObject):
     
     def _check_reconnect(self):
         """Periodically check and attempt reconnection"""
-        if not self._esp32_connected:
+        if not self._esp32_connected and not self._discovery_inflight:
             logging.debug("Attempting to reconnect to ESP32...")
-            self._disconnect()
+            self._disconnect(wait_for_thread=False)
             self._discover_and_connect()
     
     def _send_keepalive(self):
@@ -433,28 +456,61 @@ class ESP32ValveController(QObject):
         self._last_command = position_pct
         self._last_command_time = time.time()
     
-    def _disconnect(self):
+    def _track_retired_thread(self, udp_thread: UDPReceiveThread):
+        finished_signal = getattr(udp_thread, "finished", None)
+        if finished_signal is None:
+            return
+
+        is_running = getattr(udp_thread, "isRunning", None)
+        delete_later = getattr(udp_thread, "deleteLater", None)
+        if callable(is_running) and not is_running():
+            if callable(delete_later):
+                delete_later()
+            return
+
+        self._retired_udp_threads.append(udp_thread)
+        if callable(delete_later):
+            finished_signal.connect(delete_later)
+        finished_signal.connect(lambda thread=udp_thread: self._discard_retired_thread(thread))
+
+        if callable(is_running) and not is_running():
+            self._discard_retired_thread(udp_thread)
+            if callable(delete_later):
+                delete_later()
+
+    def _discard_retired_thread(self, udp_thread: UDPReceiveThread):
+        try:
+            self._retired_udp_threads.remove(udp_thread)
+        except ValueError:
+            pass
+
+    def _disconnect(self, wait_for_thread: bool = True):
         """Disconnect and cleanup resources"""
-        if self._udp_thread:
-            self._udp_thread.stop()
-            # Acquire lock to ensure recvfrom has exited before closing socket
-            with self._sock_lock:
-                pass  # Forces wait for any in-flight recvfrom
-            if not self._udp_thread.wait(1000):
-                logging.warning("ESP32 UDP receive thread did not exit cleanly, forcing termination")
-                self._udp_thread.terminate()
-                self._udp_thread.wait(500)
-            self._udp_thread = None
+        udp_thread = self._udp_thread
+        self._udp_thread = None
+
+        if udp_thread:
+            udp_thread.stop()
         
         with self._sock_lock:
             if self._sock:
                 self._sock.close()
                 self._sock = None
+
+        if udp_thread:
+            if wait_for_thread:
+                if not udp_thread.wait(1000):
+                    logging.warning("ESP32 UDP receive thread did not exit cleanly, forcing termination")
+                    udp_thread.terminate()
+                    udp_thread.wait(500)
+            else:
+                self._track_retired_thread(udp_thread)
         
         self._esp32_ip = None
 
     def cleanup(self):
         """Public cleanup hook so app shutdown can stop the UDP thread deterministically."""
+        self._cleanup_requested = True
         for timer_attr in ("_reconnect_timer", "_keepalive_timer", "_publish_timer"):
             timer = getattr(self, timer_attr, None)
             if timer is not None:
