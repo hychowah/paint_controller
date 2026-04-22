@@ -13,7 +13,7 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 **Priority**: medium  
 **Effort**: medium (5 sub-tasks across component categories)  
 **Why it matters**: Without `required`, QML silently ignores missing bindings. Components accept `undefined` values with no runtime error, making integration bugs invisible until runtime visual failures occur.  
-**What to do**: Add `required` keyword to all bindable properties across buttons, inputs, displays, panels/popups, and the surviving specialized reusable QML components. This is now the next defensive-refactor priority after the completed typing/safety hardening work.  
+**What to do**: Add `required` keyword to all bindable properties across buttons, inputs, displays, panels/popups, and the surviving specialized reusable QML components. This is now the immediate feature-blocking refactor priority.  
 **Related tasks**: `1.11a–e` in `docs/plan/01_MASTER_PLAN.md`  
 **Files**: `python/paint_controller/qml/components/buttons/`, `python/paint_controller/qml/components/inputs/`, `python/paint_controller/qml/components/displays/`, `python/paint_controller/qml/components/panels/`, `python/paint_controller/qml/components/popups/`, `python/paint_controller/qml/components/specialized/`
 
@@ -24,7 +24,7 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 **Priority**: low  
 **Effort**: medium  
 **Why it matters**: Hardcoded colours, spacing, and font sizes in un-migrated files will diverge from the rest of the UI and make theme-wide changes expensive later.  
-**What to do**: Resume the remaining `CommonStyle` rollout after `TD-001` unless the user explicitly reprioritizes it. Remaining scope: systemcontrol tabs remainder (`2.5b`), video overlays (`2.5c`), pages batch 1 (`2.6a`), settings pages (`2.6b`), status pages (`2.6c`), and `OverlayLayer` dedup (`2.7`).  
+**What to do**: Resume the remaining `CommonStyle` rollout after `TD-001` unless the user explicitly reprioritizes it. Remaining scope: systemcontrol tabs remainder (`2.5b`), video overlays (`2.5c`), pages batch 1 (`2.6a`), settings pages (`2.6b`), status pages (`2.6c`), and `OverlayLayer` dedup (`2.7`). This backlog is low priority and is not the default feature-blocking path.  
 **Related tasks**: `2.5b`, `2.5c`, `2.6a`, `2.6b`, `2.6c`, `2.7` in `docs/plan/01_MASTER_PLAN.md`  
 **Files**: `python/paint_controller/qml/overlays/systemcontrol/`, `python/paint_controller/qml/overlays/video/`, `python/paint_controller/qml/pages/home/`, `python/paint_controller/qml/pages/spray/`, `python/paint_controller/qml/pages/wheel/`, `python/paint_controller/qml/pages/winch/`, `python/paint_controller/qml/pages/tuning/`, `python/paint_controller/qml/pages/misc/`, `python/paint_controller/qml/pages/settings/`, `python/paint_controller/qml/pages/status/`, `python/paint_controller/qml/overlays/OverlayLayer.qml`
 
@@ -59,6 +59,7 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 | TD-027 | ESP32 reconnect discovery blocked the Qt main thread | 2026-04-21 | `arp -a` discovery now runs off-thread and normal reconnect no longer waits on the UDP receive thread from the UI thread |
 | TD-028 | Controller heartbeat publishing depended on the Qt main thread | 2026-04-21 | `PaintRosNode` now owns the 500ms heartbeat timer on the ROS side, so a transient GUI-thread stall no longer self-produces a heartbeat-loss event |
 | TD-029 | SSH availability callback could emit into a deleted QObject during shutdown | 2026-04-22 | `UISSHController` now swallows late availability/command callback `RuntimeError`s during teardown and `tests/test_ssh.py` covers the late-result path |
+| TD-030 | Runtime/workflow/service validation gap | 2026-04-22 | Closed by direct tests for WorkFlowRunner, WorkFlowExecutor, ActionScheduler, ActionRegistry/workflow handlers, HardwareControllers adapters, `create_controllers()`, bounded `AppRuntime` seams, `ScreenManager`, and `BaseTopViewTransformer`; focused validation is green at `22 passed` |
 | TD-014 | `main()` god-function | 2026-04-21 | Bootstrap now lives in `core/app_runtime.py`; `application.py` is a thin entry-point wrapper, `RosThread` moved to `core/ros_node.py`, and the dead `robot_config.yaml` loader path was replaced by `RuntimeDefaults` |
 | TD-007 | SteamDeck HID input parsing untested | 2026-04-21 | Fixed in task `3.5` — raw HID decoding now lives in `utils/steam_deck_hid.py` with direct parser tests, and cleanup coverage remains green without destructor-side crashes |
 | — | Dual-inheritance `RobotController` god class | pre-2026-04-17 | Split into `PaintRosNode`, `StateStore`, `QtBridge`, `ControllerFactory` |

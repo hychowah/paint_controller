@@ -37,14 +37,14 @@ If two files disagree, prefer `INDEX.md`'s repo-wide authority hierarchy first. 
 
 ## Stale-File Warnings
 
-- `PLANNING.md` is temporary scratch for the active task and should not be treated as the long-term source of truth.
+- `PLANNING.md` is temporary scratch for the active task. If it exists, verify the task title/date still match the currently approved work before trusting it.
 - Historical notes may still mention the removed audit report; treat those references as background only and rely on `01_MASTER_PLAN.md` + `02_ARCHITECTURE.md` for current direction.
 - Historical test-count or task-order claims in older notes can drift. Use the **Current Checkpoint** section in `01_MASTER_PLAN.md` as the active queue.
 
 ## Avoid / Defer
 
 - Do not start net-new feature work unless the user explicitly reprioritizes it over refactoring.
-- Current next priority is `TD-001`, then the remaining Phase 2 theming backlog (`2.5b`, `2.5c`, `2.6a-c`, `2.7`), then `TD-016`.
+- Current next priority is `TD-001`, then the low-priority Phase 2 theming backlog (`2.5b`, `2.5c`, `2.6a-c`, `2.7`) plus `TD-016`.
 - Keep using `setContextProperty()`; do not re-open singleton-registration work with `qmlRegisterSingletonInstance()`.
 - Treat `PLANNING.md` as session scratch only. If it conflicts with `DEVNOTES.md` or `01_MASTER_PLAN.md`, it loses.
 
@@ -59,8 +59,19 @@ If two files disagree, prefer `INDEX.md`'s repo-wide authority hierarchy first. 
 ## Active Queue Snapshot
 
 - Just completed: `3.10 Static typing gate expansion`, `2.8 Fix page naming`
-- Immediate priority: `TD-001 QML required properties`, then the remaining Phase 2 theming backlog (`2.5b`, `2.5c`, `2.6a-c`, `2.7`)
-- Deferred backlog: `TD-016 VideoOverlayStyle` remains low-priority after `TD-001` and the remaining Phase 2 rollout
+- Just completed: `TD-030 runtime/workflow/service validation hardening`
+- Immediate priority: `TD-001 QML required properties`
+- Non-blocking backlog: `2.5b`, `2.5c`, `2.6a-c`, `2.7`, `TD-016`
+
+## Branch Exit Bar
+
+The refactor branch is considered done enough to resume feature work when:
+- No medium/high-priority debt remains open in `docs/tech-debt.md`
+- Full pytest is green
+- Pyright is green for the covered scope
+- ROS build is green
+- Offscreen startup/shutdown smoke is green
+- No known unresolved shutdown, thread-affinity, or safety-path defect remains active
 
 ## Key Paths
 

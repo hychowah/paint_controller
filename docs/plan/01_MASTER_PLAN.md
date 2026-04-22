@@ -27,9 +27,30 @@
 
 ---
 
+## Branch Gate
+
+**Feature-blocking refactor work**
+- `TD-001` QML `required` properties
+
+**Branch exit criteria**
+- No open medium/high-priority debt remains in `docs/tech-debt.md`
+- Full pytest green
+- Pyright green for the covered scope
+- ROS build green
+- Offscreen startup/shutdown smoke green
+- No known unresolved shutdown, thread-affinity, or safety-path defect remains active
+
+**Active next stage**
+1. `TD-001` QML `required` properties
+2. Non-blocking backlog: `2.5b`, `2.5c`, `2.6a-c`, `2.7`, `TD-016`
+
+---
+
 ## Progress Tracker
 
 Last Modified: 2026-04-22
+
+Status legend: `[x]` completed | `[c]` cancelled or superseded | `[~]` partial or deferred | `[ ]` not started
 
 | Task | Status | Notes |
 |------|--------|-------|
@@ -50,13 +71,13 @@ Last Modified: 2026-04-22
 | 1.0 Register StateStore | [x] | `StateStore` exposed via `setContextProperty`. `qmlRegisterSingletonInstance` abandoned (PySide6 bug — see KNOWLEDGE.md) |
 | 1.1 Register SettingsManager | [x] | Confirmed done — registered during runtime bootstrap and validated in the post-load context-property loop |
 | 1.2 Register QtBridge + kill findChild | [x] | All `findChild` replaced with signals (`showPopupRequested`, `closePopupRequested`, `toggleSidebarRequested`, `toggleVideoOverlayRequested`, `updateVideoSourceRequested`). `input.py` uses `close_popup_fn` callable. `QmlObjectName` enum deleted. `objectName` removed from popup/selectBar/videoOverlay. Only remaining QML object access: `engine.rootObjects()[0]` in `toggle_multiscreen_window()`. |
-| 1.3 Register isolated controllers | [x] | CANCELLED — singleton-registration track abandoned; these objects already work via `setContextProperty()` |
-| 1.4 Register wheelController | [x] | CANCELLED — `wheelController` already exposed via context property |
-| 1.5 Register teensyController | [x] | CANCELLED — `teensyController` already exposed via context property |
-| 1.6 Register winchController | [x] | CANCELLED — `winchController` already exposed via context property |
-| 1.7a Register controllers batch A | [x] | CANCELLED — runtime stays on context properties; no PySide6 singleton migration |
-| 1.7b Register controllers batch B | [x] | CANCELLED — runtime stays on context properties; no PySide6 singleton migration |
-| 1.8 Register workflow handlers | [x] | CANCELLED — runtime stays on context properties; `workflow_legacy.py` deleted in Phase 1B |
+| 1.3 Register isolated controllers | [c] | Cancelled — singleton-registration track abandoned; these objects already work via `setContextProperty()` |
+| 1.4 Register wheelController | [c] | Cancelled — `wheelController` already exposed via context property |
+| 1.5 Register teensyController | [c] | Cancelled — `teensyController` already exposed via context property |
+| 1.6 Register winchController | [c] | Cancelled — `winchController` already exposed via context property |
+| 1.7a Register controllers batch A | [c] | Cancelled — runtime stays on context properties; no PySide6 singleton migration |
+| 1.7b Register controllers batch B | [c] | Cancelled — runtime stays on context properties; no PySide6 singleton migration |
+| 1.8 Register workflow handlers | [c] | Cancelled — runtime stays on context properties; `workflow_legacy.py` deleted in Phase 1B |
 | 1.10 Qt6 versionless imports | [x] | All QML files now use versionless Qt imports; `PageSpray.qml` uses `Qt5Compat.GraphicalEffects` for the Qt6 compatibility path |
 | 1.9 Add qmldir manifests | [x] | Type-export `qmldir` files added across the QML tree; no bare `module PaintController`, and no new `module ...` declarations yet while runtime stays on relative imports |
 | 1.11a required props — buttons | [~] | Downgraded to `TD-001`; no longer in the active queue |
@@ -89,6 +110,7 @@ Last Modified: 2026-04-22
 | 3.8 CI/CD pipeline | [x] | `.github/workflows/ci.yml`: lint gates both pytest and ROS2 build jobs. `pyproject.toml` with ruff/pytest/coverage config. `requirements-dev.txt` updated. |
 | 3.9 Fix build system | [x] | `CMakeLists.txt` stripped to pure `ament_cmake` wrapper (C++/Qt5/GStreamer deps removed). `package.xml` cleaned to 0.1.0, C++ deps removed. `requirements.txt` switched to `~=` pins. |
 | 3.10 Static typing gate | [x] | `pyrightconfig.json` now covers `handlers/` + `controllers/` in basic mode; strict now holds for `core/config.py`, `core/controller_factory.py`, `handlers/safety_coordinator.py`, and `utils/steam_deck_hid.py`. `EmergencyButtonHandler` intentionally remains in basic mode because strict surfaced PySide stub noise rather than actionable defects. Final gate is green at `0 errors` |
+| TD-030 Runtime/workflow/service validation hardening | [x] | Direct tests now cover ActionScheduler, ActionRegistry/workflow handlers, HardwareControllers adapters, WorkFlowRunner, WorkFlowExecutor, `create_controllers()`, bounded `AppRuntime` seams, `ScreenManager`, and `BaseTopViewTransformer`; focused TD-030 batch is green at `22 passed` |
 | TD-014 main() decomposition | [x] | Bootstrap moved into `core/app_runtime.py`; `core/application.py` is now a thin entry-point wrapper, `RosThread` moved to `core/ros_node.py`, the dead `robot_config.yaml` loader path was deleted in favor of `RuntimeDefaults`, and one registration table now drives both QML context-property registration and validation |
 | 4.0 Startup/emergency integration smoke test | [x] | `tests/test_startup_smoke.py` now covers both offscreen startup wiring and shutdown teardown, asserting that `MainWindow.qml` loads cleanly and that teardown introduces no new null-binding warnings |
 
@@ -115,22 +137,24 @@ Last Modified: 2026-04-22
 - **Validation update**: full-suite revalidation is green at `148 passed`; pyright is green (`0 errors`), and a serial offscreen launch still reaches `MainWindow QML loaded` before the expected timeout-kill. The known non-blocking Qt Quick 3D/RHI warning in offscreen mode remains.
 - Recent targeted validation for the controller hardening batches is green; revalidate any full-suite claim with a fresh local pytest run instead of relying on older fixed test-count snapshots
 - Task 1.1 (SettingsManager QML registration): verified done — still registered during runtime bootstrap and validated in POST-1 loop after the `AppRuntime` extraction
-- **Approved queue change executed**: `TD-014`, `3.10`, and `2.8` are all complete. The next queue returns to defensive QML debt (`TD-001`) and the deferred design-system backlog.
-- **Deferred backlog**: `2.5b`, `2.5c`, `2.6a-c`, and `2.7` remain the remaining Phase 2 theming backlog behind `TD-001`; `TD-016` stays low-priority after that.
+- **TD-030 is complete**: direct tests now cover ActionScheduler, ActionRegistry/workflow handlers, HardwareControllers adapters, WorkFlowRunner, WorkFlowExecutor, `create_controllers()`, bounded `AppRuntime` seams, `ScreenManager`, and `BaseTopViewTransformer`, with the focused runtime/workflow/service batch green at `22 passed`.
+- **Primary branch gate has shifted**: `TD-001` QML `required` properties is now the immediate feature-blocking refactor task.
+- **Feature-blocking backlog**: `TD-001`.
+- **Non-blocking backlog**: `2.5b`, `2.5c`, `2.6a-c`, `2.7`, and `TD-016` remain backlog but do not block feature work by default once the branch gate is green.
 - **Next tasks** (priority order):
   1. `TD-001 QML required properties`
-  2. `2.5b` / `2.5c` / `2.6a-c` / `2.7` remaining design-system backlog
+  2. Low-priority backlog: `2.5b`, `2.5c`, `2.6a-c`, `2.7`, `TD-016`
 
 ---
 
 ## Dependency Graph
 
 ```
-Completed this batch: BF-1..BF-9, 3.0, 3.5, 3.6, 3.7, 4.0, TD-014, full `3.10`, `2.8`, the `RosStatusController` extraction, and the SSH teardown race hardening
+Completed this batch: BF-1..BF-9, 3.0, 3.5, 3.6, 3.7, 4.0, TD-014, full `3.10`, `2.8`, the `RosStatusController` extraction, the SSH teardown race hardening, and TD-030 runtime/workflow/service validation hardening
          ↓
 Defensive QML debt: TD-001 (`required` properties)
          ↓
-Remaining UI consistency backlog: 2.5b, 2.5c, 2.6a-c, 2.7, then TD-016
+Non-blocking UI consistency backlog: 2.5b, 2.5c, 2.6a-c, 2.7, then TD-016
 
 `1.11a-e` now flows through `TD-001` rather than the old Phase 1 task IDs
 ```
@@ -153,7 +177,8 @@ Remaining UI consistency backlog: 2.5b, 2.5c, 2.6a-c, 2.7, then TD-016
 | 1.8 Workflow handlers | CANCELLED | Context-property runtime retained; workflow consolidation is separate work |
 | 1.10 Versionless imports | LOW | Mechanical sed replace |
 | 1.9 qmldir manifests | **HIGH** | ~20 new files, module naming critical |
-| 1.11a-e Required props | MEDIUM | No longer in the active queue; still useful defensive debt, but startup smoke and broader tests now catch the higher-value binding regressions |
+| TD-030 Runtime/workflow/service validation hardening | ~~HIGH~~ | ✅ DONE — direct tests now cover the workflow stack, runtime composition root seams, and selected service lifecycles; focused validation is green at `22 passed` |
+| 1.11a-e Required props | MEDIUM | Silent missing QML bindings are still worth fixing, and they are now the immediate feature-blocking refactor task |
 | BF-6 Heartbeat state machine | ~~HIGH~~ | ✅ DONE — controller heartbeat now publishes live runtime state from `StateStore` |
 | BF-7 Safe-state shutdown ordering | ~~HIGH~~ | ✅ DONE — QML teardown, controller/service cleanup, and late thread-owner cleanup now all complete before final ROS node destruction |
 | BF-8 Emergency hold duration from settings | ~~HIGH~~ | ✅ DONE — emergency hold duration is now an explicit clamped setting with a 1.0s default |

@@ -1,6 +1,23 @@
 # Development Notes
 
 ---
+### 2026-04-22 13:03 - TD-030 Runtime Validation Closeout
+
+**Goal**: Finish the runtime/workflow/service validation gate so the branch can move to the remaining defensive QML debt with the live composition path under direct regression coverage
+**Issues**: The first TD-030 batch still left the composition root, bounded `AppRuntime` seams, selected service lifecycles, and direct `WorkFlowExecutor` control-path behavior outside the new focused test slice
+**Tried**: Added direct tests for `create_controllers()` and `ControllerBundle.cleanup()`, bounded `AppRuntime` bundle/context/shutdown seams, `ScreenManager`, `BaseTopViewTransformer`, and `WorkFlowExecutor`, then iterated the new fakes until the tests matched the real runtime callback surfaces instead of Qt-global shortcuts
+**Result**: ✅ TD-030 is complete. The focused runtime/workflow/service batch now covers scheduler/actions, hardware adapters, runner, executor, controller factory, bounded runtime seams, and selected services, with revalidation green at `22 passed`
+**Files**: `tests/test_workflow_scheduler.py`, `tests/test_workflow_runner.py`, `tests/test_workflow_executor.py`, `tests/test_controller_factory_runtime.py`, `tests/test_services_runtime.py`, `docs/plan/00_README.md`, `docs/plan/01_MASTER_PLAN.md`, `docs/tech-debt.md`, `INDEX.md`, `DEVNOTES.md`
+
+
+### 2026-04-22 12:40 - Branch Gate Rebase + Workflow Validation Batch 1
+
+**Goal**: Rebase the refactor endgame around the highest remaining integration risk and start the new runtime/workflow validation stage with a bounded first slice
+**Issues**: The live docs still pointed future sessions at TD-001 and deferred theming before the larger runtime gap, PLANNING.md still contained stale TD-014 scratch state, and the workflow stack had almost no direct tests despite being a live actuator-facing path
+**Tried**: Added a branch gate plus exit bar to the plan docs, promoted TD-030 runtime/workflow/service validation into the active debt queue, added a namespace-only paint_controller.services test stub to avoid the heavy services/__init__.py import path, and added direct tests for ActionScheduler, ActionRegistry, HardwareControllers, and WorkFlowRunner
+**Result**: ✅ The planning control plane now points at TD-030 first, the first workflow validation slice is in place, tests/test_workflow_scheduler.py plus tests/test_workflow_runner.py passed at 8 passed, and the shared harness plus workflow slice revalidated at 14 passed
+**Files**: PLANNING.md, INDEX.md, docs/plan/00_README.md, docs/plan/01_MASTER_PLAN.md, docs/plan/02_ARCHITECTURE.md, docs/tech-debt.md, tests/conftest.py, tests/test_workflow_scheduler.py, tests/test_workflow_runner.py, DEVNOTES.md
+
 
 ### 2026-04-22 10:45 - Typing Gate Expansion + Page Naming + Shared ROS Status Base
 

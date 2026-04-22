@@ -48,6 +48,12 @@ if "paint_controller.controllers" not in sys.modules:
     _controllers_pkg.__package__ = "paint_controller.controllers"
     sys.modules["paint_controller.controllers"] = _controllers_pkg
 
+if "paint_controller.services" not in sys.modules:
+    _services_pkg = types.ModuleType("paint_controller.services")
+    _services_pkg.__path__ = [str(_python_dir / "paint_controller" / "services")]
+    _services_pkg.__package__ = "paint_controller.services"
+    sys.modules["paint_controller.services"] = _services_pkg
+
 if "paint_controller.core" not in sys.modules:
     _core_pkg = types.ModuleType("paint_controller.core")
     _core_pkg.__path__ = [str(_python_dir / "paint_controller" / "core")]

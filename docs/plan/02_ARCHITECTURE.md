@@ -83,12 +83,13 @@ The current branch is **refactor-first**: architecture cleanup, safety correctne
 - Pyright gate v2 is live in CI
 - `handlers/` + `controllers/` are now included in basic mode in addition to the earlier core slice
 - Strict typing currently covers `core/config.py`, `core/controller_factory.py`, `handlers/safety_coordinator.py`, and `utils/steam_deck_hid.py`
+- `core/app_runtime.py`, the live workflow stack, and selected service seams now have direct focused regression coverage via the TD-030 validation batch; broader typing coverage for most services is still deferred where framework noise exceeds value
 - PySide descriptor-heavy modules remain in basic mode where strict still produces framework-stub noise instead of actionable defects
 
 **Runtime registration state**
 - All 22 live runtime objects are exposed via `setContextProperty()`
 - The singleton-registration track was cancelled because `qmlRegisterSingletonInstance()` is broken in this PySide6 setup
-- Remaining Phase 1 cleanup is mostly deferred or debt-tracked: import/qmldir cleanup is complete, `required property` work now lives in `TD-001`, and the next queue has moved to defensive QML debt first (`TD-001`) followed by the remaining Phase 2 theming backlog
+- Remaining Phase 1 cleanup is mostly deferred or debt-tracked: import/qmldir cleanup is complete, `TD-030` runtime/workflow/service validation is complete, and `required property` work in `TD-001` is now the immediate queue ahead of the remaining low-priority Phase 2 theming backlog
 - The C++ source files (`src/*.cpp`, `include/paint_controller/*.hpp`) were deleted in Phase 1A
 
 ---

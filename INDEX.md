@@ -4,9 +4,9 @@ ROS2 node with PySide6/QML UI for robotic paint control on a Steam Deck. The liv
 
 ## Current Strategy
 
-- This branch is **refactor-first**. The current priority is architecture cleanup, safety hardening, typing/test gates, and defensive QML debt reduction.
-- **Net-new feature work is intentionally deferred** unless the priority is explicitly changed. The reason is simple: recent work has been closing startup/shutdown ordering bugs, thread-affinity defects, safety-path drift, and low-signal typing/test coverage gaps that would make future feature work slower and riskier.
-- For the next session, assume the right direction is: preserve behavior, reduce debt, strengthen validation, and only then resume feature development.
+- This branch is **refactor-first**. Runtime/workflow/service validation hardening is complete, and the current priority is defensive QML API hardening (`TD-001`).
+- **Net-new feature work is intentionally deferred** until medium/high-priority debt is closed and the validation gates stay green (pytest, pyright for covered scope, ROS build, and offscreen startup/shutdown smoke).
+- Low-priority design-system backlog may remain backlog. By default it is **not** the feature-blocking path unless the user explicitly reprioritizes.
 
 ---
 
@@ -112,7 +112,7 @@ python/paint_controller/venv/bin/python -m pytest tests/test_control_processor.p
 
 | File | Why stale |
 |---|---|
-| `PLANNING.md` | Temporary active-task scratch; should not exist between sessions |
+| `PLANNING.md` | Temporary active-task scratch; if it exists, verify that it matches the currently approved task before trusting it |
 
 Older notes may still mention `REFACTOR_TRACKER.md`; that historical tracker is no longer present in this repo and should be ignored.
 
