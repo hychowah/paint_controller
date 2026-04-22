@@ -2,6 +2,12 @@
 
 ROS2 node with PySide6/QML UI for robotic paint control on a Steam Deck. The live runtime is Python-first; the historical C++ UI path has been removed from the tree. Targets ROS2 Humble/Jazzy, Python 3.10+, and PySide6/Qt6.
 
+## Current Strategy
+
+- This branch is **refactor-first**. The current priority is architecture cleanup, safety hardening, typing/test gates, and defensive QML debt reduction.
+- **Net-new feature work is intentionally deferred** unless the priority is explicitly changed. The reason is simple: recent work has been closing startup/shutdown ordering bugs, thread-affinity defects, safety-path drift, and low-signal typing/test coverage gaps that would make future feature work slower and riskier.
+- For the next session, assume the right direction is: preserve behavior, reduce debt, strengthen validation, and only then resume feature development.
+
 ---
 
 ## Session-Start Checklist
@@ -70,7 +76,6 @@ paint_controller_ros2/
 │   │   ├── 01_MASTER_PLAN.md      # Active task tracker
 │   │   ├── 02_ARCHITECTURE.md     # Runtime architecture reference
 │   │   ├── 03_QML_BINDINGS.md     # QML registration state
-│   │   └── 04_AUDIT_REPORT.md     # Historical pre-mortem (read-only reference)
 │   ├── tech-debt.md               # Active tech debt tracker (living document)
 │   └── devnotes/                  # Quarterly DEVNOTES cold-storage archives
 │       └── 2026-Q1.md             # Jan–Mar 2026 session notes (archived)
@@ -81,7 +86,6 @@ paint_controller_ros2/
 ├── DEVNOTES.md                    # Rolling 90-day session notes
 ├── PLANNING.md                    # Active task scratch (temporary, delete before merge)
 ├── README.md                      # Operator/developer setup and run guide
-└── REFACTOR_TRACKER.md            # Historical context only — do not use as active tracker
 ```
 
 ---
@@ -108,9 +112,9 @@ python/paint_controller/venv/bin/python -m pytest tests/test_control_processor.p
 
 | File | Why stale |
 |---|---|
-| `REFACTOR_TRACKER.md` | Historical context only; `01_MASTER_PLAN.md` + `docs/tech-debt.md` are the active trackers |
-| `docs/plan/04_AUDIT_REPORT.md` | Pre-mortem rationale; some recommendations were superseded |
 | `PLANNING.md` | Temporary active-task scratch; should not exist between sessions |
+
+Older notes may still mention `REFACTOR_TRACKER.md`; that historical tracker is no longer present in this repo and should be ignored.
 
 ---
 

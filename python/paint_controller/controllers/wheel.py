@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
+
+from __future__ import annotations
+
 import logging
 import time
-from typing import Dict
+
 from rclpy.node import Node
 from std_msgs.msg import Bool
 from paint_interfaces.msg import MoveVehicleSpd, MoveVehiclePos, VehicleStatus
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 
+from paint_controller.controllers._base import RosStatusController
+
 logger = logging.getLogger(__name__)
 
-class WheelController(QObject):
+class WheelController(RosStatusController):
     # Signals for property changed notifications
     left_wheel_speed_changed = Signal()
     right_wheel_speed_changed = Signal()
@@ -29,9 +34,8 @@ class WheelController(QObject):
     # Error signal for emergency overlay (has_error: bool, message: str)
     error_state_changed = Signal(bool, str)
 
-    def __init__(self, node: Node):
-        super().__init__()
-        self._node = node
+    def __init__(self, node: Node) -> None:
+        super().__init__(node)
         
         # Initialize property values
         self._left_wheel_speed = 0.0
@@ -52,11 +56,8 @@ class WheelController(QObject):
         self._last_right_rpm = 0
         
         # Connection status
-        self._available = False
         self._enabled = False
         self._last_command_time = time.time()
-        self._last_status_update_time = 0
-        self._connection_timeout = 1.0  # Time in seconds before considering disconnected
         
         # Throttle variables
         self._last_update_time = 0
@@ -67,18 +68,16 @@ class WheelController(QObject):
         self._setup_subscribers()
         
         # Create availability check timer
-        self._availability_timer = QTimer(self)
-        self._availability_timer.timeout.connect(self._check_availability)
-        self._availability_timer.start(200)  # Check every 200ms
+        self._start_availability_timer()
 
-    def _setup_publishers(self):
+    def _setup_publishers(self) -> None:
         """Setup ROS publishers for vehicle control"""
         self._speed_cmd_pub = self._node.create_publisher(MoveVehicleSpd, 'vehicle/speed/cmd', 1)
         self._pos_cmd_pub = self._node.create_publisher(MoveVehiclePos, 'vehicle/position/cmd', 1)
         self._disable_pub = self._node.create_publisher(Bool, 'wheel/disable/cmd', 1)
         self._set_zero_pub = self._node.create_publisher(Bool, 'wheel/set_zero/cmd', 1)
 
-    def _setup_subscribers(self):
+    def _setup_subscribers(self) -> None:
         """Setup ROS subscribers for vehicle status"""
         self._status_sub = self._node.create_subscription(
             VehicleStatus,
@@ -88,7 +87,7 @@ class WheelController(QObject):
         )
         logger.info("Vehicle status subscriber set up on topic 'vehicle/status'")
 
-    def _check_availability(self):
+    def _check_availability(self) -> None:
         """
         Periodically check if wheel controller is still connected based on time since last message
         and motor availability states from VehicleStatus.
@@ -97,7 +96,7 @@ class WheelController(QObject):
         current_time = time.time()
         
         # Calculate time since last status update
-        time_since_last_update = current_time - self._last_status_update_time
+        time_since_last_update = self._time_since_last_status(current_time)
         
         # Determine if available: must have recent messages AND both motors available
         is_connected = time_since_last_update <= self._connection_timeout
@@ -105,8 +104,7 @@ class WheelController(QObject):
         new_available = is_connected and motors_available
         
         # Only emit if there's a change in availability
-        if self._available != new_available:
-            self._available = new_available
+        if self.set_available(new_available):
             self.available_changed.emit()
             if not new_available:
                 if not is_connected:
@@ -114,25 +112,23 @@ class WheelController(QObject):
                 elif not motors_available:
                     logger.warning("Wheel controller unavailable: left_available=%s, right_available=%s", self._left_motor_available, self._right_motor_available)
 
-    def _status_callback(self, msg: VehicleStatus):
+    def _status_callback(self, msg: VehicleStatus) -> None:
         """Callback function for vehicle status messages"""
         try:
             # Update the last status time when any message is received
-            current_time = time.time()
-            self._last_status_update_time = current_time
+            self._record_status_update()
             
             # Process motor availability states
             self._update_motor_availability(msg.left_available, msg.right_available)
             
             # Process motor error states
-            self._update_error_states(msg.left_error, msg.right_error)
+            self._update_error_states(bool(msg.left_error), bool(msg.right_error))
             
             # Check overall availability based on connection + motor states
             motors_available = self._left_motor_available and self._right_motor_available
             new_available = motors_available
             
-            if self._available != new_available:
-                self._available = new_available
+            if self.set_available(new_available):
                 self.available_changed.emit()
                 if new_available:
                     logger.info("Wheel controller connection restored")
@@ -142,7 +138,7 @@ class WheelController(QObject):
         except Exception as e:
             logger.error("Error in vehicle status callback: %s", e)
     
-    def _update_motor_availability(self, left_available: bool, right_available: bool):
+    def _update_motor_availability(self, left_available: bool, right_available: bool) -> None:
         """Update motor availability states and emit signals if changed"""
         if self._left_motor_available != left_available:
             self._left_motor_available = left_available
@@ -152,7 +148,7 @@ class WheelController(QObject):
             self._right_motor_available = right_available
             self.right_motor_available_changed.emit()
     
-    def _update_error_states(self, left_error: bool, right_error: bool):
+    def _update_error_states(self, left_error: bool, right_error: bool) -> None:
         """Update motor error states and trigger emergency signal if errors detected"""
         prev_left_error = self._left_error
         prev_right_error = self._right_error
@@ -179,7 +175,7 @@ class WheelController(QObject):
                 error_msg = f"{new_errors[0]} track motor error"
             self.error_state_changed.emit(True, error_msg)
 
-    def command_speed(self, left_rpm: int, right_rpm: int):
+    def command_speed(self, left_rpm: int, right_rpm: int) -> bool:
         """
         Command vehicle speed using unified MoveVehicleSpd message.
         
@@ -199,7 +195,7 @@ class WheelController(QObject):
         self._last_right_rpm = int(right_rpm)
         return True
     
-    def command_position(self, left_mm: int, right_mm: int, rpm_limit: int, relative: bool = True):
+    def command_position(self, left_mm: int, right_mm: int, rpm_limit: int, relative: bool = True) -> bool:
         """
         Command vehicle position using MoveVehiclePos message.
         
@@ -221,7 +217,7 @@ class WheelController(QObject):
         self._last_command_time = time.time()
         return True
 
-    def command_left_wheel_speed(self, speed: float):
+    def command_left_wheel_speed(self, speed: float) -> bool:
         """
         Command left wheel speed. Uses unified command_speed internally.
         
@@ -234,7 +230,7 @@ class WheelController(QObject):
         self._last_left_rpm = int(speed)
         return self.command_speed(self._last_left_rpm, self._last_right_rpm)
 
-    def command_right_wheel_speed(self, speed: float): 
+    def command_right_wheel_speed(self, speed: float) -> bool:
         """
         Command right wheel speed. Uses unified command_speed internally.
         
@@ -247,7 +243,7 @@ class WheelController(QObject):
         self._last_right_rpm = int(speed)
         return self.command_speed(self._last_left_rpm, self._last_right_rpm)
 
-    def update_status(self, msg: VehicleStatus):
+    def update_status(self, msg: VehicleStatus) -> None:
         """
         Process incoming vehicle status messages and update properties with throttling
         """
@@ -267,7 +263,7 @@ class WheelController(QObject):
     def get_left_wheel_speed(self) -> float:
         return self._left_wheel_speed
         
-    def set_left_wheel_speed(self, value: float):
+    def set_left_wheel_speed(self, value: float) -> None:
         if self._left_wheel_speed != value:
             self._left_wheel_speed = value
             self.left_wheel_speed_changed.emit()
@@ -275,7 +271,7 @@ class WheelController(QObject):
     def get_right_wheel_speed(self) -> float:
         return self._right_wheel_speed
         
-    def set_right_wheel_speed(self, value: float):
+    def set_right_wheel_speed(self, value: float) -> None:
         if self._right_wheel_speed != value:
             self._right_wheel_speed = value
             self.right_wheel_speed_changed.emit()
@@ -283,7 +279,7 @@ class WheelController(QObject):
     def get_left_wheel_current(self) -> float:
         return self._left_wheel_current
         
-    def set_left_wheel_current(self, value: float):
+    def set_left_wheel_current(self, value: float) -> None:
         if self._left_wheel_current != value:
             self._left_wheel_current = value
             self.left_wheel_current_changed.emit()
@@ -291,7 +287,7 @@ class WheelController(QObject):
     def get_right_wheel_current(self) -> float:
         return self._right_wheel_current
         
-    def set_right_wheel_current(self, value: float):
+    def set_right_wheel_current(self, value: float) -> None:
         if self._right_wheel_current != value:
             self._right_wheel_current = value
             self.right_wheel_current_changed.emit()
@@ -299,7 +295,7 @@ class WheelController(QObject):
     def get_left_wheel_position(self) -> float:
         return self._left_wheel_position
         
-    def set_left_wheel_position(self, value: float):
+    def set_left_wheel_position(self, value: float) -> None:
         if self._left_wheel_position != value:
             self._left_wheel_position = value
             self.left_wheel_position_changed.emit()
@@ -307,23 +303,15 @@ class WheelController(QObject):
     def get_right_wheel_position(self) -> float:
         return self._right_wheel_position
         
-    def set_right_wheel_position(self, value: float):
+    def set_right_wheel_position(self, value: float) -> None:
         if self._right_wheel_position != value:
             self._right_wheel_position = value
             self.right_wheel_position_changed.emit()
             
-    def get_available(self) -> bool:
-        return self._available
-    
-    def set_available(self, value: bool):
-        if self._available != value:
-            self._available = value
-            self.available_changed.emit()
-    
     def get_enabled(self) -> bool:
         return self._enabled
     
-    def set_enabled(self, value: bool):
+    def set_enabled(self, value: bool) -> None:
         if self._enabled != value:
             self._enabled = value
             self.enabled_changed.emit()
@@ -348,7 +336,7 @@ class WheelController(QObject):
     right_wheel_current = Property(float, get_right_wheel_current, set_right_wheel_current, notify=right_wheel_current_changed)
     left_wheel_position = Property(float, get_left_wheel_position, set_left_wheel_position, notify=left_wheel_position_changed)
     right_wheel_position = Property(float, get_right_wheel_position, set_right_wheel_position, notify=right_wheel_position_changed)
-    available = Property(bool, get_available, notify=available_changed)
+    available = Property(bool, RosStatusController.get_available, notify=available_changed)
     enabled = Property(bool, get_enabled, set_enabled, notify=enabled_changed)
     
     # New Qt properties for error and motor availability
@@ -358,7 +346,7 @@ class WheelController(QObject):
     right_motor_available = Property(bool, get_right_motor_available, notify=right_motor_available_changed)
     
     @Slot(bool)
-    def setEnabled(self, enabled: bool):
+    def setEnabled(self, enabled: bool) -> None:
         """
         Enable or disable wheel control
         
@@ -371,33 +359,33 @@ class WheelController(QObject):
         logger.info('Wheel controller %s', 'enabled' if enabled else 'disabled')
         
     @Slot(float)
-    def setLeftSpeed(self, speed: float):
+    def setLeftSpeed(self, speed: float) -> bool:
         """Set left wheel speed from QML"""
         return self.command_left_wheel_speed(speed)
     
     @Slot(float)
-    def setRightSpeed(self, speed: float):
+    def setRightSpeed(self, speed: float) -> bool:
         """Set right wheel speed from QML"""
         return self.command_right_wheel_speed(speed)
     
     @Slot(int, int)
-    def setSpeed(self, left_rpm: int, right_rpm: int):
+    def setSpeed(self, left_rpm: int, right_rpm: int) -> bool:
         """Set both wheel speeds from QML using unified command"""
         return self.command_speed(left_rpm, right_rpm)
     
     @Slot(int, int, int, bool)
-    def setPosition(self, left_mm: int, right_mm: int, rpm_limit: int, relative: bool):
+    def setPosition(self, left_mm: int, right_mm: int, rpm_limit: int, relative: bool) -> bool:
         """Command position from QML"""
         return self.command_position(left_mm, right_mm, rpm_limit, relative)
     
     @Slot()
-    def emergency_stop(self):
+    def emergency_stop(self) -> None:
         """Emergency stop - immediately set both wheels to zero speed"""
         self.command_speed(0, 0)
         logger.info('Wheel controller emergency stop activated')
     
     @Slot()
-    def resetWheelPosition(self):
+    def resetWheelPosition(self) -> None:
         """
         Reset both wheel positions to zero
         """
@@ -406,7 +394,6 @@ class WheelController(QObject):
         self._set_zero_pub.publish(msg)
         logger.info('Wheel positions reset to zero')
         
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Clean up resources when shutting down"""
-        if hasattr(self, '_availability_timer') and self._availability_timer.isActive():
-            self._availability_timer.stop()
+        super().cleanup()

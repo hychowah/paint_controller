@@ -1,9 +1,38 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import time
+from typing import TYPE_CHECKING, Callable, Protocol, TypedDict, cast
+
 from PySide6.QtCore import QObject, Signal
 
 from paint_controller.utils.constants import HeartbeatStatus
+
+if TYPE_CHECKING:
+    from paint_controller.controllers.esp32_valve import ESP32ValveController
+    from paint_controller.controllers.teensy import TeensyController
+    from paint_controller.controllers.wheel import WheelController
+    from paint_controller.controllers.winch import WinchController
+    from paint_controller.core.settings import SettingsManager
+    from paint_controller.core.state_store import StateStore
+    from paint_controller.handlers.safety_coordinator import SafetyCoordinator
+    from paint_controller.handlers.steam_deck import SteamDeckHandler
+
+
+class LoggerProtocol(Protocol):
+    def error(self, message: str) -> object: ...
+
+
+class EmergencyState(TypedDict):
+    is_holding: bool
+    hold_start_time: float
+    overlay_visible: bool
+    completed: bool
+    duration_target: float
+    last_steam_state: bool
+    cooldown_start: float
+    cooldown_duration: float
 
 class EmergencyButtonHandler(QObject):
     """Handler for emergency button functionality"""
@@ -12,9 +41,19 @@ class EmergencyButtonHandler(QObject):
     overlay_changed = Signal(bool, float, float)  # visible, current_duration, target_duration
     emergency_triggered = Signal()
     
-    def __init__(self, steam_deck_handler, winch, teensy, wheel,
-                 show_popup_fn=None, logger=None, settings_manager=None,
-                 state_store=None, safety_coordinator=None, esp32_valve=None):
+    def __init__(
+        self,
+        steam_deck_handler: SteamDeckHandler,
+        winch: WinchController,
+        teensy: TeensyController,
+        wheel: WheelController,
+        show_popup_fn: Callable[..., None] | None = None,
+        logger: LoggerProtocol | None = None,
+        settings_manager: SettingsManager | None = None,
+        state_store: StateStore | None = None,
+        safety_coordinator: SafetyCoordinator | None = None,
+        esp32_valve: ESP32ValveController | None = None,
+    ) -> None:
         super().__init__()
         
         self.steam_deck_handler = steam_deck_handler
@@ -40,14 +79,14 @@ class EmergencyButtonHandler(QObject):
                 signal.connect(self.set_duration_target)
         
         # Emergency state tracking
-        self._state = {
+        self._state: EmergencyState = {
             'is_holding': False,
-            'hold_start_time': 0,
+            'hold_start_time': 0.0,
             'overlay_visible': False,
             'completed': False,
             'duration_target': duration_target,
             'last_steam_state': False,
-            'cooldown_start': 0,    # When emergency was last triggered
+            'cooldown_start': 0.0,    # When emergency was last triggered
             'cooldown_duration': 1.0  # Minimum time between emergency activations
         }
 
@@ -65,7 +104,7 @@ class EmergencyButtonHandler(QObject):
             return
         self._state_store.controller_heartbeat_state = state
     
-    def check_emergency_button(self, button_state):
+    def check_emergency_button(self, button_state: dict[str, bool]) -> None:
         """Check and update emergency button state"""
         steam_pressed = button_state.get('steam', False)
         current_time = time.time()
@@ -109,7 +148,7 @@ class EmergencyButtonHandler(QObject):
         # Update last state
         self._state['last_steam_state'] = steam_pressed
     
-    def _trigger_emergency(self, duration: float):
+    def _trigger_emergency(self, duration: float) -> None:
         """Trigger the emergency action"""
         # Immediately hide the overlay and stop counting
         try:
@@ -125,11 +164,7 @@ class EmergencyButtonHandler(QObject):
             else:
                 self._winch.command_speed_rpm(0)
                 self._teensy.setSprayTrigger(1000)
-                if self._wheel is not None:
-                    if hasattr(self._wheel, 'emergency_stop'):
-                        self._wheel.emergency_stop()
-                    elif hasattr(self._wheel, 'setSpeed'):
-                        self._wheel.setSpeed(0, 0)
+                self._wheel.emergency_stop()
                 if self._esp32_valve is not None:
                     self._esp32_valve.setValveTurn(0.0)
                 self._set_heartbeat_state(HeartbeatStatus.ERROR.value)
@@ -148,7 +183,7 @@ class EmergencyButtonHandler(QObject):
             if self._logger:
                 self._logger.error(f'Error during emergency trigger: {e}')
     
-    def _cancel_emergency(self):
+    def _cancel_emergency(self) -> None:
         """Cancel the emergency sequence"""
         # Reset holding state
         self._state['is_holding'] = False
@@ -158,7 +193,7 @@ class EmergencyButtonHandler(QObject):
             self._state['overlay_visible'] = False
             self.overlay_changed.emit(False, 0, 0)
     
-    def reset_state(self, force=False):
+    def reset_state(self, force: bool = False) -> None:
         """Reset the emergency state to initial values"""
         # If not forcing, respect cooldown
         if not force and self._state['completed']:
@@ -173,33 +208,35 @@ class EmergencyButtonHandler(QObject):
         # Full reset
         self._state = {
             'is_holding': False,
-            'hold_start_time': 0,
+            'hold_start_time': 0.0,
             'overlay_visible': False,
             'completed': False,
             'duration_target': self._state['duration_target'],  # Preserve duration
             'last_steam_state': False,
-            'cooldown_start': 0,
+            'cooldown_start': 0.0,
             'cooldown_duration': self._state['cooldown_duration']  # Preserve cooldown
         }
         self._set_heartbeat_state(HeartbeatStatus.IDLE.value, force=True)
     
-    def set_duration_target(self, duration):
+    def set_duration_target(self, duration: float) -> None:
         """Set the required hold duration for emergency activation"""
         self._state['duration_target'] = max(0.2, min(2.0, float(duration)))
     
-    def set_cooldown_duration(self, duration):
+    def set_cooldown_duration(self, duration: float) -> None:
         """Set the cooldown period between emergency activations"""
         self._state['cooldown_duration'] = duration
     
-    def get_state(self):
+    def get_state(self) -> dict[str, bool | float]:
         """Get current emergency state (for debugging/monitoring)"""
-        state = self._state.copy()
+        state = cast(dict[str, bool | float], dict(self._state))
         if state['completed']:
             current_time = time.time()
-            cooldown_elapsed = current_time - state['cooldown_start']
-            state['cooldown_remaining'] = max(0, state['cooldown_duration'] - cooldown_elapsed)
+            cooldown_start = float(state['cooldown_start'])
+            cooldown_duration = float(state['cooldown_duration'])
+            cooldown_elapsed = current_time - cooldown_start
+            state['cooldown_remaining'] = max(0.0, cooldown_duration - cooldown_elapsed)
         return state
     
-    def force_reset(self):
+    def force_reset(self) -> None:
         """Force reset the emergency state, bypassing cooldown"""
         self.reset_state(force=True)

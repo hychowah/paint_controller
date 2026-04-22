@@ -154,13 +154,12 @@ Rectangle {
             stackView.targetIndex = index
             switch(index) {
                 case 0: targetComponent = homeComponent; break;
-                case 1: targetComponent = page1Component; break;
-                case 2: targetComponent = page2Component; break;
-                case 3: targetComponent = page3Component; break;
-                case 4: targetComponent = page4Component; break;
-                case 5: targetComponent = page5Component; break;
-                case 6: targetComponent = page6Component; break;
-                case 8: targetComponent = settingPageComponent; break;
+                case 1: targetComponent = wheelPageComponent; break;
+                case 2: targetComponent = winchPageComponent; break;
+                case 3: targetComponent = statusPageComponent; break;
+                case 4: targetComponent = tuningPageComponent; break;
+                case 5: targetComponent = launcherPageComponent; break;
+                case 8: targetComponent = settingsPageComponent; break;
             }
             
             console.log("Navigating to page:", index)

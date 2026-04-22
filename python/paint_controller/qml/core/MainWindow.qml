@@ -214,32 +214,32 @@ ApplicationWindow {
     }
 
     Component {
-        id: page1Component
+        id: wheelPageComponent
         PageWheel {}
     }
     
     Component {
-        id: page2Component
+        id: winchPageComponent
         PageWinch {}
     }
     
     Component {
-        id: page3Component
+        id: statusPageComponent
         PageStatus {}
     }
 
     Component {
-        id: page4Component
+        id: tuningPageComponent
         PageTuning {}
     }
 
     Component {
-        id: page5Component
+        id: launcherPageComponent
         PageLauncher {}
     }
 
     Component {
-        id: settingPageComponent
+        id: settingsPageComponent
         PageSettings {}
     }
 

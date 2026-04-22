@@ -2,7 +2,7 @@
 
 > **Source**: Codebase review (2026-04). Updated 2026-04-21 with the `AppRuntime` extraction.
 > **Canonical location**: `docs/plan/03_QML_BINDINGS.md`
-> **Related**: [01_MASTER_PLAN.md](01_MASTER_PLAN.md) | [02_ARCHITECTURE.md](02_ARCHITECTURE.md) | [04_AUDIT_REPORT.md](04_AUDIT_REPORT.md)
+> **Related**: [01_MASTER_PLAN.md](01_MASTER_PLAN.md) | [02_ARCHITECTURE.md](02_ARCHITECTURE.md)
 
 ---
 

@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import time
-from typing import Optional
+from typing import TYPE_CHECKING
+
 from rclpy.node import Node
 from std_msgs.msg import UInt8, Empty
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 
 from paint_controller.utils.constants import HeartbeatStatus
+
+if TYPE_CHECKING:
+    from paint_controller.core.state_store import StateStore
+    from paint_controller.handlers.safety_coordinator import SafetyCoordinator
 
 
 class UIHeartbeatHandler(QObject):
@@ -30,7 +37,12 @@ class UIHeartbeatHandler(QObject):
     ef_online_changed = Signal()
     status_message_changed = Signal()
     
-    def __init__(self, node: Node, state_store=None, safety_coordinator=None):
+    def __init__(
+        self,
+        node: Node,
+        state_store: StateStore | None = None,
+        safety_coordinator: SafetyCoordinator | None = None,
+    ) -> None:
         """
         Initialize the heartbeat handler.
         

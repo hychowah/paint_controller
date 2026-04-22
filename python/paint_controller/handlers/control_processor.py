@@ -1,15 +1,32 @@
+# pyright: reportRedeclaration=false
+
+from __future__ import annotations
+
 from dataclasses import dataclass
 import logging
-from typing import Dict, Optional
-from std_msgs.msg import Float32, Int32
-from geometry_msgs.msg import Twist, Vector3
 import time
+from typing import TYPE_CHECKING, Any
+
+from std_msgs.msg import Float32, Int32
 from paint_controller.handlers.heartbeat import HeartbeatStatus
 from paint_controller.utils.constants import JoystickControl
 from paint_controller.utils.input import DeadzoneTracker
 from PySide6.QtCore import QObject, Signal, Property
 
+if TYPE_CHECKING:
+    from paint_controller.controllers.esp32_valve import ESP32ValveController
+    from paint_controller.controllers.teensy import TeensyController
+    from paint_controller.controllers.wheel import WheelController
+    from paint_controller.controllers.winch import WinchController
+    from paint_controller.core.settings import SettingsManager
+    from paint_controller.core.state_store import StateStore
+    from paint_controller.handlers.heartbeat import UIHeartbeatHandler
+    from paint_controller.ui.overlay import OverlayController
+
 logger = logging.getLogger(__name__)
+
+ControlMessageType = type[Float32] | type[Int32]
+DisplayValue = str | float | tuple[float, float]
 
 @dataclass
 class ControlConfig:
@@ -18,7 +35,7 @@ class ControlConfig:
     offset: float = 0
     min_value: float = float('-inf')
     max_value: float = float('inf')
-    msg_type: type = Float32
+    msg_type: ControlMessageType = Float32
     bidirectional: bool = False  # True for controls that support negative values (e.g., winch speed)
 
 class ControlProcessor(QObject):
@@ -27,8 +44,18 @@ class ControlProcessor(QObject):
     left_control_value_changed = Signal(str)
     right_control_mode_changed = Signal(str)
     right_control_value_changed = Signal(str)
-    def __init__(self, wheel, winch, teensy, esp32_valve, overlay,
-                 heartbeat_handler, settings_manager, state_store):
+
+    def __init__(
+        self,
+        wheel: WheelController,
+        winch: WinchController,
+        teensy: TeensyController,
+        esp32_valve: ESP32ValveController,
+        overlay: OverlayController,
+        heartbeat_handler: UIHeartbeatHandler,
+        settings_manager: SettingsManager | None,
+        state_store: StateStore,
+    ) -> None:
         super().__init__()
         self._wheel = wheel
         self._winch = winch
@@ -39,8 +66,8 @@ class ControlProcessor(QObject):
         self._settings_manager = settings_manager
         self._state_store = state_store
 
-        self.last_command_times = {}
-        self.last_message_time = 0
+        self.last_command_times: dict[str, float] = {}
+        self.last_message_time = 0.0
         
         # Initialize control info properties
         self._left_control_mode = JoystickControl.NONE
@@ -58,7 +85,7 @@ class ControlProcessor(QObject):
         self._left_wheel_travel_mm = 0.0
         self._right_wheel_travel_mm = 0.0
         
-        self.current_values = {
+        self.current_values: dict[str, DisplayValue] = {
             'left_mode': '',
             'left_value': 0.0,
             'right_mode': '',
@@ -69,7 +96,7 @@ class ControlProcessor(QObject):
         self._setup_constants()
         self._setup_controls()
 
-    def _setup_settings(self, settings_manager):
+    def _setup_settings(self, settings_manager: SettingsManager | None) -> None:
         """Load settings from settings_manager and subscribe to changes."""
         self.MESSAGE_UPDATE_INTERVAL = 0.2  # seconds, 5Hz display update rate
 
@@ -99,7 +126,7 @@ class ControlProcessor(QObject):
             self._wheel_travel_rate = 100.0
             self._wheel_travel_rpm = 300
 
-    def _setup_constants(self):
+    def _setup_constants(self) -> None:
         """Initialize control constants and scaling factors."""
         self.JOYSTICK_MAX_VALUE = 32768.0
 
@@ -152,7 +179,7 @@ class ControlProcessor(QObject):
         self.EF_PWM_MIN_VALUE = 1000
         self.EF_YAW_IMU_SCALE = 100.0
 
-    def _setup_controls(self):
+    def _setup_controls(self) -> None:
         """Initialize control configurations and handler dispatch table."""
         self.controls = {
             "Winch Speed": ControlConfig(
@@ -381,7 +408,7 @@ class ControlProcessor(QObject):
         
         return sign * speed_output
 
-    def _process_track_control(self, input_state: Dict, mode: str, stick: str):
+    def _process_track_control(self, input_state: dict[str, Any], mode: str, stick: str) -> None:
         """Handle Track Control using two joysticks (Independent tank drive)
         "Track Control Left": Controls left track speed
         "Track Control Right": Controls right track speed
@@ -422,7 +449,7 @@ class ControlProcessor(QObject):
         except Exception as e:
             logger.error("Error commanding track control (%s): %s", mode, e)
 
-    def _process_joint_control(self, input_state: Dict, mode: str, stick: str):
+    def _process_joint_control(self, input_state: dict[str, Any], mode: str, stick: str) -> None:
         """Handle prop joint specific control"""
         config = self.controls[mode]
         command_angle = input_state[f'{stick}_stick']['x'] * config.scale
@@ -439,7 +466,7 @@ class ControlProcessor(QObject):
             self.current_values['right_mode'] = mode
             self.current_values['right_value'] = command_angle
 
-    def _process_ef_force_control(self, input_state: Dict, mode: str, stick: str):
+    def _process_ef_force_control(self, input_state: dict[str, Any], mode: str, stick: str) -> None:
         """Handle EF Force specific control - reads both x and y axes"""
         config = self.controls[mode]
         
@@ -464,7 +491,7 @@ class ControlProcessor(QObject):
         
         self._teensy.set_ef_force(Fx, Fy)
 
-    def _process_yaw_control(self, input_state: Dict, mode: str, stick: str):
+    def _process_yaw_control(self, input_state: dict[str, Any], mode: str, stick: str) -> None:
         """Handle EF Yaw Angle specific control"""
         config = self.controls[mode]
         command_angle = - float(input_state[f'{stick}_stick']['x']) * config.scale + config.offset
@@ -480,14 +507,14 @@ class ControlProcessor(QObject):
             self.current_values['right_value'] = command_angle
             
 
-    def _publish_value(self, value: float, publisher, config: ControlConfig):
+    def _publish_value(self, value: float, publisher: Any, config: ControlConfig) -> None:
         """Publish a value with proper typing"""
         if config.msg_type == Int32:
             value = int(value)
         msg = config.msg_type(data=value)
         publisher.publish(msg)
 
-    def _process_valve_turn(self, input_state: Dict):
+    def _process_valve_turn(self, input_state: dict[str, Any]) -> None:
         """Handle valve turn control using right analog trigger
         
         Maps the right trigger (0-32767) to valve turn range 
@@ -516,7 +543,7 @@ class ControlProcessor(QObject):
             except Exception as e:
                 logger.error("Error commanding valve turn: %s", e)
     
-    def _process_arm_rail_speed(self, input_state: Dict):
+    def _process_arm_rail_speed(self, input_state: dict[str, Any]) -> None:
         """Handle arm rail speed control using left analog trigger
         
         Maps the left trigger (0-32767) to arm rail speed range (0.0-50.0)
@@ -545,7 +572,7 @@ class ControlProcessor(QObject):
             except Exception as e:
                 logger.error("Error commanding arm rail speed: %s", e)
 
-    def _process_winch_speed(self, input_state: Dict, mode: str, stick: str):
+    def _process_winch_speed(self, input_state: dict[str, Any], mode: str, stick: str) -> None:
         """Handle winch speed control using joystick Y-axis
         
         Maps the joystick Y-axis to winch speed range (min_value to max_value)
@@ -596,7 +623,7 @@ class ControlProcessor(QObject):
             except Exception as e:
                 logger.error("Error commanding winch speed: %s", e)
 
-    def _process_wheel_travel(self, input_state: Dict, mode: str, stick: str):
+    def _process_wheel_travel(self, input_state: dict[str, Any], mode: str, stick: str) -> None:
         """Handle wheel travel position control using joystick Y-axis
         
         Accumulates travel distance from joystick input without sending commands.
@@ -637,7 +664,7 @@ class ControlProcessor(QObject):
         # Note: No ROS command is sent here - only accumulate the value
         # Command will be sent when A button is pressed (see input.py handler)
 
-    def _process_standard_control(self, input_state: Dict, mode: str, stick: str):
+    def _process_standard_control(self, input_state: dict[str, Any], mode: str, stick: str) -> None:
         """Handle standard control modes"""
         config = self.controls[mode]
         value = input_state[f'{stick}_stick']['y'] * config.scale + config.offset
@@ -675,7 +702,7 @@ class ControlProcessor(QObject):
                 else:
                     self._publish_value(value, publisher, config)
 
-    def _process_control_with_dispatch(self, input_state: Dict, mode: str, stick: str):
+    def _process_control_with_dispatch(self, input_state: dict[str, Any], mode: str, stick: str) -> None:
         """Process control input using dispatch table
         
         Args:
@@ -687,7 +714,7 @@ class ControlProcessor(QObject):
         handler = self._control_handlers.get(mode, self._process_standard_control)
         handler(input_state, mode, stick)
 
-    def process_input(self, input_state: Dict):
+    def process_input(self, input_state: dict[str, Any]) -> None:
         """Process all control inputs with rate limiting"""
         try:
             # Process left joystick
@@ -722,7 +749,7 @@ class ControlProcessor(QObject):
             self._state_store.display_message = f"Error processing control input: {str(e)}"
 
 
-    def set_winch_speed_limit(self, limit):
+    def set_winch_speed_limit(self, limit: float) -> None:
         """Set the winch speed limit"""
         self.controls["Winch Speed"].scale = abs(limit) / 32768
     

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Callable, Any, Optional
+from typing import Any, Callable, Dict, List, TypedDict
 import math
 import time
 import threading
@@ -13,13 +15,18 @@ from paint_controller.utils.steam_deck_hid import parse_hid_frame
 
 logger = logging.getLogger(__name__)
 
+
+class ButtonTiming(TypedDict):
+    start_time: float
+    last_trigger_time: float
+
 class SteamDeckReaderThread(QThread):
     """Qt thread for reading from the Steam Deck HID device"""
     
     # Signal to emit when new data is read
     data_read = Signal(bytes)
     
-    def __init__(self, parent=None):
+    def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._stop_requested = False
         self._device = None
@@ -120,26 +127,26 @@ class SteamDeckHandler(QObject):
         }
         
         # Unified button timing - track start time and last trigger time for each button
-        self._button_state_timing = {
-            'up': {'start_time': 0, 'last_trigger_time': 0}, 
-            'down': {'start_time': 0, 'last_trigger_time': 0}, 
-            'left': {'start_time': 0, 'last_trigger_time': 0}, 
-            'right': {'start_time': 0, 'last_trigger_time': 0},
-            'a': {'start_time': 0, 'last_trigger_time': 0}, 
-            'b': {'start_time': 0, 'last_trigger_time': 0}, 
-            'x': {'start_time': 0, 'last_trigger_time': 0}, 
-            'y': {'start_time': 0, 'last_trigger_time': 0},
-            'l1': {'start_time': 0, 'last_trigger_time': 0}, 
-            'r1': {'start_time': 0, 'last_trigger_time': 0}, 
-            'l4': {'start_time': 0, 'last_trigger_time': 0}, 
-            'r4': {'start_time': 0, 'last_trigger_time': 0},
-            'l5': {'start_time': 0, 'last_trigger_time': 0},
-            'r5': {'start_time': 0, 'last_trigger_time': 0},
-            'l3': {'start_time': 0, 'last_trigger_time': 0},
-            'menu': {'start_time': 0, 'last_trigger_time': 0}, 
-            'switch': {'start_time': 0, 'last_trigger_time': 0},
-            'steam': {'start_time': 0, 'last_trigger_time': 0},
-            'dot': {'start_time': 0, 'last_trigger_time': 0}
+        self._button_state_timing: dict[str, ButtonTiming] = {
+            'up': {'start_time': 0.0, 'last_trigger_time': 0.0},
+            'down': {'start_time': 0.0, 'last_trigger_time': 0.0},
+            'left': {'start_time': 0.0, 'last_trigger_time': 0.0},
+            'right': {'start_time': 0.0, 'last_trigger_time': 0.0},
+            'a': {'start_time': 0.0, 'last_trigger_time': 0.0},
+            'b': {'start_time': 0.0, 'last_trigger_time': 0.0},
+            'x': {'start_time': 0.0, 'last_trigger_time': 0.0},
+            'y': {'start_time': 0.0, 'last_trigger_time': 0.0},
+            'l1': {'start_time': 0.0, 'last_trigger_time': 0.0},
+            'r1': {'start_time': 0.0, 'last_trigger_time': 0.0},
+            'l4': {'start_time': 0.0, 'last_trigger_time': 0.0},
+            'r4': {'start_time': 0.0, 'last_trigger_time': 0.0},
+            'l5': {'start_time': 0.0, 'last_trigger_time': 0.0},
+            'r5': {'start_time': 0.0, 'last_trigger_time': 0.0},
+            'l3': {'start_time': 0.0, 'last_trigger_time': 0.0},
+            'menu': {'start_time': 0.0, 'last_trigger_time': 0.0},
+            'switch': {'start_time': 0.0, 'last_trigger_time': 0.0},
+            'steam': {'start_time': 0.0, 'last_trigger_time': 0.0},
+            'dot': {'start_time': 0.0, 'last_trigger_time': 0.0},
         }
         
         # Set per-button debounce times

@@ -2,9 +2,22 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Protocol
 
 from paint_controller.utils.constants import HeartbeatStatus
+
+if TYPE_CHECKING:
+    from paint_controller.controllers.esp32_valve import ESP32ValveController
+    from paint_controller.controllers.teensy import TeensyController
+    from paint_controller.controllers.wheel import WheelController
+    from paint_controller.controllers.winch import WinchController
+    from paint_controller.core.state_store import StateStore
+
+
+class LoggerProtocol(Protocol):
+    def error(self, message: str) -> object: ...
+
+    def warning(self, message: str) -> object: ...
 
 
 class SafetyCoordinator:
@@ -13,12 +26,12 @@ class SafetyCoordinator:
     def __init__(
         self,
         *,
-        winch: Any = None,
-        teensy: Any = None,
-        wheel: Any = None,
-        esp32_valve: Any = None,
-        state_store: Any = None,
-        logger: Any = None,
+        winch: WinchController | None = None,
+        teensy: TeensyController | None = None,
+        wheel: WheelController | None = None,
+        esp32_valve: ESP32ValveController | None = None,
+        state_store: StateStore | None = None,
+        logger: LoggerProtocol | None = None,
     ) -> None:
         self._winch = winch
         self._teensy = teensy
@@ -69,10 +82,7 @@ class SafetyCoordinator:
 
         try:
             if self._wheel is not None:
-                if hasattr(self._wheel, 'emergency_stop'):
-                    self._wheel.emergency_stop()
-                elif hasattr(self._wheel, 'setSpeed'):
-                    self._wheel.setSpeed(0, 0)
+                self._wheel.emergency_stop()
         except Exception as exc:
             failures.append(f"wheel: {exc}")
 

@@ -57,7 +57,7 @@ class UDPReceiveThread(QThread):
     status_received = Signal(dict)
     connection_lost = Signal()
     
-    def __init__(self, sock: socket.socket, sock_lock: threading.Lock, parent=None):
+    def __init__(self, sock: socket.socket, sock_lock: threading.Lock, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self.sock = sock
         self._sock_lock = sock_lock
@@ -127,7 +127,7 @@ class UDPReceiveThread(QThread):
         
         return crc8(data[:-1]) == data[-1]
     
-    def stop(self):
+    def stop(self) -> None:
         """Stop the receive thread"""
         self._running = False
 
@@ -159,7 +159,7 @@ class ESP32ValveController(QObject):
     ESP32_MAC = _ESP32_CONFIG["mac_address"]
     ESP32_IP_FALLBACK = _ESP32_CONFIG["ip_fallback"]
     
-    def __init__(self, node: Node):
+    def __init__(self, node: Node) -> None:
         super().__init__()
         self._node = node
         

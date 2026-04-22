@@ -2,18 +2,72 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
 import struct
+from typing import TypedDict
 
 
 _REPORT_LENGTH = 64
+
+
+class ButtonState(TypedDict):
+    r2_click: bool
+    l2_click: bool
+    r1: bool
+    l1: bool
+    y: bool
+    b: bool
+    x: bool
+    a: bool
+    up: bool
+    right: bool
+    left: bool
+    down: bool
+    switch: bool
+    steam: bool
+    menu: bool
+    l5: bool
+    r5: bool
+    left_touchpad_touch: bool
+    right_touchpad_touch: bool
+    l3: bool
+    l4: bool
+    r4: bool
+    dot: bool
+
+
+class ImuState(TypedDict):
+    pitch: int
+    roll: int
+    yaw: int
+
+
+class TriggerState(TypedDict):
+    left: int
+    right: int
+
+
+class StickState(TypedDict):
+    x: int
+    y: int
+
+
+class SticksState(TypedDict):
+    left: StickState
+    right: StickState
+
+
+class ParsedHidFrame(TypedDict):
+    buttons: ButtonState
+    imu: ImuState
+    triggers: TriggerState
+    sticks: SticksState
 
 
 def _read_int16_le(data: bytes, offset: int) -> int:
     return struct.unpack("<h", data[offset:offset + 2])[0]
 
 
-def parse_hid_frame(data: bytes) -> Optional[Dict[str, Any]]:
+def parse_hid_frame(data: bytes) -> ParsedHidFrame | None:
     """Decode one Steam Deck HID input frame.
 
     Returns ``None`` for short packets so callers can preserve the current

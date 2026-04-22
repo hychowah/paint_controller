@@ -1,19 +1,20 @@
 # Paint Controller Modernization — Plan Documentation
 
 > **Created**: 2026-04-16
-> **Validated**: 2026-04-21 (post-implementation + test/documentation sync)
+> **Validated**: 2026-04-22 (post-implementation + test/documentation sync)
 > **Branch**: `refactor`
 
 ## For Future LLM Sessions
 
 > **Start at `INDEX.md` (repo root)** — it is the canonical session-start map for the whole repo. This file covers only the plan-documentation subset.
 
+This branch is **refactor-first**. The intent is to improve architecture, safety, shutdown/threading behavior, typing coverage, and defensive QML correctness before resuming feature delivery. If you are unsure whether to add a feature or reduce debt, choose the debt/hardening path unless the user explicitly reprioritizes.
+
 For plan-docs navigation, read in this order:
 
 1. **`01_MASTER_PLAN.md`** — Authoritative task tracker, dependency graph, progress table, and next-task gate.
 2. **`02_ARCHITECTURE.md`** — Current runtime architecture reference.
 3. **`03_QML_BINDINGS.md`** — Current QML↔Python registration state and remaining import/qmldir cleanup scope.
-4. **`04_AUDIT_REPORT.md`** — Historical pre-mortem rationale, not current status.
 
 ## Authority Hierarchy
 
@@ -22,7 +23,7 @@ For plan-docs navigation, read in this order:
 - **What was actually completed and validated**: `DEVNOTES.md`
 - **Reusable technical gotchas and patterns**: `KNOWLEDGE.md`
 - **Active task scratch only**: `PLANNING.md`
-- **Historical context only**: `REFACTOR_TRACKER.md`, `docs/plan/04_AUDIT_REPORT.md`
+- **Historical context only**: older DEVNOTES references to removed tracker/audit docs
 
 If two files disagree, prefer `INDEX.md`'s repo-wide authority hierarchy first. Within the plan-doc subset, prefer the file higher in this list unless `DEVNOTES.md` documents a more recent verified result.
 
@@ -32,14 +33,20 @@ If two files disagree, prefer `INDEX.md`'s repo-wide authority hierarchy first. 
 - **Chronological completed work**: `DEVNOTES.md`
 - **Active session scratch plan**: `PLANNING.md`
 - **Operator/developer entry point**: `README.md`
-- **Historical context only**: `REFACTOR_TRACKER.md`, `docs/plan/04_AUDIT_REPORT.md`
+- **Historical context only**: older DEVNOTES references to removed tracker/audit docs
 
 ## Stale-File Warnings
 
 - `PLANNING.md` is temporary scratch for the active task and should not be treated as the long-term source of truth.
-- `REFACTOR_TRACKER.md` is archived context, not the active tracker.
-- `04_AUDIT_REPORT.md` contains useful rationale, but some recommendations were superseded by the later context-property runtime strategy.
+- Historical notes may still mention the removed audit report; treat those references as background only and rely on `01_MASTER_PLAN.md` + `02_ARCHITECTURE.md` for current direction.
 - Historical test-count or task-order claims in older notes can drift. Use the **Current Checkpoint** section in `01_MASTER_PLAN.md` as the active queue.
+
+## Avoid / Defer
+
+- Do not start net-new feature work unless the user explicitly reprioritizes it over refactoring.
+- Current next priority is `TD-001`, then the remaining Phase 2 theming backlog (`2.5b`, `2.5c`, `2.6a-c`, `2.7`), then `TD-016`.
+- Keep using `setContextProperty()`; do not re-open singleton-registration work with `qmlRegisterSingletonInstance()`.
+- Treat `PLANNING.md` as session scratch only. If it conflicts with `DEVNOTES.md` or `01_MASTER_PLAN.md`, it loses.
 
 ## Environment Note
 
@@ -51,8 +58,9 @@ If two files disagree, prefer `INDEX.md`'s repo-wide authority hierarchy first. 
 
 ## Active Queue Snapshot
 
-- Immediate priority: `3.10 Static typing gate expansion`, then `2.8`
-- Deferred backlog: remaining Phase 2 theming work (`2.5b`, `2.5c`, `2.6a-c`, `2.7`) stays documented but is intentionally postponed behind the current `3.10` typing expansion and `2.8` naming cleanup
+- Just completed: `3.10 Static typing gate expansion`, `2.8 Fix page naming`
+- Immediate priority: `TD-001 QML required properties`, then the remaining Phase 2 theming backlog (`2.5b`, `2.5c`, `2.6a-c`, `2.7`)
+- Deferred backlog: `TD-016 VideoOverlayStyle` remains low-priority after `TD-001` and the remaining Phase 2 rollout
 
 ## Key Paths
 

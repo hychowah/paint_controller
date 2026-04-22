@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Dict, Optional, Any, TypedDict, Union
+from typing import Any, Callable, TYPE_CHECKING, TypedDict, cast
 import time
 import threading
 
@@ -11,6 +13,12 @@ from geometry_msgs.msg import Twist, Vector3
 from paint_interfaces.msg import TeensyStatus, TeensyYaw, MoveWinchLength
 
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
+
+from paint_controller.controllers._base import RosStatusController
+
+if TYPE_CHECKING:
+    from paint_controller.core.settings import SettingsManager
+    from paint_controller.controllers.winch import WinchController
 
 
 class TeensyStatusDict(TypedDict, total=False):
@@ -88,7 +96,7 @@ _USER_CONTROLLED_FIELDS = (
 )
 
 
-class TeensyController(QObject):
+class TeensyController(RosStatusController):
     # Define Qt signals
     status_changed = Signal(dict)
     connection_changed = Signal(bool)
@@ -101,9 +109,14 @@ class TeensyController(QObject):
     roller_steering_enabled_changed = Signal(bool)
     swing_damping_enabled_changed = Signal(bool)
     
-    def __init__(self, node, settings_manager=None, winch_controller=None, show_popup_fn=None):
-        super().__init__()
-        self._node = node
+    def __init__(
+        self,
+        node: Node,
+        settings_manager: SettingsManager | None = None,
+        winch_controller: WinchController | None = None,
+        show_popup_fn: Callable[..., None] | None = None,
+    ) -> None:
+        super().__init__(node)
         self._settings_manager = settings_manager
         self._winch_controller = winch_controller
         self._show_popup_fn = show_popup_fn
@@ -168,11 +181,8 @@ class TeensyController(QObject):
         }
         
         self._status_lock = threading.Lock()
-        self._last_status_update_time = 0
         self._last_ui_update_time = 0
         self._last_ui_update_interval = 0.1  # seconds
-        self._connection_timeout = 1.0  # seconds
-        self._available = False
         
         # Member state variables
         self._enabled = False
@@ -207,16 +217,14 @@ class TeensyController(QObject):
         self._setup_subscribers()
         
         # Create connection check timer
-        self._availability_timer = QTimer(self)
-        self._availability_timer.timeout.connect(self._check_availability)
-        self._availability_timer.start(200)  # Check every 200ms
+        self._start_availability_timer()
         
         # Create thrust ramping timer (10Hz)
         self._thrust_ramp_timer = QTimer(self)
         self._thrust_ramp_timer.timeout.connect(self._update_thrust_ramp)
         self._thrust_ramp_timer.start(100)  # 100ms = 10Hz
         
-    def _setup_publishers(self):
+    def _setup_publishers(self) -> None:
         """Set up ROS publishers for Teensy control"""
         self.teensy_relay_pub = self._node.create_publisher(Bool, 'teensy/relay/cmd', 1)
         self.teensy_enable_pub = self._node.create_publisher(Bool, 'teensy/enable/cmd', 1)
@@ -250,7 +258,7 @@ class TeensyController(QObject):
         self.swing_damping_enable_pub = self._node.create_publisher(Bool, 'stability_controller/swing_damping/enable/cmd', 1)
 
 
-    def _setup_subscribers(self):
+    def _setup_subscribers(self) -> None:
         """Set up ROS subscribers"""
         self._node.create_subscription(
             TeensyStatus,
@@ -261,22 +269,22 @@ class TeensyController(QObject):
     
     # --- Publish helpers to reduce boilerplate ---
     
-    def _publish_float32(self, publisher, value: float):
+    def _publish_float32(self, publisher: Any, value: float) -> None:
         msg = Float32()
         msg.data = float(value)
         publisher.publish(msg)
     
-    def _publish_int32(self, publisher, value: int):
+    def _publish_int32(self, publisher: Any, value: int) -> None:
         msg = Int32()
         msg.data = int(value)
         publisher.publish(msg)
     
-    def _publish_bool(self, publisher, value: bool):
+    def _publish_bool(self, publisher: Any, value: bool) -> None:
         msg = Bool()
         msg.data = value
         publisher.publish(msg)
     
-    def _check_availability(self):
+    def _check_availability(self) -> None:
         """Check if the Teensy is still connected"""
         current_time = time.time()
         
@@ -285,12 +293,10 @@ class TeensyController(QObject):
         
         # If it's been too long since the last update, consider disconnected
         if time_since_last_update > self._connection_timeout:
-            if self._available:
-                self._available = False
+            if self.set_available(False):
                 self._node.get_logger().warning("Teensy considered disconnected: %.1fs since last status update" % time_since_last_update)
                 self.connection_changed.emit(False)
-        elif not self._available:
-            self._available = True
+        elif self.set_available(True):
             self._node.get_logger().info("Teensy connection established")
             self.connection_changed.emit(True)
 
@@ -300,10 +306,10 @@ class TeensyController(QObject):
 
     def _update_status_fields(self, **fields: Any) -> TeensyStatusDict:
         with self._status_lock:
-            self._status.update(fields)
+            self._status.update(cast(TeensyStatusDict, fields))
             return self._status.copy()
     
-    def _status_callback(self, msg: TeensyStatus):
+    def _status_callback(self, msg: TeensyStatus) -> None:
         """Process incoming TeensyStatus messages from ROS"""
         try:
             # Convert milliseconds to hours, minutes, seconds
@@ -315,7 +321,7 @@ class TeensyController(QObject):
             formatted_runtime = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
             # Build new status dict, then swap atomically under lock
-            new_status = {
+            new_status: TeensyStatusDict = {
                 'available': True,
                 'top_rail_position': msg.top_rail_position,
                 'top_rail_speed': msg.top_rail_speed,
@@ -371,7 +377,7 @@ class TeensyController(QObject):
                 status_snapshot = self._status.copy()
 
             current_time = time.time()
-            self._last_status_update_time = current_time
+            self._record_status_update()
 
             # Throttle UI updates to avoid overwhelming the UI
             # Emit signal OUTSIDE lock to prevent deadlock
@@ -511,7 +517,7 @@ class TeensyController(QObject):
         """Perform a demo action with the spray gun"""
         self.setSprayGunPitchAngle(pitch_angle, pitch_speed)
         if self._winch_controller:
-            self._winch_controller.move_absolute(cable_length, cable_speed)
+            self._winch_controller.move_absolute(int(cable_length), int(cable_speed))
         self.set_ef_force(0.0, force_y)
 
     @Slot(bool)
@@ -656,11 +662,8 @@ class TeensyController(QObject):
         return self._get_status_snapshot()
     
     # Define a property for availability
-    def get_available(self) -> bool:
-        return self._available
-    
     # Define Qt properties
-    available = Property(bool, get_available, notify=connection_changed)
+    available = Property(bool, RosStatusController.get_available, notify=connection_changed)
     all_status = Property(dict, get_all_status, notify=status_changed)
     spray_gun_leveling_enabled = Property(bool, lambda self: self._spray_gun_leveling_enabled, notify=spray_gun_leveling_changed)
     spray_gun_led_on = Property(bool, lambda self: self._spray_gun_led_on, notify=spray_gun_led_changed)
@@ -766,9 +769,8 @@ class TeensyController(QObject):
                 self.set_ef_force(0.0, self._current_thrust_force)
                 self._last_published_thrust = self._current_thrust_force
     
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Clean up resources when shutting down"""
-        if hasattr(self, '_availability_timer') and self._availability_timer.isActive():
-            self._availability_timer.stop()
+        super().cleanup()
         if hasattr(self, '_thrust_ramp_timer') and self._thrust_ramp_timer.isActive():
             self._thrust_ramp_timer.stop()

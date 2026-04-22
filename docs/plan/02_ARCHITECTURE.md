@@ -1,14 +1,16 @@
 # Paint Controller Architecture Reference
 
-> **Source**: Codebase review (2026-04). Updated 2026-04-21 with audit findings, implementation progress, and test/documentation sync.
+> **Source**: Codebase review (2026-04). Updated 2026-04-22 with audit findings, implementation progress, and test/documentation sync.
 > **Canonical location**: `docs/plan/02_ARCHITECTURE.md`
-> **Related**: [01_MASTER_PLAN.md](01_MASTER_PLAN.md) | [03_QML_BINDINGS.md](03_QML_BINDINGS.md) | [04_AUDIT_REPORT.md](04_AUDIT_REPORT.md)
+> **Related**: [01_MASTER_PLAN.md](01_MASTER_PLAN.md) | [03_QML_BINDINGS.md](03_QML_BINDINGS.md)
 
 ---
 
 ## Project Overview
 
 Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. The live repo is Python-first; the historical C++ UI/runtime path was removed from the tree during Phase 1A. The app controls a multi-DOF painting robot with cameras, winch, wheels, propellers, Lidar, and spray systems.
+
+The current branch is **refactor-first**: architecture cleanup, safety correctness, shutdown/threading hardening, test depth, and typing coverage intentionally outrank net-new features so later development happens on a safer base.
 
 **Tech Stack**: ROS2 (Humble/Jazzy), Python 3.10+, PySide6 (Qt 6), QML, OpenCV, GStreamer, VTK, UDP
 
@@ -78,14 +80,15 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Atomic persistence: writes now go through temp-file + flush/fsync + `os.replace` so a failed write does not corrupt the last good file
 
 **Quality gate status**
-- Pyright gate v1 is live in CI
-- Strict typing currently covers `core/controller_factory.py`
-- Selected PySide-heavy core files (`settings.py`, `state_store.py`, `qt_bridge.py`) are included in basic visibility mode until descriptor-heavy typing is expanded further
+- Pyright gate v2 is live in CI
+- `handlers/` + `controllers/` are now included in basic mode in addition to the earlier core slice
+- Strict typing currently covers `core/config.py`, `core/controller_factory.py`, `handlers/safety_coordinator.py`, and `utils/steam_deck_hid.py`
+- PySide descriptor-heavy modules remain in basic mode where strict still produces framework-stub noise instead of actionable defects
 
 **Runtime registration state**
 - All 22 live runtime objects are exposed via `setContextProperty()`
 - The singleton-registration track was cancelled because `qmlRegisterSingletonInstance()` is broken in this PySide6 setup
-- Remaining Phase 1 cleanup is mostly deferred or debt-tracked: import/qmldir cleanup is complete, `required property` work now lives in `TD-001`, and the active queue has moved to `3.10` expansion and `2.8`
+- Remaining Phase 1 cleanup is mostly deferred or debt-tracked: import/qmldir cleanup is complete, `required property` work now lives in `TD-001`, and the next queue has moved to defensive QML debt first (`TD-001`) followed by the remaining Phase 2 theming backlog
 - The C++ source files (`src/*.cpp`, `include/paint_controller/*.hpp`) were deleted in Phase 1A
 
 ---
@@ -131,7 +134,7 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Steam button hold-to-trigger (1.0s default via `emergency_hold_duration_s`, clamped to `[0.2, 2.0]`)
 - Progressive overlay feedback (duration/target_duration)
 - Cooldown: 1s between activations
-- Actions: delegates halt-all behavior through `SafetyCoordinator`, including winch/wheel stop, spray trigger disable, ESP32 valve stop, and error popup handling
+- Actions: Winch/wheel stop, spray trigger disable, error popup
 - State machine: idle → holding → triggered → cooldown
 
 #### **Heartbeat Monitor** - `UIHeartbeatHandler(QObject)` ~200 lines
@@ -159,6 +162,7 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Error signal: Triggers emergency overlay on motor failure
 - Connection timeout: 1s before considered offline
 - Unified speed command (both tracks via single message)
+- Shares the narrow `RosStatusController` base for availability timestamps, polling timer wiring, and cleanup
 
 #### **Winch Controller** - `WinchController(QObject)` ~200 lines
 - ROS2 publisher: speed (RPM/mm·s), enable, move commands
@@ -168,6 +172,7 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Move commands: Increment, absolute, with acceleration control
 - Settings integration: max_speed_mmps loaded from SettingsManager
 - Availability guards are re-enabled on the speed and move-command paths; the winch test suite covers the speed-path behavior and transport validation; move-command guard coverage (method-level availability check in `WinchController.move_*`) is tested via `test_control_processor.py` at the ControlProcessor dispatch layer
+- Shares the narrow `RosStatusController` base for availability timestamps, polling timer wiring, and cleanup
 
 #### **Teensy Controller** - `TeensyController(QObject)` ~300 lines
 - ROS2 publisher: 20+ topics for sprayer, gimbal, props, relay, LED
@@ -178,6 +183,7 @@ Steam Deck-based robotic paint controller with ROS2 backend and PySide6/QML UI. 
 - Gimbal control: Pitch speed + angle, roll motors (PWM)
 - Prop control: Left/right joint + PWM independent
 - Status cache update throttle: 100ms
+- Shares the narrow `RosStatusController` base for availability timestamps, polling timer wiring, and cleanup while keeping its own `connection_changed` signal semantics
 
 #### **ESP32 Valve Controller** - `ESP32ValveController(QObject)` ~300 lines
 - UDP-based (ports 8888/8889)
@@ -333,7 +339,7 @@ qml/
 - QML rendering, UI updates
 - Signal/slot delivery
 - Steam Deck button callbacks (debounced)
-- Timer-based UI polling and ramps (for example 200ms availability checks and 100ms thrust ramp updates); `/controller/heartbeat` publish now runs on `PaintRosNode`'s 500ms ROS timer
+- Timer-based polling (200ms heartbeat, 100ms thrust ramp, etc.)
 
 **ROS2 Thread** (`RosThread`):
 - `rclpy.spin_once()` with 50ms timeout
@@ -447,7 +453,7 @@ The repo now uses a layered test model instead of one generic mocking style for 
 - `tests/test_winch_ros_integration.py` proves the published command reaches a real `rclpy` subscriber callback
 
 **Local validation status**
-- Current documented local result: full `python/paint_controller/venv/bin/python -m pytest tests -q` revalidation is green at `148 passed`; offscreen startup smoke and the first-touch freeze hotfix regressions are also covered
+- Current documented local result: targeted venv validation for the new core batch is green, while a full `python/paint_controller/venv/bin/python -m pytest tests -q` run still aborts in this terminal on the Qt application fixture path
 
 ---
 

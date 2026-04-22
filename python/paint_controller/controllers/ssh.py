@@ -8,6 +8,7 @@ import threading
 import subprocess
 import time
 import platform
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -49,14 +50,21 @@ def _atomic_write_json(path: str, data, *, indent: int) -> None:
         raise
 
 class SSHLauncher:
-    def __init__(self, hostname, username, password=None, key_path=None, port=22):
+    def __init__(
+        self,
+        hostname: str,
+        username: str,
+        password: str | None = None,
+        key_path: str | None = None,
+        port: int = 22,
+    ) -> None:
         self.hostname = hostname
         self.username = username
         self.password = password
         self.key_path = os.path.expanduser(key_path) if key_path else None
         self.port = port
 
-    def run_script(self, command, callback=None):
+    def run_script(self, command: str, callback: Callable[[str, str], None] | None = None):
         def _execute():
             logger.info("Connecting to %s@%s:%s", self.username, self.hostname, self.port)
             client = None
@@ -110,7 +118,13 @@ class SSHLauncher:
         return thread
 
 class AvailabilityCheckRunnable(QRunnable):
-    def __init__(self, device_name, hostname, timeout, callback):
+    def __init__(
+        self,
+        device_name: str,
+        hostname: str,
+        timeout: float,
+        callback: Callable[[str, bool, str, float], None],
+    ) -> None:
         super().__init__()
         self.device_name = device_name
         self.hostname = hostname
@@ -159,7 +173,7 @@ class UISSHController(QObject):
     availabilityResultReady = Signal(str, bool, str, float)
     commandResultReady = Signal(str, str, str, str)
 
-    def __init__(self, show_popup_fn=None, parent=None):
+    def __init__(self, show_popup_fn: Callable[..., None] | None = None, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._show_popup_fn = show_popup_fn
         self.thread_pool = QThreadPool.globalInstance()
@@ -184,7 +198,7 @@ class UISSHController(QObject):
         # Start availability checks for all devices in ssh_config.json
         self._start_all_availability_checks()
 
-    def _load_json_file(self, path):
+    def _load_json_file(self, path: str) -> dict[str, Any]:
         try:
             with open(path, 'r') as f:
                 return json.load(f)
@@ -192,7 +206,7 @@ class UISSHController(QObject):
             logger.error("Failed to load JSON config from %s: %s", path, e)
             return {}
 
-    def _save_json_file(self, path, data):
+    def _save_json_file(self, path: str, data: dict[str, Any]) -> bool:
         try:
             _atomic_write_json(path, data, indent=4)
             return True
@@ -200,10 +214,10 @@ class UISSHController(QObject):
             logger.error("Failed to save JSON config to %s: %s", path, e)
             return False
 
-    def _prune_command_threads(self):
+    def _prune_command_threads(self) -> None:
         self._command_threads = [thread for thread in self._command_threads if thread.is_alive()]
 
-    def _load_ssh_config(self, path):
+    def _load_ssh_config(self, path: str) -> dict[str, SSHLauncher]:
         ssh_config = self._load_json_file(path)
         return {
             name: SSHLauncher(**info)
@@ -242,11 +256,8 @@ class UISSHController(QObject):
 
             try:
                 self.availabilityResultReady.emit(name, is_available, message, ping_time)
-            except RuntimeError as e:
-                if "already deleted" in str(e):
-                    logger.debug("Object being destroyed, skipping signal emission for %s", name)
-                else:
-                    raise
+            except RuntimeError:
+                logger.debug("Skipping availability result for %s during QObject teardown", name)
 
         runnable = AvailabilityCheckRunnable(device_name, hostname, timeout, handle_result)
         self.thread_pool.start(runnable)
@@ -402,7 +413,13 @@ class UISSHController(QObject):
             return
 
         def callback(stdout, stderr):
-            self.commandResultReady.emit(device_name, command, stdout, stderr)
+            if self._is_cleaning_up:
+                return
+
+            try:
+                self.commandResultReady.emit(device_name, command, stdout, stderr)
+            except RuntimeError:
+                logger.debug("Skipping command result for %s during QObject teardown", device_name)
 
         thread = launcher.run_script(command, callback)
         self._command_threads.append(thread)

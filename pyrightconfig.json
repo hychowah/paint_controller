@@ -8,9 +8,14 @@
   "reportMissingImports": false,
   "reportMissingTypeStubs": false,
   "strict": [
-    "python/paint_controller/core/controller_factory.py"
+    "python/paint_controller/core/config.py",
+    "python/paint_controller/core/controller_factory.py",
+    "python/paint_controller/handlers/safety_coordinator.py",
+    "python/paint_controller/utils/steam_deck_hid.py"
   ],
   "include": [
+    "python/paint_controller/controllers",
+    "python/paint_controller/handlers",
     "python/paint_controller/core/controller_factory.py",
     "python/paint_controller/core/qt_bridge.py",
     "python/paint_controller/core/settings.py",

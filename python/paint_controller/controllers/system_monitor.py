@@ -29,7 +29,7 @@ class SystemMonitorWorker(QObject):
     power_status_updated = Signal(str)
     error_occurred = Signal(str)
     
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self._running = False
         
@@ -266,7 +266,7 @@ class SystemMonitor(QObject):
     start_monitoring_requested = Signal(int)
     stop_monitoring_requested = Signal()
     
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         
         # State variables (protected by Qt's signal/slot system)

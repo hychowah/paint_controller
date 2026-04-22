@@ -105,3 +105,22 @@ def test_save_json_file_keeps_last_good_file_when_dump_fails(monkeypatch, tmp_pa
     assert controller._save_json_file(str(config_path), {"device": {"hostname": "5.6.7.8"}}) is False
     assert json.loads(config_path.read_text()) == {"device": {"hostname": "1.2.3.4"}}
     assert list(config_path.parent.glob("*.tmp")) == []
+
+
+def test_availability_callback_ignores_runtime_error_during_teardown(monkeypatch, qt_app):
+    _install_paramiko_stub(monkeypatch)
+    ssh_module = importlib.import_module("paint_controller.controllers.ssh")
+    controller = ssh_module.UISSHController()
+
+    class BrokenSignal:
+        def emit(self, *args, **kwargs) -> None:
+            raise RuntimeError("Signal source has been deleted")
+
+    monkeypatch.setattr(controller, "availabilityResultReady", BrokenSignal(), raising=False)
+    monkeypatch.setattr(
+        controller.thread_pool,
+        "start",
+        lambda runnable: runnable.callback("device", False, "late result", 0.0),
+    )
+
+    controller._check_device_availability("device", "10.0.0.2")

@@ -1,18 +1,37 @@
 
+
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING, Callable
 
 from PySide6.QtCore import QObject, Slot, QTimer
 
 from paint_controller.utils.constants import ControlMode, JoystickControl
 from paint_controller.utils.input import DoublePressDetector
 
+if TYPE_CHECKING:
+    from paint_controller.controllers.teensy import TeensyController
+    from paint_controller.core.settings import SettingsManager
+    from paint_controller.core.state_store import StateStore
+    from paint_controller.handlers.control_processor import ControlProcessor
+    from paint_controller.ui.overlay import OverlayController
+
 
 logger = logging.getLogger(__name__)
 
 
 class UIInputHandler(QObject):
-    def __init__(self, teensy, overlay, control_processor,
-                 settings_manager, state_store, show_popup_fn, close_popup_fn):
+    def __init__(
+        self,
+        teensy: TeensyController,
+        overlay: OverlayController,
+        control_processor: ControlProcessor,
+        settings_manager: SettingsManager | None,
+        state_store: StateStore,
+        show_popup_fn: Callable[..., None],
+        close_popup_fn: Callable[[], None],
+    ) -> None:
         super().__init__()
         self._teensy = teensy
         self._overlay = overlay
@@ -38,15 +57,15 @@ class UIInputHandler(QObject):
         self._arm_preset_index = 0
         
         # Mode-specific joystick control memory
-        self._base_mode_joystick_controls = None
-        self._ef_mode_joystick_controls = None
+        self._base_mode_joystick_controls: list[str] | tuple[str, str] | None = None
+        self._ef_mode_joystick_controls: list[str] | tuple[str, str] | None = None
 
-    def _on_arm_retract_length_changed(self, new_value: int):
+    def _on_arm_retract_length_changed(self, new_value: int) -> None:
         """Handle arm_retract_length change from SettingsManager"""
         self._arm_retract_length = new_value
         logger.info("Arm retract length updated to: %s", new_value)
     
-    def _on_arm_extend_length_changed(self, new_value: int):
+    def _on_arm_extend_length_changed(self, new_value: int) -> None:
         """Handle arm_extend_length change from SettingsManager"""
         self._arm_extend_length = new_value
         logger.info("Arm extend length updated to: %s", new_value)
