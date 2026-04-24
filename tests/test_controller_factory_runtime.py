@@ -422,3 +422,27 @@ def test_app_runtime_shutdown_cleans_resources_in_order(monkeypatch) -> None:
     assert cleanup_calls == ["node.cleanup", "node.destroy_node"]
     assert shutdown_calls == ["shutdown"]
     assert runtime.engine is None
+
+
+def test_app_runtime_init_shuts_down_when_bootstrap_fails(monkeypatch) -> None:
+    module = _app_runtime_module()
+    shutdown_calls: list[module.AppRuntime] = []
+
+    def fake_bootstrap(self) -> None:
+        self.ros_thread = object()
+        raise RuntimeError("bootstrap failed")
+
+    def fake_shutdown(self) -> None:
+        shutdown_calls.append(self)
+
+    monkeypatch.setattr(module.AppRuntime, "_bootstrap", fake_bootstrap)
+    monkeypatch.setattr(module.AppRuntime, "shutdown", fake_shutdown)
+
+    try:
+        module.AppRuntime(argv=[])
+    except RuntimeError as exc:
+        assert str(exc) == "bootstrap failed"
+    else:
+        assert False, "AppRuntime constructor should re-raise bootstrap errors"
+
+    assert len(shutdown_calls) == 1

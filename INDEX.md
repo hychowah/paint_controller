@@ -5,10 +5,11 @@ ROS2 node with PySide6/QML UI for robotic paint control on a Steam Deck. The liv
 ## Current Strategy
 
 - This branch is **refactor-first**. Runtime/workflow/service validation hardening is complete, and **`TD-001` Stage 1 is complete**: verified-dead QML was removed, false shared-component folders were flattened, constructor-driven QML surfaces were hardened with `required` / `readonly`, startup/import smoke coverage was expanded, and warn-only `qmllint` CI is now in place.
-- The next structural refactor stage is **`TD-031`**: the deeper QML rebuild (`systemcontrol` promotion, feature-subtree extraction, singleton/theme relocation, and page-registry cleanup). Treat it as a separate high-complexity stage rather than a continuation of Stage 1 cleanup.
-- The QML cleanup is intentionally split into **two stages**. Stage 1 is the safe flatten + hardening batch; Stage 2 is the deeper rebuild (`TD-031`) for `systemcontrol` promotion, `features/` extraction, singleton/theme relocation, and page-registry cleanup.
+- **`TD-031` is complete**: the page registry is explicit, `systemcontrol` and fullscreen video now have dedicated feature roots, and canonical theme ownership lives under `qml/theme/CommonStyle.qml`. Focused smoke coverage was expanded to the new feature roots; compatibility wrappers remain intentionally to keep import churn out of the blocking stage.
+- The QML cleanup is intentionally split into **two stages**. Stage 1 was the safe flatten + hardening batch; Stage 2 is the narrowed `TD-031` structural pass. URI-module migration, broad lidar/pointcloud restructuring, and any optional root-file rename are explicitly out of scope for this stage.
 - **Net-new feature work is intentionally deferred** until medium/high-priority debt is closed and the validation gates stay green (pytest, pyright for covered scope, ROS build, and offscreen startup/shutdown smoke).
 - Low-priority design-system backlog may remain backlog. By default it is **not** the feature-blocking path unless the user explicitly reprioritizes.
+- Latest verified local validation on 2026-04-24 is green at `170 passed` for `python/paint_controller/venv/bin/python -m pytest -q`.
 
 ---
 
@@ -57,11 +58,15 @@ paint_controller_ros2/
 │   ├── ui/                        # Overlay controller (non-QML)
 │   ├── utils/                     # Pure utilities: CRC, input math, constants
 │   ├── qml/                       # All QML UI components
-│   │   ├── core/                  # MainWindow, CommonStyle theme tokens
+│   │   ├── core/                  # MainWindow shell and compatibility QML shims
+│   │   ├── theme/                 # Canonical design tokens (`CommonStyle`)
+│   │   ├── features/              # Shared feature-root entry surfaces
+│   │   │   ├── systemcontrol/     # Shared system-control workspace
+│   │   │   └── video/             # Shared fullscreen-video workspace
 │   │   ├── navigation/            # TopBar, SelectBar
-│   │   ├── pages/                 # Full-page views (home, spray, wheel, winch, settings, status, etc.)
-│   │   ├── overlays/              # Overlay layers (video, emergency, system control)
-│   │   ├── components/            # Reusable UI components (buttons, inputs, displays, popups)
+│   │   ├── pages/                 # Full-page views (home, wheel, winch, settings, status, tuning)
+│   │   ├── overlays/              # Overlay layers and compatibility wrappers
+│   │   ├── components/            # Reusable UI components (buttons, displays, popups)
 │   ├── config/                    # SSH/bash config JSON
 │   └── resource/                  # Workflow JSON definitions
 │
@@ -124,5 +129,5 @@ Older notes may still mention `REFACTOR_TRACKER.md`; that historical tracker is 
 
 - **VS Code interpreter**: use `python/paint_controller/venv/bin/python` for editor tooling and tests
 - **`QT_QPA_PLATFORM`**: force-assigned `"offscreen"` in `tests/conftest.py` — overrides any shell-level `xcb`
-- **Test suite**: use the venv python and revalidate the current full-suite status before commit; historical fixed test-count snapshots in older docs can drift
+- **Test suite**: latest verified local full-suite status is `170 passed` on 2026-04-24; revalidate with the venv python before commit if you need a fresher claim
 - If PySide6 or pytest appear missing in-editor, check the selected interpreter first

@@ -14,8 +14,8 @@ import "../navigation"
 import "../components/displays"
 import "../components/popups"
 import "../overlays"
-import "../overlays/systemcontrol"
-import "../overlays/video"
+import "../features/systemcontrol"
+import "../features/video"
 import "../overlays/lidar"
 
 ApplicationWindow {
@@ -121,6 +121,7 @@ ApplicationWindow {
                 SelectBar {
                     id: selectBar
                     stackView: stackView
+                    pageRegistry: mainWindow.pageRegistry
                     height: parent.height
                     // Connect to the signal
                     onExpandedStateChanged: {
@@ -237,7 +238,17 @@ ApplicationWindow {
         PageSettings {}
     }
 
-    SystemControlMenu {
+    readonly property var pageRegistry: [
+        { pageIndex: 0, buttonKey: "home", component: homeComponent },
+        { pageIndex: 1, buttonKey: "base", component: wheelPageComponent },
+        { pageIndex: 2, buttonKey: "winch", component: winchPageComponent },
+        { pageIndex: 3, buttonKey: "monitor", component: statusPageComponent },
+        { pageIndex: 4, buttonKey: "tuning", component: tuningPageComponent },
+        { pageIndex: 5, buttonKey: "launcher", component: launcherPageComponent },
+        { pageIndex: 8, buttonKey: "settings", component: settingsPageComponent }
+    ]
+
+    SystemControlWorkspace {
         anchors.fill: parent
         id: systemControlMenu
         z: 1001
@@ -270,7 +281,7 @@ ApplicationWindow {
     }
 
     // Video Fullscreen Overlay - for fullscreen video with DJI-style overlay
-    VideoFullscreenOverlay {
+    VideoFullscreenWorkspace {
         id: videoFullscreenOverlay
         anchors.fill: parent
         z: 500  // Below emergency overlay but above main content

@@ -45,8 +45,8 @@ If two files disagree, prefer `INDEX.md`'s repo-wide authority hierarchy first. 
 
 - Do not start net-new feature work unless the user explicitly reprioritizes it over refactoring.
 - **`TD-001` Stage 1 is complete**: QML structural flatten, constructor-surface hardening, offscreen smoke coverage, and warn-only `qmllint` CI are all in place.
-- Current next structural priority is **`TD-031`**: the deeper QML rebuild (`systemcontrol` promotion, feature extraction, `CommonStyle` relocation, optional root-file rename, and page-registry cleanup). Treat it as a new high-complexity stage, not a continuation of Stage 1.
-- Explicitly defer **Stage 2 deep QML rebuild** until Stage 1 is green: `overlays/systemcontrol/` promotion, `features/` extraction for video/lidar, `CommonStyle` singleton relocation, optional `MainWindow` rename, and page-registry refactor.
+- **`TD-031` is complete**: the page-registry cleanup, overlay-hosted `systemcontrol` extraction, video feature-boundary extraction, and `CommonStyle` relocation are landed. The next work is the low-priority backlog, not another blocking structural stage.
+- URI-module migration, broad lidar/pointcloud restructuring, and any optional root-file rename remain deferred to a later dedicated stage.
 - Keep using `setContextProperty()`; do not re-open singleton-registration work with `qmlRegisterSingletonInstance()`.
 - Treat `PLANNING.md` as session scratch only. If it conflicts with `DEVNOTES.md` or `01_MASTER_PLAN.md`, it loses.
 
@@ -54,6 +54,7 @@ If two files disagree, prefer `INDEX.md`'s repo-wide authority hierarchy first. 
 
 - Use the project interpreter `python/paint_controller/venv/bin/python` for editor tooling and tests
 - The reliable local test command is `python/paint_controller/venv/bin/python -m pytest -q`
+- Latest verified local full-suite result is `170 passed` on 2026-04-24.
 - The test inventory has moved well past the older `100 passed` snapshot. Revalidate any full-suite claim with a fresh local pytest run rather than trusting fixed counts in historical notes.
 - `QT_QPA_PLATFORM` is force-assigned `"offscreen"` in `conftest.py` (overrides any shell-level `xcb` setting).
 - If `PySide6` or `pytest` appear missing in-editor, check the selected interpreter first.
@@ -61,7 +62,7 @@ If two files disagree, prefer `INDEX.md`'s repo-wide authority hierarchy first. 
 ## Active Queue Snapshot
 
 - Just completed: `3.10 Static typing gate expansion`, `2.8 Fix page naming`, `TD-030 runtime/workflow/service validation hardening`, `TD-001 Stage 1 QML structural flatten + hardening + validation gates`
-- Immediate structural follow-up: `TD-031` deep QML structural rebuild (`systemcontrol` promotion, `features/` extraction, singleton/theme/root-file moves, page-registry cleanup)
+- Just completed: `TD-031` narrowed structural rebuild (page registry, overlay-hosted `systemcontrol`, video feature boundary, `CommonStyle` relocation)
 - Non-blocking backlog after `TD-031`: `2.5b`, `2.5c`, `2.6a-c`, `2.7`, `TD-016`
 
 ## Branch Exit Bar

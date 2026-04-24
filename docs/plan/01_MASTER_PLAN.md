@@ -30,7 +30,7 @@
 ## Branch Gate
 
 **Feature-blocking refactor work**
-- `TD-031` — Deep QML structural rebuild (`systemcontrol` promotion, feature extraction, singleton/theme relocation, page-registry cleanup)
+- None open. `TD-031` completed on 2026-04-24.
 
 **Branch exit criteria**
 - No open medium/high-priority debt remains in `docs/tech-debt.md`
@@ -41,14 +41,13 @@
 - No known unresolved shutdown, thread-affinity, or safety-path defect remains active
 
 **Active next stage**
-1. `TD-031` — deep QML rebuild (`systemcontrol` promotion, `features/` extraction, `CommonStyle` relocation, optional `MainWindow` rename, page-registry cleanup)
-2. Non-blocking backlog after `TD-031`: `2.5b`, `2.5c`, `2.6a-c`, `2.7`, `TD-016`
+1. Non-blocking backlog after `TD-031`: `2.5b`, `2.5c`, `2.6a-c`, `2.7`, `TD-016`
 
 ---
 
 ## Progress Tracker
 
-Last Modified: 2026-04-22
+Last Modified: 2026-04-24
 
 Status legend: `[x]` completed | `[c]` cancelled or superseded | `[~]` partial or deferred | `[ ]` not started
 
@@ -91,13 +90,13 @@ Status legend: `[x]` completed | `[c]` cancelled or superseded | `[~]` partial o
 | 2.2 Design system — buttons/inputs | [x] | `ActionButton`, `TouchSwitch`, `NumpadButton`, `NumpadNew`, `KeyboardPopup`, `SettingInputField` migrated; `TrajNumpad.qml` deleted in Phase 1B |
 | 2.3 Design system — displays | [x] | Display folder migrated to `CommonStyle` for the shared visual system; a few responsive size/motion literals still remain in specialized visualizers/dials |
 | 2.4 Design system — panels/popups | [x] | `ControlPanel`, `ConnectionStatusPanel`, `SettingsSection`, `CustomPopup` migrated |
-| 2.5a Design system — root overlays | [x] | `OverlayLayer`, `EmergencyOverlay` migrated |
+| 2.5a Design system — root overlays | [x] | `JoystickOverlay`, `EmergencyOverlay`, and the shell overlay surfaces migrated |
 | 2.5b Design system — systemcontrol | [~] | Deferred by user until safety/test hardening is complete. `EditWorkFlowTab`, `WorkFlowTab` migrated (layout-safe weights); `CommandTab` anchor fix. |
 | 2.5c Design system — video overlays | [ ] | Deferred by user until after BF + Phase 3 hardening work |
 | 2.6a Design system — pages batch 1 | [~] | Deferred by user until safety/test hardening is complete. `PageHome` already removed duplicate stream start and guarded its animation binding. |
 | 2.6b Design system — settings pages | [ ] | Deferred by user until after the active hardening queue |
 | 2.6c Design system — status/workflow | [ ] | Deferred by user until after the active hardening queue |
-| 2.7 Refactor OverlayLayer dedup | [ ] | Deferred with the rest of the design-system backlog |
+| 2.7 Refactor joystick overlay dedup | [ ] | Deferred with the rest of the design-system backlog; actual duplication now lives in `JoystickOverlay.qml` |
 | 2.8 Fix page naming | [x] | `MainWindow.qml`/`SelectBar.qml` now use semantic page component IDs (`wheelPageComponent`, etc.), `settingsPageComponent` is pluralized, and the dead `case 6` navigation branch is deleted |
 | 3.0 Clean __init__.py imports | [x] | `core`, `handlers`, and `controllers` package inits are now lightweight and no longer re-export heavy Qt/ROS modules |
 | 3.1 Pytest infrastructure | [x] | Added headless Qt fixture, namespace-safe imports, fake ROS node/publisher/subscription/timer scaffolding, shared fake topic bus, and validation tests; normalized existing utility/harness test files to the layered style |
@@ -110,6 +109,7 @@ Status legend: `[x]` completed | `[c]` cancelled or superseded | `[~]` partial o
 | 3.8 CI/CD pipeline | [x] | `.github/workflows/ci.yml`: lint gates both pytest and ROS2 build jobs. `pyproject.toml` with ruff/pytest/coverage config. `requirements-dev.txt` updated. |
 | 3.9 Fix build system | [x] | `CMakeLists.txt` stripped to pure `ament_cmake` wrapper (C++/Qt5/GStreamer deps removed). `package.xml` cleaned to 0.1.0, C++ deps removed. `requirements.txt` switched to `~=` pins. |
 | 3.10 Static typing gate | [x] | `pyrightconfig.json` now covers `handlers/` + `controllers/` in basic mode; strict now holds for `core/config.py`, `core/controller_factory.py`, `handlers/safety_coordinator.py`, and `utils/steam_deck_hid.py`. `EmergencyButtonHandler` intentionally remains in basic mode because strict surfaced PySide stub noise rather than actionable defects. Final gate is green at `0 errors` |
+| TD-031 Narrowed structural rebuild | [x] | Explicit page registry landed; `systemcontrol` now has a dedicated feature root under `qml/features/systemcontrol/`; fullscreen video now has a dedicated feature root under `qml/features/video/`; the real `CommonStyle` implementation now lives under `qml/theme/` with a compatibility shim at `qml/core/CommonStyle.qml`. Focused smoke coverage now also loads the new feature roots directly. Chat task-runner execution remained unavailable in-session, but the refactor scope itself is complete |
 | TD-030 Runtime/workflow/service validation hardening | [x] | Direct tests now cover ActionScheduler, ActionRegistry/workflow handlers, HardwareControllers adapters, WorkFlowRunner, WorkFlowExecutor, `create_controllers()`, bounded `AppRuntime` seams, `ScreenManager`, and `BaseTopViewTransformer`; focused TD-030 batch is green at `22 passed` |
 | TD-014 main() decomposition | [x] | Bootstrap moved into `core/app_runtime.py`; `core/application.py` is now a thin entry-point wrapper, `RosThread` moved to `core/ros_node.py`, the dead `robot_config.yaml` loader path was deleted in favor of `RuntimeDefaults`, and one registration table now drives both QML context-property registration and validation |
 | TD-001 Stage 1 QML structural flatten + hardening + validation gates | [x] | Verified-dead QML deleted; false shared-component folders flattened; surviving constructor-driven surfaces hardened with `required` / `readonly`; `tests/test_startup_smoke.py` covers both main shell and `MultiScreenListUI`; warn-only `qmllint` CI job added; remaining no-`required` files were classified as global-context, imperative, style-singleton, or otherwise non-constructor-driven surfaces |
@@ -135,16 +135,15 @@ Status legend: `[x]` completed | `[c]` cancelled or superseded | `[~]` partial o
 - **Shutdown race hardening complete**: `UISSHController` now ignores late availability/command results during QObject teardown, and `tests/test_ssh.py` covers the late-callback path.
 - **Safety hardening batch complete**: BF-6..BF-9 are implemented and covered by targeted regression tests; shutdown teardown ordering is now hardened across the QML shell, Steam Deck reader thread, and ESP32 UDP thread owner
 - **TD-014 is complete**: startup/shutdown orchestration now lives in `core/app_runtime.py`, `core/application.py` is a thin compatibility wrapper, `RosThread` now lives beside `PaintRosNode`, and the stale missing-`robot_config.yaml` warning is gone because that dead loader path was removed
-- **Validation update**: full-suite revalidation is green at `148 passed`; pyright is green (`0 errors`), and a serial offscreen launch still reaches `MainWindow QML loaded` before the expected timeout-kill. The known non-blocking Qt Quick 3D/RHI warning in offscreen mode remains.
+- **Validation update**: full-suite revalidation is green at `170 passed`; pyright is green (`0 errors`), and a serial offscreen launch still reaches `MainWindow QML loaded` before the expected timeout-kill. The known non-blocking Qt Quick 3D/RHI warning in offscreen mode remains.
 - Recent targeted validation for the controller hardening batches is green; revalidate any full-suite claim with a fresh local pytest run instead of relying on older fixed test-count snapshots
 - Task 1.1 (SettingsManager QML registration): verified done — still registered during runtime bootstrap and validated in POST-1 loop after the `AppRuntime` extraction
 - **TD-030 is complete**: direct tests now cover ActionScheduler, ActionRegistry/workflow handlers, HardwareControllers adapters, WorkFlowRunner, WorkFlowExecutor, `create_controllers()`, bounded `AppRuntime` seams, `ScreenManager`, and `BaseTopViewTransformer`, with the focused runtime/workflow/service batch green at `22 passed`.
 - **TD-001 Stage 1 is complete**: dead-QML verification/deletion, false shared-folder flattening, constructor-surface `required` / `readonly` hardening, direct offscreen smoke coverage, and warn-only `qmllint` CI are all in place.
-- **Next structural stage**: `TD-031` now owns the deeper QML rebuild (`systemcontrol` promotion, `features/` extraction, `CommonStyle` move, optional root-file rename, page-registry cleanup). Treat it as a separate high-complexity stage.
+- **TD-031 status**: complete. The blocking structural slices are landed, and focused smoke coverage now includes the new feature roots directly.
 - **Non-blocking backlog**: `2.5b`, `2.5c`, `2.6a-c`, `2.7`, and `TD-016` remain backlog after `TD-031`.
 - **Next tasks** (priority order):
-  1. `TD-031` deep QML rebuild
-  2. Low-priority backlog: `2.5b`, `2.5c`, `2.6a-c`, `2.7`, `TD-016`
+  1. Low-priority backlog: `2.5b`, `2.5c`, `2.6a-c`, `2.7`, `TD-016`
 
 ---
 
@@ -153,7 +152,7 @@ Status legend: `[x]` completed | `[c]` cancelled or superseded | `[~]` partial o
 ```
 Completed this batch: BF-1..BF-9, 3.0, 3.5, 3.6, 3.7, 4.0, TD-014, full `3.10`, `2.8`, the `RosStatusController` extraction, the SSH teardown race hardening, TD-030 runtime/workflow/service validation hardening, and TD-001 Stage 1
          ↓
-Feature-blocking deep QML rebuild: TD-031 (`systemcontrol` promotion, `features/` extraction, singleton/root-file moves, page-registry cleanup)
+Feature-blocking narrowed QML rebuild: TD-031 (completed)
          ↓
 Non-blocking UI consistency backlog: 2.5b, 2.5c, 2.6a-c, 2.7, then TD-016
 
@@ -253,7 +252,7 @@ QtObject {
     // Colors (37 tokens): backgrounds, cards, accents, status, text, borders, overlay/input/button
     readonly property color backgroundL0: "#0D1117"
     readonly property color accentPrimary: "#58A6FF"
-    // ... (see qml/core/CommonStyle.qml for full list)
+    // ... (see qml/theme/CommonStyle.qml for full list)
 
     // Spacing (scaled): spacingXs(4) through spacingXxl(32)
     // Typography: fontDisplay(24), fontHeading(20), fontBody(16), fontCaption(13), fontLabel(11)
@@ -261,7 +260,7 @@ QtObject {
     // Legacy aliases (14): backward-compat mappings to new tokens
 }
 ```
-Registered via `qml/core/qmldir`: `singleton CommonStyle 1.0 CommonStyle.qml`
+Canonical singleton registration now lives in `qml/theme/qmldir`; `qml/core/CommonStyle.qml` remains as a compatibility wrapper for older relative imports.
 
 ### QML Import Current Style (IMPLEMENTED — Task 1.10 ✅)
 ```qml
@@ -293,7 +292,7 @@ Used for Phase 1 tasks. Shows which QML files must be updated per controller reg
 | `windMonitor` | PageSensors |
 | `teensyController` | PageTuning, EndEffectorOverlay, VideoOverlayTopBar, SettingsTab, TeensyArmCard, IMUCard, MonitorHeader, ConnectionStatusPanel, CommandTab, DeviceControlTab, ExecutorPageStatus, PlannerPageStatus, TeensyStatus |
 | `esp32ValveController` | EndEffectorOverlay, ValvesCard |
-| `lidarController` | LidarOverlay, Lidar2DView, Lidar3DView, WallDetectionOverlay, PageMonitor |
+| `lidarController` | WallDetectionOverlay, PageMonitor |
 | `heartbeatHandler` | ConnectionStatusPanel, DeviceControlTab, PageHome |
 | `controlProcessor` | VideoFullscreenOverlay |
 | `sshHandler` | PageHome, PageLauncher, VideoOverlayTopBar |
@@ -535,7 +534,7 @@ done
 **Same setContextProperty pattern. Already exposed — verify QML access works.**
 
 **Python**: `core/settings.py` + runtime bootstrap (`core/app_runtime.py`; historically `core/application.py` before TD-014)
-**QML** (3 files): `overlays/systemcontrol/SettingsTab.qml`, `components/panels/SettingsSection.qml`, `components/inputs/SettingInputField.qml`
+**QML** (3 files): `overlays/systemcontrol/SettingsTab.qml`, `overlays/systemcontrol/components/SettingsSection.qml`, `overlays/systemcontrol/components/SettingInputField.qml`
 
 Access via `settingsManager.xyz` (lowercase, no import needed).
 
@@ -609,9 +608,10 @@ The tree now has `qmldir` manifests for the component/page/overlay directories t
 
 **Implemented scope**:
 - `navigation/`
-- `components/buttons/`, `components/displays/`, `components/inputs/`, `components/panels/`, `components/popups/`, `components/specialized/pointcloud/`
-- `overlays/`, `overlays/lidar/`, `overlays/video/`, `overlays/video/components/`
-- `pages/home/`, `pages/misc/`, `pages/settings/`, `pages/settings/components/`, `pages/settings/pages/`, `pages/spray/`, `pages/status/`, `pages/status/components/`, `pages/tuning/`, `pages/wheel/`, `pages/winch/`
+- `components/buttons/`, `components/displays/`, `components/popups/`
+- `overlays/`, `overlays/lidar/`, `overlays/systemcontrol/`, `overlays/systemcontrol/components/`, `overlays/video/`, `overlays/video/components/`
+- `pages/home/`, `pages/settings/`, `pages/settings/components/`, `pages/settings/pages/`, `pages/status/`, `pages/status/components/`, `pages/tuning/`, `pages/wheel/`, `pages/winch/`
+- Later TD-031 additions: `features/systemcontrol/`, `features/video/`, `theme/`
 
 **qmldir format used** (for `components/buttons/`):
 ```
@@ -646,10 +646,10 @@ required property string settingKey
 
 **Sub-batches**:
 - **1.11a**: `components/buttons/` (5 files)
-- **1.11b**: `components/inputs/` (5 files)
+- **1.11b**: surviving input widgets after the flatten, primarily `overlays/systemcontrol/components/`
 - **1.11c**: `components/displays/` (19 files) — largest batch
-- **1.11d**: `components/panels/` + `components/popups/` (4 files)
-- **1.11e**: `components/specialized/pointcloud/` (2 files)
+- **1.11d**: surviving panel/popup surfaces in `navigation/`, `components/popups/`, and `overlays/systemcontrol/components/`
+- **1.11e**: specialized visual surfaces that survived the flatten
 
 **For each**: Read the component, identify properties that MUST be set by callers (not internal state), add `required`. Then check all usages to ensure they set the property.
 
@@ -700,7 +700,7 @@ logger.info(f"Validated {len(_EXPECTED_CONTEXT_PROPERTIES)} QML context properti
   CommonStyle needs a writable property scaleFactor, set from Python before engine.load()
   ```
 
-**Add to `qml/core/CommonStyle.qml`**:
+**Add to `qml/theme/CommonStyle.qml`** (with `qml/core/CommonStyle.qml` kept as a compatibility shim):
 
 **Color palette**:
 - Background levels: `backgroundL0` (darkest), `backgroundL1`, `backgroundL2`, `backgroundL3` (lightest)
@@ -744,21 +744,21 @@ grep -rn 'font.pointSize:' qml/
 
 **Batches**:
 - **2.1**: `core/`, `navigation/`
-- **2.2**: `components/buttons/`, `components/inputs/`
+- **2.2**: `components/buttons/`, `overlays/systemcontrol/components/`
 - **2.3**: `components/displays/` — completed 2026-04-20; shared display styling now runs through `CommonStyle`, with a few responsive literals still remaining in specialized visualizers/dials
-- **2.4**: `components/panels/`, `components/popups/`
-- **2.5a**: `overlays/` (root-level: OverlayLayer, EmergencyOverlay, MultiScreenListUI)
+- **2.4**: `components/popups/`, `navigation/ConnectionStatusPanel.qml`, `overlays/systemcontrol/components/ControlPanel.qml`, `overlays/systemcontrol/components/SettingsSection.qml`
+- **2.5a**: `overlays/` (root-level: JoystickOverlay, EmergencyOverlay, MultiScreenListUI)
 - **2.5b**: `overlays/systemcontrol/`
 - **2.5c**: `overlays/video/`, `overlays/video/components/`, `overlays/lidar/`
-- **2.6a**: `pages/home/`, `pages/spray/`, `pages/wheel/`, `pages/winch/`, `pages/tuning/`, `pages/misc/`
+- **2.6a**: `pages/home/`, `pages/wheel/`, `pages/winch/`, `pages/tuning/`
 - **2.6b**: `pages/settings/`, `pages/settings/pages/`, `pages/settings/components/`
 - **2.6c**: `pages/status/`, `pages/status/components/`
 
 ---
 
-### Task 2.7: Refactor OverlayLayer Duplication
+### Task 2.7: Refactor JoystickOverlay Duplication
 
-**File**: `qml/overlays/OverlayLayer.qml`
+**File**: `qml/overlays/JoystickOverlay.qml`
 
 Left and right menu containers (~L19-L228) are near-identical ~100-line blocks. Extract a new `MenuOverlay.qml` component and instantiate twice.
 

@@ -110,7 +110,11 @@ class AppRuntime:
         self.status_timer: QTimer | None = None
         self.qml_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'qml')
 
-        self._bootstrap()
+        try:
+            self._bootstrap()
+        except Exception:
+            self.shutdown()
+            raise
 
     def _log_startup(self, stage: str) -> None:
         elapsed_ms = (time.perf_counter() - self._startup_t0) * 1000.0
@@ -338,6 +342,8 @@ class AppRuntime:
 
         qml_path = os.path.join(self.qml_dir, 'core', 'MainWindow.qml')
         self.engine.load(QUrl.fromLocalFile(qml_path))
+        if not self.engine.rootObjects():
+            raise RuntimeError(f"Failed to load QML root: {qml_path}")
         self._log_startup("MainWindow QML loaded")
 
         context = self.engine.rootContext()

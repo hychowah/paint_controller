@@ -6,7 +6,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QCoreApplication, QEvent, QObject, QSize, Signal, Slot, QUrl
 from PySide6.QtGui import QColor, QImage
-from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent
 from PySide6.QtQuick import QQuickImageProvider
 
 from paint_controller.core.application import _teardown_qml_runtime
@@ -61,6 +61,15 @@ class BlankImageProvider(QQuickImageProvider):
             size.setWidth(4)
             size.setHeight(4)
         return image
+
+
+def _qml_import_url(path: Path) -> str:
+    return QUrl.fromLocalFile(f"{path}/").toString()
+
+
+def _assert_component_ready(qtbot, component: QQmlComponent) -> None:
+    qtbot.waitUntil(lambda: component.isReady() or component.isError(), timeout=2000)
+    assert component.isReady(), [str(error) for error in component.errors()]
 
 
 def _teensy_all_status() -> DynamicObject:
@@ -273,3 +282,210 @@ def test_multi_screen_monitor_window_loads_offscreen(monkeypatch, tmp_path, qt_a
         "is not a type",
     )
     assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+
+
+def test_system_control_workspace_loads_with_required_properties(monkeypatch, tmp_path, qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    systemcontrol_import_url = _qml_import_url(qml_dir / "features" / "systemcontrol")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{systemcontrol_import_url}"
+
+Item {{
+    width: 1280
+    height: 800
+
+    SystemControlWorkspace {{
+        anchors.fill: parent
+        showOverlay: true
+        activeMenu: "system"
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:SystemControlWorkspaceHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+        qt_app.processEvents()
+
+        fatal_warning_fragments = (
+            "failed to load component",
+            "no such file or directory",
+            "is not a type",
+            "required property",
+        )
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
+def test_video_fullscreen_workspace_loads_with_stream_context(monkeypatch, tmp_path, qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    video_import_url = _qml_import_url(qml_dir / "features" / "video")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+    engine.addImageProvider("ef_live", BlankImageProvider())
+    engine.addImageProvider("base_front_live", BlankImageProvider())
+    engine.addImageProvider("base_rear_live", BlankImageProvider())
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{video_import_url}"
+
+Item {{
+    width: 1280
+    height: 800
+
+    VideoFullscreenWorkspace {{
+        anchors.fill: parent
+        active: true
+        videoSource: "image://ef_live/frame"
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:VideoFullscreenWorkspaceHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+        qt_app.processEvents()
+
+        fatal_warning_fragments = (
+            "failed to load component",
+            "no such file or directory",
+            "is not a type",
+            "required property",
+        )
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
+def test_select_bar_navigates_via_explicit_page_registry(qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    core_import_url = _qml_import_url(qml_dir / "core")
+    navigation_import_url = _qml_import_url(qml_dir / "navigation")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import QtQuick.Controls
+import "{core_import_url}"
+import "{navigation_import_url}"
+
+Item {{
+    width: 1280
+    height: 800
+
+    property var pageRegistry: [
+        {{ pageIndex: 0, buttonKey: "home", component: homeComponent }},
+        {{ pageIndex: 8, buttonKey: "settings", component: settingsComponent }}
+    ]
+
+    QtObject {{
+        id: fakeStackView
+        objectName: "fakeStackView"
+        property int currentIndex: 0
+        property int targetIndex: 0
+        property var currentItem: null
+        property var lastComponent: null
+
+        function replace(currentItemArg, targetComponentArg) {{
+            currentItem = currentItemArg
+            lastComponent = targetComponentArg
+        }}
+    }}
+
+    Component {{
+        id: homeComponent
+        Item {{ objectName: "homePage" }}
+    }}
+
+    Component {{
+        id: settingsComponent
+        Item {{ objectName: "settingsPage" }}
+    }}
+
+    SelectBar {{
+        id: selectBar
+        objectName: "selectBar"
+        stackView: fakeStackView
+        pageRegistry: parent.pageRegistry
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:SelectBarHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+
+        select_bar = root.findChild(QObject, "selectBar")
+        assert select_bar is not None
+
+        fake_stack_view = root.findChild(QObject, "fakeStackView")
+        assert fake_stack_view is not None
+
+        select_bar.navigateToPage(8)
+        qt_app.processEvents()
+
+        assert fake_stack_view.property("currentIndex") == 8
+        assert fake_stack_view.property("targetIndex") == 8
+        assert select_bar.property("selectedPageKey") == "settings"
+        assert fake_stack_view.property("lastComponent") is not None
+
+        select_bar.navigateToPage(404)
+        qt_app.processEvents()
+
+        assert fake_stack_view.property("currentIndex") == 8
+        assert select_bar.property("selectedPageKey") == "settings"
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()

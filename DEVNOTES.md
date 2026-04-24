@@ -1,6 +1,38 @@
 # Development Notes
 
 ---
+### 2026-04-24 17:10 - Final Validation And Doc Truth Pass
+
+**Goal**: Revalidate the startup/runtime follow-up changes and align current-facing docs before commit
+**Issues**: The new startup smoke harnesses initially failed under Qt 6.10 because `QQmlComponent.setData()` stayed in `Status.Loading` briefly for file-URL directory imports, and several current-facing docs still described `TD-031` as upcoming or carried stale fixed validation counts and deleted QML paths.
+**Tried**: Added a small readiness wait helper to `tests/test_startup_smoke.py`, reran the focused startup/runtime slices, reran the full pytest suite, then updated the repo status/docs to match the completed TD-031 state and the live QML tree.
+**Result**: ✅ Focused startup/runtime regressions are green, full pytest is green at `170 passed`, and the current-facing docs now point at the post-TD-031 backlog instead of an already-completed structural stage.
+**Files**: `tests/test_startup_smoke.py`, `README.md`, `INDEX.md`, `docs/plan/00_README.md`, `docs/plan/01_MASTER_PLAN.md`, `docs/plan/02_ARCHITECTURE.md`, `docs/plan/03_QML_BINDINGS.md`, `DEVNOTES.md`
+
+### 2026-04-24 16:20 - CommonStyle Wrapper Regression
+
+**Goal**: Fix the runtime QML load failure introduced by the `CommonStyle` theme relocation
+**Issues**: `qml/core/CommonStyle.qml` had been changed into `Theme.CommonStyle {}`. QML treats that as a composite singleton type, which is not creatable, so every QML file importing `core` failed with `Type CommonStyle unavailable`. `AppRuntime._load_qml()` also logged `MainWindow QML loaded` even when `QQmlApplicationEngine` had no root object. A follow-on bootstrap failure exposed that `AppRuntime.__init__()` could raise before `main()` had a bound runtime instance, leaving the ROS `QThread` alive during process teardown.
+**Tried**: Replaced the wrapper with a real `QtObject` singleton that mirrors properties from `qml/theme/CommonStyle.qml`, restored the missing legacy `systemcontrol` tab import in `SystemControlWorkspace.qml`, made `_load_qml()` raise if `engine.load()` produces no root object, and wrapped `AppRuntime._bootstrap()` so construction-time failures call `shutdown()` before re-raising.
+**Result**: ✅ The invalid singleton composition is gone, the feature-root workspace can resolve its legacy tab types again, and future QML/bootstrap load failures fail fast while still shutting down the partially started runtime.
+**Files**: `python/paint_controller/qml/core/CommonStyle.qml`, `python/paint_controller/qml/features/systemcontrol/SystemControlWorkspace.qml`, `python/paint_controller/core/app_runtime.py`, `tests/test_controller_factory_runtime.py`, `DEVNOTES.md`
+
+### 2026-04-24 16:05 - TD-031 Closeout
+
+**Goal**: Finish `TD-031` and close the blocking structural refactor stage truthfully
+**Issues**: The remaining gap was not structure but proof. The new `systemcontrol` and video feature roots existed, but the smoke suite did not yet load them directly. The chat task runner still rejected one-off pytest execution, so closeout had to rely on tighter in-repo smoke coverage plus editor diagnostics rather than a live command run from this session.
+**Tried**: Added direct smoke tests for `qml/features/systemcontrol/SystemControlWorkspace.qml` and `qml/features/video/VideoFullscreenWorkspace.qml`, then updated the debt tracker, master plan, repo index, and plan README to move `TD-031` out of active blocking work and into the resolved set.
+**Result**: ✅ `TD-031` is complete. The narrowed scope is fully implemented, focused smoke coverage now exists for the shell, multiscreen host, navigation registry, and both new feature roots, and only low-priority UI consistency backlog remains.
+**Files**: `tests/test_startup_smoke.py`, `docs/tech-debt.md`, `docs/plan/00_README.md`, `docs/plan/01_MASTER_PLAN.md`, `INDEX.md`, `DEVNOTES.md`
+
+### 2026-04-24 15:40 - TD-031 Structural Slices Batch 1
+
+**Goal**: Start the approved narrowed `TD-031` implementation by landing the high-value structural slices before any feature work resumes
+**Issues**: The plan/docs still described stale QML structure, `SelectBar` still depended on a hidden switch-case contract against `MainWindow` component ids, `systemcontrol` and fullscreen video were still mounted directly from overlay-local roots, and `CommonStyle.qml` still lived in `core/`. The chat task runner also rejected one-off pytest tasks, so focused executable revalidation could not be run from this session.
+**Tried**: Rewrote the active planning/debt/docs scope around the narrowed `TD-031`; replaced the `SelectBar` switch-case with an explicit `pageRegistry` passed from `MainWindow`; extracted shared feature-root entries at `qml/features/systemcontrol/SystemControlWorkspace.qml` and `qml/features/video/VideoFullscreenWorkspace.qml` while keeping compatibility wrappers at the old overlay paths; moved the real `CommonStyle.qml` implementation to `qml/theme/` and left a compatibility singleton wrapper in `qml/core/`.
+**Result**: ✅ The structural slices landed and editor diagnostics are clean for the touched QML/Python files. Focused executable revalidation is still pending because the task runner rejected `pytest tests/test_startup_smoke.py -q` as a one-off task in this chat environment.
+**Files**: `PLANNING.md`, `INDEX.md`, `docs/plan/00_README.md`, `docs/plan/01_MASTER_PLAN.md`, `docs/plan/02_ARCHITECTURE.md`, `docs/plan/03_QML_BINDINGS.md`, `docs/tech-debt.md`, `python/paint_controller/qml/core/MainWindow.qml`, `python/paint_controller/qml/navigation/SelectBar.qml`, `python/paint_controller/qml/core/CommonStyle.qml`, `python/paint_controller/qml/overlays/MultiScreenListUI.qml`, `python/paint_controller/qml/overlays/systemcontrol/SystemControlMenu.qml`, `python/paint_controller/qml/overlays/video/VideoFullscreenOverlay.qml`, `python/paint_controller/qml/features/systemcontrol/SystemControlWorkspace.qml`, `python/paint_controller/qml/features/systemcontrol/qmldir`, `python/paint_controller/qml/features/video/VideoFullscreenWorkspace.qml`, `python/paint_controller/qml/features/video/qmldir`, `python/paint_controller/qml/theme/CommonStyle.qml`, `python/paint_controller/qml/theme/qmldir`, `tests/test_startup_smoke.py`
+
 ### 2026-04-22 16:20 - TD-001 Stage 1 Closeout
 
 **Goal**: Finish the remaining meaningful Stage 1 QML hardening work, add the planned warn-only `qmllint` CI gate, and close the debt item without pretending every QML file should have `required property`

@@ -7,7 +7,8 @@ import "../core"
 Rectangle {
     id: selectBar
     required property var stackView
-    property string selectedButton: "buttonHome"
+    required property var pageRegistry
+    property string selectedPageKey: "home"
     property int expandedWidth: CommonStyle.shellSidebarExpandedWidth
     property int collapsedWidth: CommonStyle.shellSidebarCollapsedWidth
     property int buttonSize: expanded ? expandedWidth * 0.8 : collapsedWidth - 10
@@ -26,7 +27,7 @@ Rectangle {
         id: navigationButton
         
         // Properties that can be customized
-        property string buttonId: ""
+        property string buttonKey: ""
         property string buttonText: ""
         property string iconSource: ""
         property int pageIndex: 0
@@ -101,7 +102,6 @@ Rectangle {
             onClicked: {
                 if (!isSelected) {
                     selectBar.navigateToPage(pageIndex)
-                    selectBar.selectedButton = buttonId
                 }
             }
         }
@@ -145,24 +145,31 @@ Rectangle {
             expanded = !expanded;
         }
     }
+
+    function getPageConfig(index) {
+        for (var i = 0; i < pageRegistry.length; i++) {
+            if (pageRegistry[i].pageIndex === index) {
+                return pageRegistry[i]
+            }
+        }
+        return null
+    }
     
     function navigateToPage(index) {
         console.log("Before navigation - currentIndex:", stackView.currentIndex, "depth:", stackView.targetIndex)
+        var targetPage = getPageConfig(index)
+        if (!targetPage || !targetPage.component) {
+            console.warn("SelectBar: unknown page index", index)
+            return
+        }
+
+        selectedPageKey = targetPage.buttonKey
+
         if (index !== stackView.currentIndex) {
-            var targetComponent;
             stackView.targetIndex = index
-            switch(index) {
-                case 0: targetComponent = homeComponent; break;
-                case 1: targetComponent = wheelPageComponent; break;
-                case 2: targetComponent = winchPageComponent; break;
-                case 3: targetComponent = statusPageComponent; break;
-                case 4: targetComponent = tuningPageComponent; break;
-                case 5: targetComponent = launcherPageComponent; break;
-                case 8: targetComponent = settingsPageComponent; break;
-            }
             
             console.log("Navigating to page:", index)
-            stackView.replace(stackView.currentItem, targetComponent)
+            stackView.replace(stackView.currentItem, targetPage.component)
             stackView.currentIndex = index
         }
     }
@@ -211,74 +218,74 @@ Rectangle {
             // home button
             NavigationButton {
                 id: buttonHome
-                buttonId: "buttonHome"
+                buttonKey: "home"
                 buttonText: "Home"
                 iconSource: "../../resource/homepage.svg"
                 pageIndex: 0
-                isSelected: selectBar.selectedButton === "buttonHome"
+                isSelected: selectBar.selectedPageKey === "home"
                 iconScale: 0.7
             }
 
             // Page 1 Button - Base
             NavigationButton {
                 id: buttonPage1
-                buttonId: "buttonPage1"
+                buttonKey: "base"
                 buttonText: "Base"
                 iconSource: "../../resource/base.png"
                 pageIndex: 1
-                isSelected: selectBar.selectedButton === "buttonPage1"
+                isSelected: selectBar.selectedPageKey === "base"
                 iconScale: 0.7
             }
 
             // Page 2 Button - Winch
             NavigationButton {
                 id: buttonPage2
-                buttonId: "buttonPage2"
+                buttonKey: "winch"
                 buttonText: "Winch"
                 iconSource: "../../resource/winch.png"
                 pageIndex: 2
-                isSelected: selectBar.selectedButton === "buttonPage2"
+                isSelected: selectBar.selectedPageKey === "winch"
             }
 
             // Page 3 Button - Monitor
             NavigationButton {
                 id: buttonPage3
-                buttonId: "buttonPage3"
+                buttonKey: "monitor"
                 buttonText: "Monitor"
                 iconSource: "../../resource/monitor.svg"
                 pageIndex: 3
-                isSelected: selectBar.selectedButton === "buttonPage3"
+                isSelected: selectBar.selectedPageKey === "monitor"
             }
 
             // Page 4 Button - Tuning
             NavigationButton {
                 id: buttonPage4
-                buttonId: "buttonPage4"
+                buttonKey: "tuning"
                 buttonText: "Tuning"
                 iconSource: "../../resource/icon-pid.png"
                 pageIndex: 4
-                isSelected: selectBar.selectedButton === "buttonPage4"
+                isSelected: selectBar.selectedPageKey === "tuning"
             }
 
             // Page 5 Button - Launcher
             NavigationButton {
                 id: buttonPage5
-                buttonId: "buttonPage5"
+                buttonKey: "launcher"
                 buttonText: "Launcher"
                 iconSource: "../../resource/launcher.svg"
                 pageIndex: 5
-                isSelected: selectBar.selectedButton === "buttonPage5"
+                isSelected: selectBar.selectedPageKey === "launcher"
                 iconScale: 0.7
             }
 
             // Page Settings Button
             NavigationButton {
                 id: buttonPageSettings
-                buttonId: "buttonPageSettings"
+                buttonKey: "settings"
                 buttonText: "Settings"
                 iconSource: "../../resource/setting.svg"
                 pageIndex: 8
-                isSelected: selectBar.selectedButton === "buttonPageSettings"
+                isSelected: selectBar.selectedPageKey === "settings"
             }
         }
     }

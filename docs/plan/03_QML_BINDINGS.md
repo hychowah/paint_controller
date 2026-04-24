@@ -1,6 +1,6 @@
 # QML ↔ Python Bindings Inventory
 
-> **Source**: Codebase review (2026-04). Updated 2026-04-21 with the `AppRuntime` extraction.
+> **Source**: Codebase review (2026-04). Updated 2026-04-24 after TD-031 completion and the startup/runtime validation refresh.
 > **Canonical location**: `docs/plan/03_QML_BINDINGS.md`
 > **Related**: [01_MASTER_PLAN.md](01_MASTER_PLAN.md) | [02_ARCHITECTURE.md](02_ARCHITECTURE.md)
 
@@ -37,7 +37,7 @@ engine.load(QUrl.fromLocalFile(qml_path))
 
 ## Current Runtime Registration State
 
-As of 2026-04-21, all 22 runtime objects are exposed via `setContextProperty()`. `AppRuntime` builds the registration table, checks it against the expected public QML contract, and then verifies all 22 are non-`None` after `engine.load()`.
+As of 2026-04-24, all 22 runtime objects are exposed via `setContextProperty()`. `AppRuntime` builds the registration table, checks it against the expected public QML contract, and then verifies all 22 are non-`None` after `engine.load()`.
 
 > **⚠️ DO NOT USE `qmlRegisterSingletonInstance()` in PySide6.**
 > It corrupts the QML type system when combined with implicit directory imports (no `qmldir`).
@@ -157,7 +157,14 @@ Location: `python/paint_controller/qml/`
 qml/
 ├── core/
 │   ├── MainWindow.qml          # Root window, screen manager
-│   └── CommonStyle.qml         # Shared styling (pragma Singleton)
+│   └── CommonStyle.qml         # Compatibility singleton wrapper pointing at qml/theme/
+├── theme/
+│   └── CommonStyle.qml         # Canonical styling singleton
+├── features/
+│   ├── systemcontrol/
+│   │   └── SystemControlWorkspace.qml
+│   └── video/
+│       └── VideoFullscreenWorkspace.qml
 ├── navigation/
 │   ├── SelectBar.qml           # Left sidebar
 │   └── TopBar.qml              # Top status bar
@@ -165,28 +172,28 @@ qml/
 │   ├── home/
 │   │   ├── PageHome.qml
 │   │   └── PageLauncher.qml
-│   ├── spray/     → uses backend signals
 │   ├── wheel/     → binds to wheelController
-│   ├── winch/
+│   ├── winch/     → binds to winchController
 │   ├── settings/  → camera, arm, wheels, main settings
 │   ├── status/    → monitor & sensor displays
 │   ├── tuning/
-│   └── misc/
+│   └── home/      → launcher stays under home/
 ├── overlays/
-│   ├── OverlayLayer.qml        # Overlay container
+│   ├── JoystickOverlay.qml     # Joystick/menu overlay container
 │   ├── video/
-│   │   ├── VideoFullscreenOverlay.qml
+│   │   ├── VideoFullscreenOverlay.qml  # compatibility wrapper
 │   │   └── components/
 │   │       ├── BaseFrontOverlay.qml
 │   │       ├── BaseTopViewSettingsPopup.qml
+│   │       ├── EndEffectorOverlay.qml
 │   │       ├── WallDetectionOverlay.qml
-│   │       └── ControlInfoPanel.qml
+│   │       ├── ControlInfoPanel.qml
+│   │       ├── VideoOverlayTopBar.qml
+│   │       └── WorkFlowStatusOverlay.qml
 │   ├── lidar/
-│   │   ├── LidarOverlay.qml
-│   │   ├── Lidar2DView.qml
 │   │   └── Lidar3DView.qml
 │   ├── systemcontrol/
-│   │   ├── SystemControlMenu.qml
+│   │   ├── SystemControlMenu.qml  # compatibility wrapper
 │   │   ├── WorkFlowTab.qml
 │   │   ├── SettingsTab.qml
 │   │   ├── DeviceControlTab.qml
@@ -200,10 +207,6 @@ qml/
 │   │   ├── NumpadButton.qml
 │   │   ├── TouchSwitch.qml
 │   │   └── MoveLengthButton.qml    → calls backend methods
-│   ├── inputs/
-│   │   ├── SettingInputField.qml
-│   │   ├── KeyboardPopup.qml
-│   │   └── Numpad variants
 │   ├── displays/
 │   │   ├── IndustrialCard.qml
 │   │   ├── WheelsCard.qml          → reads wheelController properties
@@ -211,16 +214,8 @@ qml/
 │   │   ├── BatteryDisplay.qml
 │   │   ├── LineGraph.qml
 │   │   └── ... (14+ display components)
-│   ├── panels/
-│   │   ├── ControlPanel.qml
-│   │   ├── ConnectionStatusPanel.qml
-│   │   └── SettingsSection.qml
 │   ├── popups/
 │   │   └── CustomPopup.qml
-│   └── specialized/
-│       └── pointcloud/
-│           ├── PointCloudGeometry.qml
-│           └── PointCloudEffect.qml
 ```
 
 ### qmldir State
@@ -228,13 +223,14 @@ qml/
 
 Existing/special cases:
 - `core/qmldir` — `singleton CommonStyle 1.0 CommonStyle.qml`
+- `theme/qmldir` — `singleton CommonStyle 1.0 CommonStyle.qml`
 - `overlays/systemcontrol/qmldir` — pre-existing
 
 Added during Task 1.9:
 - `navigation/`
-- `components/buttons/`, `components/displays/`, `components/inputs/`, `components/panels/`, `components/popups/`, `components/specialized/pointcloud/`
+- `components/buttons/`, `components/displays/`, `components/popups/`
 - `overlays/`, `overlays/lidar/`, `overlays/video/`, `overlays/video/components/`
-- `pages/home/`, `pages/misc/`, `pages/settings/`, `pages/settings/components/`, `pages/settings/pages/`, `pages/spray/`, `pages/status/`, `pages/status/components/`, `pages/tuning/`, `pages/wheel/`, `pages/winch/`
+- `pages/home/`, `pages/settings/`, `pages/settings/components/`, `pages/settings/pages/`, `pages/status/`, `pages/status/components/`, `pages/tuning/`, `pages/wheel/`, `pages/winch/`
 
 The current rollout is intentionally conservative: these files provide type export entries only. The runtime still uses relative imports (for example `import "../pages/home"`) and does not yet depend on dotted URI-module imports. That avoids reintroducing the import/type-system instability that previously blocked singleton-registration work.
 

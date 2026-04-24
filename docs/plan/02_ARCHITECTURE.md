@@ -89,7 +89,7 @@ The current branch is **refactor-first**: architecture cleanup, safety correctne
 **Runtime registration state**
 - All 22 live runtime objects are exposed via `setContextProperty()`
 - The singleton-registration track was cancelled because `qmlRegisterSingletonInstance()` is broken in this PySide6 setup
-- Remaining Phase 1 cleanup is mostly deferred or debt-tracked: import/qmldir cleanup is complete, `TD-030` runtime/workflow/service validation is complete, and `TD-001` Stage 1 QML hardening is complete; the next structural refactor stage is `TD-031`, with the remaining theming backlog still low priority
+- Remaining QML cleanup is now debt-tracked: import/qmldir cleanup is complete, `TD-030` runtime/workflow/service validation is complete, `TD-001` Stage 1 QML hardening is complete, and `TD-031` is complete. The remaining theming/design-system backlog stays low priority.
 - The C++ source files (`src/*.cpp`, `include/paint_controller/*.hpp`) were deleted in Phase 1A
 
 ---
@@ -276,6 +276,10 @@ The current branch is **refactor-first**: architecture cleanup, safety correctne
 ```
 qml/
   core/               → ApplicationWindow, themes, styling
+  theme/              → Canonical design tokens (`CommonStyle`) with compatibility shim left in `core/`
+  features/           → Feature-root entry surfaces extracted from shell-owned overlays
+    systemcontrol/    → Shared system-control workspace used by both shell hosts
+    video/            → Shared fullscreen-video workspace
   navigation/         → SelectBar, TopBar (sidebars, headers)
   pages/              → Main content pages
     status/components → TeensyStatus, WheelStatus, etc.
@@ -283,18 +287,15 @@ qml/
     settings/components → Reusable SettingInputField
   components/         → Core UI building blocks
     buttons/          → Various button styles
-    inputs/           → Text inputs, sliders, spinboxes
     displays/         → Cards, gauges, monitors
-    panels/           → Grouped UI sections
-    specialized/      → VTK pointcloud container, video components
     popups/           → Message popups
   overlays/           → Fullscreen/modal dialogs
-    systemcontrol/    → Settings, workflow, system menu (L4/R4 buttons)
-    video/            → Video fullscreen + end-effector overlay with live stats
+    systemcontrol/    → Legacy compatibility wrapper path
+    video/            → Legacy compatibility wrapper path + video-local components
     video/components/ → Nested video controls, settings, topbar
-    lidar/            → 3D lidar 2D/3D views
+    lidar/            → 3D lidar view
     EmergencyOverlay  → Hold-to-activate visual
-    OverlayLayer      → Master coordinator
+    JoystickOverlay   → Joystick/menu overlay coordinator
 ```
 
 **Key QML Patterns** (from KNOWLEDGE.md):
@@ -306,9 +307,9 @@ qml/
 - **NumpadButton**: Self-contained with explicit properties (no fragile `parent.parent.*` bindings)
 - **Workflow Overlays**: Use `Layout.preferredWidth` weights instead of `parent.width * 0.X`
 
-**CRITICAL Audit Finding (R11) — RESOLVED**: `CommonStyle.qml` is a `pragma Singleton` + `QtObject`. `Screen.pixelDensity` cannot work because `QtObject` has no parent Window. **Resolution**: `scaleFactor` defaults to `1.0` (runtime DPI injection was removed because `Screen.pixelDensity / 4.0` ≈ 2x on Steam Deck, doubling all shell sizes). Shell chrome uses fixed tokens (`shellTopBarHeight`, `shellSidebarExpandedWidth`, etc.) that are NOT scaled. Registered as singleton via `qmldir` in `qml/core/`.
+**CRITICAL Audit Finding (R11) — RESOLVED**: `CommonStyle.qml` is a `pragma Singleton` + `QtObject`. `Screen.pixelDensity` cannot work because `QtObject` has no parent Window. **Resolution**: `scaleFactor` defaults to `1.0` (runtime DPI injection was removed because `Screen.pixelDensity / 4.0` ≈ 2x on Steam Deck, doubling all shell sizes). Shell chrome uses fixed tokens (`shellTopBarHeight`, `shellSidebarExpandedWidth`, etc.) that are NOT scaled. Canonical singleton registration now lives in `qml/theme/`, with `qml/core/CommonStyle.qml` retained as a compatibility shim.
 
-**CommonStyle Token System** (~120 lines, `qml/core/CommonStyle.qml`):
+**CommonStyle Token System** (~120 lines, canonical file `qml/theme/CommonStyle.qml`):
 - `scaleFactor` (writable, default 1.0) — drives all scale-dependent tokens
 - **Colors**: 9 backgrounds, 3 cards, 3 accents, 4 status, 5 text, 2 borders, 10 overlay/input/button
 - **Typography**: `fontSans`/`fontMono` families, 5 font sizes (display→label)
@@ -317,7 +318,7 @@ qml/
 - **Controls**: height/layout constants, motion durations
 - **Shell Chrome**: 11 fixed tokens (not scaled) preserving Steam Deck baseline
 - **Legacy Aliases**: 14 backward-compatible mappings to new tokens
-- **Singleton registration**: `qml/core/qmldir` → `singleton CommonStyle 1.0 CommonStyle.qml`
+- **Singleton registration**: `qml/theme/qmldir` → `singleton CommonStyle 1.0 CommonStyle.qml`; `qml/core/CommonStyle.qml` mirrors those tokens for older relative imports
 
 **Multi-Monitor Architecture**:
 - Main app: Secondary display (index 1 if available, otherwise primary)
@@ -454,7 +455,7 @@ The repo now uses a layered test model instead of one generic mocking style for 
 - `tests/test_winch_ros_integration.py` proves the published command reaches a real `rclpy` subscriber callback
 
 **Local validation status**
-- Current documented local result: targeted venv validation for the new core batch is green, while a full `python/paint_controller/venv/bin/python -m pytest tests -q` run still aborts in this terminal on the Qt application fixture path
+- Current documented local result: full `python/paint_controller/venv/bin/python -m pytest -q` revalidated green at `170 passed` on 2026-04-24
 
 ---
 
