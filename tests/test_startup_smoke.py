@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from PySide6.QtCore import QCoreApplication, QEvent, QObject, QSize, Signal, Slot, QUrl
 from PySide6.QtGui import QColor, QImage
 from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent
@@ -106,6 +107,7 @@ def _settings_manager(monkeypatch, tmp_path: Path) -> SettingsManager:
 
 def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
     availability = DynamicObject(BASE=True, EF=True)
+    ping_times = DynamicObject(BASE="42", END_EFFECTOR="38")
     settings_manager = _settings_manager(monkeypatch, tmp_path)
 
     return {
@@ -163,14 +165,16 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             right_control_mode="None",
             right_control_value="",
         ),
-        "sshHandler": DynamicObject(deviceAvailability=availability),
+        "sshHandler": DynamicObject(deviceAvailability=availability, devicePingTimes=ping_times),
         "systemMonitor": DynamicObject(
+            battery_level=100,
             battery_percentage=100,
+            battery_remaining_time="--",
             battery_time_remaining="--",
             cpu_temperature=0.0,
         ),
-        "screenRecorder": DynamicObject(isRecording=False),
-        "rosBagRecorder": DynamicObject(isRecording=False),
+        "screenRecorder": DynamicObject(isRecording=False, is_recording=False, recording_duration=0),
+        "rosBagRecorder": DynamicObject(isRecording=False, is_recording=False),
         "settingsManager": settings_manager,
         "screenManager": FakeScreenManager(),
         "baseTopViewController": DynamicObject(enabled=False),
@@ -340,7 +344,8 @@ Item {{
             qt_app.processEvents()
 
 
-def test_video_fullscreen_workspace_loads_with_stream_context(monkeypatch, tmp_path, qt_app, qtbot):
+@pytest.mark.parametrize("video_source", ["image://ef_live/frame", "image://base_front_live/frame"])
+def test_video_fullscreen_workspace_loads_with_stream_context(monkeypatch, tmp_path, qt_app, qtbot, video_source):
     repo_root = Path(__file__).resolve().parent.parent
     qml_dir = repo_root / "python" / "paint_controller" / "qml"
     video_import_url = _qml_import_url(qml_dir / "features" / "video")
@@ -372,11 +377,70 @@ Item {{
     VideoFullscreenWorkspace {{
         anchors.fill: parent
         active: true
-        videoSource: "image://ef_live/frame"
+        videoSource: "{video_source}"
     }}
 }}
 '''.encode(),
         QUrl("inmemory:VideoFullscreenWorkspaceHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+        qt_app.processEvents()
+
+        fatal_warning_fragments = (
+            "failed to load component",
+            "no such file or directory",
+            "is not a type",
+            "required property",
+        )
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
+def test_video_fullscreen_overlay_wrapper_loads_with_stream_context(monkeypatch, tmp_path, qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    overlay_import_url = _qml_import_url(qml_dir / "overlays" / "video")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+    engine.addImageProvider("ef_live", BlankImageProvider())
+    engine.addImageProvider("base_front_live", BlankImageProvider())
+    engine.addImageProvider("base_rear_live", BlankImageProvider())
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{overlay_import_url}"
+
+Item {{
+    width: 1280
+    height: 800
+
+    VideoFullscreenOverlay {{
+        anchors.fill: parent
+        active: true
+        videoSource: "image://base_front_live/frame"
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:VideoFullscreenOverlayHarness.qml"),
     )
 
     _assert_component_ready(qtbot, component)

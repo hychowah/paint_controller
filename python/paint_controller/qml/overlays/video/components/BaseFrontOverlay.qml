@@ -1,13 +1,14 @@
 import QtQuick
 import QtQuick.Controls
 import "."
+import "../../../core"
 
 Rectangle {
     id: overlay
     anchors.fill: parent
     color: "transparent"
-    
-    VideoOverlayStyle { id: style }
+
+    readonly property var style: CommonStyle
     
     // WorkFlow Status Overlay - Full screen with blinking border
     WorkFlowStatusOverlay {
@@ -239,7 +240,7 @@ Rectangle {
         anchors.rightMargin: 20
         
         color: "#1a1a1a"
-        border.color: style.borderColor
+        border.color: style.dividerColor
         border.width: 2
         radius: 8
         

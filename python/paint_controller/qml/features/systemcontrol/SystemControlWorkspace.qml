@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../../core"
 import "../../components/popups"
 import "../../navigation"
 import "../../overlays/systemcontrol" as LegacySystemControl
@@ -17,13 +18,13 @@ Item {
     Rectangle {
         id: systemOverlayBackground
         anchors.fill: parent
-        color: "#000000"
+        color: CommonStyle.overlayScrim
         opacity: showSystemMenu ? 0.5 : 0
         visible: opacity > 0
 
         Behavior on opacity {
             NumberAnimation {
-                duration: 250
+                duration: CommonStyle.motionStandard
                 easing.type: Easing.InOutQuad
             }
         }
@@ -37,14 +38,14 @@ Item {
 
     Rectangle {
         id: systemMenuContainer
-        width: 800
-        height: 700
-        radius: 12
-        color: "#1A1A1A"
+        width: Math.round(800 * CommonStyle.scaleFactor)
+        height: Math.round(700 * CommonStyle.scaleFactor)
+        radius: CommonStyle.radiusMd + 2
+        color: CommonStyle.backgroundL0
         opacity: showSystemMenu ? 1 : 0
         visible: opacity > 0
 
-        border.color: "#333333"
+        border.color: CommonStyle.borderDefault
         border.width: 1
 
         anchors {
@@ -55,7 +56,7 @@ Item {
 
         Behavior on anchors.verticalCenterOffset {
             NumberAnimation {
-                duration: 300
+                duration: CommonStyle.motionSlow
                 easing.type: Easing.OutBack
                 easing.overshoot: 0.7
             }
@@ -63,7 +64,7 @@ Item {
 
         Behavior on opacity {
             NumberAnimation {
-                duration: 250
+                duration: CommonStyle.motionStandard
                 easing.type: Easing.InOutQuad
             }
         }
@@ -71,34 +72,34 @@ Item {
         ColumnLayout {
             anchors {
                 fill: parent
-                margins: 20
+                margins: CommonStyle.spacingLg + CommonStyle.spacingSm
             }
             spacing: 0
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.bottomMargin: 15
+                Layout.bottomMargin: CommonStyle.spacingLg - 1
 
                 Text {
                     text: "System Control"
-                    color: "#FFFFFF"
-                    font.family: "Helvetica"
-                    font.pixelSize: 26
+                    color: CommonStyle.textPrimary
+                    font.family: CommonStyle.fontSans
+                    font.pixelSize: CommonStyle.fontHeading + 6
                     font.bold: true
                     Layout.fillWidth: true
                 }
 
                 Rectangle {
-                    width: 32
-                    height: 32
+                    width: CommonStyle.controlHeightMd
+                    height: CommonStyle.controlHeightMd
                     radius: 16
-                    color: closeMouseArea.containsMouse ? "#333333" : "transparent"
+                    color: closeMouseArea.containsMouse ? CommonStyle.backgroundL2 : "transparent"
 
                     Text {
                         anchors.centerIn: parent
                         text: "×"
-                        color: "#CCCCCC"
-                        font.pixelSize: 24
+                        color: CommonStyle.textSecondary
+                        font.pixelSize: CommonStyle.fontDisplay
                         font.bold: true
                     }
 
@@ -113,15 +114,15 @@ Item {
 
             Rectangle {
                 Layout.fillWidth: true
-                height: 50
+                height: CommonStyle.controlHeightLg
                 color: "transparent"
-                Layout.bottomMargin: 10
+                Layout.bottomMargin: CommonStyle.spacingSm + 2
 
                 ListView {
                     id: tabBar
                     anchors.fill: parent
                     orientation: ListView.Horizontal
-                    spacing: 2
+                    spacing: CommonStyle.spacingXs / 2
                     clip: true
                     flickableDirection: Flickable.HorizontalFlick
                     boundsBehavior: Flickable.StopAtBounds
@@ -140,7 +141,7 @@ Item {
                     }
 
                     delegate: TabButton {
-                        width: 150
+                        width: Math.round(150 * CommonStyle.scaleFactor)
                         height: tabBar.height
                         text: tabText
                         checked: tabView.currentIndex === tabIndex
@@ -184,17 +185,17 @@ Item {
         property bool checked: false
         signal clicked()
 
-        color: checked ? "#2A3040" : "#1A1A1A"
-        border.color: checked ? "#3A5A8C" : "#333333"
+        color: checked ? CommonStyle.backgroundL2 : CommonStyle.backgroundL0
+        border.color: checked ? CommonStyle.accentPrimary : CommonStyle.borderDefault
         border.width: 1
-        radius: 8
+        radius: CommonStyle.radiusSm + 2
 
         Behavior on color {
-            ColorAnimation { duration: 200 }
+            ColorAnimation { duration: CommonStyle.motionStandard }
         }
 
         Behavior on border.color {
-            ColorAnimation { duration: 200 }
+            ColorAnimation { duration: CommonStyle.motionStandard }
         }
 
         MouseArea {
@@ -205,13 +206,13 @@ Item {
 
             onEntered: {
                 if (!parent.checked) {
-                    parent.color = "#252525"
+                    parent.color = CommonStyle.backgroundL1
                 }
             }
 
             onExited: {
                 if (!parent.checked) {
-                    parent.color = "#1A1A1A"
+                    parent.color = CommonStyle.backgroundL0
                 }
             }
         }
@@ -219,21 +220,21 @@ Item {
         Text {
             anchors.centerIn: parent
             text: parent.text
-            color: parent.checked ? "#FFFFFF" : "#CCCCCC"
-            font.family: "Helvetica"
-            font.pixelSize: 16
+            color: parent.checked ? CommonStyle.textPrimary : CommonStyle.textSecondary
+            font.family: CommonStyle.fontSans
+            font.pixelSize: CommonStyle.fontBody
             font.bold: parent.checked
 
             Behavior on color {
-                ColorAnimation { duration: 200 }
+                ColorAnimation { duration: CommonStyle.motionStandard }
             }
         }
     }
 
     CustomPopup {
         id: sharedConfirmationPopup
-        width: 400
-        height: 180
+        width: CommonStyle.popupWidth - CommonStyle.spacingXl
+        height: CommonStyle.popupHeight - CommonStyle.spacingSm
         dismissDelay: 2000
     }
 }

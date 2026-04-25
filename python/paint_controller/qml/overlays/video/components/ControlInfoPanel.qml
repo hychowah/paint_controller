@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../../../core"
 
 /**
  * ControlInfoPanel - Compact Steam Deck optimized display
@@ -20,13 +21,13 @@ Rectangle {
     property int bottomMargin: 20
 
     // UI Design properties
-    property color backgroundColor: "#AA000000" // Semi-transparent dark background for readability
-    property color borderColor: "#AAAAAA" // Border is removed, but keeping property for flexibility
-    property color titleColor: "#CCCCCC" // Lighter for secondary text
-    property color modeColor: "#00FF00" // Green for mode (as in image's "Descending")
-    property color valueColor: "#FFFFFF" // White for emphasized value
+    property color backgroundColor: CommonStyle.videoSurface
+    property color borderColor: CommonStyle.videoDivider
+    property color titleColor: CommonStyle.textSecondary
+    property color modeColor: CommonStyle.videoBorderEnabled
+    property color valueColor: CommonStyle.textPrimary
     property int borderWidth: 0 // <--- Removed border by setting width to 0
-    property int cornerRadius: 6
+    property int cornerRadius: CommonStyle.radiusSm
 
     // Dynamic font sizes based on panel height - adjusted for new emphasis
     readonly property real titleFontSize: Math.max(8, panel.height * 0.12) // Slightly smaller
@@ -75,6 +76,7 @@ Rectangle {
             color: panel.titleColor
             font.pixelSize: panel.titleFontSize
             font.bold: false // <--- Not bold for less emphasis
+            font.family: CommonStyle.fontSans
             font.letterSpacing: 0.2
             Layout.fillWidth: true
             elide: Text.ElideRight
@@ -86,7 +88,7 @@ Rectangle {
             color: panel.modeColor // Keep green for mode
             font.pixelSize: panel.modeFontSize
             font.bold: true // Keep bold for mode readability
-            font.family: "Courier New"
+            font.family: CommonStyle.fontMono
             Layout.fillWidth: true
             maximumLineCount: 1
             elide: Text.ElideRight
@@ -98,7 +100,7 @@ Rectangle {
             color: panel.valueColor
             font.pixelSize: panel.valueFontSize // <--- Emphasized font size
             font.bold: true // <--- Make bold for emphasis
-            font.family: "Courier New" // Using a monospaced font as in the image
+            font.family: CommonStyle.fontMono
             Layout.fillWidth: true
             maximumLineCount: 1
             elide: Text.ElideRight
@@ -107,6 +109,6 @@ Rectangle {
 
     // Smooth animations
     Behavior on borderColor {
-        ColorAnimation { duration: 150 }
+        ColorAnimation { duration: CommonStyle.motionFast }
     }
 }

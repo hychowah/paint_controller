@@ -44,6 +44,17 @@ QtObject {
     readonly property color buttonPressed: "#2b82dc"
     readonly property color warningSurface: "#3a4857"
     readonly property color warningText: "#ffb398"
+    readonly property color videoSurface: "#aa000000"
+    readonly property color videoSurfaceStrong: "#cc000000"
+    readonly property color videoBorderEnabled: statusSuccess
+    readonly property color videoBorderDisabled: statusError
+    readonly property color videoBorderWarning: statusWarning
+    readonly property color videoDivider: borderDefault
+    readonly property color videoCrosshair: "#80f4f7fb"
+    readonly property color videoRecording: statusError
+    readonly property color videoRuntime: accentPrimary
+    readonly property color videoLoop: "#ffd36b"
+    readonly property color videoAction: "#fff08a"
 
     readonly property int spacingXs: Math.round(4 * scaleFactor)
     readonly property int spacingSm: Math.round(8 * scaleFactor)
@@ -74,6 +85,32 @@ QtObject {
     readonly property int cardRadius: radiusLg
     readonly property int popupWidth: Math.round(450 * scaleFactor)
     readonly property int popupHeight: Math.round(200 * scaleFactor)
+    readonly property int videoPanelWidth: Math.round(160 * scaleFactor)
+    readonly property int videoPanelHeight: Math.round(90 * scaleFactor)
+    readonly property int videoPanelSideMargin: Math.round(20 * scaleFactor)
+    readonly property int videoPanelBottomMargin: Math.round(40 * scaleFactor)
+    readonly property int videoPanelPadding: spacingMd
+    readonly property int videoControlPanelWidth: Math.round(200 * scaleFactor)
+    readonly property int videoControlPanelHeight: Math.round(120 * scaleFactor)
+    readonly property int videoTopBarHeight: Math.round(50 * scaleFactor)
+    readonly property int videoTopBarSideWidth: Math.round(300 * scaleFactor)
+    readonly property int videoSignalBarWidth: Math.max(3, Math.round(3 * scaleFactor))
+    readonly property int videoSignalBarSpacing: Math.max(2, Math.round(2 * scaleFactor))
+    readonly property int panelWidth: videoPanelWidth
+    readonly property int panelHeight: videoPanelHeight
+    readonly property int panelMargins: videoPanelPadding
+    readonly property int contentSpacing: spacingSm
+    readonly property int labelFontSize: fontLabel - 1
+    readonly property int valueFontSize: fontHeading
+    readonly property real labelLetterSpacing: 0.5
+    readonly property real valueLetterSpacing: -0.3
+    readonly property int controlPanelWidth: videoControlPanelWidth
+    readonly property int controlPanelHeight: videoControlPanelHeight
+    readonly property int controlPanelBottomMargin: videoPanelBottomMargin
+    readonly property int controlPanelSideMargin: videoPanelSideMargin
+    readonly property color labelColor: textSecondary
+    readonly property color valueColor: textPrimary
+    readonly property color dividerColor: videoDivider
 
     readonly property int motionFast: 150
     readonly property int motionStandard: 250

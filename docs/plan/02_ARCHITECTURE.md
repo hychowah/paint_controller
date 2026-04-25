@@ -309,15 +309,15 @@ qml/
 
 **CRITICAL Audit Finding (R11) — RESOLVED**: `CommonStyle.qml` is a `pragma Singleton` + `QtObject`. `Screen.pixelDensity` cannot work because `QtObject` has no parent Window. **Resolution**: `scaleFactor` defaults to `1.0` (runtime DPI injection was removed because `Screen.pixelDensity / 4.0` ≈ 2x on Steam Deck, doubling all shell sizes). Shell chrome uses fixed tokens (`shellTopBarHeight`, `shellSidebarExpandedWidth`, etc.) that are NOT scaled. Canonical singleton registration now lives in `qml/theme/`, with `qml/core/CommonStyle.qml` retained as a compatibility shim.
 
-**CommonStyle Token System** (~120 lines, canonical file `qml/theme/CommonStyle.qml`):
+**CommonStyle Token System** (canonical file `qml/theme/CommonStyle.qml`):
 - `scaleFactor` (writable, default 1.0) — drives all scale-dependent tokens
-- **Colors**: 9 backgrounds, 3 cards, 3 accents, 4 status, 5 text, 2 borders, 10 overlay/input/button
+- **Colors**: shared background/card/accent/status/text/border tokens plus video-domain colors for surfaces, borders, crosshair, recording/runtime/loop/action states
 - **Typography**: `fontSans`/`fontMono` families, 5 font sizes (display→label)
 - **Spacing**: 6 levels (xs→xxl), all `Math.round(N * scaleFactor)`
 - **Radii/Borders**: 3 radii, 2 border widths
-- **Controls**: height/layout constants, motion durations
+- **Controls and Layout**: height/layout constants, motion durations, popup sizing, list-row sizing, and video panel/top-bar/signal-bar dimensions
 - **Shell Chrome**: 11 fixed tokens (not scaled) preserving Steam Deck baseline
-- **Legacy Aliases**: 14 backward-compatible mappings to new tokens
+- **Compatibility Aliases**: legacy shell and video property names still map onto the canonical token set so older overlay components can migrate incrementally
 - **Singleton registration**: `qml/theme/qmldir` → `singleton CommonStyle 1.0 CommonStyle.qml`; `qml/core/CommonStyle.qml` mirrors those tokens for older relative imports
 
 **Multi-Monitor Architecture**:

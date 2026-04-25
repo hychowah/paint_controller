@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-04-25 10:15 - QML Backlog Commit Prep Truth Pass
+
+**Goal**: Prepare the current QML backlog slice for commit by aligning the planning/debt docs with the already-landed code and revalidating the touched startup/import surfaces.
+**Issues**: The working tree already advanced `2.5b` and `2.5c`, narrowed `TD-016` by turning `VideoOverlayStyle.qml` into a compatibility shim over `CommonStyle`, and deduplicated `JoystickOverlay.qml`, but the plan/debt docs still described `2.7` as untouched backlog and overstated the remaining video-style drift.
+**Tried**: Rewrote the active `PLANNING.md` scratch for the commit-prep task, updated the master plan, plan-doc navigator, debt tracker, and architecture summary to match the current QML/token state, then reran `python/paint_controller/venv/bin/python -m pytest tests/test_startup_smoke.py tests/test_qml_imports.py -q`.
+**Result**: ✅ The docs now describe the live backlog truthfully: `2.5b` and `2.5c` remain partial, `2.7` is complete through the shared `JoystickMenuOverlay` extraction, `TD-016` is narrowed to wrapper cleanup, and the focused QML validation slice is green at `9 passed`.
+**Files**: `PLANNING.md`, `docs/plan/01_MASTER_PLAN.md`, `docs/plan/00_README.md`, `docs/plan/02_ARCHITECTURE.md`, `docs/tech-debt.md`, `DEVNOTES.md`
+
 ### 2026-04-24 17:10 - Final Validation And Doc Truth Pass
 
 **Goal**: Revalidate the startup/runtime follow-up changes and align current-facing docs before commit

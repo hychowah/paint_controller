@@ -51,8 +51,6 @@ Rectangle {
     // border.width: 2
     // border.color: "#00FF00"
     
-    VideoOverlayStyle { id: style }
-    
     // Using RowLayout for better proportional scaling
     RowLayout {
         anchors.fill: parent

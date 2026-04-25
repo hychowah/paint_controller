@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../../core"
 import "../../overlays/video/components"
 
 Rectangle {
@@ -9,14 +10,14 @@ Rectangle {
     property string videoSource: ""
     property bool active: false
 
-    property int panelWidth: 200
-    property int panelHeight: 120
-    property int panelBottomMargin: 40
-    property int panelSideMargin: 20
+    readonly property int panelWidth: CommonStyle.videoControlPanelWidth
+    readonly property int panelHeight: CommonStyle.videoControlPanelHeight
+    readonly property int panelBottomMargin: CommonStyle.videoPanelBottomMargin
+    readonly property int panelSideMargin: CommonStyle.videoPanelSideMargin
 
     visible: active
     anchors.fill: parent
-    color: "black"
+    color: CommonStyle.backgroundL0
 
     MouseArea {
         anchors.fill: parent
@@ -38,7 +39,7 @@ Rectangle {
         width: 30
         height: 30
         color: "transparent"
-        border.color: "#80FFFFFF"
+        border.color: CommonStyle.videoCrosshair
         border.width: 2
         radius: 15
         visible: false
@@ -49,7 +50,7 @@ Rectangle {
             anchors.topMargin: -10
             width: 2
             height: 10
-            color: "#80FFFFFF"
+            color: CommonStyle.videoCrosshair
         }
 
         Rectangle {
@@ -58,7 +59,7 @@ Rectangle {
             anchors.bottomMargin: -10
             width: 2
             height: 10
-            color: "#80FFFFFF"
+            color: CommonStyle.videoCrosshair
         }
 
         Rectangle {
@@ -67,7 +68,7 @@ Rectangle {
             anchors.leftMargin: -10
             width: 10
             height: 2
-            color: "#80FFFFFF"
+            color: CommonStyle.videoCrosshair
         }
 
         Rectangle {
@@ -76,7 +77,7 @@ Rectangle {
             anchors.rightMargin: -10
             width: 10
             height: 2
-            color: "#80FFFFFF"
+            color: CommonStyle.videoCrosshair
         }
     }
 
@@ -135,25 +136,26 @@ Rectangle {
         visible: false
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottomMargin: 20
+        anchors.bottomMargin: CommonStyle.spacingLg + CommonStyle.spacingXs
         width: 200
         height: 40
-        radius: 20
-        color: "#60000000"
-        border.color: "#80FFFFFF"
+        radius: CommonStyle.radiusLg + CommonStyle.spacingXs / 2
+        color: CommonStyle.videoSurface
+        border.color: CommonStyle.videoCrosshair
         border.width: 1
 
         Label {
             anchors.centerIn: parent
             text: "Tap to exit fullscreen"
-            color: "white"
-            font.pixelSize: 14
+            color: CommonStyle.textPrimary
+            font.family: CommonStyle.fontSans
+            font.pixelSize: CommonStyle.fontCaption + 1
         }
 
         opacity: fadeOutTimer.running ? 1.0 : 0.0
 
         Behavior on opacity {
-            NumberAnimation { duration: 500 }
+            NumberAnimation { duration: CommonStyle.motionSlow + 200 }
         }
     }
 
@@ -191,7 +193,7 @@ Rectangle {
     }
 
     Behavior on opacity {
-        NumberAnimation { duration: 300 }
+        NumberAnimation { duration: CommonStyle.motionSlow }
     }
 
     opacity: active ? 1.0 : 0.0

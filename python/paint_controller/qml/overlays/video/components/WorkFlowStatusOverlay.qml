@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../../../core"
 
 Item {
     id: root
@@ -41,7 +42,7 @@ Item {
         anchors.fill: parent
         color: "transparent"
         border.width: 4
-        border.color: "#00FF00"  // Green border
+        border.color: CommonStyle.videoBorderEnabled
         radius: 0
         
         SequentialAnimation on opacity {
@@ -69,14 +70,14 @@ Item {
         anchors {
             left: parent.left
             verticalCenter: parent.verticalCenter
-            leftMargin: 20
+            leftMargin: CommonStyle.videoPanelSideMargin
         }
         width: Math.max(statusLayout.implicitWidth + 40, 300)
         height: statusLayout.implicitHeight + 30
-        color: "#CC000000"  // Semi-transparent black
-        border.color: "#00FF00"
+        color: CommonStyle.videoSurfaceStrong
+        border.color: CommonStyle.videoBorderEnabled
         border.width: 2
-        radius: 8
+        radius: CommonStyle.radiusSm
         
         ColumnLayout {
             id: statusLayout
@@ -92,14 +93,14 @@ Item {
             // Status indicator
             RowLayout {
                 Layout.alignment: Qt.AlignLeft
-                spacing: 10
+                spacing: CommonStyle.spacingSm + 2
                 
                 // Animated indicator
                 Rectangle {
                     width: 16
                     height: 16
                     radius: 8
-                    color: "#00FF00"
+                    color: CommonStyle.videoBorderEnabled
                     
                     SequentialAnimation on scale {
                         running: root.visible
@@ -121,9 +122,9 @@ Item {
                 
                 Text {
                     text: "WORKFLOW RUNNING"
-                    color: "#00FF00"
-                    font.family: "Helvetica"
-                    font.pixelSize: 18
+                    color: CommonStyle.videoBorderEnabled
+                    font.family: CommonStyle.fontSans
+                    font.pixelSize: CommonStyle.fontBody + 2
                     font.bold: true
                 }
             }
@@ -138,16 +139,16 @@ Item {
                     width: 12
                     height: 12
                     radius: 6
-                    color: "#FFD700"  // Gold color for loop indicator
+                    color: CommonStyle.videoLoop
                 }
                 
                 Text {
                     text: workFlowRunner && workFlowRunner.loop_iteration > 0 
                           ? "Loop Iteration: " + workFlowRunner.loop_iteration
                           : "Loop: Enabled"
-                    color: "#FFD700"
-                    font.family: "Helvetica"
-                    font.pixelSize: 14
+                    color: CommonStyle.videoLoop
+                    font.family: CommonStyle.fontSans
+                    font.pixelSize: CommonStyle.fontCaption + 1
                     font.bold: true
                 }
             }
@@ -161,15 +162,15 @@ Item {
                     width: 12
                     height: 12
                     radius: 6
-                    color: "#00BFFF"  // Deep sky blue for runtime
+                    color: CommonStyle.videoRuntime
                 }
                 
                 Text {
                     id: runtimeText
                     text: "Runtime: " + formatRuntime(workFlowRunner ? workFlowRunner.workflow_runtime : 0)
-                    color: "#00BFFF"
-                    font.family: "Helvetica"
-                    font.pixelSize: 14
+                    color: CommonStyle.videoRuntime
+                    font.family: CommonStyle.fontSans
+                    font.pixelSize: CommonStyle.fontCaption + 1
                     font.bold: true
                 }
             }
@@ -178,9 +179,9 @@ Item {
             Text {
                 Layout.alignment: Qt.AlignLeft
                 text: workFlowRunner ? workFlowRunner.current_workflow : ""
-                color: "#FFFFFF"
-                font.family: "Helvetica"
-                font.pixelSize: 14
+                color: CommonStyle.textPrimary
+                font.family: CommonStyle.fontSans
+                font.pixelSize: CommonStyle.fontCaption + 1
                 visible: workFlowRunner && workFlowRunner.current_workflow !== ""
             }
             
@@ -188,7 +189,7 @@ Item {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 1
-                color: "#444444"
+                color: CommonStyle.videoDivider
                 visible: currentActionText.text !== ""
             }
             
@@ -201,9 +202,9 @@ Item {
                 Text {
                     Layout.alignment: Qt.AlignLeft
                     text: "Current Action:"
-                    color: "#AAAAAA"
-                    font.family: "Helvetica"
-                    font.pixelSize: 11
+                    color: CommonStyle.textSecondary
+                    font.family: CommonStyle.fontSans
+                    font.pixelSize: CommonStyle.fontLabel
                 }
                 
                 Text {
@@ -221,9 +222,9 @@ Item {
                         }
                         return ""
                     }
-                    color: "#FFFF00"  // Yellow for current action
-                    font.family: "Helvetica"
-                    font.pixelSize: 14
+                    color: CommonStyle.videoAction
+                    font.family: CommonStyle.fontSans
+                    font.pixelSize: CommonStyle.fontCaption + 1
                     font.bold: true
                 }
                 
@@ -241,9 +242,9 @@ Item {
                         }
                         return ""
                     }
-                    color: "#CCCCCC"
-                    font.family: "Helvetica"
-                    font.pixelSize: 11
+                    color: CommonStyle.textSecondary
+                    font.family: CommonStyle.fontSans
+                    font.pixelSize: CommonStyle.fontLabel
                     visible: text !== ""
                 }
             }

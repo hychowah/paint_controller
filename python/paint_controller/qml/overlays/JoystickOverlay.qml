@@ -4,10 +4,118 @@ import "../core"
 
 Item {
     id: overlayLayer
-    
-    // Helper function to calculate item Y position considering scroll offset
-    function getItemYPosition(listView, index) {
-        return listView.contentY + (index * 50)
+
+    component JoystickMenuOverlay: Rectangle {
+        id: menuOverlay
+
+        required property bool menuVisible
+        required property string menuTitle
+        required property int selectedIndex
+        required property int otherSelectedIndex
+
+        width: Math.round(400 * CommonStyle.scaleFactor)
+        height: Math.min(parent.height * 0.8, Math.round(150 * CommonStyle.scaleFactor) + CommonStyle.listRowHeight * overlayLayer.controlOptions.length)
+        anchors.centerIn: parent
+        color: CommonStyle.backgroundL0
+        opacity: 0.9
+        radius: CommonStyle.radiusMd
+        visible: menuVisible
+
+        onSelectedIndexChanged: {
+            if (selectedIndex >= 0) {
+                optionsList.positionViewAtIndex(selectedIndex, ListView.Contain)
+            }
+        }
+
+        Rectangle {
+            visible: menuOverlay.menuVisible
+            anchors.fill: parent
+            color: CommonStyle.accentPrimary
+            opacity: 0.1
+            radius: CommonStyle.radiusMd
+        }
+
+        Text {
+            id: menuTitleLabel
+            text: menuOverlay.menuTitle
+            color: CommonStyle.textPrimary
+            font.family: CommonStyle.fontSans
+            font.pixelSize: CommonStyle.fontDisplay
+            font.bold: true
+            anchors {
+                top: parent.top
+                topMargin: CommonStyle.spacingXl
+                horizontalCenter: parent.horizontalCenter
+            }
+        }
+
+        ScrollView {
+            id: menuScrollView
+            width: parent.width - CommonStyle.spacingXxl - CommonStyle.spacingSm
+            anchors {
+                top: menuTitleLabel.bottom
+                bottom: parent.bottom
+                topMargin: CommonStyle.spacingXl
+                horizontalCenter: parent.horizontalCenter
+                bottomMargin: CommonStyle.spacingXl
+            }
+            clip: true
+
+            ListView {
+                id: optionsList
+                width: menuScrollView.width
+                model: overlayLayer.controlOptions
+
+                delegate: Rectangle {
+                    width: optionsList.width
+                    height: CommonStyle.listRowHeight
+                    color: "transparent"
+
+                    Rectangle {
+                        visible: index === menuOverlay.selectedIndex
+                        anchors.fill: parent
+                        color: CommonStyle.accentPrimary
+                        opacity: 0.5
+                        radius: CommonStyle.radiusSm
+                    }
+
+                    Text {
+                        text: modelData
+                        color: {
+                            if (index === menuOverlay.otherSelectedIndex) return CommonStyle.statusError
+                            if (index === menuOverlay.selectedIndex) return CommonStyle.textPrimary
+                            return CommonStyle.textSecondary
+                        }
+                        font.family: CommonStyle.fontSans
+                        font.pixelSize: CommonStyle.fontBody + 2
+                        anchors {
+                            left: parent.left
+                            leftMargin: CommonStyle.spacingXl
+                            verticalCenter: parent.verticalCenter
+                        }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            width: 8
+            height: CommonStyle.listRowHeight
+            color: CommonStyle.accentPrimary
+            radius: 4
+            anchors {
+                right: parent.left
+                rightMargin: -4
+            }
+            y: menuTitleLabel.height + CommonStyle.spacingXl + (menuOverlay.selectedIndex * CommonStyle.listRowHeight) - optionsList.contentY
+
+            Behavior on y {
+                NumberAnimation {
+                    duration: 150
+                    easing.type: Easing.OutQuad
+                }
+            }
+        }
     }
     
     // Properties to be bound from parent
@@ -19,252 +127,32 @@ Item {
     property bool showLeftMenu: showOverlay && activeMenu === "left"
     property bool showRightMenu: showOverlay && activeMenu === "right"
 
-    // Left menu overlay background
     Rectangle {
-        id: leftOverlayBackground
         anchors.fill: parent
         color: CommonStyle.overlayScrim
         opacity: 0.7
-        visible: showLeftMenu
+        visible: showLeftMenu || showRightMenu
 
         MouseArea {
             anchors.fill: parent
-            enabled: showLeftMenu
+            enabled: parent.visible
         }
     }
 
-    // Right menu overlay background
-    Rectangle {
-        id: rightOverlayBackground
-        anchors.fill: parent
-        color: CommonStyle.overlayScrim
-        opacity: 0.7
-        visible: showRightMenu
-
-        MouseArea {
-            anchors.fill: parent
-            enabled: showRightMenu
-        }
-    }
-
-    // Left menu container
-    Rectangle {
+    JoystickMenuOverlay {
         id: leftMenuContainer
-        width: Math.round(400 * CommonStyle.scaleFactor)
-        height: Math.min(parent.height * 0.8, Math.round(150 * CommonStyle.scaleFactor) + CommonStyle.listRowHeight * controlOptions.length)
-        anchors.centerIn: parent
-        color: CommonStyle.backgroundL0
-        opacity: 0.9
-        radius: CommonStyle.radiusMd
-        visible: showLeftMenu
-
-        Rectangle {
-            visible: activeMenu === "left"
-            anchors.fill: parent
-            color: CommonStyle.accentPrimary
-            opacity: 0.1
-            radius: CommonStyle.radiusMd
-        }
-
-        Text {
-            id: leftMenuTitle
-            text: "Left Joystick Control"
-            color: CommonStyle.textPrimary
-            font.family: CommonStyle.fontSans
-            font.pixelSize: CommonStyle.fontDisplay
-            font.bold: true
-            anchors {
-                top: parent.top
-                topMargin: CommonStyle.spacingXl
-                horizontalCenter: parent.horizontalCenter
-            }
-        }
-
-        ScrollView {
-            id: leftScrollView
-            width: parent.width - CommonStyle.spacingXxl - CommonStyle.spacingSm
-            anchors {
-                top: leftMenuTitle.bottom
-                bottom: parent.bottom
-                topMargin: CommonStyle.spacingXl
-                horizontalCenter: parent.horizontalCenter
-                bottomMargin: CommonStyle.spacingXl
-            }
-            clip: true
-
-            ListView {
-                id: leftOptionsList
-                width: leftScrollView.width
-                model: controlOptions
-                delegate: Rectangle {
-                    width: leftOptionsList.width
-                    height: CommonStyle.listRowHeight
-                    color: "transparent"
-
-                    Rectangle {
-                        visible: index === leftSelectedIndex
-                        anchors.fill: parent
-                        color: CommonStyle.accentPrimary
-                        opacity: 0.5
-                        radius: CommonStyle.radiusSm
-                    }
-
-                    Text {
-                        text: modelData
-                        color: {
-                            if (index === rightSelectedIndex) return CommonStyle.statusError
-                            else if (index === leftSelectedIndex) return CommonStyle.textPrimary
-                            else return CommonStyle.textSecondary
-                        }
-                        font.family: CommonStyle.fontSans
-                        font.pixelSize: CommonStyle.fontBody + 2
-                        anchors {
-                            left: parent.left
-                            leftMargin: CommonStyle.spacingXl
-                            verticalCenter: parent.verticalCenter
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Auto-scroll to keep selected item visible
-        Connections {
-            target: overlayLayer
-            function onLeftSelectedIndexChanged() {
-                leftOptionsList.positionViewAtIndex(overlayLayer.leftSelectedIndex, ListView.Contain)
-            }
-        }
-
-        Rectangle {
-            id: leftSelectionIndicator
-            width: 8
-            height: CommonStyle.listRowHeight
-            color: CommonStyle.accentPrimary
-            radius: 4
-            anchors {
-                right: parent.left
-                rightMargin: -4
-            }
-            y: leftMenuTitle.height + CommonStyle.spacingXl + (leftSelectedIndex * CommonStyle.listRowHeight) - leftOptionsList.contentY
-
-            Behavior on y {
-                NumberAnimation {
-                    duration: 150
-                    easing.type: Easing.OutQuad
-                }
-            }
-        }
+        menuVisible: showLeftMenu
+        menuTitle: "Left Joystick Control"
+        selectedIndex: leftSelectedIndex
+        otherSelectedIndex: rightSelectedIndex
     }
 
-    // Right menu container
-    Rectangle {
+    JoystickMenuOverlay {
         id: rightMenuContainer
         z: 1001
-        width: Math.round(400 * CommonStyle.scaleFactor)
-        height: Math.min(parent.height * 0.8, Math.round(150 * CommonStyle.scaleFactor) + CommonStyle.listRowHeight * controlOptions.length)
-        anchors.centerIn: parent
-        color: CommonStyle.backgroundL0
-        opacity: 0.9
-        radius: CommonStyle.radiusMd
-        visible: showRightMenu
-
-        Rectangle {
-            visible: showRightMenu
-            anchors.fill: parent
-            color: CommonStyle.accentPrimary
-            opacity: 0.1
-            radius: CommonStyle.radiusMd
-        }
-
-        Text {
-            id: rightMenuTitle
-            text: "Right Joystick Control"
-            color: CommonStyle.textPrimary
-            font.family: CommonStyle.fontSans
-            font.pixelSize: CommonStyle.fontDisplay
-            font.bold: true
-            anchors {
-                top: parent.top
-                topMargin: CommonStyle.spacingXl
-                horizontalCenter: parent.horizontalCenter
-            }
-        }
-
-        ScrollView {
-            id: rightScrollView
-            width: parent.width - CommonStyle.spacingXxl - CommonStyle.spacingSm
-            anchors {
-                top: rightMenuTitle.bottom
-                bottom: parent.bottom
-                topMargin: CommonStyle.spacingXl
-                horizontalCenter: parent.horizontalCenter
-                bottomMargin: CommonStyle.spacingXl
-            }
-            clip: true
-
-            ListView {
-                id: rightOptionsList
-                width: rightScrollView.width
-                model: controlOptions
-                delegate: Rectangle {
-                    width: rightOptionsList.width
-                    height: CommonStyle.listRowHeight
-                    color: "transparent"
-
-                    Rectangle {
-                        visible: index === rightSelectedIndex
-                        anchors.fill: parent
-                        color: CommonStyle.accentPrimary
-                        opacity: 0.5
-                        radius: CommonStyle.radiusSm
-                    }
-
-                    Text {
-                        text: modelData
-                        color: {
-                            if (index === leftSelectedIndex) return CommonStyle.statusError
-                            else if (index === rightSelectedIndex) return CommonStyle.textPrimary
-                            else return CommonStyle.textSecondary
-                        }
-                        font.family: CommonStyle.fontSans
-                        font.pixelSize: CommonStyle.fontBody + 2
-                        anchors {
-                            left: parent.left
-                            leftMargin: CommonStyle.spacingXl
-                            verticalCenter: parent.verticalCenter
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Auto-scroll to keep selected item visible
-        Connections {
-            target: overlayLayer
-            function onRightSelectedIndexChanged() {
-                rightOptionsList.positionViewAtIndex(overlayLayer.rightSelectedIndex, ListView.Contain)
-            }
-        }
-
-        Rectangle {
-            id: rightSelectionIndicator
-            width: 8
-            height: CommonStyle.listRowHeight
-            color: CommonStyle.accentPrimary
-            radius: 4
-            anchors {
-                right: parent.left
-                rightMargin: -4
-            }
-            y: rightMenuTitle.height + CommonStyle.spacingXl + (rightSelectedIndex * CommonStyle.listRowHeight) - rightOptionsList.contentY
-
-            Behavior on y {
-                NumberAnimation {
-                    duration: 150
-                    easing.type: Easing.OutQuad
-                }
-            }
-        }
+        menuVisible: showRightMenu
+        menuTitle: "Right Joystick Control"
+        selectedIndex: rightSelectedIndex
+        otherSelectedIndex: leftSelectedIndex
     }
 }

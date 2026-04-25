@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import "."
+import "../../../core"
 import "../../../components/displays"
 
 
@@ -15,7 +16,24 @@ Rectangle {
     // anchors.left: parent.left
     // anchors.right: parent.right
     
-    VideoOverlayStyle { id: style }
+    readonly property color dividerColor: CommonStyle.videoDivider
+    readonly property color topBarTextColor: CommonStyle.textPrimary
+    readonly property color batteryGoodColor: CommonStyle.statusSuccess
+    readonly property color batteryMediumColor: CommonStyle.statusWarning
+    readonly property color batteryLowColor: CommonStyle.statusError
+    readonly property color signalExcellentColor: CommonStyle.statusSuccess
+    readonly property color signalGoodColor: CommonStyle.statusWarning
+    readonly property color signalFairColor: CommonStyle.accentMuted
+    readonly property color signalPoorColor: CommonStyle.statusError
+    readonly property color tempNormalColor: CommonStyle.statusSuccess
+    readonly property color tempWarningColor: CommonStyle.statusWarning
+    readonly property color tempCriticalColor: CommonStyle.statusError
+    readonly property color timeColor: CommonStyle.accentMuted
+    readonly property color recordingColor: CommonStyle.videoRecording
+    readonly property int topBarLabelFontSize: CommonStyle.fontCaption + 1
+    readonly property int topBarValueFontSize: CommonStyle.fontLabel
+    readonly property int topBarIconFontSize: CommonStyle.fontCaption - 1
+    readonly property string topBarFontFamily: CommonStyle.fontMono
     
     // EF Battery: 7S Li-ion (21V min, 29.4V max)
     readonly property real efBatteryMin: 21.0
@@ -76,9 +94,9 @@ Rectangle {
      * Get battery color based on percentage
      */
     function getBatteryColor(percent) {
-        if (percent > 50) return "#00FF00"      // Green
-        if (percent > 25) return "#FFAA00"      // Orange
-        return "#FF3333"                         // Red
+        if (percent > 50) return batteryGoodColor
+        if (percent > 25) return batteryMediumColor
+        return batteryLowColor
     }
     
     /**
@@ -98,10 +116,10 @@ Rectangle {
      */
     function getSignalColor(pingMs) {
         const bars = calculateSignalBars(pingMs)
-        if (bars === 3) return "#00FF00"        // Green - Excellent
-        if (bars === 2) return "#FFAA00"        // Orange - Good
-        if (bars === 1) return "#FF8800"        // Orange-Red - Fair
-        return "#FF3333"                         // Red - Poor/No signal
+        if (bars === 3) return signalExcellentColor
+        if (bars === 2) return signalGoodColor
+        if (bars === 1) return signalFairColor
+        return signalPoorColor
     }
     
     // LEFT SIDE - EF Info (Battery + Network)
@@ -122,10 +140,10 @@ Rectangle {
             // EF Label
             Text {
                 text: "EF"
-                color: "white"
-                font.pixelSize: 14
+                color: topBarTextColor
+                font.pixelSize: topBarLabelFontSize
                 font.bold: true
-                font.family: "Courier New"
+                font.family: topBarFontFamily
                 anchors.verticalCenter: parent.verticalCenter
                 width: 25
             }
@@ -135,14 +153,14 @@ Rectangle {
                 width: 100
                 height: parent.height
                 batteryPercent: calculateBatteryPercent(teensyController.all_status.voltage, efBatteryMin, efBatteryMax)
-                borderColor: style.dividerColor
+                borderColor: dividerColor
             }
             
             // Divider
             Rectangle {
                 width: 1
                 height: parent.height * 0.6
-                color: style.dividerColor
+                color: dividerColor
                 anchors.verticalCenter: parent.verticalCenter
             }
             
@@ -163,21 +181,21 @@ Rectangle {
                         Rectangle {
                             width: 3
                             height: 3
-                            color: calculateSignalBars(efPingMs) >= 1 ? getSignalColor(efPingMs) : style.dividerColor
+                            color: calculateSignalBars(efPingMs) >= 1 ? getSignalColor(efPingMs) : dividerColor
                             radius: 1.5
                             opacity: calculateSignalBars(efPingMs) >= 1 ? 1 : 0.3
                         }
                         Rectangle {
                             width: 3
                             height: 5
-                            color: calculateSignalBars(efPingMs) >= 2 ? getSignalColor(efPingMs) : style.dividerColor
+                            color: calculateSignalBars(efPingMs) >= 2 ? getSignalColor(efPingMs) : dividerColor
                             radius: 1
                             opacity: calculateSignalBars(efPingMs) >= 2 ? 1 : 0.3
                         }
                         Rectangle {
                             width: 3
                             height: 7
-                            color: calculateSignalBars(efPingMs) >= 3 ? getSignalColor(efPingMs) : style.dividerColor
+                            color: calculateSignalBars(efPingMs) >= 3 ? getSignalColor(efPingMs) : dividerColor
                             radius: 1
                             opacity: calculateSignalBars(efPingMs) >= 3 ? 1 : 0.3
                         }
@@ -187,9 +205,9 @@ Rectangle {
                     Text {
                         text: efPingMs > 0 ? efPingMs.toFixed(0) + "ms" : "Net OK"
                         color: getSignalColor(efPingMs)
-                        font.pixelSize: 11
+                        font.pixelSize: topBarValueFontSize
                         font.bold: true
-                        font.family: "Courier New"
+                        font.family: topBarFontFamily
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }
@@ -226,7 +244,7 @@ Rectangle {
                     width: 10
                     height: 10
                     radius: 5
-                    color: "#FF3333"
+                    color: recordingColor
                     anchors.verticalCenter: parent.verticalCenter
                     
                     SequentialAnimation on opacity {
@@ -243,10 +261,10 @@ Rectangle {
                         var secs = screenRecorder.recording_duration % 60
                         return "REC " + mins + ":" + (secs < 10 ? "0" : "") + secs
                     }
-                    color: "#FF3333"
-                    font.pixelSize: 11
+                    color: recordingColor
+                    font.pixelSize: topBarValueFontSize
                     font.bold: true
-                    font.family: "Courier New"
+                    font.family: topBarFontFamily
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
@@ -255,7 +273,7 @@ Rectangle {
             Rectangle {
                 width: 1
                 height: parent.height * 0.6
-                color: style.dividerColor
+                color: dividerColor
                 anchors.verticalCenter: parent.verticalCenter
                 visible: screenRecorder.is_recording
             }
@@ -264,14 +282,14 @@ Rectangle {
             BatteryDisplay {
                 anchors.verticalCenter: parent.verticalCenter
                 batteryPercent: systemMonitor.battery_level
-                borderColor: style.dividerColor
+                borderColor: dividerColor
             }
             
             // Divider
             Rectangle {
                 width: 1
                 height: parent.height * 0.6
-                color: style.dividerColor
+                color: dividerColor
                 anchors.verticalCenter: parent.verticalCenter
             }
             
@@ -282,17 +300,17 @@ Rectangle {
                 
                 Text {
                     text: "🌡"
-                    font.pixelSize: 12
+                    font.pixelSize: topBarIconFontSize
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 
                 Text {
                     text: systemMonitor.cpu_temperature.toFixed(1) + "°C"
-                    color: systemMonitor.cpu_temperature > 80 ? "#FF3333" : 
-                           systemMonitor.cpu_temperature > 60 ? "#FFAA00" : "#00FF00"
-                    font.pixelSize: 11
+                          color: systemMonitor.cpu_temperature > 80 ? tempCriticalColor : 
+                              systemMonitor.cpu_temperature > 60 ? tempWarningColor : tempNormalColor
+                          font.pixelSize: topBarValueFontSize
                     font.bold: true
-                    font.family: "Courier New"
+                          font.family: topBarFontFamily
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
@@ -301,7 +319,7 @@ Rectangle {
             Rectangle {
                 width: 1
                 height: parent.height * 0.6
-                color: style.dividerColor
+                color: dividerColor
                 anchors.verticalCenter: parent.verticalCenter
             }
             
@@ -318,10 +336,10 @@ Rectangle {
                 
                 Text {
                     text: systemMonitor.battery_remaining_time !== "N/A" ? systemMonitor.battery_remaining_time : "---"
-                    color: "#AAAAFF"
-                    font.pixelSize: 11
+                    color: timeColor
+                    font.pixelSize: topBarValueFontSize
                     font.bold: true
-                    font.family: "Courier New"
+                    font.family: topBarFontFamily
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
@@ -351,7 +369,7 @@ Rectangle {
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
                 batteryPercent: calculateBatteryPercent(winchController.motor_voltage, baseBatteryMin, baseBatteryMax)
-                borderColor: style.dividerColor
+                borderColor: dividerColor
             }
             
             // Divider
@@ -359,7 +377,7 @@ Rectangle {
                 id: dividerRight
                 width: 1
                 height: parent.height * 0.6
-                color: style.dividerColor
+                color: dividerColor
                 anchors.right: networkInfoRight.left
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
@@ -382,9 +400,9 @@ Rectangle {
                     Text {
                         text: basePingMs > 0 ? basePingMs.toFixed(0) + "ms" : "Net OK"
                         color: getSignalColor(basePingMs)
-                        font.pixelSize: 11
+                        font.pixelSize: topBarValueFontSize
                         font.bold: true
-                        font.family: "Courier New"
+                        font.family: topBarFontFamily
                         anchors.verticalCenter: parent.verticalCenter
                     }
                     
@@ -396,21 +414,21 @@ Rectangle {
                         Rectangle {
                             width: 3
                             height: 3
-                            color: calculateSignalBars(basePingMs) >= 1 ? getSignalColor(basePingMs) : style.dividerColor
+                            color: calculateSignalBars(basePingMs) >= 1 ? getSignalColor(basePingMs) : dividerColor
                             radius: 1.5
                             opacity: calculateSignalBars(basePingMs) >= 1 ? 1 : 0.3
                         }
                         Rectangle {
                             width: 3
                             height: 5
-                            color: calculateSignalBars(basePingMs) >= 2 ? getSignalColor(basePingMs) : style.dividerColor
+                            color: calculateSignalBars(basePingMs) >= 2 ? getSignalColor(basePingMs) : dividerColor
                             radius: 1
                             opacity: calculateSignalBars(basePingMs) >= 2 ? 1 : 0.3
                         }
                         Rectangle {
                             width: 3
                             height: 7
-                            color: calculateSignalBars(basePingMs) >= 3 ? getSignalColor(basePingMs) : style.dividerColor
+                            color: calculateSignalBars(basePingMs) >= 3 ? getSignalColor(basePingMs) : dividerColor
                             radius: 1
                             opacity: calculateSignalBars(basePingMs) >= 3 ? 1 : 0.3
                         }
@@ -422,10 +440,10 @@ Rectangle {
             Text {
                 id: baseLabel
                 text: "BASE"
-                color: "white"
-                font.pixelSize: 14
+                color: topBarTextColor
+                font.pixelSize: topBarLabelFontSize
                 font.bold: true
-                font.family: "Courier New"
+                font.family: topBarFontFamily
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
                 width: 25

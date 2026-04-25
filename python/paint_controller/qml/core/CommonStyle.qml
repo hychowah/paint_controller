@@ -45,6 +45,17 @@ QtObject {
 	readonly property color buttonPressed: Theme.CommonStyle.buttonPressed
 	readonly property color warningSurface: Theme.CommonStyle.warningSurface
 	readonly property color warningText: Theme.CommonStyle.warningText
+	readonly property color videoSurface: Theme.CommonStyle.videoSurface
+	readonly property color videoSurfaceStrong: Theme.CommonStyle.videoSurfaceStrong
+	readonly property color videoBorderEnabled: Theme.CommonStyle.videoBorderEnabled
+	readonly property color videoBorderDisabled: Theme.CommonStyle.videoBorderDisabled
+	readonly property color videoBorderWarning: Theme.CommonStyle.videoBorderWarning
+	readonly property color videoDivider: Theme.CommonStyle.videoDivider
+	readonly property color videoCrosshair: Theme.CommonStyle.videoCrosshair
+	readonly property color videoRecording: Theme.CommonStyle.videoRecording
+	readonly property color videoRuntime: Theme.CommonStyle.videoRuntime
+	readonly property color videoLoop: Theme.CommonStyle.videoLoop
+	readonly property color videoAction: Theme.CommonStyle.videoAction
 
 	readonly property int spacingXs: Theme.CommonStyle.spacingXs
 	readonly property int spacingSm: Theme.CommonStyle.spacingSm
@@ -75,6 +86,17 @@ QtObject {
 	readonly property int cardRadius: Theme.CommonStyle.cardRadius
 	readonly property int popupWidth: Theme.CommonStyle.popupWidth
 	readonly property int popupHeight: Theme.CommonStyle.popupHeight
+	readonly property int videoPanelWidth: Theme.CommonStyle.videoPanelWidth
+	readonly property int videoPanelHeight: Theme.CommonStyle.videoPanelHeight
+	readonly property int videoPanelSideMargin: Theme.CommonStyle.videoPanelSideMargin
+	readonly property int videoPanelBottomMargin: Theme.CommonStyle.videoPanelBottomMargin
+	readonly property int videoPanelPadding: Theme.CommonStyle.videoPanelPadding
+	readonly property int videoControlPanelWidth: Theme.CommonStyle.videoControlPanelWidth
+	readonly property int videoControlPanelHeight: Theme.CommonStyle.videoControlPanelHeight
+	readonly property int videoTopBarHeight: Theme.CommonStyle.videoTopBarHeight
+	readonly property int videoTopBarSideWidth: Theme.CommonStyle.videoTopBarSideWidth
+	readonly property int videoSignalBarWidth: Theme.CommonStyle.videoSignalBarWidth
+	readonly property int videoSignalBarSpacing: Theme.CommonStyle.videoSignalBarSpacing
 
 	readonly property int motionFast: Theme.CommonStyle.motionFast
 	readonly property int motionStandard: Theme.CommonStyle.motionStandard

@@ -2,14 +2,15 @@ import QtQuick
 import QtQuick.Controls
 import "../../../components/displays"
 import "."
+import "../../../core"
 
 
 Rectangle {
     id: overlay
     anchors.fill: parent
     color: "transparent"
-    
-    VideoOverlayStyle { id: style }
+
+    readonly property var style: CommonStyle
     
     // Top Center - Pitch Indicator Dial
     PitchIndicatorDial {

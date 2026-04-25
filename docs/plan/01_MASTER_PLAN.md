@@ -47,7 +47,7 @@
 
 ## Progress Tracker
 
-Last Modified: 2026-04-24
+Last Modified: 2026-04-25
 
 Status legend: `[x]` completed | `[c]` cancelled or superseded | `[~]` partial or deferred | `[ ]` not started
 
@@ -91,12 +91,12 @@ Status legend: `[x]` completed | `[c]` cancelled or superseded | `[~]` partial o
 | 2.3 Design system — displays | [x] | Display folder migrated to `CommonStyle` for the shared visual system; a few responsive size/motion literals still remain in specialized visualizers/dials |
 | 2.4 Design system — panels/popups | [x] | `ControlPanel`, `ConnectionStatusPanel`, `SettingsSection`, `CustomPopup` migrated |
 | 2.5a Design system — root overlays | [x] | `JoystickOverlay`, `EmergencyOverlay`, and the shell overlay surfaces migrated |
-| 2.5b Design system — systemcontrol | [~] | Deferred by user until safety/test hardening is complete. `EditWorkFlowTab`, `WorkFlowTab` migrated (layout-safe weights); `CommandTab` anchor fix. |
-| 2.5c Design system — video overlays | [ ] | Deferred by user until after BF + Phase 3 hardening work |
+| 2.5b Design system — systemcontrol | [~] | Backlog resumed. `SystemControlWorkspace.qml` shell now uses `CommonStyle`; `EditWorkFlowTab`/`WorkFlowTab` were already partially migrated, and `CommandTab` had its earlier anchor fix. Remaining tab bodies still need a full token pass. |
+| 2.5c Design system — video overlays | [~] | Backlog resumed. `VideoOverlayStyle.qml` is now a compatibility shim over `CommonStyle`, `VideoFullscreenWorkspace.qml` uses canonical tokens, and focused smoke coverage now exercises both EF and base-front sources plus the wrapper path. Remaining deeper overlay widgets still need the broader token pass. |
 | 2.6a Design system — pages batch 1 | [~] | Deferred by user until safety/test hardening is complete. `PageHome` already removed duplicate stream start and guarded its animation binding. |
 | 2.6b Design system — settings pages | [ ] | Deferred by user until after the active hardening queue |
 | 2.6c Design system — status/workflow | [ ] | Deferred by user until after the active hardening queue |
-| 2.7 Refactor joystick overlay dedup | [ ] | Deferred with the rest of the design-system backlog; actual duplication now lives in `JoystickOverlay.qml` |
+| 2.7 Refactor joystick overlay dedup | [x] | `JoystickOverlay.qml` now shares one inner `JoystickMenuOverlay` structure for the mirrored left/right menus, preserving the existing selection indicator and auto-scroll behavior while removing the duplicated menu body. Coverage remains indirect through shell/startup smoke rather than a dedicated overlay test. |
 | 2.8 Fix page naming | [x] | `MainWindow.qml`/`SelectBar.qml` now use semantic page component IDs (`wheelPageComponent`, etc.), `settingsPageComponent` is pluralized, and the dead `case 6` navigation branch is deleted |
 | 3.0 Clean __init__.py imports | [x] | `core`, `handlers`, and `controllers` package inits are now lightweight and no longer re-export heavy Qt/ROS modules |
 | 3.1 Pytest infrastructure | [x] | Added headless Qt fixture, namespace-safe imports, fake ROS node/publisher/subscription/timer scaffolding, shared fake topic bus, and validation tests; normalized existing utility/harness test files to the layered style |
@@ -141,9 +141,10 @@ Status legend: `[x]` completed | `[c]` cancelled or superseded | `[~]` partial o
 - **TD-030 is complete**: direct tests now cover ActionScheduler, ActionRegistry/workflow handlers, HardwareControllers adapters, WorkFlowRunner, WorkFlowExecutor, `create_controllers()`, bounded `AppRuntime` seams, `ScreenManager`, and `BaseTopViewTransformer`, with the focused runtime/workflow/service batch green at `22 passed`.
 - **TD-001 Stage 1 is complete**: dead-QML verification/deletion, false shared-folder flattening, constructor-surface `required` / `readonly` hardening, direct offscreen smoke coverage, and warn-only `qmllint` CI are all in place.
 - **TD-031 status**: complete. The blocking structural slices are landed, and focused smoke coverage now includes the new feature roots directly.
-- **Non-blocking backlog**: `2.5b`, `2.5c`, `2.6a-c`, `2.7`, and `TD-016` remain backlog after `TD-031`.
+- **Backlog progress**: `2.5c` is now partially landed through the video token unification slice, `2.5b` advanced with a `CommonStyle` shell pass on `SystemControlWorkspace.qml`, and `2.7` is complete through the shared `JoystickMenuOverlay` extraction in `JoystickOverlay.qml`. Focused QML smoke is the active validation gate for this slice via `tests/test_startup_smoke.py` + `tests/test_qml_imports.py`.
+- **Non-blocking backlog**: `2.5b`, `2.5c`, `2.6a-c`, and `TD-016` remain backlog after `TD-031`.
 - **Next tasks** (priority order):
-  1. Low-priority backlog: `2.5b`, `2.5c`, `2.6a-c`, `2.7`, `TD-016`
+  1. Low-priority backlog: `2.5b`, `2.5c`, `2.6a-c`, `TD-016`
 
 ---
 
@@ -154,7 +155,7 @@ Completed this batch: BF-1..BF-9, 3.0, 3.5, 3.6, 3.7, 4.0, TD-014, full `3.10`, 
          ↓
 Feature-blocking narrowed QML rebuild: TD-031 (completed)
          ↓
-Non-blocking UI consistency backlog: 2.5b, 2.5c, 2.6a-c, 2.7, then TD-016
+Non-blocking UI consistency backlog: 2.5b, 2.5c, 2.6a-c, then TD-016
 
 `1.11a-e` were closed through `TD-001` Stage 1 after the structural flatten trimmed dead/page-scoped files out of the target set
 ```

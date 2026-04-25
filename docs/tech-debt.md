@@ -8,23 +8,23 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 
 ## Active Debt
 
-### TD-002 — Design system incomplete (video overlays, settings/status pages)
+### TD-002 — Design system incomplete (systemcontrol/video remainder, pages)
 **Area**: QML UI
 **Priority**: low
 **Effort**: medium
 **Why it matters**: Hardcoded colours, spacing, and font sizes in un-migrated files will diverge from the rest of the UI and make theme-wide changes expensive later.
-**What to do**: Resume the remaining `CommonStyle` rollout after `TD-031` unless the user explicitly reprioritizes it. Remaining scope: systemcontrol tabs remainder (`2.5b`), video overlays (`2.5c`), pages batch 1 (`2.6a`), settings pages (`2.6b`), status pages (`2.6c`), and joystick-overlay dedup (`2.7`). This backlog is low priority and is not the default feature-blocking path.
-**Related tasks**: `2.5b`, `2.5c`, `2.6a`, `2.6b`, `2.6c`, `2.7` in `docs/plan/01_MASTER_PLAN.md`  
-**Files**: `python/paint_controller/qml/overlays/systemcontrol/`, `python/paint_controller/qml/overlays/video/`, `python/paint_controller/qml/pages/home/`, `python/paint_controller/qml/pages/wheel/`, `python/paint_controller/qml/pages/winch/`, `python/paint_controller/qml/pages/tuning/`, `python/paint_controller/qml/pages/settings/`, `python/paint_controller/qml/pages/status/`, `python/paint_controller/qml/overlays/JoystickOverlay.qml`
+**What to do**: Resume the remaining `CommonStyle` rollout after `TD-031` unless the user explicitly reprioritizes it. Remaining scope: systemcontrol tab bodies (`2.5b`), deeper video overlay widgets (`2.5c`), pages batch 1 (`2.6a`), settings pages (`2.6b`), and status/workflow pages (`2.6c`). The joystick-overlay dedup slice is already landed, so the remaining debt is the untokenized page and overlay remainder rather than structural duplication there. This backlog is low priority and is not the default feature-blocking path.
+**Related tasks**: `2.5b`, `2.5c`, `2.6a`, `2.6b`, `2.6c` in `docs/plan/01_MASTER_PLAN.md`  
+**Files**: `python/paint_controller/qml/overlays/systemcontrol/`, `python/paint_controller/qml/overlays/video/`, `python/paint_controller/qml/pages/home/`, `python/paint_controller/qml/pages/wheel/`, `python/paint_controller/qml/pages/winch/`, `python/paint_controller/qml/pages/tuning/`, `python/paint_controller/qml/pages/settings/`, `python/paint_controller/qml/pages/status/`
 
 ---
 
-### TD-016 — `VideoOverlayStyle.qml` parallel style system
+### TD-016 — `VideoOverlayStyle.qml` compatibility-wrapper cleanup
 **Area**: QML UI  
 **Priority**: low  
 **Effort**: low  
-**Why it matters**: `VideoOverlayStyle.qml` is a ~30-token style system that duplicates tokens in `CommonStyle`. Two style sources make theme-wide changes require double edits.  
-**What to do**: Merge into `CommonStyle` or make a domain-specific extension that derives from it (co-located tokens, shared base).  
+**Why it matters**: `VideoOverlayStyle.qml` no longer owns its own tokens, but it still preserves a parallel style API for older video overlay components. That wrapper layer keeps imports stable, but it also delays a clean direct dependency on `CommonStyle`.  
+**What to do**: Retire the wrapper-only API once the remaining video overlay callers can read `CommonStyle` directly, or keep the file as a thin documented compatibility shim if import churn is intentionally deferred.  
 **Files**: `python/paint_controller/qml/overlays/video/components/VideoOverlayStyle.qml`
 
 ---

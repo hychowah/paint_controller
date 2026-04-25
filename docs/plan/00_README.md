@@ -63,7 +63,7 @@ If two files disagree, prefer `INDEX.md`'s repo-wide authority hierarchy first. 
 
 - Just completed: `3.10 Static typing gate expansion`, `2.8 Fix page naming`, `TD-030 runtime/workflow/service validation hardening`, `TD-001 Stage 1 QML structural flatten + hardening + validation gates`
 - Just completed: `TD-031` narrowed structural rebuild (page registry, overlay-hosted `systemcontrol`, video feature boundary, `CommonStyle` relocation)
-- Non-blocking backlog after `TD-031`: `2.5b`, `2.5c`, `2.6a-c`, `2.7`, `TD-016`
+- Non-blocking backlog after `TD-031`: `2.5b`, `2.5c`, `2.6a-c`, `TD-016`
 
 ## Branch Exit Bar
 
