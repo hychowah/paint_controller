@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-04-25 18:05 - Post-Rebase Validation And Architecture-Doc Truth Pass
+
+**Goal**: Revalidate the rebased `refactor-python-qt-architecture-boundaries` branch on Linux and make the current-facing docs match the new architecture-boundary roadmap.
+**Issues**: After rebasing onto `refactor`, the branch was green in code but the current-facing docs drifted: `INDEX.md` had duplicated architecture-direction text, `README.md` still spoke as if the active work lived specifically on `refactor`, `00_ARCHITECTURE_PROGRESS.md` still said Linux validation was pending at `14 passed`, and `docs/tech-debt.md` still used stale next-step wording plus a deleted-plan reference model for the design-system backlog.
+**Tried**: Reran the focused Stage 1A Linux slice (`tests/test_manual_command_handler.py`, `tests/test_controller_factory_runtime.py`, `tests/test_startup_smoke.py`), reran the full pytest suite, then updated the repo entry docs, architecture progress tracker, and tech-debt tracker to match the rebased branch state and the architecture-boundary roadmap.
+**Result**: ✅ The rebased branch validates on Linux at `20 passed` for the focused Stage 1A slice and `179 passed` for the full pytest suite, and the current-facing docs now consistently point at `00_ARCHITECTURE_PROGRESS.md` + `01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` instead of mixing in stale branch/status wording.
+**Files**: `INDEX.md`, `README.md`, `docs/plan/00_ARCHITECTURE_PROGRESS.md`, `docs/tech-debt.md`, `DEVNOTES.md`
+
 ### 2026-04-25 17:19 - CommandTab Python-Owned Boundary Freeze
 
 **Goal**: Start the roadmap implementation with the first bounded Stage 1 slice by moving manual command validation, coercion, and dispatch out of `CommandTab.qml` and into a Python-owned boundary.

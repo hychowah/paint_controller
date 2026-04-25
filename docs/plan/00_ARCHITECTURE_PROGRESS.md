@@ -11,8 +11,9 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for the architecture rati
 - Overall status: in progress
 - Last completed slice: Stage 1A manual command boundary freeze
 - Next recommended slice: Stage 1B immediate-apply settings outlier freeze
-- Linux validation status: pending after Windows-focused implementation and focused validation
-- Last focused validation: `14 passed` for `tests/test_manual_command_handler.py`, `tests/test_controller_factory_runtime.py`, and `tests/test_startup_smoke.py`
+- Linux validation status: complete after rebasing onto `refactor`
+- Last focused validation: `20 passed` for `tests/test_manual_command_handler.py`, `tests/test_controller_factory_runtime.py`, and `tests/test_startup_smoke.py`
+- Latest full validation: `179 passed` for `python/paint_controller/venv/bin/python -m pytest -q`
 
 ## Stage Board
 
@@ -42,12 +43,10 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for the architecture rati
 ## Active Risks
 
 - Stage 0 still lacks a durable merged authority-map artifact even though the initial discovery pass was completed.
-- Linux-target validation still needs to confirm the current slice outside the Windows development environment.
 - The broad QML context-property contract remains intentionally additive; Stage 1A reduced risk without yet reducing exposure count materially.
 
 ## Next Session Checklist
 
-1. Re-run the focused Stage 1A validation on Linux.
-2. Decide whether the Stage 0 authority map should be merged as its own durable artifact before more implementation slices land.
-3. Prepare `PLANNING.md` for Stage 1B settings outliers in `SettingsTab.qml`.
-4. Keep `docs/tech-debt.md` and this tracker in sync when a slice moves from planned to implemented.
+1. Decide whether the Stage 0 authority map should be merged as its own durable artifact before more implementation slices land.
+2. Prepare `PLANNING.md` for Stage 1B settings outliers in `SettingsTab.qml`.
+3. Keep `docs/tech-debt.md` and this tracker in sync when a slice moves from planned to implemented.

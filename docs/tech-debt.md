@@ -8,12 +8,12 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 
 ## Active Debt
 
-### TD-031 — Python Qt architecture boundary work in progress
+### TD-032 — Python Qt architecture boundary work in progress
 **Area**: QML UI
 **Priority**: medium
 **Effort**: high
 **Why it matters**: The next major debt is no longer best described as a single "deep QML structural rebuild". The active plan now prioritizes architecture boundaries: dangerous QML-to-application action paths, the coordinated two-surface shell, the overlay/control state boundary, settings capability classes, and only then narrower QML contracts and route cleanup.
-**What to do**: Follow `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` as the active staged roadmap and `docs/plan/00_ARCHITECTURE_PROGRESS.md` for current status. Stage 1A is complete: `CommandTab.qml` now routes manual commands through a Python-owned boundary in `python/paint_controller/handlers/manual_commands.py`. The next active slices are Linux validation for Stage 1A, the still-unmerged Stage 0 authority-map artifact, and Stage 1B for the immediate-apply settings outliers.
+**What to do**: Follow `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` as the active staged roadmap and `docs/plan/00_ARCHITECTURE_PROGRESS.md` for current status. Stage 1A is complete, including post-rebase Linux validation. The next active slices are the still-unmerged Stage 0 authority-map artifact and Stage 1B for the immediate-apply settings outliers.
 **Files**: `docs/plan/00_ARCHITECTURE_PROGRESS.md`, `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`, `python/paint_controller/handlers/manual_commands.py`, `python/paint_controller/qml/core/`, `python/paint_controller/qml/navigation/`, `python/paint_controller/qml/overlays/systemcontrol/`, `python/paint_controller/qml/overlays/video/`, `python/paint_controller/qml/pages/settings/`, `python/paint_controller/ui/overlay.py`, `python/paint_controller/handlers/control_processor.py`, `python/paint_controller/core/app_runtime.py`
 
 ---
@@ -23,8 +23,7 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 **Priority**: low
 **Effort**: medium
 **Why it matters**: Hardcoded colours, spacing, and font sizes in un-migrated files will diverge from the rest of the UI and make theme-wide changes expensive later.
-**What to do**: Resume the remaining `CommonStyle` rollout after `TD-031` unless the user explicitly reprioritizes it. Remaining scope: systemcontrol tab bodies (`2.5b`), deeper video overlay widgets (`2.5c`), pages batch 1 (`2.6a`), settings pages (`2.6b`), and status/workflow pages (`2.6c`). The joystick-overlay dedup slice is already landed, so the remaining debt is the untokenized page and overlay remainder rather than structural duplication there. This backlog is low priority and is not the default feature-blocking path.
-**Related tasks**: `2.5b`, `2.5c`, `2.6a`, `2.6b`, `2.6c` in `docs/plan/01_MASTER_PLAN.md`  
+**What to do**: Resume the remaining `CommonStyle` rollout only after the architecture-boundary roadmap is stable, unless the user explicitly reprioritizes it. The remaining debt is the untokenized systemcontrol/video/page remainder rather than structural duplication. In the new roadmap shape, this aligns with the later design-system cleanup stage rather than an active architecture-boundary slice.
 **Files**: `python/paint_controller/qml/overlays/systemcontrol/`, `python/paint_controller/qml/overlays/video/`, `python/paint_controller/qml/pages/home/`, `python/paint_controller/qml/pages/wheel/`, `python/paint_controller/qml/pages/winch/`, `python/paint_controller/qml/pages/tuning/`, `python/paint_controller/qml/pages/settings/`, `python/paint_controller/qml/pages/status/`
 
 ---
