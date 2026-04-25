@@ -7,6 +7,7 @@ ROS2 node with PySide6/QML UI for robotic paint control on a Steam Deck. The liv
 - This branch is **refactor-first**. Runtime/workflow/service validation hardening is complete, and **`TD-001` Stage 1 is complete**: verified-dead QML was removed, false shared-component folders were flattened, constructor-driven QML surfaces were hardened with `required` / `readonly`, startup/import smoke coverage was expanded, and warn-only `qmllint` CI is now in place.
 - **`TD-031` is complete**: the page registry is explicit, `systemcontrol` and fullscreen video now have dedicated feature roots, and canonical theme ownership lives under `qml/theme/CommonStyle.qml`. Focused smoke coverage was expanded to the new feature roots; compatibility wrappers remain intentionally to keep import churn out of the blocking stage.
 - The QML cleanup is intentionally split into **two stages**. Stage 1 was the safe flatten + hardening batch; Stage 2 is the narrowed `TD-031` structural pass. URI-module migration, broad lidar/pointcloud restructuring, and any optional root-file rename are explicitly out of scope for this stage.
+- The current architecture direction is tracked in **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`**. The next planning/implementation path starts with the authority map and the first QML-to-application action-boundary slice, not with page-taxonomy cleanup.
 - **Net-new feature work is intentionally deferred** until medium/high-priority debt is closed and the validation gates stay green (pytest, pyright for covered scope, ROS build, and offscreen startup/shutdown smoke).
 - Low-priority design-system backlog may remain backlog. By default it is **not** the feature-blocking path unless the user explicitly reprioritizes.
 - Latest verified local validation on 2026-04-24 is green at `170 passed` for `python/paint_controller/venv/bin/python -m pytest -q`.
@@ -21,10 +22,8 @@ Read in this order at the start of any session:
 2. **`AGENTS.md`** — workflow rules, planning process, stop-and-ask triggers
 3. **`KNOWLEDGE.md`** — gotchas, patterns, anti-patterns. Check before debugging.
 4. **`DEVNOTES.md`** — last 90 days of session notes and validation results
-5. **`docs/plan/01_MASTER_PLAN.md`** — authoritative task tracker and next-task gate
+5. **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** — active architecture roadmap and stage order
 6. **`docs/tech-debt.md`** — known debt items with priority and effort (check before starting new work)
-7. **`docs/plan/02_ARCHITECTURE.md`** — current runtime architecture (read if touching core)
-8. **`docs/plan/03_QML_BINDINGS.md`** — QML↔Python registration state (read if touching QML)
 
 ---
 
@@ -35,12 +34,10 @@ When two files disagree, prefer the file higher in this list:
 | Priority | File | What it governs |
 |---|---|---|
 | 1 | `DEVNOTES.md` | Most recent verified runtime state |
-| 2 | `docs/plan/01_MASTER_PLAN.md` | Task progress and completion status |
+| 2 | `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` | Active architecture roadmap and stage order |
 | 3 | `docs/tech-debt.md` | Known debt items, priorities, effort |
 | 4 | `KNOWLEDGE.md` | Reusable patterns and gotchas |
-| 4 | `docs/plan/02_ARCHITECTURE.md` | Runtime architecture |
 | 5 | `README.md` | Operator/developer entry point |
-| 6 | `docs/plan/03_QML_BINDINGS.md` | QML binding state |
 
 ---
 
@@ -79,10 +76,7 @@ paint_controller_ros2/
 │
 ├── docs/
 │   ├── plan/                      # Modernization plan tracker docs
-│   │   ├── 00_README.md           # Plan-docs navigation (narrower scope than INDEX.md)
-│   │   ├── 01_MASTER_PLAN.md      # Active task tracker
-│   │   ├── 02_ARCHITECTURE.md     # Runtime architecture reference
-│   │   ├── 03_QML_BINDINGS.md     # QML registration state
+│   │   └── 01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md  # Active architecture roadmap
 │   ├── tech-debt.md               # Active tech debt tracker (living document)
 │   └── devnotes/                  # Quarterly DEVNOTES cold-storage archives
 │       └── 2026-Q1.md             # Jan–Mar 2026 session notes (archived)

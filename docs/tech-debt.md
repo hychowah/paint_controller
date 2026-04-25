@@ -8,6 +8,16 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 
 ## Active Debt
 
+### TD-031 — Python Qt architecture boundary work not yet executed
+**Area**: QML UI
+**Priority**: medium
+**Effort**: high
+**Why it matters**: The next major debt is no longer best described as a single "deep QML structural rebuild". The active plan now prioritizes architecture boundaries: dangerous QML-to-application action paths, the coordinated two-surface shell, the overlay/control state boundary, settings capability classes, and only then narrower QML contracts and route cleanup.
+**What to do**: Follow `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` as the active staged roadmap. The earliest implementation work should begin with Stage 0 and Stage 1: authority mapping plus a bounded QML-to-application action-boundary slice. Later slices include the two-surface shell, control-selection decoupling, operational-overlay contract, bounded navigation cleanup, and settings authority/capability-class work.
+**Files**: `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`, `python/paint_controller/qml/core/`, `python/paint_controller/qml/navigation/`, `python/paint_controller/qml/overlays/systemcontrol/`, `python/paint_controller/qml/overlays/video/`, `python/paint_controller/qml/pages/settings/`, `python/paint_controller/ui/overlay.py`, `python/paint_controller/handlers/control_processor.py`, `python/paint_controller/core/app_runtime.py`
+
+---
+
 ### TD-002 — Design system incomplete (systemcontrol/video remainder, pages)
 **Area**: QML UI
 **Priority**: low

@@ -63,7 +63,7 @@ Make changes one logical unit at a time. Update DEVNOTES.md if significant debug
 
 ### Phase 5: Cleanup
 
-Before merging PR, MUST delete `PLANNING.md`. This file is temporary and should not be committed to main branch.
+`PLANNING.md` is temporary local scratch state. Keep it current while working, but do not treat it as a branch/merge blocker because it is gitignored.
 
 ---
 

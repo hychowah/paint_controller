@@ -7,11 +7,12 @@ ROS 2 + PySide6/QML control application for the paint robot.
 - This repository is currently in a **refactor-first** phase on the `refactor` branch. The intent is to improve architecture, safety, shutdown/threading behavior, tests, and typing gates before resuming net-new feature development.
 - `TD-001` Stage 1 is complete: verified-dead QML was removed, false shared-component folders were flattened, constructor-driven QML surfaces were hardened with `required` / `readonly`, offscreen startup/import smoke coverage was expanded, and warn-only `qmllint` CI is in place.
 - `TD-031` is complete: the shell now uses an explicit page registry, `systemcontrol` and fullscreen video have dedicated feature roots under `qml/features/`, and canonical theme ownership lives under `qml/theme/CommonStyle.qml` with compatibility shims left at the old paths.
+- The current architecture roadmap is in `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`. The next implementation path starts with the authority map and the first QML-to-application action-boundary slice.
 - Python runtime is the only live application path in this repository; the old C++ UI path has been removed from the tree.
 - Runtime objects are exposed to QML through `setContextProperty()`. Do not use `qmlRegisterSingletonInstance()` in this repo.
 - Latest verified local validation on 2026-04-24 is green at `170 passed` via `python/paint_controller/venv/bin/python -m pytest -q`.
-- Active modernization status is tracked in `docs/plan/01_MASTER_PLAN.md`.
-- For authority and session-start order: use `INDEX.md` first, prefer `DEVNOTES.md` for the latest verified runtime state, and use `docs/plan/01_MASTER_PLAN.md` for the active queue.
+- Active architecture planning status is tracked in `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`.
+- For authority and session-start order: use `INDEX.md` first, prefer `DEVNOTES.md` for the latest verified runtime state, and use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for the active roadmap.
 
 ## Prerequisites
 
@@ -153,22 +154,19 @@ Note: If `QT_QPA_PLATFORM` is set to `xcb` in your shell environment, `conftest.
 - `python/paint_controller/qml/` — QML UI
 - `python/config/` — runtime configuration JSON
 - `tests/` — pytest suite
-- `docs/plan/` — modernization tracker and architecture docs
+- `docs/plan/` — active architecture roadmap
 - Historical C++ sources have been removed from the live repo; no `src/` runtime path remains
 
 ## Documentation Map
 
 - `INDEX.md` — start here in a fresh LLM or handoff session; repo authority order and doc navigation
-- `docs/plan/00_README.md` — plan-doc navigation after `INDEX.md`
-- `docs/plan/01_MASTER_PLAN.md` — authoritative modernization tracker
-- `docs/plan/02_ARCHITECTURE.md` — runtime architecture reference
-- `docs/plan/03_QML_BINDINGS.md` — QML/Python binding inventory
+- `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` — active architecture roadmap and staged direction
 - `DEVNOTES.md` — chronological development notes
 - `KNOWLEDGE.md` — reusable Qt/Python/ROS gotchas
 
 ## Operational Notes
 
-- Multi-screen behavior is managed by `ScreenManager` and the QML shell; the primary behavior is documented in `docs/plan/02_ARCHITECTURE.md`.
+- Multi-screen behavior is managed by `ScreenManager` and the QML shell; the current architecture direction is documented in `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`.
 - The build system is now a pure `ament_cmake` wrapper around the Python package; no live C++ UI/runtime path remains in the repo.
 
 ## Troubleshooting

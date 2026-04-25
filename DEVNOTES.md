@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-04-25 15:46 - Architecture Plan Doc Realignment
+
+**Goal**: Make the live documentation set point at the new single-file architecture roadmap before branch/commit work continues
+**Issues**: `INDEX.md`, `README.md`, and `docs/tech-debt.md` still treated deleted plan docs (`00_README.md`, `01_MASTER_PLAN.md`, `02_ARCHITECTURE.md`, `03_QML_BINDINGS.md`) as live authorities even though `docs/plan/` now contains only `01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`
+**Tried**: Repointed the repo entry docs at the new roadmap, updated the current-strategy wording away from the older `TD-031` page-structure framing, and rewrote the active tech-debt item so it matches the current authority-first architecture plan
+**Result**: ✅ Fresh sessions now land on the live roadmap instead of deleted files. Repo-wide markdown validation still finds the old plan names only inside historical DEVNOTES entries, which were intentionally left unchanged as past-session records.
+**Files**: `INDEX.md`, `README.md`, `docs/tech-debt.md`, `DEVNOTES.md`
+
 ### 2026-04-25 10:15 - QML Backlog Commit Prep Truth Pass
 
 **Goal**: Prepare the current QML backlog slice for commit by aligning the planning/debt docs with the already-landed code and revalidating the touched startup/import surfaces.
@@ -32,14 +40,6 @@
 **Tried**: Added direct smoke tests for `qml/features/systemcontrol/SystemControlWorkspace.qml` and `qml/features/video/VideoFullscreenWorkspace.qml`, then updated the debt tracker, master plan, repo index, and plan README to move `TD-031` out of active blocking work and into the resolved set.
 **Result**: ✅ `TD-031` is complete. The narrowed scope is fully implemented, focused smoke coverage now exists for the shell, multiscreen host, navigation registry, and both new feature roots, and only low-priority UI consistency backlog remains.
 **Files**: `tests/test_startup_smoke.py`, `docs/tech-debt.md`, `docs/plan/00_README.md`, `docs/plan/01_MASTER_PLAN.md`, `INDEX.md`, `DEVNOTES.md`
-
-### 2026-04-24 15:40 - TD-031 Structural Slices Batch 1
-
-**Goal**: Start the approved narrowed `TD-031` implementation by landing the high-value structural slices before any feature work resumes
-**Issues**: The plan/docs still described stale QML structure, `SelectBar` still depended on a hidden switch-case contract against `MainWindow` component ids, `systemcontrol` and fullscreen video were still mounted directly from overlay-local roots, and `CommonStyle.qml` still lived in `core/`. The chat task runner also rejected one-off pytest tasks, so focused executable revalidation could not be run from this session.
-**Tried**: Rewrote the active planning/debt/docs scope around the narrowed `TD-031`; replaced the `SelectBar` switch-case with an explicit `pageRegistry` passed from `MainWindow`; extracted shared feature-root entries at `qml/features/systemcontrol/SystemControlWorkspace.qml` and `qml/features/video/VideoFullscreenWorkspace.qml` while keeping compatibility wrappers at the old overlay paths; moved the real `CommonStyle.qml` implementation to `qml/theme/` and left a compatibility singleton wrapper in `qml/core/`.
-**Result**: ✅ The structural slices landed and editor diagnostics are clean for the touched QML/Python files. Focused executable revalidation is still pending because the task runner rejected `pytest tests/test_startup_smoke.py -q` as a one-off task in this chat environment.
-**Files**: `PLANNING.md`, `INDEX.md`, `docs/plan/00_README.md`, `docs/plan/01_MASTER_PLAN.md`, `docs/plan/02_ARCHITECTURE.md`, `docs/plan/03_QML_BINDINGS.md`, `docs/tech-debt.md`, `python/paint_controller/qml/core/MainWindow.qml`, `python/paint_controller/qml/navigation/SelectBar.qml`, `python/paint_controller/qml/core/CommonStyle.qml`, `python/paint_controller/qml/overlays/MultiScreenListUI.qml`, `python/paint_controller/qml/overlays/systemcontrol/SystemControlMenu.qml`, `python/paint_controller/qml/overlays/video/VideoFullscreenOverlay.qml`, `python/paint_controller/qml/features/systemcontrol/SystemControlWorkspace.qml`, `python/paint_controller/qml/features/systemcontrol/qmldir`, `python/paint_controller/qml/features/video/VideoFullscreenWorkspace.qml`, `python/paint_controller/qml/features/video/qmldir`, `python/paint_controller/qml/theme/CommonStyle.qml`, `python/paint_controller/qml/theme/qmldir`, `tests/test_startup_smoke.py`
 
 ### 2026-04-22 16:20 - TD-001 Stage 1 Closeout
 
