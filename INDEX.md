@@ -8,6 +8,7 @@ ROS2 node with PySide6/QML UI for robotic paint control on a Steam Deck. The liv
 - **`TD-031` is complete**: the page registry is explicit, `systemcontrol` and fullscreen video now have dedicated feature roots, and canonical theme ownership lives under `qml/theme/CommonStyle.qml`. Focused smoke coverage was expanded to the new feature roots; compatibility wrappers remain intentionally to keep import churn out of the blocking stage.
 - The QML cleanup is intentionally split into **two stages**. Stage 1 was the safe flatten + hardening batch; Stage 2 is the narrowed `TD-031` structural pass. URI-module migration, broad lidar/pointcloud restructuring, and any optional root-file rename are explicitly out of scope for this stage.
 - The current architecture direction is tracked in **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`**. The next planning/implementation path starts with the authority map and the first QML-to-application action-boundary slice, not with page-taxonomy cleanup.
+- The current architecture direction is tracked in **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** and the current slice status is tracked in **`docs/plan/00_ARCHITECTURE_PROGRESS.md`**. **Stage 1A is complete**: `CommandTab.qml` now routes manual commands through a Python-owned boundary. The next recommended implementation path is Linux validation for that slice and then **Stage 1B** for the immediate-apply settings outliers.
 - **Net-new feature work is intentionally deferred** until medium/high-priority debt is closed and the validation gates stay green (pytest, pyright for covered scope, ROS build, and offscreen startup/shutdown smoke).
 - Low-priority design-system backlog may remain backlog. By default it is **not** the feature-blocking path unless the user explicitly reprioritizes.
 - Latest verified local validation on 2026-04-24 is green at `170 passed` for `python/paint_controller/venv/bin/python -m pytest -q`.
@@ -22,8 +23,9 @@ Read in this order at the start of any session:
 2. **`AGENTS.md`** — workflow rules, planning process, stop-and-ask triggers
 3. **`KNOWLEDGE.md`** — gotchas, patterns, anti-patterns. Check before debugging.
 4. **`DEVNOTES.md`** — last 90 days of session notes and validation results
-5. **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** — active architecture roadmap and stage order
-6. **`docs/tech-debt.md`** — known debt items with priority and effort (check before starting new work)
+5. **`docs/plan/00_ARCHITECTURE_PROGRESS.md`** — current roadmap status, completed slices, next recommended slice
+6. **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** — active architecture roadmap and stage order
+7. **`docs/tech-debt.md`** — known debt items with priority and effort (check before starting new work)
 
 ---
 
@@ -76,6 +78,7 @@ paint_controller_ros2/
 │
 ├── docs/
 │   ├── plan/                      # Modernization plan tracker docs
+│   │   ├── 00_ARCHITECTURE_PROGRESS.md          # Current roadmap status and next-slice tracker
 │   │   └── 01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md  # Active architecture roadmap
 │   ├── tech-debt.md               # Active tech debt tracker (living document)
 │   └── devnotes/                  # Quarterly DEVNOTES cold-storage archives

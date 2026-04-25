@@ -66,6 +66,7 @@ Item {
     property string selectedCommand: ""
     property var currentParameters: []
     property var parameterValues: ({})
+    property bool selectedCommandSupported: selectedCommand !== "" && manualCommandHandler && manualCommandHandler.isCommandSupported(selectedCommand)
 
     ColumnLayout {
         anchors.fill: parent
@@ -208,7 +209,17 @@ Item {
                     Text {
                         id: commandDescription
                         Layout.fillWidth: true
-                        text: selectedCommand ? commandDefinitions[selectedCommand].description : "Select a command to see its description"
+                        text: {
+                            if (!selectedCommand) {
+                                return "Select a command to see its description"
+                            }
+
+                            var description = commandDefinitions[selectedCommand].description
+                            if (!selectedCommandSupported) {
+                                return description + " (Not yet available in the current backend)"
+                            }
+                            return description
+                        }
                         color: "#CCCCCC"
                         font.pixelSize: 13
                         wrapMode: Text.WordWrap
@@ -468,13 +479,13 @@ Item {
                     
                     Rectangle {
                         id: sendButton
-                        width: 120
+                        width: 140
                         height: 45
                         radius: 8
-                        color: sendButtonArea.containsMouse ? "#4CAF50" : (selectedCommand ? "#3A8F3A" : "#444444")
-                        border.color: selectedCommand ? "#4CAF50" : "#666666"
+                        color: sendButtonArea.containsMouse && parent.enabled ? "#4CAF50" : (selectedCommandSupported ? "#3A8F3A" : "#444444")
+                        border.color: selectedCommandSupported ? "#4CAF50" : "#666666"
                         border.width: 1
-                        enabled: selectedCommand !== ""
+                        enabled: selectedCommand !== "" && selectedCommandSupported
                         
                         Behavior on color {
                             ColorAnimation { duration: 200 }
@@ -503,7 +514,7 @@ Item {
                             }
                             
                             Text {
-                                text: "Send"
+                                text: selectedCommand !== "" && !selectedCommandSupported ? "Unavailable" : "Send"
                                 color: sendButton.enabled ? "#FFFFFF" : "#999999"
                                 font.pixelSize: 14
                                 font.bold: true
@@ -526,44 +537,17 @@ Item {
         
         console.log("Sending command:", selectedCommand)
         console.log("Parameters:", JSON.stringify(parameterValues))
-        
-        switch(selectedCommand) {
-            case "Move to Position":
-                // movementController.moveToPosition(parameterValues["X Position"], parameterValues["Y Position"], parameterValues["Z Position"], parameterValues["Speed"])
-                break
-            case "Set Spray Gun Angle":
-                // sprayController.setParameters(parameterValues["Pressure"], parameterValues["Flow Rate"], parameterValues["Pattern Width"])
-                teensyController.setSprayGunPitchAngle(parameterValues["Angle"], parameterValues["Speed"])
-                break
-            case "Demo":
-                teensyController.demoAction(parameterValues["Pitch Angle"], parameterValues["Pitch Speed"], parameterValues["Cable Length"], parameterValues["Cable Speed"], parameterValues["Force Y"])
-                break
-            case "Extend Arm":
-                teensyController.extendArm(parameterValues["Length"])
-                break
-            case "Frequency Tap":
-                teensyController.startTapFreq(parameterValues["Power"], parameterValues["Period"])
-                break
-            case "Tap Once":
-                teensyController.tapOnce(parameterValues["Power"])
-                break
-            case "Tap Stop":
-                teensyController.tapStop(1)
-                break
-            case "Winch Control":
-                winchController.moveIncrementWithAccel(
-                    parseInt(parameterValues["Distance"]), 
-                    parseInt(parameterValues["Speed"]),
-                    parseInt(parameterValues["Acceleration"] || "30")
-                )
-                break
 
-            default:
-                console.log("Unknown command:", selectedCommand)
+        if (!manualCommandHandler) {
+            console.log("manualCommandHandler is not available")
+            return
         }
-        
-        // Show visual feedback
-        showCommandFeedback()
+
+        if (manualCommandHandler.executeCommand(selectedCommand, parameterValues)) {
+            showCommandFeedback()
+        } else {
+            console.log("Command rejected:", selectedCommand)
+        }
     }
     
     // Visual feedback function

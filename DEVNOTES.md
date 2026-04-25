@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-04-25 17:19 - CommandTab Python-Owned Boundary Freeze
+
+**Goal**: Start the roadmap implementation with the first bounded Stage 1 slice by moving manual command validation, coercion, and dispatch out of `CommandTab.qml` and into a Python-owned boundary.
+**Issues**: `CommandTab.qml` still owned the command catalog, parameter-name semantics, and raw controller calls. The Demo command also had a live mismatch: the QML form defined `Gimbal Angle` / `Gimbal Speed` while the dispatch path read `Pitch Angle` / `Pitch Speed`. Follow-up validation also exposed workspace/runtime gaps on Windows: missing `cv2`, PySide6 QML plugin DLL resolution failing until the package directory was added to the DLL search path, and missing optional `gi` / message / `rclpy` stub coverage in the test harness.
+**Tried**: Added a dedicated `ManualCommandHandler` QObject with a small command registry, coercion rules, unsupported-command handling, and controller dispatch; registered it as a new QML context property; rewired `CommandTab.qml` to call the handler instead of raw controllers; made unsupported commands explicitly unavailable in the UI; added focused tests for the new boundary plus DI/runtime-harness updates; added a reusable Windows Qt environment helper for PySide6 DLL resolution; declared `opencv-python-headless` as an explicit dependency; and expanded the test harness stubs for `gi`, `std_msgs.msg.String`, and `rclpy.ok` / `shutdown`.
+**Result**: ✅ The bounded command slice is implemented and the broader focused validation is green at `14 passed` for `tests/test_manual_command_handler.py`, `tests/test_controller_factory_runtime.py`, and `tests/test_startup_smoke.py`.
+**Files**: `PLANNING.md`, `python/paint_controller/handlers/manual_commands.py`, `python/paint_controller/core/controller_factory.py`, `python/paint_controller/core/app_runtime.py`, `python/paint_controller/qml/overlays/systemcontrol/CommandTab.qml`, `python/paint_controller/utils/qt_env.py`, `python/paint_controller/requirements.txt`, `tests/conftest.py`, `tests/test_manual_command_handler.py`, `tests/test_controller_factory_runtime.py`, `tests/test_startup_smoke.py`, `DEVNOTES.md`
+
 ### 2026-04-25 15:46 - Architecture Plan Doc Realignment
 
 **Goal**: Make the live documentation set point at the new single-file architecture roadmap before branch/commit work continues

@@ -17,6 +17,7 @@ from paint_controller.handlers.control_processor import ControlProcessor
 from paint_controller.handlers.emergency import EmergencyButtonHandler
 from paint_controller.handlers.heartbeat import UIHeartbeatHandler
 from paint_controller.handlers.input import UIInputHandler
+from paint_controller.handlers.manual_commands import ManualCommandHandler
 from paint_controller.handlers.safety_coordinator import SafetyCoordinator
 from paint_controller.handlers.steam_deck import SteamDeckHandler
 from paint_controller.handlers.warnings import WarningHandler
@@ -49,6 +50,7 @@ class ControllerBundle:
     # Cross-controller handlers
     overlay_controller: OverlayController
     control_processor: ControlProcessor
+    manual_command_handler: ManualCommandHandler
     input_handler: UIInputHandler
     emergency_handler: EmergencyButtonHandler
 
@@ -148,6 +150,12 @@ def create_controllers(
     )
     cast(Any, overlay).set_control_processor(control_processor)
 
+    manual_command_handler = ManualCommandHandler(
+        teensy=teensy,
+        winch=winch,
+        logger=logger,
+    )
+
     hardware = cast(Any, HardwareControllers).from_controllers(teensy, winch, esp32_valve)
     workflow_runner = WorkFlowRunner(node, hardware)
 
@@ -195,6 +203,7 @@ def create_controllers(
         safety_coordinator=safety_coordinator,
         overlay_controller=overlay,
         control_processor=control_processor,
+        manual_command_handler=manual_command_handler,
         input_handler=input_handler,
         emergency_handler=emergency,
         ssh_controller=ssh,

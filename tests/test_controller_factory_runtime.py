@@ -64,6 +64,7 @@ def test_controller_bundle_cleanup_runs_reverse_order_and_logs_errors() -> None:
         safety_coordinator=object(),
         overlay_controller=cleanup_factory("overlay_controller"),
         control_processor=cleanup_factory("control_processor"),
+        manual_command_handler=object(),
         input_handler=cleanup_factory("input_handler"),
         emergency_handler=BrokenCleanup(),
         ssh_controller=cleanup_factory("ssh_controller"),
@@ -133,6 +134,7 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     monkeypatch.setattr(module, "UIHeartbeatHandler", record("UIHeartbeatHandler"))
     monkeypatch.setattr(module, "OverlayController", record("OverlayController"))
     monkeypatch.setattr(module, "ControlProcessor", record("ControlProcessor"))
+    monkeypatch.setattr(module, "ManualCommandHandler", record("ManualCommandHandler"))
     monkeypatch.setattr(module, "WorkFlowRunner", record("WorkFlowRunner"))
     monkeypatch.setattr(module, "UIInputHandler", record("UIInputHandler"))
     monkeypatch.setattr(module, "EmergencyButtonHandler", record("EmergencyButtonHandler"))
@@ -165,6 +167,9 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     )]
     assert bundle.workflow_runner.args == (node, "hardware-bundle")
     assert bundle.overlay_controller.set_control_processor_calls == [bundle.control_processor]
+    assert bundle.manual_command_handler.kwargs["teensy"] is bundle.teensy_controller
+    assert bundle.manual_command_handler.kwargs["winch"] is bundle.winch_controller
+    assert bundle.manual_command_handler.kwargs["logger"] is node.get_logger()
     assert bundle.input_handler.kwargs["close_popup_fn"] is close_popup
     assert bundle.emergency_handler.kwargs["safety_coordinator"] is bundle.safety_coordinator
     assert bundle.screen_recorder.kwargs["screen_manager"] is bundle.screen_manager
@@ -344,6 +349,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
             "lidar_controller": object(),
             "heartbeat_handler": object(),
             "control_processor": _ControlProcessorRecorder(),
+            "manual_command_handler": object(),
             "ssh_controller": object(),
             "system_monitor": object(),
             "screen_manager": object(),

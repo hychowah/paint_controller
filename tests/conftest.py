@@ -120,6 +120,8 @@ def _install_test_module_stubs() -> None:
 
         node_mod.Node = Node
         rclpy_pkg.node = node_mod
+        rclpy_pkg.ok = lambda: True
+        rclpy_pkg.shutdown = lambda: None
         sys.modules["rclpy.node"] = node_mod
 
     try:
@@ -152,6 +154,10 @@ def _install_test_module_stubs() -> None:
             def __init__(self):
                 self.data = False
 
+        class String:
+            def __init__(self):
+                self.data = ""
+
         class UInt8:
             def __init__(self):
                 self.data = 0
@@ -165,6 +171,7 @@ def _install_test_module_stubs() -> None:
         msg_mod.Int32 = Int32
         msg_mod.Int32MultiArray = Int32MultiArray
         msg_mod.Bool = Bool
+        msg_mod.String = String
         msg_mod.UInt8 = UInt8
         msg_mod.Empty = Empty
         std_msgs_pkg.msg = msg_mod
@@ -338,8 +345,50 @@ def _install_test_module_stubs() -> None:
         paint_interfaces_pkg.msg = msg_mod
         sys.modules["paint_interfaces.msg"] = msg_mod
 
+    try:
+        importlib.import_module("gi")
+    except ModuleNotFoundError:
+        gi_mod = sys.modules.setdefault("gi", types.ModuleType("gi"))
+        repository_mod = types.ModuleType("gi.repository")
+
+        class _FlowReturn:
+            OK = 0
+            ERROR = 1
+
+        class _State:
+            NULL = 0
+            PLAYING = 1
+
+        class _MapFlags:
+            READ = 0
+
+        class _FakeGst:
+            FlowReturn = _FlowReturn
+            State = _State
+            MapFlags = _MapFlags
+
+            @staticmethod
+            def init(_args):
+                return None
+
+            @staticmethod
+            def parse_launch(_pipeline):
+                return None
+
+        def require_version(_name, _version):
+            return None
+
+        gi_mod.require_version = require_version
+        repository_mod.Gst = _FakeGst
+        gi_mod.repository = repository_mod
+        sys.modules["gi.repository"] = repository_mod
+
 
 _install_test_module_stubs()
+
+from paint_controller.utils.qt_env import ensure_pyside6_windows_dll_path
+
+ensure_pyside6_windows_dll_path()
 
 
 @pytest.fixture(scope="session")

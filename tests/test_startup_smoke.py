@@ -51,6 +51,16 @@ class FakeScreenManager(DynamicObject):
         return 1
 
 
+class FakeManualCommandHandler(QObject):
+    @Slot(str, result=bool)
+    def isCommandSupported(self, command_name: str) -> bool:
+        return command_name != "Move to Position"
+
+    @Slot(str, "QVariantMap", result=bool)
+    def executeCommand(self, _command_name: str, _parameter_values) -> bool:
+        return True
+
+
 class BlankImageProvider(QQuickImageProvider):
     def __init__(self) -> None:
         super().__init__(QQuickImageProvider.Image)
@@ -165,6 +175,7 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             right_control_mode="None",
             right_control_value="",
         ),
+        "manualCommandHandler": FakeManualCommandHandler(),
         "sshHandler": DynamicObject(deviceAvailability=availability, devicePingTimes=ping_times),
         "systemMonitor": DynamicObject(
             battery_level=100,

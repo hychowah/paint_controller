@@ -15,7 +15,7 @@ The live architecture problems are these:
 - QML still directly orchestrates some machine-affecting actions, persistence writes, and immediate side effects.
 - `MainWindow.qml` still owns shell policy, screen placement, page construction, overlay composition, and backend signal handling.
 - The product already behaves like a coordinated two-surface operator shell, but that is not yet treated as the architectural center of gravity.
-- QML still reaches too many raw runtime objects through the 22-name context-property contract.
+- QML still reaches too many raw runtime objects through the broad context-property contract.
 - The operator overlay is a real operating surface, but its lifecycle, role, and safety rules are still implicit.
 - Settings authority is split between a strong Python settings core, a live operational overlay, and a partly placeholder settings page.
 - Control selection and command execution are still coupled through the `OverlayController` / `ControlProcessor` relationship.
@@ -36,14 +36,15 @@ That is the path toward a professional Qt program for this robot controller.
 Every future implementation session must still follow `AGENTS.md`:
 
 1. Read `INDEX.md`, `AGENTS.md`, `KNOWLEDGE.md`, this plan, and `docs/tech-debt.md`.
-2. Pick exactly one slice from this roadmap.
-3. Create or update root `PLANNING.md` for that slice.
-4. Ask: "Here is my plan in PLANNING.md. Ready to proceed?"
-5. Implement only after explicit approval.
-6. Validate with the tests listed for that slice.
-7. Update `DEVNOTES.md` after meaningful debugging or implementation.
-8. Update `docs/tech-debt.md` when debt is discovered, split, resolved, or reprioritized.
-9. Delete root `PLANNING.md` before merge if the repo workflow requires cleanup.
+2. Read `docs/plan/00_ARCHITECTURE_PROGRESS.md` for the current stage/slice status.
+3. Pick exactly one slice from this roadmap.
+4. Create or update root `PLANNING.md` for that slice.
+5. Ask: "Here is my plan in PLANNING.md. Ready to proceed?"
+6. Implement only after explicit approval.
+7. Validate with the tests listed for that slice.
+8. Update `DEVNOTES.md` after meaningful debugging or implementation.
+9. Update `docs/tech-debt.md` and `docs/plan/00_ARCHITECTURE_PROGRESS.md` when debt is discovered, split, resolved, or reprioritized.
+10. Delete root `PLANNING.md` before merge if the repo workflow requires cleanup.
 
 This document is a roadmap, not approval to modify code.
 
@@ -112,7 +113,7 @@ Why it matters:
 
 Current evidence:
 
-- `python/paint_controller/core/app_runtime.py` registers 22 context properties.
+- `python/paint_controller/core/app_runtime.py` registers a broad set of context properties directly into QML.
 - Pages and overlays bind directly to controllers, services, handlers, recorders, and managers.
 
 Why it matters:
@@ -180,7 +181,7 @@ These decisions are part of the architecture contract unless the user explicitly
 
 This plan deliberately avoids these traps:
 
-- Do not replace 22 context properties with one giant `Backend` object.
+- Do not replace the broad context-property contract with one giant `Backend` object.
 - Do not create six new facade objects just because facade objects sound architectural.
 - Do not define success as “everything is a page.”
 - Do not define success as “there is only one settings screen.”
@@ -297,6 +298,10 @@ Validation:
 - relevant focused tests for the touched action family
 - `tests/test_startup_smoke.py`
 - `tests/test_qml_imports.py`
+
+Progress note:
+
+- 2026-04-25: Stage 1A is complete for the manual-command family. `CommandTab.qml` now routes manual commands through a Python-owned `ManualCommandHandler` without changing the operator-facing command catalog. The next recommended Stage 1 slice is the immediate-apply settings outliers in `SettingsTab.qml`.
 
 Risks:
 
@@ -887,7 +892,8 @@ When a stage is completed:
 1. Add a short completion note here or in `docs/tech-debt.md`.
 2. Move any resolved debt in `docs/tech-debt.md` to the resolved table.
 3. Add a `DEVNOTES.md` entry if meaningful debugging occurred.
-4. If a reusable gotcha is discovered, ask the user before adding it to `KNOWLEDGE.md`.
+4. Update `docs/plan/00_ARCHITECTURE_PROGRESS.md` so the current stage/slice status stays truthful.
+5. If a reusable gotcha is discovered, ask the user before adding it to `KNOWLEDGE.md`.
 
 When a stage becomes wrong:
 
@@ -895,25 +901,24 @@ When a stage becomes wrong:
 2. Update this document with the new decision and reason.
 3. Prefer a targeted correction over another full rewrite unless the architecture direction truly changed.
 
-## First Recommended Future Session
+## Next Recommended Session
 
-Start with Stage 0 and Stage 1 preparation.
+Stage 1A is now complete for the manual-command family. The next recommended session is Stage 1B preparation and implementation planning for the immediate-apply settings outliers.
 
-Task title: Build authority map and choose the first QML-to-application boundary freeze slice.
+Task title: Formalize the Stage 0 authority map artifact and plan the Stage 1B settings-outlier boundary freeze.
 
-Do not implement immediately. The session should:
+The session should:
 
-1. List every major UI surface and classify its role.
-2. Record which layer currently owns shell, screen, overlay, settings, control-selection, and machine-affecting application actions.
-3. Identify the top three ownership ambiguities creating the most coupling.
-4. Identify the highest-risk QML action families: settings, commands, device control, or workflow.
-5. Choose one bounded Stage 1 action-boundary slice for implementation.
-6. Create `PLANNING.md`.
-7. Ask for confirmation.
+1. Reconfirm the current owners of shell, screen, overlay, settings, control-selection, and machine-affecting application actions against the merged Stage 1A code.
+2. Decide whether the Stage 0 authority map should be merged as its own durable artifact before more implementation slices land.
+3. Identify the exact `SettingsTab.qml` paths where QML still combines UI parsing, persistence writes, and immediate side effects.
+4. Keep the Stage 1B slice narrow to the immediate-apply settings outliers rather than broadening into all settings UI.
+5. Create `PLANNING.md`.
+6. Ask for confirmation.
 
-The likely first implementation slice after approval:
+The likely next implementation slice after approval:
 
-- move one high-risk operational QML action family behind a Python-owned application boundary without changing operator behavior
+- move the immediate-apply settings outliers behind Python-owned methods without changing operator behavior
 - preserve dual-screen behavior
 - preserve overlay-first operation
-- validate startup, imports, and the relevant focused runtime tests for the migrated action family
+- validate startup, imports, and the relevant focused settings/runtime tests for the migrated action family

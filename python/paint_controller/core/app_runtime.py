@@ -19,6 +19,7 @@ from paint_controller.core.settings import SettingsManager
 from paint_controller.handlers.steam_deck import SteamDeckHandler
 from paint_controller.services.base_top_view_service import BaseTopViewService
 from paint_controller.services.video_stream import VideoStreamHandler
+from paint_controller.utils.qt_env import ensure_pyside6_windows_dll_path
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "lidarController",
     "heartbeatHandler",
     "controlProcessor",
+    "manualCommandHandler",
     "sshHandler",
     "systemMonitor",
     "screenRecorder",
@@ -124,6 +126,8 @@ class AppRuntime:
         rclpy.init()
         self._log_startup("ROS initialized")
         self._log_startup("Runtime defaults loaded")
+
+        ensure_pyside6_windows_dll_path()
 
         self.app = QApplication(self.argv)
         if self._on_app_created is not None:
@@ -308,6 +312,7 @@ class AppRuntime:
             "lidarController": self.bundle.lidar_controller,
             "heartbeatHandler": self.bundle.heartbeat_handler,
             "controlProcessor": self.bundle.control_processor,
+            "manualCommandHandler": self.bundle.manual_command_handler,
             "sshHandler": self.bundle.ssh_controller,
             "systemMonitor": self.bundle.system_monitor,
             "screenRecorder": self.bundle.screen_recorder,

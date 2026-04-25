@@ -8,6 +8,9 @@ ROS 2 + PySide6/QML control application for the paint robot.
 - `TD-001` Stage 1 is complete: verified-dead QML was removed, false shared-component folders were flattened, constructor-driven QML surfaces were hardened with `required` / `readonly`, offscreen startup/import smoke coverage was expanded, and warn-only `qmllint` CI is in place.
 - `TD-031` is complete: the shell now uses an explicit page registry, `systemcontrol` and fullscreen video have dedicated feature roots under `qml/features/`, and canonical theme ownership lives under `qml/theme/CommonStyle.qml` with compatibility shims left at the old paths.
 - The current architecture roadmap is in `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`. The next implementation path starts with the authority map and the first QML-to-application action-boundary slice.
+- Current slice status is tracked in `docs/plan/00_ARCHITECTURE_PROGRESS.md`.
+- Stage 1A is complete: `CommandTab.qml` now routes manual command execution through a Python-owned boundary instead of dispatching directly from QML.
+- The next recommended implementation path is Linux validation for Stage 1A and then Stage 1B for the immediate-apply settings outliers.
 - Python runtime is the only live application path in this repository; the old C++ UI path has been removed from the tree.
 - Runtime objects are exposed to QML through `setContextProperty()`. Do not use `qmlRegisterSingletonInstance()` in this repo.
 - Latest verified local validation on 2026-04-24 is green at `170 passed` via `python/paint_controller/venv/bin/python -m pytest -q`.
@@ -142,6 +145,7 @@ Note: If `QT_QPA_PLATFORM` is set to `xcb` in your shell environment, `conftest.
 - Pure logic and schema: `tests/test_crc.py`, `tests/test_input_utils.py`, `tests/test_settings_schema.py`
 - Harness validation: `tests/test_test_infrastructure.py`
 - Core runtime state and persistence: `tests/test_state_store.py`, `tests/test_settings_runtime.py`
+- Manual command boundary: `tests/test_manual_command_handler.py`
 - Safety-critical command dispatch: `tests/test_control_processor.py`
 - Qt signal bridge: `tests/test_qt_bridge.py`
 - Component and handler behavior: `tests/test_emergency.py`, `tests/test_input_handler.py`, `tests/test_steam_deck_hid.py`, `tests/test_winch.py`, `tests/test_ssh.py`
@@ -160,6 +164,7 @@ Note: If `QT_QPA_PLATFORM` is set to `xcb` in your shell environment, `conftest.
 ## Documentation Map
 
 - `INDEX.md` — start here in a fresh LLM or handoff session; repo authority order and doc navigation
+- `docs/plan/00_ARCHITECTURE_PROGRESS.md` — current roadmap status, completed slices, next recommended slice
 - `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` — active architecture roadmap and staged direction
 - `DEVNOTES.md` — chronological development notes
 - `KNOWLEDGE.md` — reusable Qt/Python/ROS gotchas
