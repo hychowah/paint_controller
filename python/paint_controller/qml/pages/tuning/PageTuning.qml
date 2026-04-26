@@ -51,7 +51,7 @@ Item {
                 }
             ],
             sendFunction: (params) => {
-                teensyController.setShortParams(
+                return tuningAdminHandler.requestShortYawPid(
                     params["P Value"] !== undefined ? params["P Value"] : teensyController.all_status.yaw_pid_p,
                     params["I Value"] !== undefined ? params["I Value"] : teensyController.all_status.yaw_pid_i,
                     params["D Value"] !== undefined ? params["D Value"] : teensyController.all_status.yaw_pid_d
@@ -94,7 +94,7 @@ Item {
                 }
             ],
             sendFunction: (params) => {
-                teensyController.setLongParams(
+                return tuningAdminHandler.requestLongYawPid(
                     params["P Value"] !== undefined ? params["P Value"] : teensyController.all_status.yaw_pid_p,
                     params["I Value"] !== undefined ? params["I Value"] : teensyController.all_status.yaw_pid_i,
                     params["D Value"] !== undefined ? params["D Value"] : teensyController.all_status.yaw_pid_d
@@ -551,7 +551,13 @@ Item {
         
         let sendFunc = parameterSetDefinitions[selectedParameterSet].sendFunction
         if (sendFunc) {
-            sendFunc(parameterValues)
+            let success = sendFunc(parameterValues)
+            backend.show_popup(
+                success ? "TUNING" : "TUNING BLOCKED",
+                success ? (selectedParameterSet + " request sent") : (selectedParameterSet + " request rejected"),
+                success ? "info" : "error",
+                2000
+            )
         }
         
         // Clear inputs after sending

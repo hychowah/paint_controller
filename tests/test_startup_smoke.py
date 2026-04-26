@@ -639,13 +639,24 @@ import "{core_import_url}"
 import "{navigation_import_url}"
 
 Item {{
+    id: harnessRoot
     width: 1280
     height: 800
+    property string selectedPageKey: "home"
 
     property var pageRegistry: [
-        {{ pageIndex: 0, buttonKey: "home", component: homeComponent }},
-        {{ pageIndex: 8, buttonKey: "settings", component: settingsComponent }}
+        {{ pageIndex: 0, buttonKey: "home", buttonText: "Home", component: homeComponent }},
+        {{ pageIndex: 8, buttonKey: "settings", buttonText: "Settings", component: settingsComponent }}
     ]
+
+    function getPageConfig(index) {{
+        for (var i = 0; i < pageRegistry.length; i++) {{
+            if (pageRegistry[i].pageIndex === index) {{
+                return pageRegistry[i]
+            }}
+        }}
+        return null
+    }}
 
     QtObject {{
         id: fakeStackView
@@ -674,8 +685,19 @@ Item {{
     SelectBar {{
         id: selectBar
         objectName: "selectBar"
-        stackView: fakeStackView
-        pageRegistry: parent.pageRegistry
+        pageRegistry: harnessRoot.pageRegistry
+        selectedPageKey: harnessRoot.selectedPageKey
+        onNavigateRequested: function(index) {{
+            var targetPage = harnessRoot.getPageConfig(index)
+            if (!targetPage) {{
+                return
+            }}
+
+            harnessRoot.selectedPageKey = targetPage.buttonKey
+            fakeStackView.targetIndex = index
+            fakeStackView.replace(fakeStackView.currentItem, targetPage.component)
+            fakeStackView.currentIndex = index
+        }}
     }}
 }}
 '''.encode(),
@@ -693,6 +715,7 @@ Item {{
 
         fake_stack_view = root.findChild(QObject, "fakeStackView")
         assert fake_stack_view is not None
+        assert select_bar.property("navigationCount") == 2
 
         select_bar.navigateToPage(8)
         qt_app.processEvents()

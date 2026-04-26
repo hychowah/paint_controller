@@ -13,6 +13,7 @@ from paint_controller.controllers.teensy import TeensyController
 from paint_controller.controllers.wheel import WheelController
 from paint_controller.controllers.winch import WinchController
 from paint_controller.controllers.wind_monitor import WindMonitor
+from paint_controller.handlers.base_top_view_admin import BaseTopViewAdminHandler
 from paint_controller.handlers.control_processor import ControlProcessor
 from paint_controller.handlers.device_actions import DeviceActionHandler
 from paint_controller.handlers.device_operations import DeviceOperationsHandler
@@ -22,7 +23,9 @@ from paint_controller.handlers.input import UIInputHandler
 from paint_controller.handlers.manual_commands import ManualCommandHandler
 from paint_controller.handlers.safety_coordinator import SafetyCoordinator
 from paint_controller.handlers.steam_deck import SteamDeckHandler
+from paint_controller.handlers.tuning_admin import TuningAdminHandler
 from paint_controller.handlers.warnings import WarningHandler
+from paint_controller.handlers.winch_motion import WinchMotionHandler
 from paint_controller.services.ros_bag_recorder import RosBagRecorder
 from paint_controller.services.screen_manager import ScreenManager
 from paint_controller.services.screen_recorder import ScreenRecorder
@@ -30,6 +33,7 @@ from paint_controller.services.workflow.hardware import HardwareControllers
 from paint_controller.services.workflow.workflow_catalog import WorkflowCatalog
 from paint_controller.services.workflow.workflow_editor import WorkflowEditor
 from paint_controller.services.workflow.workflow_runner import WorkFlowRunner
+from paint_controller.models.admin_action_gate import AdminActionGate
 from paint_controller.models.joystick_selection import JoystickSelectionModel
 from paint_controller.ui.overlay import OverlayController
 
@@ -55,9 +59,13 @@ class ControllerBundle:
     # Cross-controller handlers
     overlay_controller: OverlayController
     control_processor: ControlProcessor
+    admin_action_gate: AdminActionGate
     manual_command_handler: ManualCommandHandler
     device_action_handler: DeviceActionHandler
     device_operations_handler: DeviceOperationsHandler
+    winch_motion_handler: WinchMotionHandler
+    tuning_admin_handler: TuningAdminHandler
+    base_top_view_admin_handler: BaseTopViewAdminHandler
     input_handler: UIInputHandler
     emergency_handler: EmergencyButtonHandler
 
@@ -99,9 +107,11 @@ class ControllerBundle:
 def create_controllers(
     node: Any,
     settings_manager: Any,
+    capability_catalog: Any,
     state_store: Any,
     steam_deck_handler: SteamDeckHandler,
     video_stream_handler: Any,
+    base_top_view_service: Any,
     show_popup_fn: Any,
     close_popup_fn: Any,
 ) -> ControllerBundle:
@@ -158,6 +168,11 @@ def create_controllers(
         state_store=state_store,
     )
 
+    admin_action_gate = AdminActionGate(
+        capability_catalog=capability_catalog,
+        state_store=state_store,
+    )
+
     manual_command_handler = ManualCommandHandler(
         teensy=teensy,
         winch=winch,
@@ -168,6 +183,7 @@ def create_controllers(
         teensy=teensy,
         winch=winch,
         wheel=wheel,
+        admin_action_gate=admin_action_gate,
         logger=logger,
     )
 
@@ -213,6 +229,25 @@ def create_controllers(
         screen_recorder=screen_rec,
         ros_bag_recorder=ros_bag,
         heartbeat_handler=heartbeat,
+        admin_action_gate=admin_action_gate,
+        logger=logger,
+    )
+
+    winch_motion_handler = WinchMotionHandler(
+        winch=winch,
+        admin_action_gate=admin_action_gate,
+        logger=logger,
+    )
+
+    tuning_admin_handler = TuningAdminHandler(
+        teensy=teensy,
+        admin_action_gate=admin_action_gate,
+        logger=logger,
+    )
+
+    base_top_view_admin_handler = BaseTopViewAdminHandler(
+        base_top_view_service=base_top_view_service,
+        admin_action_gate=admin_action_gate,
         logger=logger,
     )
 
@@ -231,9 +266,13 @@ def create_controllers(
         safety_coordinator=safety_coordinator,
         overlay_controller=overlay,
         control_processor=control_processor,
+        admin_action_gate=admin_action_gate,
         manual_command_handler=manual_command_handler,
         device_action_handler=device_action_handler,
         device_operations_handler=device_operations_handler,
+        winch_motion_handler=winch_motion_handler,
+        tuning_admin_handler=tuning_admin_handler,
+        base_top_view_admin_handler=base_top_view_admin_handler,
         input_handler=input_handler,
         emergency_handler=emergency,
         ssh_controller=ssh,

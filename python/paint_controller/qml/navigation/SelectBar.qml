@@ -6,17 +6,18 @@ import "../core"
 
 Rectangle {
     id: selectBar
-    required property var stackView
     required property var pageRegistry
-    property string selectedPageKey: "home"
+    required property string selectedPageKey
     property int expandedWidth: CommonStyle.shellSidebarExpandedWidth
     property int collapsedWidth: CommonStyle.shellSidebarCollapsedWidth
     property int buttonSize: expanded ? expandedWidth * 0.8 : collapsedWidth - 10
     property int buttonSpacing: CommonStyle.shellSidebarButtonGap
     property bool expanded: true
     property bool animationInProgress: false
+    property int navigationCount: navButtonRepeater.count
 
     signal expandedStateChanged(bool isExpanded, int newWidth)
+    signal navigateRequested(int pageIndex)
     
     width: expanded ? expandedWidth : collapsedWidth
     Layout.fillHeight: true
@@ -156,22 +157,13 @@ Rectangle {
     }
     
     function navigateToPage(index) {
-        console.log("Before navigation - currentIndex:", stackView.currentIndex, "depth:", stackView.targetIndex)
         var targetPage = getPageConfig(index)
         if (!targetPage || !targetPage.component) {
             console.warn("SelectBar: unknown page index", index)
             return
         }
 
-        selectedPageKey = targetPage.buttonKey
-
-        if (index !== stackView.currentIndex) {
-            stackView.targetIndex = index
-            
-            console.log("Navigating to page:", index)
-            stackView.replace(stackView.currentItem, targetPage.component)
-            stackView.currentIndex = index
-        }
+        navigateRequested(index)
     }
 
     // Top spacer
@@ -215,77 +207,19 @@ Rectangle {
                     }
                 }
             }
-            // home button
-            NavigationButton {
-                id: buttonHome
-                buttonKey: "home"
-                buttonText: "Home"
-                iconSource: "../../resource/homepage.svg"
-                pageIndex: 0
-                isSelected: selectBar.selectedPageKey === "home"
-                iconScale: 0.7
-            }
+            Repeater {
+                id: navButtonRepeater
+                objectName: "navButtonRepeater"
+                model: pageRegistry
 
-            // Page 1 Button - Base
-            NavigationButton {
-                id: buttonPage1
-                buttonKey: "base"
-                buttonText: "Base"
-                iconSource: "../../resource/base.png"
-                pageIndex: 1
-                isSelected: selectBar.selectedPageKey === "base"
-                iconScale: 0.7
-            }
-
-            // Page 2 Button - Winch
-            NavigationButton {
-                id: buttonPage2
-                buttonKey: "winch"
-                buttonText: "Winch"
-                iconSource: "../../resource/winch.png"
-                pageIndex: 2
-                isSelected: selectBar.selectedPageKey === "winch"
-            }
-
-            // Page 3 Button - Monitor
-            NavigationButton {
-                id: buttonPage3
-                buttonKey: "monitor"
-                buttonText: "Monitor"
-                iconSource: "../../resource/monitor.svg"
-                pageIndex: 3
-                isSelected: selectBar.selectedPageKey === "monitor"
-            }
-
-            // Page 4 Button - Tuning
-            NavigationButton {
-                id: buttonPage4
-                buttonKey: "tuning"
-                buttonText: "Tuning"
-                iconSource: "../../resource/icon-pid.png"
-                pageIndex: 4
-                isSelected: selectBar.selectedPageKey === "tuning"
-            }
-
-            // Page 5 Button - Launcher
-            NavigationButton {
-                id: buttonPage5
-                buttonKey: "launcher"
-                buttonText: "Launcher"
-                iconSource: "../../resource/launcher.svg"
-                pageIndex: 5
-                isSelected: selectBar.selectedPageKey === "launcher"
-                iconScale: 0.7
-            }
-
-            // Page Settings Button
-            NavigationButton {
-                id: buttonPageSettings
-                buttonKey: "settings"
-                buttonText: "Settings"
-                iconSource: "../../resource/setting.svg"
-                pageIndex: 8
-                isSelected: selectBar.selectedPageKey === "settings"
+                delegate: NavigationButton {
+                    buttonKey: modelData.buttonKey
+                    buttonText: modelData.buttonText || modelData.buttonKey
+                    iconSource: modelData.iconSource || ""
+                    pageIndex: modelData.pageIndex
+                    isSelected: selectBar.selectedPageKey === modelData.buttonKey
+                    iconScale: modelData.iconScale !== undefined ? modelData.iconScale : 0.6
+                }
             }
         }
     }

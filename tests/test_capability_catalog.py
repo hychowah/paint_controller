@@ -53,19 +53,37 @@ def test_capability_catalog_inventories_known_admin_mutators(monkeypatch, tmp_pa
 
     tuning = catalog.getActionCapability("tuning.short_yaw_pid")
     relay = catalog.getActionCapability("status.teensy_relay")
+    wheel_reset = catalog.getActionCapability("wheel.reset_position")
+    winch_increment = catalog.getActionCapability("winch.move_increment")
     camera_actions = catalog.getSurfaceActions("overlay_popup:base_top_view")
+    winch_actions = catalog.getSurfaceActions("page:winch")
 
-    assert tuning["authority"] == "teensyController.setShortParams"
+    assert tuning["authority"] == "tuningAdminHandler.requestShortYawPid"
     assert tuning["immediateRuntimeSideEffect"] is True
     assert tuning["legalStateClass"] == "tuning-calibration"
 
-    assert relay["authority"] == "teensyController.setRelayEnabled"
+    assert relay["authority"] == "deviceActionHandler.requestTeensyRelayEnabled"
     assert relay["primarySurface"] == "page:status"
+
+    assert wheel_reset["authority"] == "deviceActionHandler.resetWheelPosition"
+    assert wheel_reset["legalStateClass"] == "maintenance-preset"
+
+    assert winch_increment["authority"] == "winchMotionHandler.requestMoveIncrement"
+    assert winch_increment["legalStateClass"] == "live-operational-motion"
 
     assert [action["key"] for action in camera_actions] == [
         "camera.base_top_view.live_adjustments",
         "camera.base_top_view.reset",
         "camera.base_top_view.save",
+    ]
+    assert [action["key"] for action in winch_actions] == [
+        "status.winch_enable",
+        "winch.emergency_stop",
+        "winch.extend_one_meter",
+        "winch.load_detection",
+        "winch.move_absolute",
+        "winch.move_increment",
+        "winch.retract_full",
     ]
 
 

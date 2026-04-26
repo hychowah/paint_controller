@@ -88,13 +88,27 @@ class FakeHeartbeatHandler:
         self.clear_calls += 1
 
 
-def _build_handler(winch_result: bool = True) -> tuple[DeviceOperationsHandler, FakeTeensy, FakeWinch, FakeVideoStreamHandler, FakeScreenRecorder, FakeRosBagRecorder, FakeHeartbeatHandler, FakeLogger, list[tuple[bool, str]]]:
+class FakeAdminActionGate:
+    def __init__(self) -> None:
+        self.results: dict[str, tuple[bool, str]] = {}
+        self.calls: list[str] = []
+
+    def set_result(self, action_key: str, allowed: bool, reason: str = "") -> None:
+        self.results[action_key] = (allowed, reason)
+
+    def check_action(self, action_key: str) -> tuple[bool, str]:
+        self.calls.append(action_key)
+        return self.results.get(action_key, (True, ""))
+
+
+def _build_handler(winch_result: bool = True) -> tuple[DeviceOperationsHandler, FakeTeensy, FakeWinch, FakeVideoStreamHandler, FakeScreenRecorder, FakeRosBagRecorder, FakeHeartbeatHandler, FakeAdminActionGate, FakeLogger, list[tuple[bool, str]]]:
     teensy = FakeTeensy()
     winch = FakeWinch(result=winch_result)
     video_stream_handler = FakeVideoStreamHandler()
     screen_recorder = FakeScreenRecorder()
     ros_bag_recorder = FakeRosBagRecorder()
     heartbeat_handler = FakeHeartbeatHandler()
+    admin_action_gate = FakeAdminActionGate()
     logger = FakeLogger()
     handler = DeviceOperationsHandler(
         teensy=teensy,
@@ -103,15 +117,16 @@ def _build_handler(winch_result: bool = True) -> tuple[DeviceOperationsHandler, 
         screen_recorder=screen_recorder,
         ros_bag_recorder=ros_bag_recorder,
         heartbeat_handler=heartbeat_handler,
+        admin_action_gate=admin_action_gate,
         logger=logger,
     )
     results: list[tuple[bool, str]] = []
     handler.operation_result.connect(lambda success, message: results.append((success, message)))
-    return handler, teensy, winch, video_stream_handler, screen_recorder, ros_bag_recorder, heartbeat_handler, logger, results
+    return handler, teensy, winch, video_stream_handler, screen_recorder, ros_bag_recorder, heartbeat_handler, admin_action_gate, logger, results
 
 
 def test_toggle_operations_dispatch_to_backend_and_invert_state() -> None:
-    handler, teensy, winch, _video, _screen, _bag, _heartbeat, logger, results = _build_handler()
+    handler, teensy, winch, _video, _screen, _bag, _heartbeat, admin_action_gate, logger, results = _build_handler()
 
     assert handler.toggleLoadDetection(True) is True
     assert handler.toggleStability(False) is True
@@ -132,12 +147,13 @@ def test_toggle_operations_dispatch_to_backend_and_invert_state() -> None:
     assert teensy.swing_calls == [False]
     assert teensy.led_calls == [True]
     assert teensy.lidar_power_calls == [True]
+    assert admin_action_gate.calls == ["winch.load_detection"]
     assert results[-1] == (True, "Lidar power requested")
     assert logger.records[-1].message == "Lidar power requested"
 
 
 def test_recording_and_clear_error_operations_dispatch() -> None:
-    handler, _teensy, _winch, video, screen, bag, heartbeat, logger, results = _build_handler()
+    handler, _teensy, _winch, video, screen, bag, heartbeat, _gate, logger, results = _build_handler()
 
     assert handler.toggleEndEffectorRecording() is True
     assert handler.toggleBaseRecording() is True
@@ -155,10 +171,31 @@ def test_recording_and_clear_error_operations_dispatch() -> None:
 
 
 def test_backend_rejection_is_reported_for_load_detection() -> None:
-    handler, _teensy, winch, _video, _screen, _bag, _heartbeat, logger, results = _build_handler(winch_result=False)
+    handler, _teensy, winch, _video, _screen, _bag, _heartbeat, _gate, logger, results = _build_handler(winch_result=False)
 
     assert handler.toggleLoadDetection(False) is False
 
     assert winch.load_detection_calls == [True]
     assert results[-1] == (False, "Load detection was rejected by the backend")
     assert logger.records[-1].message == "Load detection was rejected by the backend"
+
+
+def test_explicit_load_detection_request_dispatches_desired_state() -> None:
+    handler, _teensy, winch, _video, _screen, _bag, _heartbeat, _gate, logger, results = _build_handler()
+
+    assert handler.requestLoadDetectionEnabled(True) is True
+
+    assert winch.load_detection_calls == [True]
+    assert results[-1] == (True, "Load detection requested")
+    assert logger.records[-1].message == "Load detection requested"
+
+
+def test_gate_denial_blocks_load_detection_before_backend_call() -> None:
+    handler, _teensy, winch, _video, _screen, _bag, _heartbeat, admin_action_gate, logger, results = _build_handler()
+    admin_action_gate.set_result("winch.load_detection", False, "Load Detection Toggle is blocked while the controller heartbeat is in WARNING")
+
+    assert handler.requestLoadDetectionEnabled(True) is False
+
+    assert winch.load_detection_calls == []
+    assert results[-1] == (False, "Load Detection Toggle is blocked while the controller heartbeat is in WARNING")
+    assert logger.records[-1].message == "Load Detection Toggle is blocked while the controller heartbeat is in WARNING"

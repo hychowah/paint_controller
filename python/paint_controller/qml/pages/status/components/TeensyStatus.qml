@@ -36,7 +36,11 @@ Rectangle {
             TouchSwitch {
                 id: teensyEnableSwitch
                 checked: teensyController.all_status.enabled
-                onToggled: teensyController.setEnabled(checked)
+                onToggled: {
+                    if (!deviceActionHandler.requestTeensyEnabled(checked)) {
+                        teensyEnableSwitch.checked = !checked
+                    }
+                }
             }
 
             Label { text: "Relay:"; font.bold: true }
@@ -44,7 +48,11 @@ Rectangle {
             TouchSwitch {
                 id: teensyRelayEnableSwitch
                 checked: teensyController.all_status.relay_on
-                onToggled: teensyController.setRelayEnabled(checked)
+                onToggled: {
+                    if (!deviceActionHandler.requestTeensyRelayEnabled(checked)) {
+                        teensyRelayEnableSwitch.checked = !checked
+                    }
+                }
             }
         }
 

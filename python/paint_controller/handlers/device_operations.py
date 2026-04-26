@@ -20,6 +20,7 @@ class DeviceOperationsHandler(QObject):
         screen_recorder: Any,
         ros_bag_recorder: Any,
         heartbeat_handler: Any,
+        admin_action_gate: Any,
         logger: Any,
         parent: QObject | None = None,
     ) -> None:
@@ -30,15 +31,21 @@ class DeviceOperationsHandler(QObject):
         self._screen_recorder = screen_recorder
         self._ros_bag_recorder = ros_bag_recorder
         self._heartbeat_handler = heartbeat_handler
+        self._admin_action_gate = admin_action_gate
         self._logger = logger
 
     @Slot(bool, result=bool)
     def toggleLoadDetection(self, current_enabled: bool) -> bool:
-        return self._run_toggle(
+        return self.requestLoadDetectionEnabled(not current_enabled)
+
+    @Slot(bool, result=bool)
+    def requestLoadDetectionEnabled(self, enabled: bool) -> bool:
+        return self._run_action(
+            action_key="winch.load_detection",
             name="Load detection",
             controller=self._winch,
             method_name="setLoadDetectionEnabled",
-            next_enabled=not current_enabled,
+            args=(enabled,),
         )
 
     @Slot(result=bool)
@@ -144,11 +151,17 @@ class DeviceOperationsHandler(QObject):
     def _run_action(
         self,
         *,
+        action_key: str | None = None,
         name: str,
         controller: Any,
         method_name: str,
         args: tuple[Any, ...] = (),
     ) -> bool:
+        if action_key is not None and action_key.startswith("winch."):
+            allowed, reason = self._admin_action_gate.check_action(action_key)
+            if not allowed:
+                return self._fail(reason)
+
         if controller is None:
             return self._fail(f"{name} is unavailable")
 

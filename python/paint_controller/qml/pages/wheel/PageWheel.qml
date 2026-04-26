@@ -199,7 +199,7 @@ Rectangle {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                wheelController.setEnabled(!wheelController.enabled)
+                                deviceActionHandler.requestWheelEnabled(!wheelController.enabled)
                             }
                         }
                         
@@ -342,12 +342,10 @@ Rectangle {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                // Call the resetWheelPosition slot
-                                wheelController.resetWheelPosition()
-                                
-                                // Visual feedback animation
-                                resetFeedback.visible = true
-                                resetFeedbackTimer.restart()
+                                if (deviceActionHandler.resetWheelPosition()) {
+                                    resetFeedback.visible = true
+                                    resetFeedbackTimer.restart()
+                                }
                             }
                             onEntered: parent.state = "hovered"
                             onExited: parent.state = ""

@@ -230,9 +230,13 @@ Item {
                                 MouseArea {
                                     anchors.fill: parent
                                     onClicked: {
-                                        winchController.setEnabled(!winchController.enabled);
-                                        notificationPopup.show(winchController.enabled ? 
-                                            "Winch power enabled" : "Winch power disabled", 2000);
+                                        var desiredEnabled = !winchController.enabled;
+                                        if (deviceActionHandler.requestWinchEnabled(desiredEnabled)) {
+                                            notificationPopup.show(desiredEnabled ?
+                                                "Winch power enabled" : "Winch power disabled", 2000);
+                                        } else {
+                                            notificationPopup.show("Winch power change rejected", 2000);
+                                        }
                                     }
                                     enabled: winchController.available
                                     
@@ -342,10 +346,14 @@ Item {
                                 MouseArea {
                                     anchors.fill: parent
                                     onClicked: {
-                                        winchController.setLoadDetectionEnabled(!winchController.load_detection_enabled);
-                                        notificationPopup.show(winchController.load_detection_enabled ? 
-                                            "Load detection enabled" : 
-                                            "Load detection disabled", 2000);
+                                        var desiredLoadDetection = !winchController.load_detection_enabled;
+                                        if (deviceOperationsHandler.requestLoadDetectionEnabled(desiredLoadDetection)) {
+                                            notificationPopup.show(desiredLoadDetection ?
+                                                "Load detection enabled" :
+                                                "Load detection disabled", 2000);
+                                        } else {
+                                            notificationPopup.show("Load detection change rejected", 2000);
+                                        }
                                     }
                                     enabled: winchController.enabled
                                     
@@ -605,16 +613,17 @@ Item {
                                     text: "MOVE INCREMENT"
                                     enabled: winchController.enabled && incrementLengthField.text.length > 0 && incrementSpeedField.text.length > 0 && incrementLengthField.acceptableInput && incrementSpeedField.acceptableInput
                                     onClicked: {
-                                        winchController.moveIncrement(
-                                            parseInt(incrementLengthField.text),
-                                            parseInt(incrementSpeedField.text)
-                                        );
-                                        // Added: Feedback and logging
-                                        notificationPopup.show("Moving increment: " + incrementLengthField.text + "mm", 2000);
-                                        activityModel.insert(0, {
-                                            timestamp: new Date().toLocaleTimeString(Qt.locale(), "hh:mm:ss"),
-                                            activity: "Increment move: " + incrementLengthField.text + "mm"
-                                        });
+                                        if (winchMotionHandler.requestMoveIncrement(
+                                                parseInt(incrementLengthField.text),
+                                                parseInt(incrementSpeedField.text))) {
+                                            notificationPopup.show("Moving increment: " + incrementLengthField.text + "mm", 2000);
+                                            activityModel.insert(0, {
+                                                timestamp: new Date().toLocaleTimeString(Qt.locale(), "hh:mm:ss"),
+                                                activity: "Increment move: " + incrementLengthField.text + "mm"
+                                            });
+                                        } else {
+                                            notificationPopup.show("Increment move rejected", 2000);
+                                        }
                                     }
                                     
                                     background: Rectangle {
@@ -807,16 +816,17 @@ Item {
                                     text: "GO TO POSITION"
                                     enabled: winchController.enabled && absoluteLengthField.text.length > 0 && absoluteSpeedField.text.length > 0 // && absoluteLengthField.acceptableInput && absoluteSpeedField.acceptableInput
                                     onClicked: {
-                                        winchController.moveAbsolute(
-                                            parseInt(absoluteLengthField.text),
-                                            parseInt(absoluteSpeedField.text)
-                                        );
-                                        // Added: Feedback and logging
-                                        notificationPopup.show("Moving to position: " + absoluteLengthField.text + "mm", 2000);
-                                        activityModel.insert(0, {
-                                            timestamp: new Date().toLocaleTimeString(Qt.locale(), "hh:mm:ss"),
-                                            activity: "Absolute move to: " + absoluteLengthField.text + "mm"
-                                        });
+                                        if (winchMotionHandler.requestMoveAbsolute(
+                                                parseInt(absoluteLengthField.text),
+                                                parseInt(absoluteSpeedField.text))) {
+                                            notificationPopup.show("Moving to position: " + absoluteLengthField.text + "mm", 2000);
+                                            activityModel.insert(0, {
+                                                timestamp: new Date().toLocaleTimeString(Qt.locale(), "hh:mm:ss"),
+                                                activity: "Absolute move to: " + absoluteLengthField.text + "mm"
+                                            });
+                                        } else {
+                                            notificationPopup.show("Absolute move rejected", 2000);
+                                        }
                                     }
                                     
                                     background: Rectangle {
@@ -853,13 +863,15 @@ Item {
                                 text: "Retract Full"
                                 enabled: winchController.enabled
                                 onClicked: {
-                                    winchController.move_abosulte(0, 500);
-                                    // Added: Feedback and logging
-                                    notificationPopup.show("Retracting cable fully", 2000);
-                                    activityModel.insert(0, {
-                                        timestamp: new Date().toLocaleTimeString(Qt.locale(), "hh:mm:ss"),
-                                        activity: "Full retraction initiated"
-                                    });
+                                    if (winchMotionHandler.requestRetractFull()) {
+                                        notificationPopup.show("Retracting cable fully", 2000);
+                                        activityModel.insert(0, {
+                                            timestamp: new Date().toLocaleTimeString(Qt.locale(), "hh:mm:ss"),
+                                            activity: "Full retraction initiated"
+                                        });
+                                    } else {
+                                        notificationPopup.show("Full retract rejected", 2000);
+                                    }
                                 }
                                 
                                 background: Rectangle {
@@ -884,13 +896,15 @@ Item {
                                 text: "EMERGENCY STOP"
                                 enabled: winchController.enabled
                                 onClicked: {
-                                    winchController.move_increment(0, 0);
-                                    // Added: Feedback and logging
-                                    notificationPopup.show("EMERGENCY STOP ACTIVATED", 3000);
-                                    activityModel.insert(0, {
-                                        timestamp: new Date().toLocaleTimeString(Qt.locale(), "hh:mm:ss"),
-                                        activity: "Emergency stop activated"
-                                    });
+                                    if (winchMotionHandler.requestEmergencyStop()) {
+                                        notificationPopup.show("EMERGENCY STOP ACTIVATED", 3000);
+                                        activityModel.insert(0, {
+                                            timestamp: new Date().toLocaleTimeString(Qt.locale(), "hh:mm:ss"),
+                                            activity: "Emergency stop activated"
+                                        });
+                                    } else {
+                                        notificationPopup.show("Emergency stop rejected", 3000);
+                                    }
                                 }
                                 
                                 background: Rectangle {
@@ -921,9 +935,11 @@ Item {
                                 text: "Extend 1m"
                                 enabled: winchController.enabled
                                 onClicked: {
-                                    winchController.move_increment(1000, 500);
-                                    // Added: Feedback and logging
-                                    notificationPopup.show("Extending cable by 1m", 2000);
+                                    if (winchMotionHandler.requestExtendOneMeter()) {
+                                        notificationPopup.show("Extending cable by 1m", 2000);
+                                    } else {
+                                        notificationPopup.show("Extend 1m rejected", 2000);
+                                    }
                                     activityModel.insert(0, {
                                         timestamp: new Date().toLocaleTimeString(Qt.locale(), "hh:mm:ss"),
                                         activity: "1m extension initiated"

@@ -101,35 +101,50 @@ Popup {
                 
                 // Zoom slider
                 SettingSlider {
+                    id: zoomSlider
                     title: "Zoom"
                     minValue: 0.1
                     maxValue: 2.0
                     currentValue: baseTopViewController.zoom
                     stepSize: 0.01
                     decimals: 2
-                    onValueChanged: function(value) { baseTopViewController.zoom = value }
+                    onValueChanged: function(value) {
+                        if (!baseTopViewAdminHandler.requestZoom(value)) {
+                            syncFromCurrentValue()
+                        }
+                    }
                 }
                 
                 // Horizontal offset slider
                 SettingSlider {
+                    id: offsetXSlider
                     title: "Horizontal Pan"
                     minValue: -1.0
                     maxValue: 1.0
                     currentValue: baseTopViewController.offsetX
                     stepSize: 0.01
                     decimals: 3
-                    onValueChanged: function(value) { baseTopViewController.offsetX = value }
+                    onValueChanged: function(value) {
+                        if (!baseTopViewAdminHandler.requestOffsetX(value)) {
+                            syncFromCurrentValue()
+                        }
+                    }
                 }
                 
                 // Vertical offset slider
                 SettingSlider {
+                    id: offsetYSlider
                     title: "Vertical Pan"
                     minValue: -1.0
                     maxValue: 1.0
                     currentValue: baseTopViewController.offsetY
                     stepSize: 0.01
                     decimals: 3
-                    onValueChanged: function(value) { baseTopViewController.offsetY = value }
+                    onValueChanged: function(value) {
+                        if (!baseTopViewAdminHandler.requestOffsetY(value)) {
+                            syncFromCurrentValue()
+                        }
+                    }
                 }
                 
                 // Crop enabled toggle
@@ -151,13 +166,18 @@ Popup {
                         Switch {
                             id: cropToggle
                             checked: baseTopViewController.cropEnabled
-                            onCheckedChanged: baseTopViewController.cropEnabled = checked
+                            onToggled: {
+                                if (!baseTopViewAdminHandler.requestCropEnabled(checked)) {
+                                    cropToggle.checked = !checked
+                                }
+                            }
                         }
                     }
                 }
                 
                 // Crop width ratio slider
                 SettingSlider {
+                    id: cropWidthSlider
                     title: "Crop Width"
                     minValue: 0.1
                     maxValue: 1.0
@@ -165,11 +185,16 @@ Popup {
                     stepSize: 0.01
                     decimals: 3
                     enabled: baseTopViewController.cropEnabled
-                    onValueChanged: function(value) { baseTopViewController.cropWidthRatio = value }
+                    onValueChanged: function(value) {
+                        if (!baseTopViewAdminHandler.requestCropWidthRatio(value)) {
+                            syncFromCurrentValue()
+                        }
+                    }
                 }
                 
                 // Crop center X slider
                 SettingSlider {
+                    id: cropCenterSlider
                     title: "Crop Center"
                     minValue: 0.0
                     maxValue: 1.0
@@ -177,51 +202,75 @@ Popup {
                     stepSize: 0.01
                     decimals: 3
                     enabled: baseTopViewController.cropEnabled
-                    onValueChanged: function(value) { baseTopViewController.cropCenterX = value }
+                    onValueChanged: function(value) {
+                        if (!baseTopViewAdminHandler.requestCropCenterX(value)) {
+                            syncFromCurrentValue()
+                        }
+                    }
                 }
                 
                 // Distortion coefficient k1
                 SettingSlider {
+                    id: k1Slider
                     title: "Distortion K1"
                     minValue: -1.0
                     maxValue: 1.0
                     currentValue: baseTopViewController.k1
                     stepSize: 0.01
                     decimals: 3
-                    onValueChanged: function(value) { baseTopViewController.k1 = value }
+                    onValueChanged: function(value) {
+                        if (!baseTopViewAdminHandler.requestK1(value)) {
+                            syncFromCurrentValue()
+                        }
+                    }
                 }
                 
                 // Distortion coefficient k2
                 SettingSlider {
+                    id: k2Slider
                     title: "Distortion K2"
                     minValue: -1.0
                     maxValue: 1.0
                     currentValue: baseTopViewController.k2
                     stepSize: 0.01
                     decimals: 3
-                    onValueChanged: function(value) { baseTopViewController.k2 = value }
+                    onValueChanged: function(value) {
+                        if (!baseTopViewAdminHandler.requestK2(value)) {
+                            syncFromCurrentValue()
+                        }
+                    }
                 }
                 
                 // Distortion coefficient k3
                 SettingSlider {
+                    id: k3Slider
                     title: "Distortion K3"
                     minValue: -2.0
                     maxValue: 2.0
                     currentValue: baseTopViewController.k3
                     stepSize: 0.01
                     decimals: 3
-                    onValueChanged: function(value) { baseTopViewController.k3 = value }
+                    onValueChanged: function(value) {
+                        if (!baseTopViewAdminHandler.requestK3(value)) {
+                            syncFromCurrentValue()
+                        }
+                    }
                 }
                 
                 // Distortion coefficient k4
                 SettingSlider {
+                    id: k4Slider
                     title: "Distortion K4"
                     minValue: -2.0
                     maxValue: 2.0
                     currentValue: baseTopViewController.k4
                     stepSize: 0.01
                     decimals: 3
-                    onValueChanged: function(value) { baseTopViewController.k4 = value }
+                    onValueChanged: function(value) {
+                        if (!baseTopViewAdminHandler.requestK4(value)) {
+                            syncFromCurrentValue()
+                        }
+                    }
                 }
             }
         }
@@ -266,7 +315,7 @@ Popup {
                     
                     onClicked: {
                         if (baseTopViewController) {
-                            var success = baseTopViewController.saveSettings()
+                            var success = baseTopViewAdminHandler.saveSettings()
                             
                             if (success) {
                                 confirmationPopup.messageTitle = "Saved"
@@ -301,7 +350,25 @@ Popup {
                         verticalAlignment: Text.AlignVCenter
                     }
                     
-                    onClicked: baseTopViewController.resetToDefaults()
+                    onClicked: {
+                        if (baseTopViewAdminHandler.resetToDefaults()) {
+                            zoomSlider.syncFromCurrentValue()
+                            offsetXSlider.syncFromCurrentValue()
+                            offsetYSlider.syncFromCurrentValue()
+                            cropToggle.checked = baseTopViewController.cropEnabled
+                            cropWidthSlider.syncFromCurrentValue()
+                            cropCenterSlider.syncFromCurrentValue()
+                            k1Slider.syncFromCurrentValue()
+                            k2Slider.syncFromCurrentValue()
+                            k3Slider.syncFromCurrentValue()
+                            k4Slider.syncFromCurrentValue()
+                        } else {
+                            confirmationPopup.messageTitle = "Blocked"
+                            confirmationPopup.messageText = "Base top view reset rejected"
+                            confirmationPopup.messageType = "error"
+                            confirmationPopup.open()
+                        }
+                    }
                 }
                 
                 Button {
@@ -338,6 +405,10 @@ Popup {
         property int decimals: 2
         property bool enabled: true
         signal valueChanged(real value)
+
+        function syncFromCurrentValue() {
+            valueSlider.value = currentValue
+        }
         
         Layout.fillWidth: true
         spacing: 5
@@ -365,6 +436,7 @@ Popup {
         }
         
         Slider {
+            id: valueSlider
             Layout.fillWidth: true
             Layout.preferredHeight: 30
             from: minValue

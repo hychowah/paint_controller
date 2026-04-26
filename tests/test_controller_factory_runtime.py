@@ -64,9 +64,13 @@ def test_controller_bundle_cleanup_runs_reverse_order_and_logs_errors() -> None:
         safety_coordinator=object(),
         overlay_controller=cleanup_factory("overlay_controller"),
         control_processor=cleanup_factory("control_processor"),
+        admin_action_gate=object(),
         manual_command_handler=object(),
         device_action_handler=object(),
         device_operations_handler=object(),
+        winch_motion_handler=object(),
+        tuning_admin_handler=object(),
+        base_top_view_admin_handler=object(),
         input_handler=cleanup_factory("input_handler"),
         emergency_handler=BrokenCleanup(),
         ssh_controller=cleanup_factory("ssh_controller"),
@@ -137,9 +141,13 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     monkeypatch.setattr(module, "JoystickSelectionModel", record("JoystickSelectionModel"))
     monkeypatch.setattr(module, "OverlayController", record("OverlayController"))
     monkeypatch.setattr(module, "ControlProcessor", record("ControlProcessor"))
+    monkeypatch.setattr(module, "AdminActionGate", record("AdminActionGate"))
     monkeypatch.setattr(module, "ManualCommandHandler", record("ManualCommandHandler"))
     monkeypatch.setattr(module, "DeviceActionHandler", record("DeviceActionHandler"))
     monkeypatch.setattr(module, "DeviceOperationsHandler", record("DeviceOperationsHandler"))
+    monkeypatch.setattr(module, "WinchMotionHandler", record("WinchMotionHandler"))
+    monkeypatch.setattr(module, "TuningAdminHandler", record("TuningAdminHandler"))
+    monkeypatch.setattr(module, "BaseTopViewAdminHandler", record("BaseTopViewAdminHandler"))
     monkeypatch.setattr(module, "WorkflowCatalog", record("WorkflowCatalog"))
     monkeypatch.setattr(module, "WorkflowEditor", record("WorkflowEditor"))
     monkeypatch.setattr(module, "WorkFlowRunner", record("WorkFlowRunner"))
@@ -156,15 +164,18 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     state_store = object()
     steam_deck_handler = object()
     video_stream_handler = object()
+    base_top_view_service = object()
     show_popup = object()
     close_popup = object()
 
     bundle = module.create_controllers(
         node=node,
         settings_manager=settings_manager,
+        capability_catalog=object(),
         state_store=state_store,
         steam_deck_handler=steam_deck_handler,
         video_stream_handler=video_stream_handler,
+        base_top_view_service=base_top_view_service,
         show_popup_fn=show_popup,
         close_popup_fn=close_popup,
     )
@@ -182,12 +193,15 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     assert bundle.workflow_runner.args == (node, "hardware-bundle")
     assert bundle.workflow_runner.kwargs["logger"] is node.get_logger()
     assert bundle.workflow_runner.kwargs["catalog"] is bundle.workflow_catalog
+    assert bundle.admin_action_gate.kwargs["capability_catalog"] is not None
+    assert bundle.admin_action_gate.kwargs["state_store"] is state_store
     assert bundle.manual_command_handler.kwargs["teensy"] is bundle.teensy_controller
     assert bundle.manual_command_handler.kwargs["winch"] is bundle.winch_controller
     assert bundle.manual_command_handler.kwargs["logger"] is node.get_logger()
     assert bundle.device_action_handler.kwargs["teensy"] is bundle.teensy_controller
     assert bundle.device_action_handler.kwargs["winch"] is bundle.winch_controller
     assert bundle.device_action_handler.kwargs["wheel"] is bundle.wheel_controller
+    assert bundle.device_action_handler.kwargs["admin_action_gate"] is bundle.admin_action_gate
     assert bundle.device_action_handler.kwargs["logger"] is node.get_logger()
     assert bundle.device_operations_handler.kwargs["teensy"] is bundle.teensy_controller
     assert bundle.device_operations_handler.kwargs["winch"] is bundle.winch_controller
@@ -195,7 +209,17 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     assert bundle.device_operations_handler.kwargs["screen_recorder"] is bundle.screen_recorder
     assert bundle.device_operations_handler.kwargs["ros_bag_recorder"] is bundle.ros_bag_recorder
     assert bundle.device_operations_handler.kwargs["heartbeat_handler"] is bundle.heartbeat_handler
+    assert bundle.device_operations_handler.kwargs["admin_action_gate"] is bundle.admin_action_gate
     assert bundle.device_operations_handler.kwargs["logger"] is node.get_logger()
+    assert bundle.winch_motion_handler.kwargs["winch"] is bundle.winch_controller
+    assert bundle.winch_motion_handler.kwargs["admin_action_gate"] is bundle.admin_action_gate
+    assert bundle.winch_motion_handler.kwargs["logger"] is node.get_logger()
+    assert bundle.tuning_admin_handler.kwargs["teensy"] is bundle.teensy_controller
+    assert bundle.tuning_admin_handler.kwargs["admin_action_gate"] is bundle.admin_action_gate
+    assert bundle.tuning_admin_handler.kwargs["logger"] is node.get_logger()
+    assert bundle.base_top_view_admin_handler.kwargs["base_top_view_service"] is base_top_view_service
+    assert bundle.base_top_view_admin_handler.kwargs["admin_action_gate"] is bundle.admin_action_gate
+    assert bundle.base_top_view_admin_handler.kwargs["logger"] is node.get_logger()
     assert bundle.input_handler.kwargs["selection_model"] is bundle.overlay_controller.kwargs["selection_model"]
     assert bundle.input_handler.kwargs["close_popup_fn"] is close_popup
     assert bundle.emergency_handler.kwargs["safety_coordinator"] is bundle.safety_coordinator
@@ -378,9 +402,13 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
             "lidar_controller": object(),
             "heartbeat_handler": object(),
             "control_processor": _ControlProcessorRecorder(),
+            "admin_action_gate": object(),
             "manual_command_handler": object(),
             "device_action_handler": object(),
             "device_operations_handler": object(),
+            "winch_motion_handler": object(),
+            "tuning_admin_handler": object(),
+            "base_top_view_admin_handler": object(),
             "ssh_controller": object(),
             "system_monitor": object(),
             "screen_manager": object(),
@@ -410,12 +438,55 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert create_calls[0]["show_popup_fn"] == runtime.qt_bridge.show_popup
     assert create_calls[0]["close_popup_fn"] == runtime.qt_bridge.close_popup
     assert create_calls[0]["video_stream_handler"] is runtime.video_stream_handler
+    assert create_calls[0]["base_top_view_service"] is runtime.base_top_view_service
+    assert create_calls[0]["capability_catalog"] is runtime.capability_catalog
     assert runtime.qt_bridge.base_top_view_service is runtime.base_top_view_service
     assert runtime.qt_bridge.input_handler is runtime.bundle.input_handler
     assert set(runtime.engine.context.properties) == set(module._EXPECTED_CONTEXT_PROPERTY_NAMES)
     assert [button for button, _ in runtime.steam_deck_handler.callbacks] == [
         "up", "down", "left", "right", "r4", "l4", "menu", "switch", "l5", "r5", "dot", "a", "l1"
     ]
+
+
+def test_admin_action_gate_evaluates_idle_default_and_live_exceptions() -> None:
+    gate_module = importlib.import_module("paint_controller.models.admin_action_gate")
+
+    class FakeCapabilityCatalog:
+        def getActionCapability(self, key: str):
+            mapping = {
+                "tuning.short_yaw_pid": {
+                    "title": "Short Yaw PID",
+                    "legalStateClass": "tuning-calibration",
+                },
+                "status.winch_enable": {
+                    "title": "Winch Enable Toggle",
+                    "legalStateClass": "status-admin",
+                },
+            }
+            return mapping.get(key, {})
+
+    state_store = type("StateStore", (), {"controller_heartbeat_state": 1})()
+    gate = gate_module.AdminActionGate(
+        capability_catalog=FakeCapabilityCatalog(),
+        state_store=state_store,
+    )
+
+    tuning_eval = gate.evaluate("tuning.short_yaw_pid")
+    status_eval = gate.evaluate("status.winch_enable")
+
+    assert tuning_eval["allowed"] is False
+    assert tuning_eval["reason"] == "Short Yaw PID requires the system to be idle"
+    assert status_eval["allowed"] is True
+
+
+def test_admin_action_gate_allows_emergency_override_in_error_state() -> None:
+    gate_module = importlib.import_module("paint_controller.models.admin_action_gate")
+    state_store = type("StateStore", (), {"controller_heartbeat_state": 3})()
+    gate = gate_module.AdminActionGate(capability_catalog=None, state_store=state_store)
+
+    evaluation = gate.evaluate("winch.emergency_stop")
+
+    assert evaluation["allowed"] is True
 
 
 def test_app_runtime_shutdown_cleans_resources_in_order(monkeypatch) -> None:

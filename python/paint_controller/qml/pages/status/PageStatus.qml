@@ -66,7 +66,11 @@ Rectangle {
                         TouchSwitch {
                                 id: winchEnableSwitch
                                 checked: winchController.enabled
-                                onToggled: winchController.setEnabled(checked)
+                                onToggled: {
+                                    if (!deviceActionHandler.requestWinchEnabled(checked)) {
+                                        winchEnableSwitch.checked = !checked
+                                    }
+                                }
                         }
                     }
 

@@ -17,6 +17,7 @@ class DeviceActionHandler(QObject):
         teensy: Any,
         winch: Any,
         wheel: Any,
+        admin_action_gate: Any,
         logger: Any,
         parent: QObject | None = None,
     ) -> None:
@@ -24,47 +25,69 @@ class DeviceActionHandler(QObject):
         self._teensy = teensy
         self._winch = winch
         self._wheel = wheel
+        self._admin_action_gate = admin_action_gate
         self._logger = logger
 
     @Slot(bool, result=bool)
     def toggleTeensyRelay(self, current_enabled: bool) -> bool:
-        return self._run_toggle(
-            name="Teensy relay",
-            controller=self._teensy,
-            method_name="setRelayEnabled",
-            next_enabled=not current_enabled,
-        )
+        return self.requestTeensyRelayEnabled(not current_enabled)
 
     @Slot(bool, result=bool)
     def toggleTeensyEnable(self, current_enabled: bool) -> bool:
-        return self._run_toggle(
-            name="Teensy enable",
-            controller=self._teensy,
-            method_name="setEnabled",
-            next_enabled=not current_enabled,
-        )
+        return self.requestTeensyEnabled(not current_enabled)
 
     @Slot(bool, result=bool)
     def toggleWinchEnable(self, current_enabled: bool) -> bool:
-        return self._run_toggle(
+        return self.requestWinchEnabled(not current_enabled)
+
+    @Slot(bool, result=bool)
+    def requestTeensyRelayEnabled(self, enabled: bool) -> bool:
+        return self._run_action(
+            action_key="status.teensy_relay",
+            name="Teensy relay",
+            controller=self._teensy,
+            method_name="setRelayEnabled",
+            args=(enabled,),
+        )
+
+    @Slot(bool, result=bool)
+    def requestTeensyEnabled(self, enabled: bool) -> bool:
+        return self._run_action(
+            action_key="status.teensy_enable",
+            name="Teensy enable",
+            controller=self._teensy,
+            method_name="setEnabled",
+            args=(enabled,),
+        )
+
+    @Slot(bool, result=bool)
+    def requestWinchEnabled(self, enabled: bool) -> bool:
+        return self._run_action(
+            action_key="status.winch_enable",
             name="Winch enable",
             controller=self._winch,
             method_name="setEnabled",
-            next_enabled=not current_enabled,
+            args=(enabled,),
+        )
+
+    @Slot(bool, result=bool)
+    def requestWheelEnabled(self, enabled: bool) -> bool:
+        return self._run_action(
+            action_key="wheel.enable",
+            name="Wheel enable",
+            controller=self._wheel,
+            method_name="setEnabled",
+            args=(enabled,),
         )
 
     @Slot(bool, result=bool)
     def toggleWheelEnable(self, current_enabled: bool) -> bool:
-        return self._run_toggle(
-            name="Wheel enable",
-            controller=self._wheel,
-            method_name="setEnabled",
-            next_enabled=not current_enabled,
-        )
+        return self.requestWheelEnabled(not current_enabled)
 
     @Slot(result=bool)
     def resetWheelPosition(self) -> bool:
         return self._run_action(
+            action_key="wheel.reset_position",
             name="Reset wheel position",
             controller=self._wheel,
             method_name="resetWheelPosition",
@@ -106,11 +129,17 @@ class DeviceActionHandler(QObject):
     def _run_action(
         self,
         *,
+        action_key: str | None = None,
         name: str,
         controller: Any,
         method_name: str,
         args: tuple[Any, ...] = (),
     ) -> bool:
+        if action_key is not None:
+            allowed, reason = self._admin_action_gate.check_action(action_key)
+            if not allowed:
+                return self._fail(reason)
+
         if controller is None:
             return self._fail(f"{name} is unavailable")
 

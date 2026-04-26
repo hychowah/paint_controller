@@ -37,6 +37,8 @@ ApplicationWindow {
     screen: Qt.application.screens[mainScreenIndex] || Qt.application.screens[0]
 
     property int sidebarWidth: CommonStyle.shellSidebarExpandedWidth
+    property int selectedPageIndex: 0
+    property string selectedPageKey: "home"
     
     // Expose the video fullscreen overlay as a property
     property alias videoFullscreenOverlay: videoFullscreenOverlay
@@ -124,9 +126,12 @@ ApplicationWindow {
                 
                 SelectBar {
                     id: selectBar
-                    stackView: stackView
                     pageRegistry: mainWindow.pageRegistry
+                    selectedPageKey: mainWindow.selectedPageKey
                     height: parent.height
+                    onNavigateRequested: function(pageIndex) {
+                        mainWindow.navigateToPage(pageIndex)
+                    }
                     // Connect to the signal
                     onExpandedStateChanged: {
                         sidebarWidth = newWidth
@@ -243,14 +248,42 @@ ApplicationWindow {
     }
 
     readonly property var pageRegistry: [
-        { pageIndex: 0, buttonKey: "home", component: homeComponent },
-        { pageIndex: 1, buttonKey: "base", component: wheelPageComponent },
-        { pageIndex: 2, buttonKey: "winch", component: winchPageComponent },
-        { pageIndex: 3, buttonKey: "monitor", component: statusPageComponent },
-        { pageIndex: 4, buttonKey: "tuning", component: tuningPageComponent },
-        { pageIndex: 5, buttonKey: "launcher", component: launcherPageComponent },
-        { pageIndex: 8, buttonKey: "settings", component: settingsPageComponent }
+        { pageIndex: 0, buttonKey: "home", buttonText: "Home", iconSource: "../../resource/homepage.svg", iconScale: 0.7, component: homeComponent },
+        { pageIndex: 1, buttonKey: "base", buttonText: "Base", iconSource: "../../resource/base.png", iconScale: 0.7, component: wheelPageComponent },
+        { pageIndex: 2, buttonKey: "winch", buttonText: "Winch", iconSource: "../../resource/winch.png", iconScale: 0.6, component: winchPageComponent },
+        { pageIndex: 3, buttonKey: "monitor", buttonText: "Monitor", iconSource: "../../resource/monitor.svg", iconScale: 0.6, component: statusPageComponent },
+        { pageIndex: 4, buttonKey: "tuning", buttonText: "Tuning", iconSource: "../../resource/icon-pid.png", iconScale: 0.6, component: tuningPageComponent },
+        { pageIndex: 5, buttonKey: "launcher", buttonText: "Launcher", iconSource: "../../resource/launcher.svg", iconScale: 0.7, component: launcherPageComponent },
+        { pageIndex: 8, buttonKey: "settings", buttonText: "Settings", iconSource: "../../resource/setting.svg", iconScale: 0.6, component: settingsPageComponent }
     ]
+
+    function getPageConfig(pageIndex) {
+        for (var i = 0; i < pageRegistry.length; i++) {
+            if (pageRegistry[i].pageIndex === pageIndex) {
+                return pageRegistry[i]
+            }
+        }
+        return null
+    }
+
+    function navigateToPage(pageIndex) {
+        var targetPage = getPageConfig(pageIndex)
+        if (!targetPage || !targetPage.component) {
+            console.warn("MainWindow: unknown page index", pageIndex)
+            return
+        }
+
+        selectedPageIndex = pageIndex
+        selectedPageKey = targetPage.buttonKey
+
+        if (pageIndex === stackView.currentIndex) {
+            return
+        }
+
+        stackView.targetIndex = pageIndex
+        stackView.replace(stackView.currentItem, targetPage.component)
+        stackView.currentIndex = pageIndex
+    }
 
     SystemControlWorkspace {
         anchors.fill: parent
