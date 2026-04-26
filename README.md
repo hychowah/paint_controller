@@ -7,12 +7,12 @@ ROS 2 + PySide6/QML control application for the paint robot.
 - This repository is currently in a **refactor-first** phase. The intent is to improve architecture, safety, shutdown/threading behavior, tests, and typing gates before resuming net-new feature development.
 - `TD-001` Stage 1 is complete: verified-dead QML was removed, false shared-component folders were flattened, constructor-driven QML surfaces were hardened with `required` / `readonly`, offscreen startup/import smoke coverage was expanded, and warn-only `qmllint` CI is in place.
 - `TD-031` is complete: the shell now uses an explicit page registry, `systemcontrol` and fullscreen video have dedicated feature roots under `qml/features/`, and canonical theme ownership lives under `qml/theme/CommonStyle.qml` with compatibility shims left at the old paths.
-- The current architecture roadmap is in `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`. Stage 1A through Stage 1E, Stage 2, Stage 3A, Stage 3B1, Stage 4, and Stage 4.5 are complete: command/device/workflow boundaries are frozen, shell and route ownership are explicit, the Settings route is truthful where schema-backed settings exist, and the remaining tracked direct-admin QML mutators are behind Python-owned boundaries.
+- The current architecture roadmap is in `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`. Stage 1A through Stage 1E, Stage 2, Stage 3A, Stage 3B1, Stage 4, Stage 4.5, and Workstream A are complete: command/device/workflow boundaries are frozen, shell and route ownership are explicit, the Settings route is truthful where schema-backed settings exist, the remaining tracked direct-admin QML mutators are behind Python-owned boundaries, and the workflow runtime/editor contract is stabilized behind Python-owned read/write seams.
 - Current slice status is tracked in `docs/plan/00_ARCHITECTURE_PROGRESS.md`.
-- The next recommended implementation path is Stage 6A current workflow public-model stabilization.
+- The next recommended implementation path is Workstream B1 overlay host and layer matrix.
 - Python runtime is the only live application path in this repository; the old C++ UI path has been removed from the tree.
 - Runtime objects are exposed to QML through `setContextProperty()`. Do not use `qmlRegisterSingletonInstance()` in this repo.
-- Latest verified local validation on 2026-04-26 is green at `224 passed` via `python/paint_controller/venv/bin/python -m pytest tests -q`.
+- Latest verified local validation on 2026-04-26 is green at `233 passed` via `python/paint_controller/venv/bin/python -m pytest tests -q`.
 - Active architecture planning status is tracked in `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`.
 - For authority and session-start order: use `INDEX.md` first, prefer `DEVNOTES.md` for the latest verified runtime state, and use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for the active roadmap.
 

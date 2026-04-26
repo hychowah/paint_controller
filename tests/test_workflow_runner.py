@@ -34,7 +34,28 @@ class FakeExecutor:
 
     def load_workflow(self, workflow_path: str) -> bool:
         self.loaded_paths.append(workflow_path)
-        self.current_workflow = {"actions": [{"name": "Action", "type": "winch_absolute", "params": {}}]}
+        self.current_workflow = {
+            "name": "demo",
+            "actions": [
+                {
+                    "id": "move",
+                    "name": "Move Winch",
+                    "type": "winch_absolute",
+                    "params": {"length": 420, "speed": 35},
+                },
+                {
+                    "id": "spray",
+                    "name": "Open Valve",
+                    "type": "valve_turn",
+                    "params": {"turn_value": 25.0},
+                    "trigger": {
+                        "reference_action": "move",
+                        "timing_mode": "before_complete",
+                        "offset_ms": 250,
+                    },
+                },
+            ],
+        }
         return True
 
     def play(self) -> bool:
@@ -171,6 +192,63 @@ def test_workflow_runner_controls_execution_and_emergency_shutdown(qt_app, monke
         assert winch_calls == [(0, 1)]
         assert valve_calls == [0.0]
         assert errors == []
+    finally:
+        runner.cleanup()
+        catalog.cleanup()
+
+
+def test_workflow_runner_exposes_cached_action_read_model(qt_app, monkeypatch, tmp_path) -> None:
+    (tmp_path / "demo.yaml").write_text("name: demo\nactions: []\n", encoding="utf-8")
+    runner, catalog = _make_runner(monkeypatch, tmp_path)
+
+    try:
+        assert runner.load_workflow("demo") is True
+        assert runner.workflow_action_count == 2
+        assert runner.workflow_actions[0]["display_name"] == "1. Move Winch"
+        assert "Move to 420mm at 35mm/s" in runner.workflow_actions[0]["description"]
+
+        runner.executor.current_action_index = 1
+        runner._update_execution_state()
+
+        assert runner.current_action_name == "Open Valve"
+        assert runner.current_action_display == "2. Open Valve"
+        assert runner.current_action_description == "Open valve to 25.0 (250ms before 'move' completes)"
+        assert runner.workflow_progress_text == "2 / 2"
+        assert runner.get_current_workflow_actions() == runner.workflow_actions
+    finally:
+        runner.cleanup()
+        catalog.cleanup()
+
+
+def test_workflow_runner_runtime_document_collision_rules(qt_app, monkeypatch, tmp_path) -> None:
+    (tmp_path / "demo.yaml").write_text("name: demo\nactions: []\n", encoding="utf-8")
+    runner, catalog = _make_runner(monkeypatch, tmp_path)
+
+    try:
+        assert runner.load_workflow("demo") is True
+
+        allowed, error_msg = runner.can_save_workflow_document("demo")
+        assert allowed is True
+        assert error_msg is None
+
+        runner.mark_workflow_document_saved("demo")
+        assert runner.loaded_workflow_needs_reload is True
+
+        runner.executor.current_state = ExecutionState.RUNNING
+        allowed, error_msg = runner.can_save_workflow_document("demo")
+        assert allowed is False
+        assert error_msg == (
+            "Cannot save workflow 'demo' while it is running or paused; stop it or load a different workflow first"
+        )
+
+        delete_allowed, delete_error = runner.can_delete_workflow_document("demo")
+        assert delete_allowed is False
+        assert delete_error == "Cannot delete workflow 'demo' while it is loaded; load a different workflow first"
+
+        assert runner.load_workflow("demo") is False
+        runner.executor.current_state = ExecutionState.IDLE
+        assert runner.load_workflow("demo") is True
+        assert runner.loaded_workflow_needs_reload is False
     finally:
         runner.cleanup()
         catalog.cleanup()

@@ -320,8 +320,8 @@ class WorkFlowExecutor:
                     time.sleep(min(wait_time, 0.1))
                     continue
 
-                # Execute action
-                self.current_action_index = action_index
+                # Publish the original workflow-order index, not the sorted schedule index.
+                self.current_action_index = scheduled.action_index
                 self._execute_action(scheduled)
             
                 # Track must-complete actions
@@ -494,6 +494,7 @@ class WorkFlowExecutor:
         
         # Execute triggered actions
         for trigger in triggers_to_fire:
+            self.current_action_index = trigger.action_index
             self._execute_action(trigger)
             self._fired_position_triggers.add(trigger.action_id)
             del self._active_position_triggers[trigger.action_id]
@@ -528,6 +529,7 @@ class WorkFlowExecutor:
                 )
             
             # Execute the action anyway
+            self.current_action_index = trigger.action_index
             self._execute_action(trigger)
             self._fired_position_triggers.add(trigger.action_id)
             del self._active_position_triggers[trigger.action_id]

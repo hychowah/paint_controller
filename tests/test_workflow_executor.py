@@ -142,3 +142,68 @@ def test_workflow_executor_completion_and_error_callbacks_reset_public_state() -
     assert executor.current_state == module.ExecutionState.ERROR
     assert executor.current_action_index == -1
     assert logger.errors[-1] == "WorkFlow execution error: boom"
+
+
+def test_workflow_executor_publishes_original_workflow_action_index(monkeypatch) -> None:
+    module = _executor_module()
+    logger = _FakeLogger()
+    executor = module.WorkFlowExecutor(_FakeNode(logger), hardware=object(), logger=logger)
+    published_indices: list[int] = []
+
+    scheduled_actions = [
+        ScheduledAction(
+            action_index=2,
+            action_id="late_in_yaml_first_in_schedule",
+            action_config={"type": "valve_turn", "params": {"turn_value": 25.0}},
+            scheduled_time=0.0,
+            estimated_duration=0.0,
+        ),
+        ScheduledAction(
+            action_index=0,
+            action_id="first_in_yaml_second_in_schedule",
+            action_config={"type": "winch_increment", "params": {"length": 50}},
+            scheduled_time=0.0,
+            estimated_duration=0.0,
+        ),
+    ]
+
+    monkeypatch.setattr(module.time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(executor, "_execute_action", lambda scheduled: published_indices.append(executor.current_action_index))
+    monkeypatch.setattr(executor, "_wait_with_pause", lambda *args, **kwargs: None)
+    monkeypatch.setattr(executor, "_wait_for_must_complete_actions", lambda *args, **kwargs: None)
+
+    executor._execute_scheduled_actions(scheduled_actions)
+
+    assert published_indices == [2, 0]
+    assert executor.current_action_index == -1
+
+
+def test_workflow_executor_publishes_original_index_for_position_trigger(monkeypatch) -> None:
+    module = _executor_module()
+    logger = _FakeLogger()
+
+    class _FakeWinch:
+        def get_cable_length(self) -> float:
+            return 150.0
+
+    hardware = type("Hardware", (), {"winch": _FakeWinch()})()
+    executor = module.WorkFlowExecutor(_FakeNode(logger), hardware=hardware, logger=logger)
+    published_indices: list[int] = []
+    trigger = ScheduledAction(
+        action_index=4,
+        action_id="triggered_action",
+        action_config={"type": "valve_turn", "params": {"turn_value": 25.0}},
+        scheduled_time=-1.0,
+        estimated_duration=0.0,
+        position_trigger_mm=100.0,
+        position_reference_action="move",
+        is_position_triggered=True,
+    )
+
+    executor._active_position_triggers = {"triggered_action": (trigger, 50.0)}
+    monkeypatch.setattr(executor, "_execute_action", lambda scheduled: published_indices.append(executor.current_action_index))
+
+    executor._check_position_triggers()
+
+    assert published_indices == [4]
+    assert "triggered_action" not in executor._active_position_triggers

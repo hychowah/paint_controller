@@ -196,14 +196,7 @@ Rectangle {
 
                             // Action items (loaded from YAML)
                             Repeater {
-                                model: {
-                                    // Dynamically load actions from current workflow
-                                    if (!workFlowRunner || !workFlowRunner.current_workflow) {
-                                        return []
-                                    }
-                                    
-                                    return workFlowRunner.get_current_workflow_actions()
-                                }
+                                model: workFlowRunner ? workFlowRunner.workflow_actions : []
 
                                 delegate: Rectangle {
                                     Layout.fillWidth: true
@@ -268,7 +261,7 @@ Rectangle {
                                         }
 
                                         Text {
-                                            text: modelData.desc
+                                            text: modelData.description
                                             color: "#888888"
                                             font.family: "Helvetica"
                                             font.pixelSize: 10

@@ -82,11 +82,12 @@ class WorkflowCatalog(QObject):
     def refresh_workflow_list(self) -> None:
         """Refresh list of available workflows from disk."""
         try:
-            new_list = [
+            workflow_names = {
                 Path(filename).stem
                 for filename in os.listdir(self._workflows_dir)
                 if filename.endswith(".yaml") or filename.endswith(".yml")
-            ]
+            }
+            new_list = sorted(workflow_names, key=str.casefold)
 
             if new_list != self._workflow_list:
                 self._workflow_list = new_list

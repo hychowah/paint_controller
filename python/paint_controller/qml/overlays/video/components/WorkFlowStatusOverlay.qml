@@ -10,17 +10,6 @@ Item {
     // Only visible when workflow is running
     visible: workFlowRunner && workFlowRunner.execution_state === 1
     
-    // Timer to update runtime display
-    Timer {
-        running: root.visible
-        interval: 1000  // Update every second
-        repeat: true
-        onTriggered: {
-            // Force property re-evaluation
-            runtimeText.text = formatRuntime(workFlowRunner ? workFlowRunner.workflow_runtime : 0)
-        }
-    }
-    
     // Runtime formatter function
     function formatRuntime(seconds) {
         var hrs = Math.floor(seconds / 3600)
@@ -210,18 +199,7 @@ Item {
                 Text {
                     id: currentActionText
                     Layout.alignment: Qt.AlignLeft
-                    text: {
-                        if (!workFlowRunner) return ""
-                        
-                        var actions = workFlowRunner.get_current_workflow_actions()
-                        var currentIndex = workFlowRunner.current_action_index
-                        
-                        if (currentIndex >= 0 && currentIndex < actions.length) {
-                            var action = actions[currentIndex]
-                            return (currentIndex + 1) + ". " + action.name
-                        }
-                        return ""
-                    }
+                    text: workFlowRunner ? workFlowRunner.current_action_display : ""
                     color: CommonStyle.videoAction
                     font.family: CommonStyle.fontSans
                     font.pixelSize: CommonStyle.fontCaption + 1
@@ -231,17 +209,7 @@ Item {
                 // Action description
                 Text {
                     Layout.alignment: Qt.AlignLeft
-                    text: {
-                        if (!workFlowRunner) return ""
-                        
-                        var actions = workFlowRunner.get_current_workflow_actions()
-                        var currentIndex = workFlowRunner.current_action_index
-                        
-                        if (currentIndex >= 0 && currentIndex < actions.length) {
-                            return actions[currentIndex].desc
-                        }
-                        return ""
-                    }
+                    text: workFlowRunner ? workFlowRunner.current_action_description : ""
                     color: CommonStyle.textSecondary
                     font.family: CommonStyle.fontSans
                     font.pixelSize: CommonStyle.fontLabel
@@ -264,15 +232,7 @@ Item {
                 }
                 
                 Text {
-                    text: {
-                        if (!workFlowRunner) return ""
-                        
-                        var actions = workFlowRunner.get_current_workflow_actions()
-                        var current = workFlowRunner.current_action_index + 1
-                        var total = actions.length
-                        
-                        return current + " / " + total
-                    }
+                    text: workFlowRunner ? workFlowRunner.workflow_progress_text : ""
                     color: "#FFFFFF"
                     font.family: "Helvetica"
                     font.pixelSize: 12

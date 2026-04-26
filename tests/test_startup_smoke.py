@@ -165,6 +165,101 @@ class FakeWorkflowEditor(QObject):
         return True
 
 
+class FakeWorkFlowRunner(QObject):
+    workflow_list_changed = Signal()
+    execution_state_changed = Signal(int)
+    current_workflow_changed = Signal(str)
+    current_action_index_changed = Signal(int)
+    current_action_details_changed = Signal()
+    workflow_actions_changed = Signal()
+    loop_iteration_changed = Signal(int)
+    loop_enabled_changed = Signal(bool)
+    workflow_runtime_changed = Signal(int)
+    loaded_workflow_reload_state_changed = Signal(bool)
+    error_occurred = Signal(str)
+
+    def __init__(self, execution_state: int = 0) -> None:
+        super().__init__()
+        self._workflow_list = ["demo"]
+        self._current_workflow = "demo"
+        self._execution_state = execution_state
+        self._current_action_index = 0
+        self._workflow_actions = [
+            {
+                "action_id": "move",
+                "index": 0,
+                "number": 1,
+                "name": "Move Winch",
+                "display_name": "1. Move Winch",
+                "type": "winch_absolute",
+                "description": "Move to 420mm at 35mm/s",
+            },
+            {
+                "action_id": "spray",
+                "index": 1,
+                "number": 2,
+                "name": "Open Valve",
+                "display_name": "2. Open Valve",
+                "type": "valve_turn",
+                "description": "Open valve to 25.0",
+            },
+        ]
+
+    @Property(list, notify=workflow_list_changed)
+    def workflow_list(self):
+        return self._workflow_list
+
+    @Property(str, notify=current_workflow_changed)
+    def current_workflow(self):
+        return self._current_workflow
+
+    @Property(int, notify=execution_state_changed)
+    def execution_state(self):
+        return self._execution_state
+
+    @Property(int, notify=current_action_index_changed)
+    def current_action_index(self):
+        return self._current_action_index
+
+    @Property(list, notify=workflow_actions_changed)
+    def workflow_actions(self):
+        return self._workflow_actions
+
+    @Property(bool, notify=loop_enabled_changed)
+    def is_loop_enabled(self):
+        return True
+
+    @Property(int, notify=loop_iteration_changed)
+    def loop_iteration(self):
+        return 2
+
+    @Property(int, notify=workflow_runtime_changed)
+    def workflow_runtime(self):
+        return 12
+
+    @Property(str, notify=current_action_details_changed)
+    def current_action_display(self):
+        return self._workflow_actions[self._current_action_index]["display_name"]
+
+    @Property(str, notify=current_action_details_changed)
+    def current_action_description(self):
+        return self._workflow_actions[self._current_action_index]["description"]
+
+    @Property(str, notify=current_action_details_changed)
+    def workflow_progress_text(self):
+        return "1 / 2"
+
+    @Slot(str, result=bool)
+    def load_workflow(self, workflow_name: str) -> bool:
+        self._current_workflow = workflow_name
+        self.current_workflow_changed.emit(workflow_name)
+        return True
+
+    @Slot(result=list)
+    def get_current_workflow_actions(self):
+        return self._workflow_actions
+
+
 class BlankImageProvider(QQuickImageProvider):
     def __init__(self) -> None:
         super().__init__(QQuickImageProvider.Image)
@@ -244,7 +339,7 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             active_menu="",
             control_options=[],
         ),
-        "workFlowRunner": DynamicObject(is_running=False),
+        "workFlowRunner": FakeWorkFlowRunner(),
         "warningHandler": DynamicObject(active_warning=""),
         "baseStreamHandler": FakeStreamHandler(),
         "wheelController": DynamicObject(
@@ -615,6 +710,101 @@ Item {{
             "required property",
         )
         assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
+def test_workflow_tab_loads_with_runner_read_model(monkeypatch, tmp_path, qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    systemcontrol_import_url = _qml_import_url(qml_dir / "overlays" / "systemcontrol")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{systemcontrol_import_url}"
+
+Item {{
+    width: 1280
+    height: 800
+
+    WorkFlowTab {{
+        anchors.fill: parent
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:WorkFlowTabHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+        qt_app.processEvents()
+        assert not any("failed to load component" in warning.lower() for warning in warnings), warnings
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
+def test_workflow_status_overlay_loads_with_runner_read_model(monkeypatch, tmp_path, qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    overlay_import_url = _qml_import_url(qml_dir / "overlays" / "video" / "components")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    context_objects["workFlowRunner"] = FakeWorkFlowRunner(execution_state=1)
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{overlay_import_url}"
+
+Item {{
+    width: 1280
+    height: 800
+
+    WorkFlowStatusOverlay {{
+        anchors.fill: parent
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:WorkFlowStatusOverlayHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+        qt_app.processEvents()
+        assert not any("failed to load component" in warning.lower() for warning in warnings), warnings
     finally:
         if root is not None:
             root.deleteLater()

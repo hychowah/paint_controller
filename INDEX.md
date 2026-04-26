@@ -7,10 +7,10 @@ ROS2 node with PySide6/QML UI for robotic paint control on a Steam Deck. The liv
 - This branch is **refactor-first**. Runtime/workflow/service validation hardening is complete, and **`TD-001` Stage 1 is complete**: verified-dead QML was removed, false shared-component folders were flattened, constructor-driven QML surfaces were hardened with `required` / `readonly`, startup/import smoke coverage was expanded, and warn-only `qmllint` CI is now in place.
 - **`TD-031` is complete**: the page registry is explicit, `systemcontrol` and fullscreen video now have dedicated feature roots, and canonical theme ownership lives under `qml/theme/CommonStyle.qml`. Focused smoke coverage was expanded to the new feature roots; compatibility wrappers remain intentionally to keep import churn out of the blocking stage.
 - The QML cleanup is intentionally split into **two stages**. Stage 1 was the safe flatten + hardening batch; Stage 2 is the narrowed `TD-031` structural pass. URI-module migration, broad lidar/pointcloud restructuring, and any optional root-file rename are explicitly out of scope for this stage.
-- The current architecture direction is tracked in **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** and the current slice status is tracked in **`docs/plan/00_ARCHITECTURE_PROGRESS.md`**. **Stage 1A through Stage 1E, Stage 2, Stage 3A, Stage 3B1, Stage 4, and Stage 4.5 are complete**: the live `OverlayController` / `ControlProcessor` cycle is gone, joystick selection ownership lives in `JoystickSelectionModel`, shell policy now lives in a narrow `ShellState`, route ownership is now canonical in `MainWindow.qml`, the Settings route is now truthful where schema-backed settings exist, the remaining tracked direct-admin QML mutators are behind Python-owned boundaries, and the next recommended implementation path is **Stage 6A current workflow public-model stabilization**.
+- The current architecture direction is tracked in **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** and the current checkpoint status is tracked in **`docs/plan/00_ARCHITECTURE_PROGRESS.md`**. **Stage 1A through Stage 1E, Stage 2, Stage 3A, Stage 3B1, Stage 4, Stage 4.5, and Workstream A are complete**: the live `OverlayController` / `ControlProcessor` cycle is gone, joystick selection ownership lives in `JoystickSelectionModel`, shell policy now lives in a narrow `ShellState`, route ownership is now canonical in `MainWindow.qml`, the Settings route is now truthful where schema-backed settings exist, the remaining tracked direct-admin QML mutators are behind Python-owned boundaries, and the workflow runtime/editor contract is now stabilized behind Python-owned read/write boundaries. The unfinished tail now executes as workstreams with one explicit north star: each operator-visible behavior should have one canonical Python owner and one declarative QML consumer. The next recommended implementation path is **Workstream B1 overlay host and layer matrix**.
 - **Net-new feature work is intentionally deferred** until medium/high-priority debt is closed and the validation gates stay green (pytest, pyright for covered scope, ROS build, and offscreen startup/shutdown smoke).
 - Low-priority design-system backlog may remain backlog. By default it is **not** the feature-blocking path unless the user explicitly reprioritizes.
-- Latest verified local validation on 2026-04-26 is green at `224 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q`. Focused Stage 4.5 completion slices are green for `tests/test_device_actions.py`, `tests/test_device_operations.py`, `tests/test_winch_motion_handler.py`, `tests/test_tuning_admin_handler.py`, `tests/test_base_top_view_admin_handler.py`, `tests/test_controller_factory_runtime.py`, `tests/test_capability_catalog.py`, `tests/test_startup_smoke.py`, and `tests/test_qml_imports.py`.
+- Latest verified local validation on 2026-04-26 is green at `233 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q`. Focused Workstream A validation is green for `tests/test_workflow_runner.py`, `tests/test_workflow_editor.py`, `tests/test_workflow_executor.py`, `tests/test_workflow_scheduler.py`, `tests/test_controller_factory_runtime.py`, `tests/test_startup_smoke.py`, and `tests/test_qml_imports.py`.
 
 ---
 
@@ -23,7 +23,7 @@ Read in this order at the start of any session:
 3. **`KNOWLEDGE.md`** — gotchas, patterns, anti-patterns. Check before debugging.
 4. **`DEVNOTES.md`** — last 90 days of session notes and validation results
 5. **`docs/plan/00_ARCHITECTURE_PROGRESS.md`** — current roadmap status, completed slices, next recommended slice
-6. **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** — active architecture roadmap and stage order
+6. **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** — active architecture roadmap and workstream rules
 7. **`docs/tech-debt.md`** — known debt items with priority and effort (check before starting new work)
 
 ---
@@ -35,7 +35,7 @@ When two files disagree, prefer the file higher in this list:
 | Priority | File | What it governs |
 |---|---|---|
 | 1 | `DEVNOTES.md` | Most recent verified runtime state |
-| 2 | `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` | Active architecture roadmap and stage order |
+| 2 | `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` | Active architecture roadmap and workstream rules |
 | 3 | `docs/tech-debt.md` | Known debt items, priorities, effort |
 | 4 | `KNOWLEDGE.md` | Reusable patterns and gotchas |
 | 5 | `README.md` | Operator/developer entry point |
@@ -125,5 +125,5 @@ Older notes may still mention `REFACTOR_TRACKER.md`; that historical tracker is 
 
 - **VS Code interpreter**: use `python/paint_controller/venv/bin/python` for editor tooling and tests
 - **`QT_QPA_PLATFORM`**: force-assigned `"offscreen"` in `tests/conftest.py` — overrides any shell-level `xcb`
-- **Test suite**: latest verified local full-suite status is `224 passed` on 2026-04-26; focused Stage 4.5 completion slices are also green; revalidate with the venv python before commit if you need a fresher claim
+- **Test suite**: latest verified local full-suite status is `233 passed` on 2026-04-26; focused Workstream A validation is also green; revalidate with the venv python before commit if you need a fresher claim
 - If PySide6 or pytest appear missing in-editor, check the selected interpreter first

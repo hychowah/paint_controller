@@ -6,18 +6,24 @@
 
 ## Executive Summary
 
-The direction remains ownership-first. The product should stay Python-first, overlay-first, dual-surface aware, and safety conservative. What changed after the attack review is not the destination. It is the precision of the route.
+The direction remains ownership-first. The product should stay Python-first, overlay-first, dual-surface aware, and safety conservative. What changed after the attack review and final first-principles review is not the destination. It is the precision of the route and the convergence rule.
 
 The validated truths are these:
 
 - Stage 1 command, device, and workflow boundary work is complete, and the last Settings quick-apply authority leak that was carried into Stage 4A has now been removed. `SettingsTab.qml` no longer mutates `teensyController` directly for thrust force.
 - Stage 2 has removed the live `OverlayController` / `ControlProcessor` cycle, extracted `JoystickSelectionModel`, moved per-mode preset memory to the selection owner, and trimmed dead overlay compatibility wrappers. The remaining overlay/menu facade is now stable enough for shell work to bind to it.
-- Shell work is no longer blocked on Stage 2. Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 direct-admin boundary/default-gating is complete, and the next architecture slice is Stage 6A current workflow public-model stabilization before later overlay-legality, overlay-hosting, and route-formalization work.
+- Shell work is no longer blocked on Stage 2. Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 direct-admin boundary/default-gating is complete, Workstream A workflow runtime/editor stabilization is complete, and the next architecture checkpoint is Workstream B1 overlay host and layer matrix.
 - Stage 4 is now complete: the Settings route is truthful for schema-backed mixed-admin settings, the camera route is explicit summary-only while overlay calibration remains primary, and a thin `CapabilityCatalog` now inventories settings/admin legality metadata for later shell and overlay stages.
 - The top-level Settings route remains a real long-term admin or maintenance surface.
 - In dual-screen mode, the built-in Steam Deck display remains the dedicated touch/control surface and the external display remains the mission surface.
 - Behavior-tree migration is now a committed future direction, but the current workflow system is still a live product surface and must be stabilized on its own terms.
-- The broad QML context-property contract is still a scalability risk, but it should be reduced only after the right owners are explicit and replaced by a smaller app-scope contract plus focused feature models where they materially reduce coupling.
+- The broad QML context-property contract is still a scalability risk, but it should be reduced through the touched slices that establish stable owners, not deferred mechanically as a late cleanup-only event.
+
+The north star is now explicit:
+
+- each operator-visible behavior should have one canonical Python owner and one declarative QML consumer
+- no checkpoint is complete until the old read path it supersedes is retired or clearly quarantined
+- contract retirement starts with the first touched slice of the unfinished tail, not at the end
 
 The roadmap now centers on six architecture goals:
 
@@ -55,6 +61,7 @@ For this repo, a professional Qt/PySide6 application should have these propertie
 - Python owns hardware, ROS, safety, persistence, execution policy, and screen-role decisions that matter across surfaces.
 - QML-facing objects are introduced to clarify ownership, not to wrap everything mechanically.
 - The runtime contract trends toward a smaller app-scope surface plus feature-scoped QObject or model contracts, not a growing global context-property bag.
+- Any new read-side model or adapter should retire the old direct QML read path in the same slice when practical.
 - The shell has one source of truth for navigation, surface role, fullscreen activation, and major surface visibility.
 - Operational overlays are allowed to be first-class UI when the operator must preserve video or machine context during adjustments.
 - Settings may appear in more than one surface if the surfaces serve different operator roles, but they must still come from one authority and present truthful semantics.
@@ -88,9 +95,9 @@ Why it matters:
 
 Current evidence:
 
-- `python/paint_controller/qml/core/MainWindow.qml` owns root window configuration, screen selection, page component creation, overlay composition, and backend connections.
-- `python/paint_controller/qml/navigation/SelectBar.qml` owns page-index routing and selected-button state.
-- `python/paint_controller/services/screen_manager.py` exists, but screen policy is still partly computed in QML.
+- `python/paint_controller/qml/core/MainWindow.qml` now owns the shared route manifest and selected-route writes, but it still also owns route registry details, overlay composition, and multi-screen window lifecycle.
+- `python/paint_controller/models/shell_state.py` now owns narrow shell policy, while `python/paint_controller/core/qt_bridge.py` still carries imperative UI intents.
+- `python/paint_controller/services/screen_manager.py` owns screen facts, but the full shell contract is still spread across Python and root QML rather than represented as one small, explicit consumer-facing contract.
 
 Why it matters:
 
@@ -144,9 +151,9 @@ Why it matters:
 
 Current evidence:
 
-- `python/paint_controller/ui/overlay.py` still owns active-menu state, overlay visibility, temporary-selection initialization, and commit timing.
-- `python/paint_controller/handlers/input.py` still owns per-mode joystick preset memory even though `JoystickSelectionModel` is now the selection owner.
-- `python/paint_controller/models/joystick_selection.py` owns committed and temporary indices, but the remaining compatibility facade is still spread across more than one layer.
+- `python/paint_controller/models/joystick_selection.py` now owns committed and temporary selection state, and per-mode preset memory has moved to the selection owner.
+- `python/paint_controller/ui/overlay.py` remains the stabilized compatibility facade for overlay/menu session behavior consumed by multiple QML surfaces.
+- The live cycle is gone, but the remaining overlay-session contract is still a compatibility seam that later shell and overlay work must not widen again.
 
 Why it matters:
 
@@ -205,11 +212,26 @@ The most defensible direction is:
 4. Treat Stage 4 as complete: the Settings route is now truthful where schema-backed settings exist, the camera route is explicit summary-only, and a thin `CapabilityCatalog` now carries executable settings/admin metadata.
 5. Treat Stage 3B1 as complete: route manifest data and selected-route ownership are now unified in `MainWindow.qml` without widening `ShellState`.
 6. Run the direct-admin boundary/default-gating stage next so the remaining raw QML admin/calibration mutators are removed before later legality work.
-7. Then run a narrow Stage 6A current-system workflow public-model slice that fixes correctness gaps, reduces repeated recomputation, and hardens persistence/editing seams.
-8. Formalize the overlay contract in two passes: Stage 5A overlay hosting/layering, then Stage 5B operator-action legality using `CapabilityCatalog` only after a real boundary or UI consumes it.
-9. Defer Stage 3B2 route formalization until overlay hosting and legality semantics are clearer; introduce a dedicated route owner later only if it still pays for itself.
-10. Narrow the QML contract incrementally after those owners are actually clear.
-11. Leave feature-shell recomposition and design-system cleanup downstream.
+7. Treat Workstream A as complete: the workflow runner now owns the public read model, runtime/persistence semantics are explicit, and the old direct workflow QML read path is retired from the live workflow surfaces.
+8. Run Workstream B1 next: formalize the overlay host and layer matrix before operator-action legality or later route-formalization work depends on it.
+9. Formalize the overlay contract in two passes under Workstream B: overlay hosting/layering first, then operator-action legality using `CapabilityCatalog` only after a real boundary or UI consumes it.
+10. Defer route formalization under Workstream C until overlay hosting and legality semantics are clearer; introduce a dedicated route owner later only if it still pays for itself.
+11. Keep the dedicated QML-contract reduction workstream, but start its retirement rule immediately in any touched slice rather than waiting for a late standalone cleanup.
+12. Leave future automation seam work, feature-shell recomposition, and design-system cleanup downstream.
+
+## Active Execution Framework
+
+Completed stages through Stage 4.5 remain the historical record of how the repo reached the current state.
+
+Unfinished work is now governed by active workstreams rather than a simple future stage ladder. That change is deliberate because the remaining dependency graph is only partially linear: workflow stabilization, overlay hosting, legality, route formalization, and contract reduction are related, but they are not best managed as one serial bucket list.
+
+The governing rules for the unfinished tail are:
+
+- one active checkpoint per workstream at a time
+- at most two workstreams in active implementation simultaneously
+- each checkpoint must name the canonical owner it is establishing
+- each checkpoint must retire or clearly quarantine the old read path it supersedes
+- no new additive QML contract should be introduced without an explicit retirement or quarantine decision for the touched family
 
 The broad `OperatorSession` alternative was considered and rejected. A narrow shell coordinator is practical here. A broad session object would centralize unrelated concerns and recreate the coordinator problem in a different form.
 
@@ -487,7 +509,7 @@ Implementation summary:
 
 - Stage 4A is complete: `PageSettings.qml` no longer carries fake placeholder state, schema-backed settings now live truthfully on the mixed admin route for winch/wheels/arm, the camera route is explicit summary-only, and `SettingsTab.qml` no longer mutates `teensyController` directly for thrust force.
 - Stage 4B is complete: `CapabilityCatalog` now publishes executable settings/admin metadata covering route pages, settings surfaces, and the admin/calibration mutators that were still direct at the end of Stage 4 before Stage 4.5 moved them behind Python-owned boundaries.
-- The next work is no longer Stage 4. Stage 3B1 route normalization and Stage 4.5 direct-admin boundary/default-gating are complete, and the next slice is Stage 6A current workflow public-model stabilization before later overlay, legality, and route-formalization slices.
+- The next work is no longer Stage 4 or Workstream A. Stage 3B1 route normalization, Stage 4.5 direct-admin boundary/default-gating, and Workstream A workflow runtime/editor stabilization are complete, and the next checkpoint is Workstream B1 overlay host and layer matrix before later legality and route-formalization slices.
 
 Exit criteria:
 
@@ -555,53 +577,22 @@ Validation:
 - `tests/test_startup_smoke.py`
 - `tests/test_qml_imports.py`
 
-## Stage 5: Formalize The Overlay Contract
+## Active Workstream A: Workflow Runtime And Editor Stabilization
 
-Goal: turn the overlay-first operating model into explicit architecture after the action boundary, selection-state boundary, and shell-policy boundary are cleaner.
+Historical aliases: Stage 6A current-system stabilization and Stage 6B behavior-tree preparation.
 
-Complexity: High
-Risk: High
-Suggested sessions: 2 to 5
-
-Primary files:
-
-- `python/paint_controller/qml/features/systemcontrol/SystemControlWorkspace.qml`
-- `python/paint_controller/qml/overlays/JoystickOverlay.qml`
-- `python/paint_controller/qml/features/video/VideoFullscreenWorkspace.qml`
-- `python/paint_controller/qml/core/MainWindow.qml`
-- `python/paint_controller/ui/overlay.py`
-- `python/paint_controller/handlers/input.py`
-
-Current problem:
-
-The operator overlay is real product architecture, but its rules are implicit. The project benefits from it ergonomically while still carrying it as architecture debt. The plan also needs to cover more than the system-control overlay alone.
-
-Professional target:
-
-Define the overlay contract explicitly:
-
-- which surfaces are operational overlays versus modal overlays versus maintenance/setup surfaces
-- which actions are allowed during active operation
-- which settings are safe quick-adjust settings
-- which actions require confirmation, safe-stop, or maintenance mode
-- which screen owns the touch-oriented overlay in single-screen and dual-screen modes
-- how overlay visibility interacts with joystick menus, emergency UI, and fullscreen video HUD layering
-
-Validation:
-
-- `tests/test_input_handler.py`
-- `tests/test_startup_smoke.py`
-- `tests/test_qml_imports.py`
-- services runtime tests if screen behavior changes
-- workflow tests only if workflow tabs are touched
-
-## Stage 6: Workflow Stabilization And Behavior-Tree Preparation
-
-Goal: keep the current workflow path safe and maintainable as a real current service, then define explicit seams for the committed future behavior-tree direction.
+Goal: make the current workflow system behave like a professional Qt-facing feature contract now, while keeping future automation seam design separate and explicit.
 
 Complexity: Medium
-Risk: Medium
-Suggested sessions: 2 to 4
+Risk: High
+Suggested sessions: 3 to 5 small checkpoints
+Status: completed on 2026-04-26
+
+Completion summary:
+
+- `WorkFlowExecutor` now publishes canonical workflow-order current-action identity, including position-triggered actions.
+- `WorkFlowRunner` now owns the workflow display/read model, progress/runtime state, and loaded-document reload signal consumed by the live QML workflow surfaces.
+- `WorkflowCatalog` ordering is stable, `WorkflowEditor` writes atomically with normalization and explicit runtime collision rules, and focused workflow validation plus the full suite are green.
 
 Primary files:
 
@@ -620,24 +611,33 @@ Primary files:
 
 Current problem:
 
-The workflow runtime already exposes a Qt-facing interface and should be stabilized where necessary, but current QML polling and local document editing still create present-day maintainability debt, and the future migration seams are not yet explicit.
+The workflow runtime is already a QML-facing contract, but QML still reconstructs action data ad hoc, persistence semantics remain weaker than the rest of the repo, and the editor/runtime interaction rules are not explicit enough for a long-lived operator-facing feature.
 
-Professional target:
+North-star rule for this workstream:
 
-- Safe start, stop, and recover behavior.
-- Less repeated QML polling and less repeated recomputation of workflow action data.
-- Less fragile persistence and editing seams.
-- Clear identification of transitional workflow UI pieces.
-- Explicit seams for a future behavior-tree runtime.
+- one canonical Python owner for workflow runtime state
+- one declarative QML consumer contract for workflow status and action display
+- the old direct QML read path must be retired or quarantined in the same slice that introduces the replacement
 
-Design rule:
+Checkpoint A1: Workflow public read model
 
-Prefer tightening the existing workflow runtime in place after the Stage 1 editor/runtime split, rather than inventing a large second abstraction layer.
+- Establish one canonical source of truth for current action identity, current action description, progress, loop state, and runtime.
+- Remove repeated binding-time reconstruction of workflow action summaries from QML.
+- Preserve current operator behavior unless the slice intentionally clarifies an already-ambiguous contract.
+- Retire the old direct QML workflow read path it replaces, starting with ad hoc `workFlowRunner.get_current_workflow_actions()` reconstruction.
 
-Stage structure:
+Checkpoint A2: Workflow persistence hardening
 
-- Stage 6A: current-system stabilization. Fix current-action display correctness, reduce repeated QML polling and repeated action-list recomputation, tighten persistence boundaries, harden the live editor/runtime split, and make workflow persistence resilient enough for an operator-facing system.
-- Stage 6B: behavior-tree preparation. Define future seams explicitly around runner contract, action schema, status surface, and editor/runtime boundaries without rebuilding the current workflow UI preemptively.
+- Define atomic save semantics for workflow persistence.
+- Make workflow ordering stable instead of inheriting raw directory iteration order.
+- Clarify normalization and validation boundaries for editor-facing workflow documents.
+- Keep the shared catalog as the single directory owner for runtime and editor surfaces.
+
+Checkpoint A3: Workflow editor/runtime collision rules
+
+- Make explicit what happens if a workflow is edited, saved, deleted, or reloaded while loaded or executing.
+- Keep `EditWorkFlowTab.qml` explicitly transitional and do not treat it as the final automation architecture.
+- Keep future behavior-tree migration as a seam-design checkpoint, not a preemptive rewrite.
 
 Validation:
 
@@ -645,12 +645,96 @@ Validation:
 - `tests/test_workflow_editor.py`
 - `tests/test_workflow_executor.py`
 - `tests/test_workflow_scheduler.py`
+- focused smoke for `WorkFlowTab.qml` and `WorkFlowStatusOverlay.qml`
 - `tests/test_startup_smoke.py`
 - `tests/test_qml_imports.py`
 
-## Stage 7: Narrow The QML Contract After Owners Are Clear
+## Active Workstream B: Overlay Contract And Operator Legality
 
-Goal: reduce raw context-property exposure only after action boundaries, shell ownership, overlay ownership, settings authority, and control ownership are better defined.
+Historical aliases: Stage 5A overlay hosting/layering and Stage 5B operator-action legality.
+
+Goal: turn the overlay-first operator model into an explicit, testable contract before route semantics and broader contract-reduction work depend on it.
+
+Complexity: High
+Risk: High
+Suggested sessions: 2 to 5
+
+Primary files:
+
+- `python/paint_controller/qml/features/systemcontrol/SystemControlWorkspace.qml`
+- `python/paint_controller/qml/overlays/JoystickOverlay.qml`
+- `python/paint_controller/qml/features/video/VideoFullscreenWorkspace.qml`
+- `python/paint_controller/qml/core/MainWindow.qml`
+- `python/paint_controller/qml/overlays/MultiScreenListUI.qml`
+- `python/paint_controller/ui/overlay.py`
+- `python/paint_controller/models/capability_catalog.py`
+- `python/paint_controller/models/admin_action_gate.py`
+
+Current problem:
+
+The operator overlay is real product architecture, but host placement, layering, and legality are still only partially explicit. The repo now has safer action seams, but it does not yet have one complete operator contract.
+
+Checkpoint B1: Overlay host and layer matrix
+
+- Publish the canonical host matrix for single-screen mode, dual-screen mode, emergency active, joystick menu active, and video fullscreen active.
+- Classify each overlay-like surface as operational overlay, safety override, modal popup, admin/setup overlay, diagnostic overlay, or transitional overlay.
+- Define coexistence and precedence rules explicitly instead of leaving them in ad hoc `z` relationships.
+- Move any state that must survive host changes out of duplicated local QML instances.
+
+Checkpoint B2: Operator-action legality
+
+- Use `CapabilityCatalog` and `AdminActionGate` as seams, not as already-finished legality architecture.
+- Make handler enforcement and UI affordance state come from the same legality result shape.
+- Do not call legality complete until blocked actions can be explained before click, not only rejected after click.
+
+Validation:
+
+- `tests/test_input_handler.py`
+- `tests/test_shell_state.py`
+- `tests/test_startup_smoke.py`
+- `tests/test_qml_imports.py`
+- services runtime tests if screen behavior changes
+- focused legality tests for touched handler and UI families
+- manual operator validation on target hardware when possible
+
+## Active Workstream C: Shell And Route Formalization
+
+Historical alias: deferred Stage 3B2 route formalization.
+
+Goal: finish the shell contract only after overlay host and legality semantics are explicit enough that route vocabulary will not freeze the wrong product shape.
+
+Complexity: Medium
+Risk: High
+Suggested sessions: 1 to 3
+
+Primary files:
+
+- `python/paint_controller/qml/core/MainWindow.qml`
+- `python/paint_controller/qml/navigation/SelectBar.qml`
+- `python/paint_controller/models/shell_state.py`
+- `tests/test_startup_smoke.py`
+- `tests/test_qt_bridge.py`
+- `tests/test_services_runtime.py`
+
+Rules:
+
+- Keep `ShellState` narrow.
+- Do not smuggle route ownership, legality, workflow state, or broad session coordination into shell policy objects.
+- Make `pageKey` the canonical route identity before formal route work proceeds.
+- Treat numeric `pageIndex` as transitional presentation state only.
+
+Validation:
+
+- `tests/test_startup_smoke.py`
+- `tests/test_qml_imports.py`
+- `tests/test_qt_bridge.py`
+- `tests/test_services_runtime.py`
+
+## Active Workstream D: QML Contract Reduction
+
+Historical alias: Stage 7 narrower QML contract.
+
+Goal: reduce the mental surface area of the runtime/QML contract by retiring direct access paths as stable owners become real.
 
 Complexity: Medium
 Risk: Medium
@@ -659,38 +743,20 @@ Suggested sessions: 2 to 5
 Primary files:
 
 - `python/paint_controller/core/app_runtime.py`
-- candidate new adapter/model files only where justified
-- tests around runtime registration and any new model logic
+- `python/paint_controller/core/controller_factory.py`
+- candidate focused models/adapters only where justified
 
-Current problem:
+Rules:
 
-The repo has too many QML-visible runtime objects, but the earlier plan risked solving that with a broad facade taxonomy before the right ownership boundaries were known.
+- This remains a dedicated workstream, but its retirement rule starts immediately in any earlier touched slice.
+- New models or adapters must reduce real cross-cutting coupling, not just move names around.
+- Success is not a lower context-property count by itself. Success is fewer places a maintainer must inspect to understand one operator-visible behavior.
 
-Professional target:
+Bad outcomes:
 
-- Introduce QML-facing adapters only where they reduce real cross-cutting coupling.
-- Reduce direct controller/service exposure where pages or overlays should depend on an operator-facing contract instead.
-- Treat context-property reduction as an outcome of better architecture, not as the opening move.
-
-Good candidates after earlier stages succeed:
-
-- a small app-scope contract plus feature-scoped models where they materially reduce coupling and replace broad global access
-- a dedicated route owner later if shell and overlay semantics prove it is warranted
-- a control-selection model as part of Stage 2
-- a settings adapter only if it meaningfully clarifies grouped metadata, capability classes, and legality rules
-- a workflow editor/runtime split if it remains clearer than keeping both responsibilities on one object
-
-Bad candidates:
-
-- wrappers added only to reduce a number in a metric
+- wrappers added only to reduce a metric
 - large “everything UI needs” objects
-- a workflow facade built before the automation direction is settled
-
-Exit criteria:
-
-- Fewer raw runtime internals are directly referenced by QML.
-- New adapters have crisp ownership and focused tests.
-- The context-property count goes down because architecture improved, not because everything was hidden behind one umbrella object.
+- additive context properties with no retirement decision
 
 Validation:
 
@@ -699,87 +765,21 @@ Validation:
 - `tests/test_qml_imports.py`
 - focused tests for any new adapter/model
 
-Risks:
+## Active Workstream E: Future Automation Seam And Downstream UX Cleanup
 
-- Mechanical wrapping can create indirection without reducing coupling.
+Historical aliases: Stage 6B behavior-tree preparation, Stage 8 optional feature-shell recomposition, and Stage 9 design-system cleanup.
 
-Rollback:
+Goal: keep future automation seam design explicit and downstream while leaving feature-shell recomposition and visual cleanup out of the critical maintainability lane.
 
-- Keep old context properties while new contracts are proven.
+Complexity: Variable
+Risk: Variable
+Suggested sessions: downstream only
 
-## Stage 8: Optional Feature-Shell Recomposition
+Rules:
 
-Goal: reorganize visible destinations only if earlier ownership work shows a real product benefit.
-
-Complexity: High
-Risk: High
-Suggested sessions: optional, many small slices
-
-Status in this roadmap:
-
-This is explicitly optional and downstream. It is not the main architecture lane.
-
-Why:
-
-Feature-shell recomposition is product design work enabled by architecture improvements, not architecture debt paydown by itself.
-
-Use this stage only when:
-
-- the action boundary is safer
-- the dual-surface shell is stable
-- overlay ownership is explicit
-- settings authority is clear
-- route registry is already maintainable
-
-Possible outcomes:
-
-- fewer top-level destinations
-- clearer separation between operation, maintenance/setup, diagnostics, and automation
-- better alignment between route names and operator language
-
-Important:
-
-Do not use this stage to force common in-operation work out of the overlay.
-
-Validation:
-
-- startup smoke
-- QML import smoke
-- affected focused tests
-- manual operator-task trace on real hardware when possible
-
-Rollback:
-
-- keep legacy destinations available until new flows are validated
-
-## Stage 9: Design-System And Styling Cleanup
-
-Goal: finish visual consistency after architecture is stable.
-
-Complexity: Low to Medium
-Risk: Low
-Suggested sessions: as needed
-
-Primary files:
-
-- `python/paint_controller/qml/core/CommonStyle.qml`
-- `python/paint_controller/qml/overlays/video/components/VideoOverlayStyle.qml`
-- remaining hardcoded colors and spacing in pages and overlays
-- `docs/tech-debt.md` items TD-002 and TD-016
-
-Professional target:
-
-- one theme source or clearly layered theme extensions
-- good 7-inch readability
-- touch-sized targets
-- no layout anti-patterns inside `RowLayout` / `ColumnLayout`
-
-Validation:
-
-- `tests/test_qml_imports.py`
-- `tests/test_startup_smoke.py`
-- `qmllint` if available
-- manual visual pass on target display when possible
+- Behavior-tree preparation is seam design, not permission to rebuild the current workflow UI speculatively.
+- Feature-shell recomposition is optional product design work enabled by earlier architecture improvements, not a substitute for them.
+- Design-system cleanup stays backlog-only unless the user explicitly reprioritizes it.
 
 ## Suggested Session Order
 
@@ -792,18 +792,19 @@ Use this order unless a production bug interrupts it:
 5. Stage 4 settings truthfulness and executable capability model.
 6. Stage 3B1 route normalization.
 7. Stage 4.5 direct-admin boundary and default gating.
-8. Stage 6A current workflow public-model stabilization.
-9. Stage 5A overlay hosting and layering.
-10. Stage 5B operator-action legality.
-11. Stage 3B2 route metadata and selected-route formalization.
-12. Stage 7 narrower QML contract where justified.
-13. Stage 6B behavior-tree preparation.
-14. Stage 8 optional feature-shell recomposition.
-15. Stage 9 design-system cleanup.
+8. Workstream A workflow runtime and editor stabilization.
+9. Workstream B1 overlay host and layer matrix.
+10. Workstream B2 operator-action legality.
+11. Workstream C route formalization.
+12. Later contract reduction, automation-seam, and downstream design slices.
+13. Workstream D dedicated QML-contract reduction, while continuing touched-slice retirement rules.
+14. Workstream E future automation seam work only after the current workflow contract is stable.
+15. Optional feature-shell recomposition if still justified.
+16. Design-system cleanup.
 
 Why this order changed:
 
-The validated order keeps the ownership-first direction but adds five corrections. First, it corrected the old Stage 1 overstatement by carrying the former settings quick-apply gap forward until Stage 4 closed it explicitly. Second, it blocks shell work only on the narrow Stage 2 ownership freeze rather than on every residual Stage 2 cleanup item. Third, it inserted Settings-route truthfulness before route hardening so the shell would not canonize a placeholder surface as if it were already legitimate; that prerequisite is now satisfied, so Stage 3B1 is next. Fourth, it inserts a direct-admin boundary/default-gating stage before later legality and route-formalization work so the architecture does not freeze raw QML mutator paths into the product shell. Fifth, it moves Stage 3B2 later so route vocabulary freezes after overlay hosting and legality semantics are clearer.
+The validated order keeps the ownership-first direction but adds one more first-principles rule to the previous corrections: contract retirement starts now. The next workflow checkpoint is not allowed to add a new read model while leaving the old workflow QML read path equally live. That rule exists to make the repo materially easier to understand, not only safer to modify.
 
 ## Technical Guardrails
 
@@ -820,6 +821,7 @@ The validated order keeps the ownership-first direction but adds five correction
 - Do not treat the built-in touchscreen window as an auxiliary surface; it is part of the product shell.
 - Do not treat “one settings location” as the architecture goal.
 - Do not invest heavily in current workflow UI abstraction as if it were the final long-term automation architecture.
+- Contract retirement starts with the next touched slice of the unfinished tail, not as a final cleanup-only stage.
 - Keep migrations additive while old QML consumers still exist.
 - Keep `AppRuntime` as the composition root, not as a behavior god object.
 - Keep cleanup order explicit and validated.
@@ -843,6 +845,7 @@ Track these across sessions:
 - Number of placeholder local settings values remaining in QML.
 - Whether the OverlayController compatibility surface has direct regression tests.
 - Number of raw controller/service objects directly referenced by each major surface.
+- Number of touched slices that retire an old read path in the same change.
 - Whether workflow UI is explicitly treated as transitional or long-term.
 - Startup smoke status.
 - QML import smoke status.
@@ -883,21 +886,23 @@ When a stage becomes wrong:
 
 ## Next Recommended Session
 
-Stage 0 is published, Stage 1 command, device, and workflow boundaries are complete, Stage 2 is complete, Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, and Stage 4.5 is complete. The next recommended session is to start Stage 6A current workflow public-model stabilization.
+Stage 0 is published, Stage 1 command, device, and workflow boundaries are complete, Stage 2 is complete, Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 is complete, and Workstream A is complete. The next recommended session is to start Workstream B1 overlay host and layer matrix.
 
-Task title: Start Stage 6A current workflow public-model stabilization.
+Task title: Start Workstream B1 overlay host and layer matrix.
 
 The session should:
 
-1. Stabilize the current workflow public model so QML stops recomputing or reconstructing workflow runtime state ad hoc.
-2. Preserve the now-explicit Stage 4.5 action boundaries; workflow cleanup should consume those owners rather than reaching back into raw runtime objects.
-3. Add focused workflow/runtime regressions and keep startup/import smoke green.
-4. Keep `CapabilityCatalog` plus `AdminActionGate` treated as seams for later legality work rather than expanding them into a broad coordinator.
-5. Create `PLANNING.md`.
-6. Ask for confirmation.
+1. Make overlay host surfaces, z-ordering, and precedence rules explicit before legality or route-formalization work depends on them.
+2. Preserve the completed Workstream A workflow contracts; overlay work should consume those owners instead of reaching back into workflow internals.
+3. Treat `CapabilityCatalog` and `AdminActionGate` as later legality seams, not as a substitute for an explicit host/layer contract.
+4. Add focused overlay regressions and keep startup/import smoke green.
+5. Keep `CapabilityCatalog` plus `AdminActionGate` treated as seams for later legality work rather than expanding them into a broad coordinator.
+6. Create `PLANNING.md`.
+7. Ask for confirmation.
 
 The likely next implementation slice after approval:
 
-- start with one workflow-facing model seam rather than mixing workflow, overlay-hosting, and legality in one change
-- preserve the current operator workflow contract unless Stage 6A intentionally clarifies a shared public model
-- validate focused workflow/runtime tests plus startup and QML import smoke before widening scope
+- start with one explicit overlay host/layer matrix seam rather than mixing host topology, legality, and route formalization in one change
+- publish canonical host ownership and precedence rules before adding new legality or route abstractions
+- preserve the completed Workstream A workflow contracts while making overlay placement and coexistence rules explicit
+- validate focused overlay/input smoke plus startup and QML import coverage before widening scope

@@ -2,7 +2,7 @@
 """QML-facing runtime boundary for workflow execution and status."""
 
 import time
-from typing import List
+from typing import Any, List
 
 from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer
 
@@ -26,8 +26,12 @@ class WorkFlowRunner(QObject):
     execution_state_changed = Signal(int)  # ExecutionState enum value
     current_workflow_changed = Signal(str)  # WorkFlow name
     current_action_index_changed = Signal(int)  # Current action index during execution
+    current_action_details_changed = Signal()
+    workflow_actions_changed = Signal()
     loop_iteration_changed = Signal(int)  # Loop iteration number
     loop_enabled_changed = Signal(bool)  # Loop enabled state changed
+    workflow_runtime_changed = Signal(int)
+    loaded_workflow_reload_state_changed = Signal(bool)
     error_occurred = Signal(str)  # Error message
 
     def __init__(self, ros_node, hardware: HardwareControllers, logger=None, catalog: WorkflowCatalog | None = None):
@@ -48,10 +52,13 @@ class WorkFlowRunner(QObject):
         self._owns_catalog = catalog is None
         self._catalog.workflow_list_changed.connect(self.workflow_list_changed.emit)
         self._current_workflow_name = ""
+        self._workflow_actions: List[dict[str, Any]] = []
         self._current_action_index = -1
         self._last_execution_state = -1  # Track last emitted state
         self._last_loop_iteration = 0  # Track last emitted loop iteration
         self._workflow_start_time = 0.0  # Track when workflow started running
+        self._workflow_runtime_seconds = 0
+        self._loaded_workflow_needs_reload = False
 
         # Timer to monitor execution state and action index
         self._monitor_timer = QTimer()
@@ -90,6 +97,53 @@ class WorkFlowRunner(QObject):
             return int(time.time() - self._workflow_start_time)
         return 0
 
+    @Property(list, notify=workflow_actions_changed)
+    def workflow_actions(self) -> List[dict]:
+        """Get cached workflow action summaries in workflow order."""
+        return self._workflow_actions
+
+    @Property(int, notify=workflow_actions_changed)
+    def workflow_action_count(self) -> int:
+        """Get number of actions in the currently loaded workflow."""
+        return len(self._workflow_actions)
+
+    @Property(str, notify=current_action_details_changed)
+    def current_action_name(self) -> str:
+        """Get the name of the currently executing action."""
+        action = self._get_current_action()
+        return action["name"] if action else ""
+
+    @Property(str, notify=current_action_details_changed)
+    def current_action_description(self) -> str:
+        """Get the description of the currently executing action."""
+        action = self._get_current_action()
+        return action["description"] if action else ""
+
+    @Property(int, notify=current_action_details_changed)
+    def current_action_number(self) -> int:
+        """Get the 1-based number of the current action, or 0 when idle."""
+        action = self._get_current_action()
+        return int(action["number"]) if action else 0
+
+    @Property(str, notify=current_action_details_changed)
+    def current_action_display(self) -> str:
+        """Get numbered current-action text for operator display."""
+        action = self._get_current_action()
+        return action["display_name"] if action else ""
+
+    @Property(str, notify=current_action_details_changed)
+    def workflow_progress_text(self) -> str:
+        """Get current workflow progress text for operator display."""
+        action = self._get_current_action()
+        if not action:
+            return ""
+        return f"{action['number']} / {len(self._workflow_actions)}"
+
+    @Property(bool, notify=loaded_workflow_reload_state_changed)
+    def loaded_workflow_needs_reload(self) -> bool:
+        """Whether the loaded workflow document changed on disk and should be reloaded."""
+        return self._loaded_workflow_needs_reload
+
     @Slot(str)
     def load_workflow(self, workflow_name: str) -> bool:
         """
@@ -126,11 +180,12 @@ class WorkFlowRunner(QObject):
 
         if success:
             self._current_workflow_name = workflow_name
-            if self._current_action_index != -1:
-                self._current_action_index = -1
-                self.current_action_index_changed.emit(-1)
+            self._rebuild_workflow_actions()
+            self._set_current_action_index(-1)
             self._workflow_start_time = 0.0
+            self._set_workflow_runtime_seconds(0)
             self._last_loop_iteration = 0
+            self._set_loaded_workflow_needs_reload(False)
             self.current_workflow_changed.emit(workflow_name)
             self.loop_enabled_changed.emit(self.executor.is_loop_enabled())
             self.loop_iteration_changed.emit(0)  # Reset loop iteration on new load
@@ -144,31 +199,90 @@ class WorkFlowRunner(QObject):
     @Slot(result=list)
     def get_current_workflow_actions(self) -> List[dict]:
         """
-        Get list of actions from currently loaded workflow.
-        
-        Returns:
-            List of action dictionaries with name, type, and description with params
+        Compatibility wrapper for the deprecated direct action-summary read path.
         """
-        if not self.executor.current_workflow:
-            return []
-        
-        actions = self.executor.current_workflow.get("actions", [])
-        result = []
-        
-        for action in actions:
+        return self._workflow_actions
+
+    def can_save_workflow_document(self, workflow_name: str) -> tuple[bool, str | None]:
+        """Return whether the named workflow document can be saved safely."""
+        if workflow_name != self._current_workflow_name:
+            return True, None
+
+        if self.executor.current_state in (ExecutionState.RUNNING, ExecutionState.PAUSED):
+            return False, (
+                f"Cannot save workflow '{workflow_name}' while it is running or paused; "
+                "stop it or load a different workflow first"
+            )
+
+        return True, None
+
+    def can_delete_workflow_document(self, workflow_name: str) -> tuple[bool, str | None]:
+        """Return whether the named workflow document can be deleted safely."""
+        if workflow_name != self._current_workflow_name:
+            return True, None
+
+        return False, (
+            f"Cannot delete workflow '{workflow_name}' while it is loaded; "
+            "load a different workflow first"
+        )
+
+    def mark_workflow_document_saved(self, workflow_name: str) -> None:
+        """Mark the loaded workflow snapshot stale after an editor save."""
+        if workflow_name == self._current_workflow_name:
+            self._set_loaded_workflow_needs_reload(True)
+
+    def _get_current_action(self) -> dict[str, Any] | None:
+        if self._current_action_index < 0:
+            return None
+        if self._current_action_index >= len(self._workflow_actions):
+            return None
+        return self._workflow_actions[self._current_action_index]
+
+    def _rebuild_workflow_actions(self) -> None:
+        actions = []
+        workflow = self.executor.current_workflow or {}
+
+        for index, action in enumerate(workflow.get("actions", [])):
             action_type = action.get("type", "Unknown")
             params = action.get("params", {})
-            
-            # Generate dynamic description based on action type and parameters
-            desc = self._generate_action_description(action_type, params, action)
-            
-            result.append({
-                "name": action.get("name", "Unknown"),
-                "type": action_type,
-                "desc": desc
-            })
-        
-        return result
+            description = self._generate_action_description(action_type, params, action)
+            name = action.get("name", action.get("id", f"Action {index + 1}"))
+
+            actions.append(
+                {
+                    "action_id": action.get("id", f"action_{index}"),
+                    "index": index,
+                    "number": index + 1,
+                    "name": name,
+                    "display_name": f"{index + 1}. {name}",
+                    "type": action_type,
+                    "description": description,
+                    "desc": description,
+                }
+            )
+
+        self._workflow_actions = actions
+        self.workflow_actions_changed.emit()
+        self.current_action_details_changed.emit()
+
+    def _set_current_action_index(self, new_index: int) -> None:
+        if new_index == self._current_action_index:
+            return
+        self._current_action_index = new_index
+        self.current_action_index_changed.emit(new_index)
+        self.current_action_details_changed.emit()
+
+    def _set_workflow_runtime_seconds(self, runtime_seconds: int) -> None:
+        if runtime_seconds == self._workflow_runtime_seconds:
+            return
+        self._workflow_runtime_seconds = runtime_seconds
+        self.workflow_runtime_changed.emit(runtime_seconds)
+
+    def _set_loaded_workflow_needs_reload(self, needs_reload: bool) -> None:
+        if needs_reload == self._loaded_workflow_needs_reload:
+            return
+        self._loaded_workflow_needs_reload = needs_reload
+        self.loaded_workflow_reload_state_changed.emit(needs_reload)
     
     def _generate_action_description(self, action_type: str, params: dict, action: dict) -> str:
         """
@@ -376,9 +490,7 @@ class WorkFlowRunner(QObject):
         """Monitor and update execution state and action index."""
         # Update action index
         new_index = self.executor.current_action_index
-        if new_index != self._current_action_index:
-            self._current_action_index = new_index
-            self.current_action_index_changed.emit(new_index)
+        self._set_current_action_index(new_index)
         
         # Update loop iteration
         new_loop_iteration = self.executor.get_loop_iteration()
@@ -396,6 +508,8 @@ class WorkFlowRunner(QObject):
             state_names = {0: "Idle", 1: "Running", 2: "Paused", 3: "Completed", 4: "Error"}
             state_name = state_names.get(current_state, "Unknown")
             self.logger.info(f"Execution state changed to: {state_name}")
+
+        self._set_workflow_runtime_seconds(self.workflow_runtime)
 
     @Slot()
     def refresh_workflow_list(self) -> None:

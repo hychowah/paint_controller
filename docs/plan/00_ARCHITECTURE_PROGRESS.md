@@ -9,14 +9,16 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for the architecture rati
 ## Current State
 
 - Overall status: in progress
-- Most recent completed slice: Stage 4.5 direct-admin boundary/default-gating
-- Last completed implementation slice: Stage 4.5 direct-admin boundary/default-gating
-- Next recommended slice: Start Stage 6A current workflow public-model stabilization now that the remaining direct-admin QML mutators are behind Python-owned boundaries
+- Most recent completed slice: Workstream A workflow runtime/editor stabilization
+- Last completed implementation slice: Workstream A workflow runtime/editor stabilization
+- Active execution framework: completed stages remain historical record; unfinished work now executes as workstreams with hard checkpoints and touched-slice contract-retirement rules
+- North-star rule: each operator-visible behavior should have one canonical Python owner and one declarative QML consumer, with no equal second read path left behind after a checkpoint lands
+- Next recommended checkpoint: Start Workstream B1 overlay host and layer matrix now that workflow runtime/editor state is stabilized behind Python-owned contracts
 - Linux validation status: complete after rebasing onto `refactor`
-- Last focused validation: focused Stage 4.5 completion slices are green for `tests/test_device_actions.py`, `tests/test_device_operations.py`, `tests/test_winch_motion_handler.py`, `tests/test_tuning_admin_handler.py`, `tests/test_base_top_view_admin_handler.py`, `tests/test_controller_factory_runtime.py`, `tests/test_capability_catalog.py`, `tests/test_startup_smoke.py`, and `tests/test_qml_imports.py`
-- Latest full validation: `224 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q`
+- Last focused validation: focused Workstream A validation is green for `tests/test_workflow_runner.py`, `tests/test_workflow_editor.py`, `tests/test_workflow_executor.py`, `tests/test_workflow_scheduler.py`, `tests/test_startup_smoke.py`, `tests/test_qml_imports.py`, and `tests/test_controller_factory_runtime.py` at `40 passed`
+- Latest full validation: `233 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q`
 
-## Stage Board
+## Historical Stage Board
 
 | Stage | Status | Notes |
 |---|---|---|
@@ -26,11 +28,18 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for the architecture rati
 | Stage 3 | in progress | Stage 3A shell policy and Stage 3B1 route normalization are complete; Stage 3B2 route formalization remains intentionally deferred until overlay hosting and legality semantics are clearer |
 | Stage 4 | completed | The Settings route is now truthful for schema-backed mixed-admin settings, camera remains explicit summary-only, and `CapabilityCatalog` publishes executable settings/admin metadata for later route and overlay slices |
 | Stage 4.5 | completed | Status, wheel, winch, tuning, and base-top calibration surfaces now route through Python-owned admin boundaries, and a thin `AdminActionGate` makes default gating explicit for later legality work |
-| Stage 5 | not started | Overlay hosting/layering and later legality work now follow the direct-admin boundary stage instead of preceding it |
-| Stage 6 | not started | Stage 6A current workflow public-model stabilization comes after Stage 4.5; Stage 6B remains future behavior-tree preparation |
-| Stage 7 | not started | Incremental QML-contract narrowing after owners are clear |
-| Stage 8 | not started | Optional feature-shell recomposition |
-| Stage 9 | not started | Design-system cleanup |
+
+Unfinished work is no longer tracked here as a simple future stage ladder. It now executes through the active workstream board below.
+
+## Active Workstream Board
+
+| Workstream | Status | Current checkpoint | Next checkpoint after that | Blocking rule |
+|---|---|---|---|---|
+| Workstream A — Workflow runtime/editor stabilization | completed | A1-A3 landed | Workstream B1 overlay host and layer matrix | Keep the editor surface transitional and do not reopen a second workflow read path |
+| Workstream B — Overlay contract/operator legality | next | B1 overlay host and layer matrix | B2 operator-action legality | Do not start legality until host topology and precedence rules are explicit |
+| Workstream C — Shell/route formalization | blocked | Choose canonical route identity and formal route contract | Focused route formalization slice | Blocked on Workstream B host and legality semantics; `pageKey` should become canonical |
+| Workstream D — QML contract reduction | deferred but active as a rule | Dedicated contract-reduction slices only after stable owners exist | Continue family-by-family retirement | Retirement rule starts immediately in any earlier touched slice |
+| Workstream E — Future automation seam/downstream UX cleanup | downstream | Future automation seam design | Optional feature-shell recomposition and design cleanup | Keep behavior-tree preparation separate from current workflow stabilization |
 
 ## Baseline Authority Map
 
@@ -42,8 +51,8 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for the architecture rati
 | Overlay visibility and active-menu policy | `python/paint_controller/ui/overlay.py` | `python/paint_controller/qml/features/systemcontrol/SystemControlWorkspace.qml`, `MainWindow.qml`, `MultiScreenListUI.qml` | Overlay/menu presentation is now a stable Python-owned facade consumed by multiple QML surfaces; the next shell work is about host-surface policy, not unresolved Stage 2 menu ownership |
 | Control selection vs command execution | `python/paint_controller/models/joystick_selection.py` for selection state | `python/paint_controller/ui/overlay.py`, `python/paint_controller/handlers/control_processor.py` | Selection ownership is explicit, `OverlayController` is now a presentation facade, and `UIInputHandler` no longer stores long-term preset state |
 | Settings authority | `python/paint_controller/core/settings.py` | `python/paint_controller/qml/overlays/systemcontrol/SettingsTab.qml`, `python/paint_controller/qml/overlays/systemcontrol/components/SettingInputField.qml`, `python/paint_controller/qml/pages/settings/PageSettings.qml`, `python/paint_controller/models/capability_catalog.py` | Python is authoritative; the Settings route now exposes schema-backed mixed-admin settings where a truthful contract exists, and `CapabilityCatalog` publishes executable metadata for settings/admin surfaces |
-| Workflow runtime | `python/paint_controller/services/workflow/workflow_runner.py` | `python/paint_controller/qml/overlays/systemcontrol/WorkFlowTab.qml`, `python/paint_controller/qml/overlays/video/components/WorkFlowStatusOverlay.qml` | Runtime control and status stay on `workFlowRunner`, now backed by a shared catalog and guarded execution transitions |
-| Workflow persistence | `python/paint_controller/services/workflow/workflow_editor.py` | `python/paint_controller/qml/overlays/systemcontrol/EditWorkFlowTab.qml` | Editor persistence is now split away from runtime execution and shares catalog ownership through `workflow_catalog.py` |
+| Workflow runtime | `python/paint_controller/services/workflow/workflow_runner.py` | `python/paint_controller/qml/overlays/systemcontrol/WorkFlowTab.qml`, `python/paint_controller/qml/overlays/video/components/WorkFlowStatusOverlay.qml` | Runtime control and status stay on `workFlowRunner`, which now publishes a cached declarative read model, canonical workflow-order current-action identity, and notify-driven runtime/progress state |
+| Workflow persistence | `python/paint_controller/services/workflow/workflow_editor.py` | `python/paint_controller/qml/overlays/systemcontrol/EditWorkFlowTab.qml` | Editor persistence is split away from runtime execution, shares catalog ownership through `workflow_catalog.py`, writes atomically, normalizes workflow documents, and follows explicit runtime collision rules |
 | Machine-affecting QML actions | `python/paint_controller/handlers/manual_commands.py`, `python/paint_controller/handlers/device_actions.py`, `python/paint_controller/handlers/device_operations.py`, `python/paint_controller/handlers/winch_motion.py`, `python/paint_controller/handlers/tuning_admin.py`, `python/paint_controller/handlers/base_top_view_admin.py`, `python/paint_controller/services/workflow/workflow_runner.py` | `WorkFlowTab.qml`, `EditWorkFlowTab.qml` | The remaining direct admin/calibration page and popup mutators now route through narrow Python-owned boundaries. The next legality work is about consuming these seams explicitly, not removing raw QML controller writes that are already gone |
 
 ## Completed Slices
@@ -127,17 +136,25 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for the architecture rati
 - Rewired `PageWheel.qml`, `PageWinch.qml`, `PageTuning.qml`, and `BaseTopViewSettingsPopup.qml` off raw controller/service mutations and aligned `CapabilityCatalog` to the new authorities.
 - Revalidated the combined Stage 4.5 slice to `40 passed` and reran the full suite to `224 passed`.
 
+### 2026-04-26 - Workstream A Workflow Runtime And Editor Stabilization
+
+- `WorkFlowExecutor` now publishes canonical workflow-order action indices, including position-triggered actions, so runtime state and workflow documents agree on current-action identity.
+- `WorkFlowRunner` now owns a cached workflow read model for action summaries, current action display, progress, loop state, runtime, and loaded-document reload state; `WorkFlowTab.qml` and `WorkFlowStatusOverlay.qml` consume that declarative contract instead of rebuilding action state ad hoc.
+- `WorkflowCatalog` ordering is stable, `WorkflowEditor` writes atomically with document normalization, and save/delete behavior is explicit when a workflow is loaded or executing.
+- Focused Workstream A validation is green at `40 passed`, and the full suite is green at `233 passed`.
+
 ## Active Risks
 
-- The broad QML context-property contract remains intentionally additive; Stage 1 reduced direct side effects without yet reducing exposure count materially.
-- Route ownership is now canonical in `MainWindow.qml`, but Stage 3B2 route formalization is still deferred until overlay hosting and legality semantics are clearer.
-- The direct-admin QML mutator gap is closed for the tracked Stage 4.5 surfaces, but the new `AdminActionGate` is intentionally thin and later legality work still needs to decide how those explicit seams are surfaced and enforced across overlays and routes.
-- `CapabilityCatalog` now inventories admin/calibration mutators, but it is still inventory rather than enforcement until a real boundary or UI contract consumes it.
-- The broad QML context-property contract is now one property wider (`capabilityCatalog`) until later stages consume the metadata and retire older direct contracts.
+- The broad QML context-property contract remains intentionally additive; the repo is safer than before, but the mental surface area is still too wide until touched slices begin retiring old read paths immediately.
+- The workflow runtime/editor contract is now materially narrower, but `EditWorkFlowTab.qml` remains explicitly transitional and future automation-seam work is still downstream.
+- Overlay hosting remains partially implicit across primary and secondary surfaces; route formalization should not freeze vocabulary before that host matrix is explicit.
+- The direct-admin QML mutator gap is closed for the tracked Stage 4.5 surfaces, but `AdminActionGate` is intentionally thin and `CapabilityCatalog` remains inventory rather than full legality enforcement until a real consumer contract lands.
+- The broad QML context-property contract is now one property wider (`capabilityCatalog`) until later checkpoints consume the metadata and retire older direct contracts.
 
 ## Next Session Checklist
 
-1. Start Stage 6A current workflow public-model stabilization now that Stage 4.5 no longer blocks later legality and shell work.
-2. Keep `shellState` narrow and do not reopen Stage 3B1 by smuggling route ownership back into shell policy objects.
-3. Treat `CapabilityCatalog` plus `AdminActionGate` as explicit seams for later legality work; do not mistake their presence for finished overlay-legality design.
-4. Keep `docs/tech-debt.md` and this tracker in sync as Stage 6A clarifies the current workflow public model.
+1. Start Workstream B1 overlay host and layer matrix now that Workstream A no longer blocks later legality and shell work.
+2. Keep the new workflow runner/editor contracts stable; do not reintroduce ad hoc QML workflow reads or implicit editor/runtime collisions while working on overlays.
+3. Keep `shellState` narrow and do not reopen Stage 3B1 by smuggling route ownership back into shell policy objects.
+4. Treat `CapabilityCatalog` plus `AdminActionGate` as explicit seams for later legality work; do not mistake their presence for finished overlay-legality design.
+5. Keep `docs/tech-debt.md` and this tracker in sync as Workstream B clarifies host-surface and legality semantics.
