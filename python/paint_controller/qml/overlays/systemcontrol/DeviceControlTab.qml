@@ -64,22 +64,28 @@ Item {
                     
                     // Teensy Relay Control
                     ControlPanel {
+                        objectName: "teensyRelayControl"
                         Layout.fillWidth: true
                         controlName: "Teensy Relay"
                         controlStatus: teensyController.all_status.relay_on ? "Connected" : "Disconnected"
                         enabledState: teensyController.all_status.relay_on
                         iconText: "TR"
+                        actionKey: "status.teensy_relay"
+                        legalityModel: actionLegality
                         
                         onClicked: deviceActionHandler.toggleTeensyRelay(teensyController.all_status.relay_on)
                     }
                     
                     // Teensy Enable Control
                     ControlPanel {
+                        objectName: "teensyEnableControl"
                         Layout.fillWidth: true
                         controlName: "Teensy Enable"
                         controlStatus: teensyController.all_status.enabled ? "Powered" : "Unpowered"
                         enabledState: teensyController.all_status.enabled
                         iconText: "T"
+                        actionKey: "status.teensy_enable"
+                        legalityModel: actionLegality
                         
                         onClicked: deviceActionHandler.toggleTeensyEnable(teensyController.all_status.enabled)
                     }
@@ -133,22 +139,28 @@ Item {
                     
                     // Winch Enable Control
                     ControlPanel {
+                        objectName: "winchEnableControl"
                         Layout.fillWidth: true
                         controlName: "Winch Enable"
                         controlStatus: winchController.enabled ? "Enabled" : "Disabled"
                         enabledState: winchController.enabled
                         iconText: "W"
+                        actionKey: "status.winch_enable"
+                        legalityModel: actionLegality
                         
                         onClicked: deviceActionHandler.toggleWinchEnable(winchController.enabled)
                     }
                     
                     // Winch Load Detection Control
                     ControlPanel {
+                        objectName: "loadDetectionControl"
                         Layout.fillWidth: true
                         controlName: "Load Detection"
                         controlStatus: winchController.load_detection_enabled ? "Active" : "Inactive"
                         enabledState: winchController.load_detection_enabled
                         iconText: "LD"
+                        actionKey: "winch.load_detection"
+                        legalityModel: actionLegality
                         
                         onClicked: deviceOperationsHandler.toggleLoadDetection(winchController.load_detection_enabled)
                     }
@@ -202,22 +214,28 @@ Item {
                     
                     // Wheel Enable Control
                     ControlPanel {
+                        objectName: "wheelEnableControl"
                         Layout.fillWidth: true
                         controlName: "Wheel Enable"
                         controlStatus: wheelController ? (wheelController.enabled ? "Motors active" : "Motors inactive") : "Unavailable"
                         enabledState: wheelController ? wheelController.enabled : false
                         iconText: "🛞"
+                        actionKey: "wheel.enable"
+                        legalityModel: actionLegality
                         
                         onClicked: deviceActionHandler.toggleWheelEnable(wheelController ? wheelController.enabled : false)
                     }
                     
                     // Wheel Reset Position Button
                     ActionButton {
+                        objectName: "wheelResetAction"
                         Layout.fillWidth: true
                         buttonText: "Reset Wheel Position"
                         buttonDescription: "Set wheel position counters to zero"
                         iconColor: "#4CAF50"
                         iconType: "reset"
+                        actionKey: "wheel.reset_position"
+                        legalityModel: actionLegality
                         
                         onClicked: {
                             if (deviceActionHandler.resetWheelPosition()) {

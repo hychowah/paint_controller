@@ -3,7 +3,9 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 import "../pages/status"
+import "../features/video"
 import "../features/systemcontrol"
+import "../overlays"
 
 /**
  * MultiScreenListUI - Industrial Monitor Display for Secondary Screen
@@ -49,10 +51,41 @@ Window {
     SystemControlWorkspace {
         anchors.fill: parent
         id: systemControlMenuSecondary
-        z: 1001
+        objectName: "systemControlMenuSecondary"
+        z: overlayHost ? overlayHost.system_control_layer : 1001
         showOverlay: overlayController.show_overlay
         activeMenu: overlayController.active_menu
-        visible: shellState ? shellState.show_system_control_on_secondary_surface : true
+        visible: overlayHost ? overlayHost.system_control_on_secondary_surface : (shellState ? shellState.show_system_control_on_secondary_surface : true)
+    }
+
+    JoystickOverlay {
+        anchors.fill: parent
+        id: joystickOverlaySecondary
+        objectName: "joystickOverlaySecondary"
+        z: overlayHost ? overlayHost.joystick_overlay_layer : 1000
+        showOverlay: overlayController.show_overlay
+        leftSelectedIndex: overlayController.left_selected_index
+        rightSelectedIndex: overlayController.right_selected_index
+        activeMenu: overlayController.active_menu
+        controlOptions: overlayController.control_options
+        visible: overlayHost ? overlayHost.joystick_overlay_on_secondary_surface : false
+    }
+
+    VideoFullscreenWorkspace {
+        anchors.fill: parent
+        id: videoFullscreenOverlaySecondary
+        objectName: "videoFullscreenOverlaySecondary"
+        z: overlayHost ? overlayHost.video_fullscreen_layer : 500
+        active: overlayHost ? (overlayHost.video_fullscreen_active && overlayHost.video_fullscreen_on_secondary_surface) : false
+        videoSource: overlayHost ? overlayHost.video_fullscreen_source : ""
+    }
+
+    EmergencyOverlay {
+        anchors.fill: parent
+        id: emergencyOverlaySecondary
+        objectName: "emergencyOverlaySecondary"
+        z: overlayHost ? overlayHost.emergency_overlay_layer : 3000
+        visible: overlayHost ? overlayHost.emergency_overlay_on_secondary_surface : false
     }
     
     Component.onCompleted: {

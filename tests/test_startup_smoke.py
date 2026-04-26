@@ -149,6 +149,81 @@ class FakeDeviceOperationsHandler(QObject):
         return True
 
 
+class FakeBaseTopViewAdminHandler(QObject):
+    @Slot(float, result=bool)
+    def requestZoom(self, _value: float) -> bool:
+        return True
+
+    @Slot(float, result=bool)
+    def requestOffsetX(self, _value: float) -> bool:
+        return True
+
+    @Slot(float, result=bool)
+    def requestOffsetY(self, _value: float) -> bool:
+        return True
+
+    @Slot(bool, result=bool)
+    def requestCropEnabled(self, _value: bool) -> bool:
+        return True
+
+    @Slot(float, result=bool)
+    def requestCropWidthRatio(self, _value: float) -> bool:
+        return True
+
+    @Slot(float, result=bool)
+    def requestCropCenterX(self, _value: float) -> bool:
+        return True
+
+    @Slot(float, result=bool)
+    def requestK1(self, _value: float) -> bool:
+        return True
+
+    @Slot(float, result=bool)
+    def requestK2(self, _value: float) -> bool:
+        return True
+
+    @Slot(float, result=bool)
+    def requestK3(self, _value: float) -> bool:
+        return True
+
+    @Slot(float, result=bool)
+    def requestK4(self, _value: float) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def saveSettings(self) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def resetToDefaults(self) -> bool:
+        return True
+
+
+class FakeActionLegality(QObject):
+    legalityChanged = Signal()
+
+    def __init__(self, legalities: dict[str, dict] | None = None) -> None:
+        super().__init__()
+        self._legalities = dict(legalities or {})
+
+    @Slot(str, result="QVariantMap")
+    def getActionLegality(self, action_key: str):
+        return dict(
+            self._legalities.get(
+                action_key,
+                {
+                    "actionKey": action_key,
+                    "allowed": True,
+                    "reason": "",
+                    "title": action_key,
+                    "legalStateClass": "status-admin",
+                    "surfaceKeys": [],
+                    "primarySurface": "",
+                },
+            )
+        )
+
+
 class FakeWorkflowEditor(QObject):
     workflow_list_changed = Signal()
 
@@ -292,6 +367,7 @@ def _teensy_all_status() -> DynamicObject:
         loop_time_counter=1.0,
         relay_on=False,
         enabled=True,
+        yaw_enabled=False,
         arm_extension_dist=0.0,
         arm_rail_current=0.0,
         gimbal_pitch_motor_current=0.0,
@@ -332,6 +408,22 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             show_system_control_on_secondary_surface=False,
             video_fullscreen_on_main_surface=True,
         ),
+        "overlayHost": DynamicObject(
+            system_control_on_main_surface=True,
+            system_control_on_secondary_surface=False,
+            joystick_overlay_on_main_surface=True,
+            joystick_overlay_on_secondary_surface=False,
+            video_fullscreen_on_main_surface=True,
+            video_fullscreen_on_secondary_surface=False,
+            emergency_overlay_on_main_surface=True,
+            emergency_overlay_on_secondary_surface=False,
+            system_control_layer=1001,
+            joystick_overlay_layer=1000,
+            video_fullscreen_layer=500,
+            emergency_overlay_layer=3000,
+            video_fullscreen_active=False,
+            video_fullscreen_source="",
+        ),
         "overlayController": DynamicObject(
             show_overlay=False,
             left_selected_index=0,
@@ -339,6 +431,7 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             active_menu="",
             control_options=[],
         ),
+        "actionLegality": FakeActionLegality(),
         "workFlowRunner": FakeWorkFlowRunner(),
         "warningHandler": DynamicObject(active_warning=""),
         "baseStreamHandler": FakeStreamHandler(),
@@ -354,6 +447,8 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
         ),
         "winchController": DynamicObject(
             available=True,
+            enabled=True,
+            load_detection_enabled=False,
             cable_length=0.0,
             cable_speed=0.0,
             motor_voltage=24.0,
@@ -362,7 +457,16 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
         ),
         "steamDeckHandler": DynamicObject(),
         "windMonitor": DynamicObject(speed=0.0, direction=0.0),
-        "teensyController": DynamicObject(available=True, all_status=_teensy_all_status()),
+        "teensyController": DynamicObject(
+            available=True,
+            all_status=_teensy_all_status(),
+            stability_enabled=False,
+            auto_correction_enabled=False,
+            spray_gun_leveling_enabled=False,
+            roller_steering_enabled=False,
+            swing_damping_enabled=False,
+            spray_gun_led_on=False,
+        ),
         "esp32ValveController": DynamicObject(
             valve_position=0.0,
             valve_rate=0.0,
@@ -395,12 +499,37 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             battery_time_remaining="--",
             cpu_temperature=0.0,
         ),
-        "screenRecorder": DynamicObject(isRecording=False, is_recording=False, recording_duration=0),
-        "rosBagRecorder": DynamicObject(isRecording=False, is_recording=False),
+        "screenRecorder": DynamicObject(
+            isRecording=False,
+            is_recording=False,
+            recording_duration=0,
+            free_space_gb=10.0,
+        ),
+        "rosBagRecorder": DynamicObject(
+            isRecording=False,
+            is_recording=False,
+            is_compressing=False,
+            is_bag_recording=False,
+            bag_recording_duration=0,
+            bag_status_message="",
+        ),
         "workflowEditor": FakeWorkflowEditor(),
         "settingsManager": settings_manager,
+        "baseTopViewAdminHandler": FakeBaseTopViewAdminHandler(),
         "screenManager": FakeScreenManager(),
-        "baseTopViewController": DynamicObject(enabled=False),
+        "baseTopViewController": DynamicObject(
+            enabled=False,
+            zoom=1.0,
+            offsetX=0.0,
+            offsetY=0.0,
+            cropEnabled=False,
+            cropWidthRatio=0.5,
+            cropCenterX=0.5,
+            k1=0.0,
+            k2=0.0,
+            k3=0.0,
+            k4=0.0,
+        ),
     }
 
 
@@ -509,6 +638,51 @@ def test_multi_screen_monitor_window_loads_offscreen(monkeypatch, tmp_path, qt_a
         "is not a type",
     )
     assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+
+
+def test_multi_screen_monitor_window_consumes_overlay_host_matrix(monkeypatch, tmp_path, qt_app):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    qml_path = qml_dir / "overlays" / "MultiScreenListUI.qml"
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+    engine.addImageProvider("ef_live", BlankImageProvider())
+    engine.addImageProvider("base_front_live", BlankImageProvider())
+    engine.addImageProvider("base_rear_live", BlankImageProvider())
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    context_objects["overlayHost"] = DynamicObject(
+        system_control_on_main_surface=False,
+        system_control_on_secondary_surface=True,
+        joystick_overlay_on_main_surface=False,
+        joystick_overlay_on_secondary_surface=True,
+        video_fullscreen_on_main_surface=True,
+        video_fullscreen_on_secondary_surface=False,
+        emergency_overlay_on_main_surface=True,
+        emergency_overlay_on_secondary_surface=True,
+        system_control_layer=1001,
+        joystick_overlay_layer=1000,
+        video_fullscreen_layer=500,
+        emergency_overlay_layer=3000,
+        video_fullscreen_active=True,
+        video_fullscreen_source="image://base_front_live/frame",
+    )
+
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    engine.load(QUrl.fromLocalFile(str(qml_path)))
+    qt_app.processEvents()
+
+    assert engine.rootObjects(), "MultiScreenListUI.qml failed to load with overlay host matrix"
+
+    root = engine.rootObjects()[0]
+    assert root.findChild(QObject, "systemControlMenuSecondary").property("visible") is True
+    assert root.findChild(QObject, "joystickOverlaySecondary").property("visible") is True
+    assert root.findChild(QObject, "emergencyOverlaySecondary").property("visible") is True
+    assert root.findChild(QObject, "videoFullscreenOverlaySecondary").property("active") is False
 
 
 def test_settings_route_loads_offscreen(monkeypatch, tmp_path, qt_app):
@@ -805,6 +979,187 @@ Item {{
         assert root is not None, [str(error) for error in component.errors()]
         qt_app.processEvents()
         assert not any("failed to load component" in warning.lower() for warning in warnings), warnings
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
+def test_device_control_tab_consumes_action_legality_affordance(monkeypatch, tmp_path, qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    systemcontrol_import_url = _qml_import_url(qml_dir / "overlays" / "systemcontrol")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    context_objects["actionLegality"] = FakeActionLegality(
+        {
+            "status.winch_enable": {
+                "actionKey": "status.winch_enable",
+                "allowed": False,
+                "reason": "Winch enable requires the controller heartbeat to be idle",
+                "title": "Winch Enable Toggle",
+                "legalStateClass": "status-admin",
+            },
+            "wheel.reset_position": {
+                "actionKey": "wheel.reset_position",
+                "allowed": False,
+                "reason": "Reset Wheel Position requires the system to be idle",
+                "title": "Reset Wheel Position",
+                "legalStateClass": "maintenance-preset",
+            },
+        }
+    )
+
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{systemcontrol_import_url}"
+
+Item {{
+    width: 1280
+    height: 800
+
+    DeviceControlTab {{
+        anchors.fill: parent
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:DeviceControlTabHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+        qt_app.processEvents()
+
+        winch_enable = root.findChild(QObject, "winchEnableControl")
+        wheel_reset = root.findChild(QObject, "wheelResetAction")
+        assert winch_enable is not None
+        assert wheel_reset is not None
+        assert winch_enable.property("actionAllowed") is False
+        assert winch_enable.property("blockedReason") == "Winch enable requires the controller heartbeat to be idle"
+        assert wheel_reset.property("actionAllowed") is False
+        assert wheel_reset.property("blockedReason") == "Reset Wheel Position requires the system to be idle"
+
+        fatal_warning_fragments = (
+            "failed to load component",
+            "no such file or directory",
+            "is not a type",
+            "required property",
+        )
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
+def test_base_top_view_settings_popup_disables_blocked_actions(monkeypatch, tmp_path, qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    video_components_import_url = _qml_import_url(qml_dir / "overlays" / "video" / "components")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    context_objects["actionLegality"] = FakeActionLegality(
+        {
+            "camera.base_top_view.live_adjustments": {
+                "actionKey": "camera.base_top_view.live_adjustments",
+                "allowed": False,
+                "reason": "Base top view live adjustments require the controller heartbeat to be idle",
+                "title": "Base Top View Live Adjustments",
+                "legalStateClass": "overlay-primary-calibration",
+            },
+            "camera.base_top_view.save": {
+                "actionKey": "camera.base_top_view.save",
+                "allowed": False,
+                "reason": "Base top view save requires the controller heartbeat to be idle",
+                "title": "Base Top View Save",
+                "legalStateClass": "overlay-primary-calibration",
+            },
+            "camera.base_top_view.reset": {
+                "actionKey": "camera.base_top_view.reset",
+                "allowed": False,
+                "reason": "Base top view reset requires the controller heartbeat to be idle",
+                "title": "Base Top View Reset",
+                "legalStateClass": "overlay-primary-calibration",
+            },
+        }
+    )
+
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import QtQuick.Controls
+import "{video_components_import_url}"
+
+ApplicationWindow {{
+    width: 1280
+    height: 800
+    visible: false
+
+    BaseTopViewSettingsPopup {{
+        visible: true
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:BaseTopViewSettingsPopupHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+        qt_app.processEvents()
+
+        zoom_slider = root.findChild(QObject, "zoomSlider")
+        warning_banner = root.findChild(QObject, "baseTopViewLegalityBanner")
+        action_reason = root.findChild(QObject, "baseTopViewActionReason")
+        save_button = root.findChild(QObject, "saveSettingsButton")
+        reset_button = root.findChild(QObject, "resetDefaultsButton")
+
+        assert zoom_slider is not None
+        assert warning_banner is not None
+        assert action_reason is not None
+        assert save_button is not None
+        assert reset_button is not None
+        assert zoom_slider.property("enabled") is False
+        assert warning_banner.property("visible") is True
+        assert action_reason.property("text") == "Base top view save requires the controller heartbeat to be idle"
+        assert save_button.property("enabled") is False
+        assert reset_button.property("enabled") is False
+
+        fatal_warning_fragments = (
+            "failed to load component",
+            "no such file or directory",
+            "is not a type",
+            "required property",
+        )
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
     finally:
         if root is not None:
             root.deleteLater()

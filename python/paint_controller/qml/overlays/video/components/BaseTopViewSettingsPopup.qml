@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../../../core"
 import "../../../components/popups"
 
 Popup {
@@ -12,6 +13,45 @@ Popup {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     anchors.centerIn: Overlay.overlay
     padding: 0
+    property var liveAdjustmentsLegality: settingsPopup.defaultLegality("Base Top View Live Adjustments")
+    property var saveLegality: settingsPopup.defaultLegality("Base Top View Save")
+    property var resetLegality: settingsPopup.defaultLegality("Base Top View Reset")
+    readonly property bool liveAdjustmentsAllowed: liveAdjustmentsLegality.allowed !== false
+    readonly property string liveAdjustmentsReason: liveAdjustmentsAllowed ? "" : String(liveAdjustmentsLegality.reason || "")
+    readonly property bool saveAllowed: saveLegality.allowed !== false
+    readonly property string saveReason: saveAllowed ? "" : String(saveLegality.reason || "")
+    readonly property bool resetAllowed: resetLegality.allowed !== false
+    readonly property string resetReason: resetAllowed ? "" : String(resetLegality.reason || "")
+
+    function defaultLegality(title) {
+        return {
+            "allowed": true,
+            "reason": "",
+            "title": title,
+        }
+    }
+
+    function refreshLegalities() {
+        liveAdjustmentsLegality = actionLegality
+            ? actionLegality.getActionLegality("camera.base_top_view.live_adjustments")
+            : defaultLegality("Base Top View Live Adjustments")
+        saveLegality = actionLegality
+            ? actionLegality.getActionLegality("camera.base_top_view.save")
+            : defaultLegality("Base Top View Save")
+        resetLegality = actionLegality
+            ? actionLegality.getActionLegality("camera.base_top_view.reset")
+            : defaultLegality("Base Top View Reset")
+    }
+
+    Component.onCompleted: refreshLegalities()
+
+    Connections {
+        target: actionLegality
+
+        function onLegalityChanged() {
+            settingsPopup.refreshLegalities()
+        }
+    }
     
     background: Rectangle {
         color: "#2D2D2D"
@@ -59,6 +99,27 @@ Popup {
                 id: columnLayout
                 width: parent.width
                 spacing: 15
+
+                Rectangle {
+                    objectName: "baseTopViewLegalityBanner"
+                    Layout.fillWidth: true
+                    visible: !settingsPopup.liveAdjustmentsAllowed
+                    color: CommonStyle.warningSurface
+                    radius: 8
+                    border.color: CommonStyle.statusWarning
+                    border.width: 1
+                    implicitHeight: warningText.implicitHeight + 16
+
+                    Text {
+                        id: warningText
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        text: settingsPopup.liveAdjustmentsReason
+                        color: CommonStyle.warningText
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: 13
+                    }
+                }
                 
                 // Edit Points button (disabled)
                 Button {
@@ -102,12 +163,14 @@ Popup {
                 // Zoom slider
                 SettingSlider {
                     id: zoomSlider
+                    objectName: "zoomSlider"
                     title: "Zoom"
                     minValue: 0.1
                     maxValue: 2.0
                     currentValue: baseTopViewController.zoom
                     stepSize: 0.01
                     decimals: 2
+                    enabled: settingsPopup.liveAdjustmentsAllowed
                     onValueChanged: function(value) {
                         if (!baseTopViewAdminHandler.requestZoom(value)) {
                             syncFromCurrentValue()
@@ -124,6 +187,7 @@ Popup {
                     currentValue: baseTopViewController.offsetX
                     stepSize: 0.01
                     decimals: 3
+                    enabled: settingsPopup.liveAdjustmentsAllowed
                     onValueChanged: function(value) {
                         if (!baseTopViewAdminHandler.requestOffsetX(value)) {
                             syncFromCurrentValue()
@@ -140,6 +204,7 @@ Popup {
                     currentValue: baseTopViewController.offsetY
                     stepSize: 0.01
                     decimals: 3
+                    enabled: settingsPopup.liveAdjustmentsAllowed
                     onValueChanged: function(value) {
                         if (!baseTopViewAdminHandler.requestOffsetY(value)) {
                             syncFromCurrentValue()
@@ -166,6 +231,8 @@ Popup {
                         Switch {
                             id: cropToggle
                             checked: baseTopViewController.cropEnabled
+                            enabled: settingsPopup.liveAdjustmentsAllowed
+                            opacity: enabled ? 1.0 : 0.5
                             onToggled: {
                                 if (!baseTopViewAdminHandler.requestCropEnabled(checked)) {
                                     cropToggle.checked = !checked
@@ -184,7 +251,7 @@ Popup {
                     currentValue: baseTopViewController.cropWidthRatio
                     stepSize: 0.01
                     decimals: 3
-                    enabled: baseTopViewController.cropEnabled
+                    enabled: baseTopViewController.cropEnabled && settingsPopup.liveAdjustmentsAllowed
                     onValueChanged: function(value) {
                         if (!baseTopViewAdminHandler.requestCropWidthRatio(value)) {
                             syncFromCurrentValue()
@@ -201,7 +268,7 @@ Popup {
                     currentValue: baseTopViewController.cropCenterX
                     stepSize: 0.01
                     decimals: 3
-                    enabled: baseTopViewController.cropEnabled
+                    enabled: baseTopViewController.cropEnabled && settingsPopup.liveAdjustmentsAllowed
                     onValueChanged: function(value) {
                         if (!baseTopViewAdminHandler.requestCropCenterX(value)) {
                             syncFromCurrentValue()
@@ -218,6 +285,7 @@ Popup {
                     currentValue: baseTopViewController.k1
                     stepSize: 0.01
                     decimals: 3
+                    enabled: settingsPopup.liveAdjustmentsAllowed
                     onValueChanged: function(value) {
                         if (!baseTopViewAdminHandler.requestK1(value)) {
                             syncFromCurrentValue()
@@ -234,6 +302,7 @@ Popup {
                     currentValue: baseTopViewController.k2
                     stepSize: 0.01
                     decimals: 3
+                    enabled: settingsPopup.liveAdjustmentsAllowed
                     onValueChanged: function(value) {
                         if (!baseTopViewAdminHandler.requestK2(value)) {
                             syncFromCurrentValue()
@@ -250,6 +319,7 @@ Popup {
                     currentValue: baseTopViewController.k3
                     stepSize: 0.01
                     decimals: 3
+                    enabled: settingsPopup.liveAdjustmentsAllowed
                     onValueChanged: function(value) {
                         if (!baseTopViewAdminHandler.requestK3(value)) {
                             syncFromCurrentValue()
@@ -266,6 +336,7 @@ Popup {
                     currentValue: baseTopViewController.k4
                     stepSize: 0.01
                     decimals: 3
+                    enabled: settingsPopup.liveAdjustmentsAllowed
                     onValueChanged: function(value) {
                         if (!baseTopViewAdminHandler.requestK4(value)) {
                             syncFromCurrentValue()
@@ -294,11 +365,23 @@ Popup {
             RowLayout {
                 anchors.centerIn: parent
                 spacing: 20
+
+                Text {
+                    objectName: "baseTopViewActionReason"
+                    visible: !settingsPopup.saveAllowed || !settingsPopup.resetAllowed
+                    text: !settingsPopup.saveAllowed ? settingsPopup.saveReason : settingsPopup.resetReason
+                    color: CommonStyle.warningText
+                    font.pixelSize: 13
+                    wrapMode: Text.WordWrap
+                    Layout.preferredWidth: 220
+                }
                 
                 Button {
+                    objectName: "saveSettingsButton"
                     text: "Save Settings"
                     Layout.preferredWidth: 140
                     Layout.preferredHeight: 40
+                    enabled: settingsPopup.saveAllowed
                     
                     background: Rectangle {
                         color: parent.pressed ? "#1565C0" : (parent.hovered ? "#1976D2" : "#2196F3")
@@ -333,9 +416,11 @@ Popup {
                 }
                 
                 Button {
+                    objectName: "resetDefaultsButton"
                     text: "Reset to Defaults"
                     Layout.preferredWidth: 180
                     Layout.preferredHeight: 40
+                    enabled: settingsPopup.resetAllowed
                     
                     background: Rectangle {
                         color: parent.pressed ? "#E65100" : (parent.hovered ? "#FF6F00" : "#FF9800")

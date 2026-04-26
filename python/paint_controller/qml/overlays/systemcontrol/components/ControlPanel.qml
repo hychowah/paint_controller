@@ -10,17 +10,53 @@ Rectangle {
     property bool enabledState: false
     required property string iconText
     property bool selfContained: false
+    property string actionKey: ""
+    property var legalityModel: null
+    property var legality: controlPanel.defaultLegality()
+    readonly property bool actionAllowed: !actionKey || !legalityModel || legality.allowed !== false
+    readonly property string blockedReason: actionAllowed ? "" : String(legality.reason || "")
     
     signal clicked()
+
+    function defaultLegality() {
+        return {
+            "allowed": true,
+            "reason": "",
+            "title": controlName,
+        }
+    }
+
+    function refreshLegality() {
+        legality = legalityModel && actionKey !== ""
+            ? legalityModel.getActionLegality(actionKey)
+            : defaultLegality()
+    }
     
-    height: CommonStyle.itemHeight
+    height: blockedReason !== "" ? CommonStyle.itemHeight + CommonStyle.spacingLg : CommonStyle.itemHeight
     radius: CommonStyle.radiusMd
-    color: enabledState ? CommonStyle.cardBackground : CommonStyle.backgroundL1
-    border.color: enabledState ? CommonStyle.borderFocused : CommonStyle.inputBorder
+    color: !actionAllowed
+        ? CommonStyle.warningSurface
+        : (enabledState ? CommonStyle.cardBackground : CommonStyle.backgroundL1)
+    border.color: !actionAllowed
+        ? CommonStyle.statusWarning
+        : (enabledState ? CommonStyle.borderFocused : CommonStyle.inputBorder)
     border.width: 1
+    opacity: enabled ? 1.0 : 0.65
     
     // This ensures consistent layout across all control panels
     Layout.fillWidth: true
+
+    Component.onCompleted: refreshLegality()
+    onActionKeyChanged: refreshLegality()
+    onLegalityModelChanged: refreshLegality()
+
+    Connections {
+        target: legalityModel
+
+        function onLegalityChanged() {
+            controlPanel.refreshLegality()
+        }
+    }
     
     // Subtle transition animations
     Behavior on color {
@@ -34,7 +70,8 @@ Rectangle {
     MouseArea {
         anchors.fill: parent
         hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
+        enabled: controlPanel.enabled && controlPanel.actionAllowed
+        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
         onClicked: {
             if (controlPanel.selfContained) {
                 controlPanel.enabledState = !controlPanel.enabledState
@@ -44,11 +81,15 @@ Rectangle {
         }
         // Hover effect
         onEntered: {
-            parent.color = enabledState ? CommonStyle.cardBackgroundAlt : CommonStyle.backgroundL2
+            if (enabled) {
+                parent.color = enabledState ? CommonStyle.cardBackgroundAlt : CommonStyle.backgroundL2
+            }
         }
         
         onExited: {
-            parent.color = enabledState ? CommonStyle.cardBackground : CommonStyle.backgroundL1
+            parent.color = !controlPanel.actionAllowed
+                ? CommonStyle.warningSurface
+                : (enabledState ? CommonStyle.cardBackground : CommonStyle.backgroundL1)
         }
     }
     
@@ -109,11 +150,22 @@ Rectangle {
                     font.family: CommonStyle.fontSans
                     font.pixelSize: CommonStyle.fontCaption
                     color: enabledState ? CommonStyle.accentMuted : CommonStyle.textDisabled
+                    wrapMode: Text.WordWrap
+                    visible: controlPanel.controlStatus !== ""
                     
                     // Color transition
                     Behavior on color {
                         ColorAnimation { duration: CommonStyle.motionStandard }
                     }
+                }
+
+                Text {
+                    text: controlPanel.blockedReason
+                    font.family: CommonStyle.fontSans
+                    font.pixelSize: CommonStyle.fontCaption
+                    color: CommonStyle.warningText
+                    wrapMode: Text.WordWrap
+                    visible: controlPanel.blockedReason !== ""
                 }
             }
         }

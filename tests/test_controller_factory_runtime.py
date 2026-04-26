@@ -387,6 +387,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     runtime.video_stream_handler = _VideoHandlerRecorder()
     runtime.qt_bridge = _QtBridgeRecorder()
     runtime.engine = _EngineRecorder()
+    runtime.overlay_host = object()
     runtime.bundle = type(
         "Bundle",
         (),
@@ -442,6 +443,8 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert create_calls[0]["capability_catalog"] is runtime.capability_catalog
     assert runtime.qt_bridge.base_top_view_service is runtime.base_top_view_service
     assert runtime.qt_bridge.input_handler is runtime.bundle.input_handler
+    assert runtime.action_legality is not None
+    assert runtime.engine.context.properties["actionLegality"] is runtime.action_legality
     assert set(runtime.engine.context.properties) == set(module._EXPECTED_CONTEXT_PROPERTY_NAMES)
     assert [button for button, _ in runtime.steam_deck_handler.callbacks] == [
         "up", "down", "left", "right", "r4", "l4", "menu", "switch", "l5", "r5", "dot", "a", "l1"

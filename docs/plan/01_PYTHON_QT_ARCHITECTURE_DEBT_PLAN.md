@@ -12,7 +12,7 @@ The validated truths are these:
 
 - Stage 1 command, device, and workflow boundary work is complete, and the last Settings quick-apply authority leak that was carried into Stage 4A has now been removed. `SettingsTab.qml` no longer mutates `teensyController` directly for thrust force.
 - Stage 2 has removed the live `OverlayController` / `ControlProcessor` cycle, extracted `JoystickSelectionModel`, moved per-mode preset memory to the selection owner, and trimmed dead overlay compatibility wrappers. The remaining overlay/menu facade is now stable enough for shell work to bind to it.
-- Shell work is no longer blocked on Stage 2. Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 direct-admin boundary/default-gating is complete, Workstream A workflow runtime/editor stabilization is complete, and the next architecture checkpoint is Workstream B1 overlay host and layer matrix.
+- Shell work is no longer blocked on Stage 2. Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 direct-admin boundary/default-gating is complete, Workstream A workflow runtime/editor stabilization is complete, and Workstream B overlay host plus touched-surface operator legality are complete. The next architecture checkpoint is Workstream C shell/route formalization.
 - Stage 4 is now complete: the Settings route is truthful for schema-backed mixed-admin settings, the camera route is explicit summary-only while overlay calibration remains primary, and a thin `CapabilityCatalog` now inventories settings/admin legality metadata for later shell and overlay stages.
 - The top-level Settings route remains a real long-term admin or maintenance surface.
 - In dual-screen mode, the built-in Steam Deck display remains the dedicated touch/control surface and the external display remains the mission surface.
@@ -213,9 +213,9 @@ The most defensible direction is:
 5. Treat Stage 3B1 as complete: route manifest data and selected-route ownership are now unified in `MainWindow.qml` without widening `ShellState`.
 6. Run the direct-admin boundary/default-gating stage next so the remaining raw QML admin/calibration mutators are removed before later legality work.
 7. Treat Workstream A as complete: the workflow runner now owns the public read model, runtime/persistence semantics are explicit, and the old direct workflow QML read path is retired from the live workflow surfaces.
-8. Run Workstream B1 next: formalize the overlay host and layer matrix before operator-action legality or later route-formalization work depends on it.
-9. Formalize the overlay contract in two passes under Workstream B: overlay hosting/layering first, then operator-action legality using `CapabilityCatalog` only after a real boundary or UI consumes it.
-10. Defer route formalization under Workstream C until overlay hosting and legality semantics are clearer; introduce a dedicated route owner later only if it still pays for itself.
+8. Treat Workstream B1 as complete: overlay host placement, fullscreen-video placement, joystick-overlay placement, and safety-overlay precedence are now published through one Python-owned host policy consumed declaratively by the touched QML surfaces.
+9. Treat Workstream B as complete for the touched overlay families: host topology is explicit and pre-click legality now shares one result seam with handler enforcement.
+10. Run Workstream C next: formalize route identity and shell contract now that overlay hosting and legality semantics are explicit enough to stop guessing.
 11. Keep the dedicated QML-contract reduction workstream, but start its retirement rule immediately in any touched slice rather than waiting for a late standalone cleanup.
 12. Leave future automation seam work, feature-shell recomposition, and design-system cleanup downstream.
 
@@ -509,7 +509,7 @@ Implementation summary:
 
 - Stage 4A is complete: `PageSettings.qml` no longer carries fake placeholder state, schema-backed settings now live truthfully on the mixed admin route for winch/wheels/arm, the camera route is explicit summary-only, and `SettingsTab.qml` no longer mutates `teensyController` directly for thrust force.
 - Stage 4B is complete: `CapabilityCatalog` now publishes executable settings/admin metadata covering route pages, settings surfaces, and the admin/calibration mutators that were still direct at the end of Stage 4 before Stage 4.5 moved them behind Python-owned boundaries.
-- The next work is no longer Stage 4 or Workstream A. Stage 3B1 route normalization, Stage 4.5 direct-admin boundary/default-gating, and Workstream A workflow runtime/editor stabilization are complete, and the next checkpoint is Workstream B1 overlay host and layer matrix before later legality and route-formalization slices.
+- The next work is no longer Stage 4, Workstream A, or Workstream B. Stage 3B1 route normalization, Stage 4.5 direct-admin boundary/default-gating, Workstream A workflow runtime/editor stabilization, and Workstream B overlay host plus touched-surface operator legality are complete, and the next checkpoint is Workstream C shell/route formalization before later contract-reduction slices.
 
 Exit criteria:
 
@@ -672,7 +672,9 @@ Primary files:
 
 Current problem:
 
-The operator overlay is real product architecture, but host placement, layering, and legality are still only partially explicit. The repo now has safer action seams, but it does not yet have one complete operator contract.
+The operator overlay is real product architecture. Workstream B made the touched host placement, layering, and legality rules explicit enough that later route and contract-reduction work can consume them without guessing.
+
+Status: Workstream B completed on 2026-04-26.
 
 Checkpoint B1: Overlay host and layer matrix
 
@@ -681,11 +683,23 @@ Checkpoint B1: Overlay host and layer matrix
 - Define coexistence and precedence rules explicitly instead of leaving them in ad hoc `z` relationships.
 - Move any state that must survive host changes out of duplicated local QML instances.
 
+Checkpoint B1 completion summary:
+
+- `OverlayHostPolicy` now owns the touched overlay host and layer matrix in Python.
+- `MainWindow.qml` and `MultiScreenListUI.qml` now consume that contract declaratively for system-control, joystick, emergency, and fullscreen-video placement.
+- `ShellState` remains the narrow screen-role owner and `OverlayController` remains the menu-session owner rather than absorbing host policy.
+
 Checkpoint B2: Operator-action legality
 
 - Use `CapabilityCatalog` and `AdminActionGate` as seams, not as already-finished legality architecture.
 - Make handler enforcement and UI affordance state come from the same legality result shape.
 - Do not call legality complete until blocked actions can be explained before click, not only rejected after click.
+
+Checkpoint B2 completion summary:
+
+- `ActionLegalityModel` now exposes one QML-facing legality result seam over `AdminActionGate` plus `CapabilityCatalog`, and `AppRuntime` registers it as `actionLegality`.
+- The gated `DeviceControlTab.qml` affordance family now consumes legality through the shared `ControlPanel.qml` and `ActionButton.qml` contracts instead of relying only on post-click handler rejection.
+- `BaseTopViewSettingsPopup.qml` now consumes the same legality seam for live adjustments, save, and reset, so blocked actions are explained before click on the touched overlay-primary calibration surface.
 
 Validation:
 
@@ -886,23 +900,22 @@ When a stage becomes wrong:
 
 ## Next Recommended Session
 
-Stage 0 is published, Stage 1 command, device, and workflow boundaries are complete, Stage 2 is complete, Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 is complete, and Workstream A is complete. The next recommended session is to start Workstream B1 overlay host and layer matrix.
+Stage 0 is published, Stage 1 command, device, and workflow boundaries are complete, Stage 2 is complete, Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 is complete, Workstream A is complete, and Workstream B is complete. The next recommended session is to start Workstream C shell/route formalization.
 
-Task title: Start Workstream B1 overlay host and layer matrix.
+Task title: Start Workstream C shell/route formalization.
 
 The session should:
 
-1. Make overlay host surfaces, z-ordering, and precedence rules explicit before legality or route-formalization work depends on them.
-2. Preserve the completed Workstream A workflow contracts; overlay work should consume those owners instead of reaching back into workflow internals.
-3. Treat `CapabilityCatalog` and `AdminActionGate` as later legality seams, not as a substitute for an explicit host/layer contract.
-4. Add focused overlay regressions and keep startup/import smoke green.
-5. Keep `CapabilityCatalog` plus `AdminActionGate` treated as seams for later legality work rather than expanding them into a broad coordinator.
+1. Use the completed host matrix and legality seam as fixed inputs rather than reopening overlay placement or operator-affordance legality in the same slice.
+2. Preserve the completed Workstream A workflow contracts and the narrow `ShellState` / `OverlayHostPolicy` ownership boundaries while route formalization is added.
+3. Make `pageKey` the canonical route identity and retire transitional route duplication in the touched shell family.
+4. Add focused shell/route regressions and keep startup/import smoke green.
+5. Keep route formalization separate from broader contract reduction; do not expand shell policy into a broad coordinator.
 6. Create `PLANNING.md`.
 7. Ask for confirmation.
 
 The likely next implementation slice after approval:
 
-- start with one explicit overlay host/layer matrix seam rather than mixing host topology, legality, and route formalization in one change
-- publish canonical host ownership and precedence rules before adding new legality or route abstractions
-- preserve the completed Workstream A workflow contracts while making overlay placement and coexistence rules explicit
-- validate focused overlay/input smoke plus startup and QML import coverage before widening scope
+- start with one canonical route identity and one focused route family rather than mixing route work, contract reduction, and additional overlay changes in one change
+- preserve the completed host and legality seams while tightening shell/route ownership
+- validate focused shell/route tests plus startup and QML import coverage before widening scope

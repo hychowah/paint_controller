@@ -373,7 +373,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
     },
     "status.winch_enable": {
         "title": "Winch Enable Toggle",
-        "surfaceKeys": ["page:status", "page:winch"],
+        "surfaceKeys": ["overlay:systemcontrol:devices", "page:status", "page:winch"],
         "primarySurface": "page:status",
         "authority": "deviceActionHandler.requestWinchEnabled",
         "capabilityClass": "direct-admin-action",
@@ -383,7 +383,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
     },
     "status.teensy_enable": {
         "title": "Teensy Enable Toggle",
-        "surfaceKeys": ["page:status"],
+        "surfaceKeys": ["overlay:systemcontrol:devices", "page:status"],
         "primarySurface": "page:status",
         "authority": "deviceActionHandler.requestTeensyEnabled",
         "capabilityClass": "direct-admin-action",
@@ -393,7 +393,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
     },
     "status.teensy_relay": {
         "title": "Teensy Relay Toggle",
-        "surfaceKeys": ["page:status"],
+        "surfaceKeys": ["overlay:systemcontrol:devices", "page:status"],
         "primarySurface": "page:status",
         "authority": "deviceActionHandler.requestTeensyRelayEnabled",
         "capabilityClass": "direct-admin-action",
@@ -403,7 +403,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
     },
     "wheel.enable": {
         "title": "Wheel Enable Toggle",
-        "surfaceKeys": ["page:wheel"],
+        "surfaceKeys": ["overlay:systemcontrol:devices", "page:wheel"],
         "primarySurface": "page:wheel",
         "authority": "deviceActionHandler.requestWheelEnabled",
         "capabilityClass": "direct-admin-action",
@@ -413,7 +413,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
     },
     "wheel.reset_position": {
         "title": "Reset Wheel Position",
-        "surfaceKeys": ["page:wheel"],
+        "surfaceKeys": ["overlay:systemcontrol:devices", "page:wheel"],
         "primarySurface": "page:wheel",
         "authority": "deviceActionHandler.resetWheelPosition",
         "capabilityClass": "direct-admin-action",
@@ -423,7 +423,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
     },
     "winch.load_detection": {
         "title": "Load Detection Toggle",
-        "surfaceKeys": ["page:winch"],
+        "surfaceKeys": ["overlay:systemcontrol:devices", "page:winch"],
         "primarySurface": "page:winch",
         "authority": "deviceOperationsHandler.requestLoadDetectionEnabled",
         "capabilityClass": "direct-admin-action",

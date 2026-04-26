@@ -29,9 +29,10 @@ ApplicationWindow {
     property int secondaryScreenIndex: shellState ? shellState.secondary_surface_screen_index : 0
     property bool secondarySurfaceActive: shellState ? shellState.secondary_surface_active : false
     property bool secondarySurfaceFullscreen: shellState ? shellState.secondary_surface_fullscreen : false
-    property bool showSystemControlOnMainSurface: shellState ? shellState.show_system_control_on_main_surface : true
-    property bool showSystemControlOnSecondarySurface: shellState ? shellState.show_system_control_on_secondary_surface : false
-    property bool videoFullscreenOnMainSurface: shellState ? shellState.video_fullscreen_on_main_surface : true
+    property bool showSystemControlOnMainSurface: overlayHost ? overlayHost.system_control_on_main_surface : (shellState ? shellState.show_system_control_on_main_surface : true)
+    property bool showJoystickOverlayOnMainSurface: overlayHost ? overlayHost.joystick_overlay_on_main_surface : true
+    property bool showEmergencyOverlayOnMainSurface: overlayHost ? overlayHost.emergency_overlay_on_main_surface : true
+    property bool videoFullscreenOnMainSurface: overlayHost ? overlayHost.video_fullscreen_on_main_surface : (shellState ? shellState.video_fullscreen_on_main_surface : true)
     
     // Use Qt's Screen type for positioning - access via Screen attached property
     screen: Qt.application.screens[mainScreenIndex] || Qt.application.screens[0]
@@ -288,7 +289,8 @@ ApplicationWindow {
     SystemControlWorkspace {
         anchors.fill: parent
         id: systemControlMenu
-        z: 1001
+        objectName: "systemControlMenuMain"
+        z: overlayHost ? overlayHost.system_control_layer : 1001
         showOverlay: overlayController.show_overlay
         activeMenu: overlayController.active_menu
         visible: showSystemControlOnMainSurface
@@ -300,26 +302,34 @@ ApplicationWindow {
 
     JoystickOverlay {
         anchors.fill: parent
-        z: 1000
+        id: joystickOverlayMain
+        objectName: "joystickOverlayMain"
+        z: overlayHost ? overlayHost.joystick_overlay_layer : 1000
         showOverlay: overlayController.show_overlay
         leftSelectedIndex: overlayController.left_selected_index
         rightSelectedIndex: overlayController.right_selected_index
         activeMenu: overlayController.active_menu
         controlOptions: overlayController.control_options
+        visible: showJoystickOverlayOnMainSurface
     }
 
     // Emergency Overlay - highest z-index to appear on top
     EmergencyOverlay {
         id: emergencyOverlay
+        objectName: "emergencyOverlayMain"
         anchors.fill: parent
-        z: 3000  // Highest z-index to ensure it's on top
+        z: overlayHost ? overlayHost.emergency_overlay_layer : 3000
+        visible: showEmergencyOverlayOnMainSurface
     }
 
     // Video Fullscreen Overlay - for fullscreen video with DJI-style overlay
     VideoFullscreenWorkspace {
         id: videoFullscreenOverlay
+        objectName: "videoFullscreenOverlayMain"
         anchors.fill: parent
-        z: 500  // Below emergency overlay but above main content
+        z: overlayHost ? overlayHost.video_fullscreen_layer : 500
+        active: overlayHost ? (overlayHost.video_fullscreen_active && overlayHost.video_fullscreen_on_main_surface) : false
+        videoSource: overlayHost ? overlayHost.video_fullscreen_source : ""
     }
 
     // LiDAR 3D View
@@ -448,6 +458,11 @@ ApplicationWindow {
                 return
             }
 
+            if (overlayHost) {
+                overlayHost.toggle_video_fullscreen(videoSource)
+                return
+            }
+
             if (videoFullscreenOverlay.active) {
                 videoFullscreenOverlay.active = false
             } else {
@@ -457,6 +472,11 @@ ApplicationWindow {
         }
 
         function onUpdateVideoSourceRequested(videoSource) {
+            if (overlayHost) {
+                overlayHost.set_video_fullscreen_source(videoSource)
+                return
+            }
+
             if (videoFullscreenOverlay.active) {
                 videoFullscreenOverlay.videoSource = videoSource
             }

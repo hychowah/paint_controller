@@ -9,8 +9,27 @@ Rectangle {
     required property string buttonDescription
     property string iconColor: CommonStyle.statusSuccess
     property string iconType: "reset" // "reset", "warning", "info", etc.
+    property string actionKey: ""
+    property var legalityModel: null
+    property var legality: actionButton.defaultLegality()
+    readonly property bool actionAllowed: !actionKey || !legalityModel || legality.allowed !== false
+    readonly property string blockedReason: actionAllowed ? "" : String(legality.reason || "")
     
     signal clicked()
+
+    function defaultLegality() {
+        return {
+            "allowed": true,
+            "reason": "",
+            "title": buttonText,
+        }
+    }
+
+    function refreshLegality() {
+        legality = legalityModel && actionKey !== ""
+            ? legalityModel.getActionLegality(actionKey)
+            : defaultLegality()
+    }
     
     function showFeedback() {
         feedbackOverlay.visible = true
@@ -19,12 +38,27 @@ Rectangle {
     
     height: CommonStyle.itemHeight
     radius: CommonStyle.radiusMd
-    color: actionMouseArea.containsMouse ? CommonStyle.cardBackgroundAlt : CommonStyle.cardBackground
+    color: !actionAllowed
+        ? CommonStyle.warningSurface
+        : (actionMouseArea.containsMouse ? CommonStyle.cardBackgroundAlt : CommonStyle.cardBackground)
     border.width: 1
-    border.color: CommonStyle.borderDefault
+    border.color: actionAllowed ? CommonStyle.borderDefault : CommonStyle.statusWarning
+    opacity: enabled ? 1.0 : 0.65
     
     // This ensures consistent layout
     Layout.fillWidth: true
+
+    Component.onCompleted: refreshLegality()
+    onActionKeyChanged: refreshLegality()
+    onLegalityModelChanged: refreshLegality()
+
+    Connections {
+        target: legalityModel
+
+        function onLegalityChanged() {
+            actionButton.refreshLegality()
+        }
+    }
     
     // Button hover and pressed states
     states: [
@@ -51,13 +85,14 @@ Rectangle {
         id: actionMouseArea
         anchors.fill: parent
         hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
+        enabled: actionButton.enabled && actionButton.actionAllowed
+        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
         onClicked: actionButton.clicked()
-        onEntered: parent.state = "hovered"
+        onEntered: parent.state = enabled ? "hovered" : ""
         onExited: parent.state = ""
-        onPressed: parent.state = "pressed"
+        onPressed: parent.state = enabled ? "pressed" : ""
         onReleased: {
-            if (containsMouse)
+            if (enabled && containsMouse)
                 parent.state = "hovered"
             else
                 parent.state = ""
@@ -146,14 +181,15 @@ Rectangle {
                 font.family: CommonStyle.fontSans
                 font.pixelSize: CommonStyle.fontBody
                 font.bold: true
-                color: CommonStyle.textPrimary
+                color: actionButton.actionAllowed ? CommonStyle.textPrimary : CommonStyle.warningText
             }
             
             Text {
-                text: actionButton.buttonDescription
+                text: actionButton.blockedReason !== "" ? actionButton.blockedReason : actionButton.buttonDescription
                 font.family: CommonStyle.fontSans
                 font.pixelSize: CommonStyle.fontCaption
-                color: CommonStyle.accentMuted
+                color: actionButton.blockedReason !== "" ? CommonStyle.warningText : CommonStyle.accentMuted
+                wrapMode: Text.WordWrap
             }
         }
     }
