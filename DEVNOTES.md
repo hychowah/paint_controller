@@ -1,6 +1,38 @@
 # Development Notes
 
 ---
+### 2026-04-26 08:51 - Stage 2 Selection Model Extraction
+
+**Goal**: Continue Stage 2 past the initial cycle break by moving joystick selection ownership into a dedicated Qt-facing model while preserving the existing `overlayController` QML contract.
+**Issues**: Even after the direct cycle was removed, `OverlayController` still mixed overlay presentation state with operator selection state, and `ControlProcessor` still had to read selection through the overlay surface. The extraction needed to preserve temporary-vs-committed selection behavior, duplicate-selection rules, and mode-switch behavior without destabilizing QML bindings.
+**Tried**: Added `JoystickSelectionModel`, rewired `OverlayController` into a thin presentation facade over that model, made `ControlProcessor` read the model directly, updated factory wiring, added direct selection-model tests, and reran focused Stage 2 slices plus the full suite.
+**Result**: ✅ Stage 2 now has a dedicated selection owner in code, `OverlayController` is narrowed to overlay/menu presentation, and validation is green at `196 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q`. Remaining Stage 2 work is now about finishing long-term ownership cleanup, not extracting the core model itself.
+**Files**: `python/paint_controller/models/joystick_selection.py`, `python/paint_controller/ui/overlay.py`, `python/paint_controller/handlers/control_processor.py`, `python/paint_controller/core/controller_factory.py`, `tests/test_joystick_selection.py`, `tests/test_control_processor.py`, `tests/test_controller_factory_runtime.py`, `DEVNOTES.md`
+
+### 2026-04-26 08:51 - Stage 2 Control-Selection Cycle Break
+
+**Goal**: Start Stage 2 by removing the live `OverlayController` ↔ `ControlProcessor` cycle without changing the existing QML-facing overlay contract or joystick behavior.
+**Issues**: The actual reverse dependency was narrower than the roadmap label implied: `OverlayController` only reached back into `ControlProcessor` to seed `EF Yaw Angle` offset on selection changes, but that still forced explicit deferred wiring in `controller_factory.py` and made control-selection ownership harder to explain. The yaw path also needed to preserve selection-time seeding behavior rather than resetting continuously.
+**Tried**: Moved yaw-offset seeding into `ControlProcessor` as selection-transition logic, removed `OverlayController`'s processor back-reference and mutation path, deleted the deferred cycle wiring from `controller_factory.py`, added focused tests for yaw-selection transitions, and reran both the Stage 2 regression slice and the full suite.
+**Result**: ✅ The concrete cycle is gone, the factory no longer needs special-case overlay/control wiring, and the repo stays green at `193 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q`. This slice opened the door for the dedicated selection-model extraction that followed.
+**Files**: `python/paint_controller/handlers/control_processor.py`, `python/paint_controller/ui/overlay.py`, `python/paint_controller/core/controller_factory.py`, `tests/test_control_processor.py`, `tests/test_controller_factory_runtime.py`, `DEVNOTES.md`
+
+### 2026-04-26 00:37 - Stage 1B Through 1E Boundary Freeze
+
+**Goal**: Finish the approved Stage 1 boundary slices by moving remaining `DeviceControlTab.qml` actions behind Python-owned handlers, splitting workflow editor persistence away from runtime execution, and hardening the `workFlowRunner` execution seam without breaking the existing runtime-facing QML contract.
+**Issues**: `DeviceControlTab.qml` still owned direct controller, recorder, and heartbeat side effects; `WorkFlowRunner` still mixed file watching and editor persistence with runtime execution; and the runtime boundary still allowed `load_workflow()` during active execution, which could replace the executor's current workflow while a run was in progress.
+**Tried**: Added `DeviceOperationsHandler` for Stage 1C side effects; added shared `WorkflowCatalog` plus `WorkflowEditor`; rewired `EditWorkFlowTab.qml` to `workflowEditor`; kept `workFlowRunner` as the runtime-facing context while moving it onto the shared catalog; added a runtime guard that rejects workflow loads during active execution; expanded the direct handler/runtime/factory/startup tests; and reran both focused slices and the full pytest suite.
+**Result**: ✅ Stage 1B through 1E is now implemented. `DeviceControlTab.qml` no longer drives raw device/recorder/heartbeat side effects, workflow editor persistence no longer shares the same QML-facing object as runtime execution, and the hardened runtime boundary now blocks workflow replacement while execution is active. Validation is green at `190 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q`.
+**Files**: `python/paint_controller/handlers/device_actions.py`, `python/paint_controller/handlers/device_operations.py`, `python/paint_controller/services/workflow/workflow_catalog.py`, `python/paint_controller/services/workflow/workflow_editor.py`, `python/paint_controller/services/workflow/workflow_runner.py`, `python/paint_controller/core/controller_factory.py`, `python/paint_controller/core/app_runtime.py`, `python/paint_controller/qml/overlays/systemcontrol/DeviceControlTab.qml`, `python/paint_controller/qml/overlays/systemcontrol/EditWorkFlowTab.qml`, `tests/test_device_actions.py`, `tests/test_device_operations.py`, `tests/test_workflow_editor.py`, `tests/test_workflow_runner.py`, `tests/test_controller_factory_runtime.py`, `tests/test_startup_smoke.py`, `DEVNOTES.md`
+
+### 2026-04-25 23:55 - Validated Master Plan Reconciliation
+
+**Goal**: Replace stale architecture-roadmap sequencing with the validated master plan before code-boundary work continues.
+**Issues**: `00_ARCHITECTURE_PROGRESS.md` still pointed future sessions at Stage 1B settings outliers, the roadmap still placed shell work ahead of the documented overlay/control cycle, workflow editor persistence still appeared after workflow execution even though both concerns live on `WorkFlowRunner`, and the shell direction was still phrased too broadly as a new coordinator instead of a narrower ownership split.
+**Tried**: Rewrote `PLANNING.md`, published the durable Stage 0 authority map in `00_ARCHITECTURE_PROGRESS.md`, rewrote the staged order in `01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`, and aligned TD-032 in `docs/tech-debt.md` with the validated sequence.
+**Result**: ✅ The current-facing architecture docs now agree on the validated order: Stage 1B hard device actions next, workflow editor persistence before workflow execution, control-selection decoupling before broader shell placement work, and a narrower `ScreenManager` facts + `ShellState` policy + `QtBridge` intents split instead of a broad ShellCoordinator.
+**Files**: `PLANNING.md`, `docs/plan/00_ARCHITECTURE_PROGRESS.md`, `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`, `docs/tech-debt.md`, `DEVNOTES.md`
+
 ### 2026-04-25 18:05 - Post-Rebase Validation And Architecture-Doc Truth Pass
 
 **Goal**: Revalidate the rebased `refactor-python-qt-architecture-boundaries` branch on Linux and make the current-facing docs match the new architecture-boundary roadmap.

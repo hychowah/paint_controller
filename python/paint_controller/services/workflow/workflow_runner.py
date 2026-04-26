@@ -1,26 +1,19 @@
 #!/usr/bin/env python3
-"""
-WorkFlow Runner Node for paint controller.
+"""QML-facing runtime boundary for workflow execution and status."""
 
-Provides QML-accessible interface for workflow management (play, pause, stop, list).
-"""
-
-import os
-import yaml
-import json
 import time
-from typing import List, Optional
-from pathlib import Path
+from typing import List
 
-from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer, QFileSystemWatcher
+from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer
 
 from .workflow_executor import WorkFlowExecutor, ExecutionState
 from .hardware import HardwareControllers
+from .workflow_catalog import WorkflowCatalog
 
 
 class WorkFlowRunner(QObject):
     """
-    QML-accessible workflow management interface.
+    QML-accessible workflow runtime interface.
 
     Signals:
         workflow_list_changed: Emitted when available workflows change
@@ -37,7 +30,7 @@ class WorkFlowRunner(QObject):
     loop_enabled_changed = Signal(bool)  # Loop enabled state changed
     error_occurred = Signal(str)  # Error message
 
-    def __init__(self, ros_node, hardware: HardwareControllers, logger=None):
+    def __init__(self, ros_node, hardware: HardwareControllers, logger=None, catalog: WorkflowCatalog | None = None):
         """
         Initialize workflow runner.
 
@@ -51,80 +44,24 @@ class WorkFlowRunner(QObject):
         self.logger = logger or ros_node.get_logger()
 
         self.executor = WorkFlowExecutor(ros_node, hardware, self.logger)
-        self._workflow_list: List[str] = []
+        self._catalog = catalog or WorkflowCatalog(logger=self.logger)
+        self._owns_catalog = catalog is None
+        self._catalog.workflow_list_changed.connect(self.workflow_list_changed.emit)
         self._current_workflow_name = ""
         self._current_action_index = -1
         self._last_execution_state = -1  # Track last emitted state
         self._last_loop_iteration = 0  # Track last emitted loop iteration
         self._workflow_start_time = 0.0  # Track when workflow started running
-        self._workflows_dir = self._find_workflows_dir()
-
-        # Set up file system watcher to monitor workflow directory
-        self._file_watcher = QFileSystemWatcher()
-        self._file_watcher.addPath(self._workflows_dir)
-        self._file_watcher.directoryChanged.connect(self._on_directory_changed)
-        
-        # Load available workflows
-        self._refresh_workflow_list()
 
         # Timer to monitor execution state and action index
         self._monitor_timer = QTimer()
         self._monitor_timer.timeout.connect(self._update_execution_state)
         self._monitor_timer.start(100)  # Update every 100ms
 
-
-
-    def _find_workflows_dir(self) -> str:
-        """Find workflows directory relative to package."""
-        # Try common paths
-        possible_paths = [
-            os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "resource", "workflows"),
-            os.path.join(
-                os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "resource", "workflows"
-            ),
-            "./workflows",
-        ]
-
-        for path in possible_paths:
-            if os.path.isdir(path):
-                self.logger.info(f"Found workflows directory: {path}")
-                return path
-
-        # Create default if not found
-        default_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "..", "resource", "workflows"
-        )
-        os.makedirs(default_path, exist_ok=True)
-        self.logger.warn(f"Created workflows directory: {default_path}")
-        return default_path
-
-    def _on_directory_changed(self, path: str) -> None:
-        """Handle directory changes (file added/removed/modified)."""
-        self.logger.info(f"WorkFlow directory changed: {path}")
-        self._refresh_workflow_list()
-
-    def _refresh_workflow_list(self) -> None:
-        """Refresh list of available trajectories from disk."""
-        try:
-            new_list = [
-                Path(f).stem
-                for f in os.listdir(self._workflows_dir)
-                if f.endswith(".yaml") or f.endswith(".yml")
-            ]
-            
-            # Only update and emit if list actually changed
-            if new_list != self._workflow_list:
-                self._workflow_list = new_list
-                self.logger.info(f"WorkFlow list updated: {len(self._workflow_list)} workflows found")
-                self.workflow_list_changed.emit()
-        except Exception as e:
-            self.logger.error(f"Error refreshing workflow list: {e}")
-            self._workflow_list = []
-
     @Property(list, notify=workflow_list_changed)
     def workflow_list(self) -> List[str]:
         """Get list of available workflow names."""
-        return self._workflow_list
+        return self._catalog.workflow_list
 
     @Property(str, notify=current_workflow_changed)
     def current_workflow(self) -> str:
@@ -164,20 +101,23 @@ class WorkFlowRunner(QObject):
         Returns:
             True if loaded successfully, False otherwise
         """
-        if workflow_name not in self._workflow_list:
+        if self.executor.current_state in (ExecutionState.RUNNING, ExecutionState.PAUSED):
+            error_msg = (
+                "Cannot load a new workflow while execution is active; stop the current workflow first"
+            )
+            self.logger.error(error_msg)
+            self.error_occurred.emit(error_msg)
+            return False
+
+        if not self._catalog.contains(workflow_name):
             error_msg = f"WorkFlow not found: {workflow_name}"
             self.logger.error(error_msg)
             self.error_occurred.emit(error_msg)
             return False
 
-        workflow_path = os.path.join(self._workflows_dir, f"{workflow_name}.yaml")
-
-        if not os.path.exists(workflow_path):
-            # Try .yml extension
-            workflow_path = os.path.join(self._workflows_dir, f"{workflow_name}.yml")
-
-        if not os.path.exists(workflow_path):
-            error_msg = f"WorkFlow file not found: {workflow_path}"
+        workflow_path = self._catalog.resolve_workflow_path(workflow_name)
+        if workflow_path is None:
+            error_msg = f"WorkFlow file not found: {workflow_name}"
             self.logger.error(error_msg)
             self.error_occurred.emit(error_msg)
             return False
@@ -186,9 +126,18 @@ class WorkFlowRunner(QObject):
 
         if success:
             self._current_workflow_name = workflow_name
+            if self._current_action_index != -1:
+                self._current_action_index = -1
+                self.current_action_index_changed.emit(-1)
+            self._workflow_start_time = 0.0
+            self._last_loop_iteration = 0
             self.current_workflow_changed.emit(workflow_name)
             self.loop_enabled_changed.emit(self.executor.is_loop_enabled())
             self.loop_iteration_changed.emit(0)  # Reset loop iteration on new load
+        else:
+            error_msg = f"Failed to load workflow: {workflow_name}"
+            self.logger.error(error_msg)
+            self.error_occurred.emit(error_msg)
 
         return success
 
@@ -344,6 +293,7 @@ class WorkFlowRunner(QObject):
             self.execution_state_changed.emit(self.executor.current_state.value)
         else:
             error_msg = "Failed to start workflow execution"
+            self.logger.error(error_msg)
             self.error_occurred.emit(error_msg)
 
         return success
@@ -355,6 +305,10 @@ class WorkFlowRunner(QObject):
 
         if success:
             self.execution_state_changed.emit(self.executor.current_state.value)
+        else:
+            error_msg = "Failed to pause workflow execution"
+            self.logger.error(error_msg)
+            self.error_occurred.emit(error_msg)
 
         return success
 
@@ -365,6 +319,10 @@ class WorkFlowRunner(QObject):
 
         if success:
             self.execution_state_changed.emit(self.executor.current_state.value)
+        else:
+            error_msg = "Failed to resume workflow execution"
+            self.logger.error(error_msg)
+            self.error_occurred.emit(error_msg)
 
         return success
 
@@ -378,6 +336,10 @@ class WorkFlowRunner(QObject):
             self._emergency_shutdown()
             self._workflow_start_time = 0.0
             self.execution_state_changed.emit(self.executor.current_state.value)
+        else:
+            error_msg = "Failed to stop workflow execution"
+            self.logger.error(error_msg)
+            self.error_occurred.emit(error_msg)
 
         return success
     
@@ -438,125 +400,11 @@ class WorkFlowRunner(QObject):
     @Slot()
     def refresh_workflow_list(self) -> None:
         """Manually refresh workflow list (callable from QML)."""
-        self._refresh_workflow_list()
-
-    @Slot(str, result=str)
-    def get_workflow_data(self, workflow_name: str) -> str:
-        """
-        Get full workflow data as JSON string.
-        
-        Args:
-            workflow_name: Name of workflow (without .yaml extension)
-            
-        Returns:
-            JSON string of workflow data or empty string on error
-        """
-        if workflow_name not in self._workflow_list:
-            self.logger.error(f"WorkFlow not found: {workflow_name}")
-            return ""
-        
-        workflow_path = os.path.join(self._workflows_dir, f"{workflow_name}.yaml")
-        if not os.path.exists(workflow_path):
-            workflow_path = os.path.join(self._workflows_dir, f"{workflow_name}.yml")
-        
-        if not os.path.exists(workflow_path):
-            self.logger.error(f"WorkFlow file not found: {workflow_path}")
-            return ""
-        
-        try:
-            with open(workflow_path, 'r') as f:
-                workflow_data = yaml.safe_load(f)
-            return json.dumps(workflow_data)
-        except Exception as e:
-            self.logger.error(f"Error loading workflow data: {e}")
-            return ""
-
-    @Slot(str, str, result=bool)
-    def save_workflow_data(self, workflow_name: str, workflow_json: str) -> bool:
-        """
-        Save workflow data from JSON string to YAML file.
-        
-        Args:
-            workflow_name: Name for the workflow file (without extension)
-            workflow_json: JSON string containing workflow data
-            
-        Returns:
-            True if saved successfully
-        """
-        try:
-            # Parse JSON to Python dict
-            workflow_data = json.loads(workflow_json)
-            
-            # Ensure name matches
-            workflow_data["name"] = workflow_name
-            
-            # Build file path
-            workflow_path = os.path.join(self._workflows_dir, f"{workflow_name}.yaml")
-            
-            # Save to YAML with better formatting
-            with open(workflow_path, 'w') as f:
-                yaml.dump(workflow_data, f, 
-                         default_flow_style=False, 
-                         sort_keys=False,
-                         allow_unicode=True,
-                         indent=2,
-                         width=120)
-            
-            self.logger.info(f"Saved workflow: {workflow_path}")
-            
-            # Refresh list
-            self._refresh_workflow_list()
-            
-            return True
-            
-        except Exception as e:
-            error_msg = f"Error saving workflow: {e}"
-            self.logger.error(error_msg)
-            self.error_occurred.emit(error_msg)
-            return False
-
-    @Slot(str, result=bool)
-    def delete_workflow(self, workflow_name: str) -> bool:
-        """
-        Delete a workflow file.
-        
-        Args:
-            workflow_name: Name of workflow to delete (without extension)
-            
-        Returns:
-            True if deleted successfully
-        """
-        if workflow_name not in self._workflow_list:
-            error_msg = f"WorkFlow not found: {workflow_name}"
-            self.logger.error(error_msg)
-            self.error_occurred.emit(error_msg)
-            return False
-        
-        try:
-            workflow_path = os.path.join(self._workflows_dir, f"{workflow_name}.yaml")
-            if not os.path.exists(workflow_path):
-                workflow_path = os.path.join(self._workflows_dir, f"{workflow_name}.yml")
-            
-            if os.path.exists(workflow_path):
-                os.remove(workflow_path)
-                self.logger.info(f"Deleted workflow: {workflow_path}")
-                self._refresh_workflow_list()
-                return True
-            else:
-                error_msg = f"WorkFlow file not found: {workflow_name}"
-                self.logger.error(error_msg)
-                self.error_occurred.emit(error_msg)
-                return False
-                
-        except Exception as e:
-            error_msg = f"Error deleting workflow: {e}"
-            self.logger.error(error_msg)
-            self.error_occurred.emit(error_msg)
-            return False
+        self._catalog.refresh_workflow_list()
 
     def cleanup(self) -> None:
         """Clean up runner resources."""
         self._monitor_timer.stop()
-        if self._file_watcher:
-            self._file_watcher.deleteLater()
+        if self._owns_catalog:
+            self._catalog.cleanup()
         self.executor.cleanup()

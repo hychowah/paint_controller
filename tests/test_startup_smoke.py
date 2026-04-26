@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QCoreApplication, QEvent, QObject, QSize, Signal, Slot, QUrl
+from PySide6.QtCore import Property, QCoreApplication, QEvent, QObject, QSize, Signal, Slot, QUrl
 from PySide6.QtGui import QColor, QImage
 from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent
 from PySide6.QtQuick import QQuickImageProvider
@@ -58,6 +58,110 @@ class FakeManualCommandHandler(QObject):
 
     @Slot(str, "QVariantMap", result=bool)
     def executeCommand(self, _command_name: str, _parameter_values) -> bool:
+        return True
+
+
+class FakeDeviceActionHandler(QObject):
+    @Slot(bool, result=bool)
+    def toggleTeensyRelay(self, _current_enabled: bool) -> bool:
+        return True
+
+    @Slot(bool, result=bool)
+    def toggleTeensyEnable(self, _current_enabled: bool) -> bool:
+        return True
+
+    @Slot(bool, result=bool)
+    def toggleWinchEnable(self, _current_enabled: bool) -> bool:
+        return True
+
+    @Slot(bool, result=bool)
+    def toggleWheelEnable(self, _current_enabled: bool) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def resetWheelPosition(self) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def homeTopRail(self) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def homeArm(self) -> bool:
+        return True
+
+
+class FakeDeviceOperationsHandler(QObject):
+    @Slot(bool, result=bool)
+    def toggleLoadDetection(self, _current_enabled: bool) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def toggleEndEffectorRecording(self) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def toggleBaseRecording(self) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def toggleScreenRecording(self) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def toggleRosBagRecording(self) -> bool:
+        return True
+
+    @Slot(bool, result=bool)
+    def toggleStability(self, _current_enabled: bool) -> bool:
+        return True
+
+    @Slot(bool, result=bool)
+    def toggleYaw(self, _current_enabled: bool) -> bool:
+        return True
+
+    @Slot(bool, result=bool)
+    def toggleAutoCorrection(self, _current_enabled: bool) -> bool:
+        return True
+
+    @Slot(bool, result=bool)
+    def toggleSprayGunLeveling(self, _current_enabled: bool) -> bool:
+        return True
+
+    @Slot(bool, result=bool)
+    def toggleRollerSteering(self, _current_enabled: bool) -> bool:
+        return True
+
+    @Slot(bool, result=bool)
+    def toggleSwingDamping(self, _current_enabled: bool) -> bool:
+        return True
+
+    @Slot(bool, result=bool)
+    def toggleSprayGunLed(self, _current_enabled: bool) -> bool:
+        return True
+
+    @Slot(bool, result=bool)
+    def setLidarPower(self, _enabled: bool) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def clearErrors(self) -> bool:
+        return True
+
+
+class FakeWorkflowEditor(QObject):
+    workflow_list_changed = Signal()
+
+    @Property(list, notify=workflow_list_changed)
+    def workflow_list(self):
+        return []
+
+    @Slot(str, result=str)
+    def get_workflow_data(self, _workflow_name: str) -> str:
+        return ""
+
+    @Slot(str, str, result=bool)
+    def save_workflow_data(self, _workflow_name: str, _workflow_json: str) -> bool:
         return True
 
 
@@ -176,6 +280,8 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             right_control_value="",
         ),
         "manualCommandHandler": FakeManualCommandHandler(),
+        "deviceActionHandler": FakeDeviceActionHandler(),
+        "deviceOperationsHandler": FakeDeviceOperationsHandler(),
         "sshHandler": DynamicObject(deviceAvailability=availability, devicePingTimes=ping_times),
         "systemMonitor": DynamicObject(
             battery_level=100,
@@ -186,6 +292,7 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
         ),
         "screenRecorder": DynamicObject(isRecording=False, is_recording=False, recording_duration=0),
         "rosBagRecorder": DynamicObject(isRecording=False, is_recording=False),
+        "workflowEditor": FakeWorkflowEditor(),
         "settingsManager": settings_manager,
         "screenManager": FakeScreenManager(),
         "baseTopViewController": DynamicObject(enabled=False),

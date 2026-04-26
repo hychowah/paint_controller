@@ -18,7 +18,7 @@ The live architecture problems are these:
 - QML still reaches too many raw runtime objects through the broad context-property contract.
 - The operator overlay is a real operating surface, but its lifecycle, role, and safety rules are still implicit.
 - Settings authority is split between a strong Python settings core, a live operational overlay, and a partly placeholder settings page.
-- Control selection and command execution are still coupled through the `OverlayController` / `ControlProcessor` relationship.
+- Control selection and command execution are no longer in a live cycle, but Stage 2 is still unfinished because `OverlayController` remains a compatibility facade around selection-oriented behavior that should continue shrinking.
 - The current workflow UI is not clearly long-term, so major workflow UI abstraction is risky until the behavior-tree direction is settled.
 
 The plan now centers on five architecture goals:
@@ -192,15 +192,16 @@ This plan deliberately avoids these traps:
 
 The most defensible direction is:
 
-1. Freeze the dangerous QML-to-application action boundary first.
-2. Define the coordinated two-surface shell and screen ownership model second.
-3. Break operator-selection state away from command execution third.
-4. Formalize the operational overlay contract on top of those cleaner boundaries.
-5. Clarify settings authority using both role and capability classes.
-6. Stabilize workflow as a real current service, while keeping future behavior-tree language explicitly conditional.
-7. Narrow the QML contract only after the correct owners are clearer.
+1. Freeze the dangerous QML-to-application action boundary first, but split it by action family and migration risk rather than by tab.
+2. Separate workflow editor persistence from workflow execution before revisiting workflow runtime orchestration.
+3. Break operator-selection state away from command execution before broader overlay-placement work.
+4. Establish a narrower shell split after the control cycle is cleaner: `ScreenManager` owns screen facts, `ShellState` owns product policy, `QtBridge` owns imperative UI intents, and QML remains responsible for composition.
+5. Clarify settings authority using both role and capability classes, folding the remaining settings outliers into that broader settings stage instead of preserving a one-off cleanup slice.
+6. Formalize the operational overlay contract on top of those cleaner boundaries.
+7. Stabilize workflow as a real current service, while keeping future behavior-tree language explicitly conditional.
+8. Narrow the QML contract only after the correct owners are clearer.
 
-This differs from the earlier version in two important ways: navigation cleanup is no longer near the front, and context-surface reduction is no longer treated as the first architecture tactic. Both are now consequences of cleaner ownership.
+This differs from the earlier version in four important ways: workflow editor persistence now moves ahead of workflow execution, control-selection decoupling now moves ahead of shell overlay-placement work, the broad ShellCoordinator idea is replaced by a narrower `ShellState` split, and standalone settings-outlier cleanup is folded into the later settings-authority stage.
 
 ## Multi-Session Roadmap
 
@@ -284,8 +285,16 @@ Implementation strategy:
 
 1. Inventory the operational QML actions with the highest blast radius.
 2. Introduce thin Python-owned action boundaries only for those paths.
-3. Migrate one action family at a time: settings, commands, device control, or workflow.
+3. Migrate one action family at a time in validated risk order rather than by tab ownership.
 4. Preserve visible behavior while reducing direct QML orchestration.
+
+Validated Stage 1 sub-slices:
+
+- Stage 1A: manual command boundary freeze in `CommandTab.qml` — complete.
+- Stage 1B: hard device-action boundary freeze in `DeviceControlTab.qml` for relay/enable/reset/homing-style one-click machine-affecting actions.
+- Stage 1C: device/operations side-effect boundary freeze in `DeviceControlTab.qml` for stabilization, load-detection, recording, screen capture, and rosbag toggles.
+- Stage 1D: workflow editor persistence split so file read/save/delete/validation no longer share the same QML-facing seam as workflow runtime control.
+- Stage 1E: workflow execution boundary freeze for load/play/pause/resume/stop and related operator orchestration.
 
 Exit criteria:
 
@@ -301,7 +310,8 @@ Validation:
 
 Progress note:
 
-- 2026-04-25: Stage 1A is complete for the manual-command family. `CommandTab.qml` now routes manual commands through a Python-owned `ManualCommandHandler` without changing the operator-facing command catalog. The next recommended Stage 1 slice is the immediate-apply settings outliers in `SettingsTab.qml`.
+- 2026-04-25: Stage 1A is complete for the manual-command family. `CommandTab.qml` now routes manual commands through a Python-owned `ManualCommandHandler` without changing the operator-facing command catalog. The next recommended Stage 1 slice is Stage 1B hard device actions in `DeviceControlTab.qml`.
+- 2026-04-26: Stage 1B through Stage 1E are complete. `DeviceControlTab.qml` now routes the hard device-action and device/operations side-effect families through Python-owned boundaries, workflow editor persistence is split from workflow runtime execution, and `WorkFlowRunner` now protects its active execution boundary.
 
 Risks:
 
@@ -313,68 +323,9 @@ Rollback:
 - Migrate one action family at a time.
 - Keep old QML bindings until the Python-owned path is verified.
 
-## Stage 2: Establish The Two-Surface Shell And Screen Authority
+## Stage 2: Break Control Selection Away From Command Execution
 
-Goal: make shell policy professional by treating the product as a coordinated two-surface operator shell, not as a main window plus helper window.
-
-Complexity: Medium
-Risk: Medium to High
-Suggested sessions: 2 to 4
-
-Primary files:
-
-- `python/paint_controller/qml/core/MainWindow.qml`
-- `python/paint_controller/qml/overlays/MultiScreenListUI.qml`
-- `python/paint_controller/services/screen_manager.py`
-- `python/paint_controller/core/qt_bridge.py`
-- `tests/test_startup_smoke.py`
-- `tests/test_services_runtime.py`
-
-Current problem:
-
-The product already behaves as a coordinated external mission surface plus built-in touch-operated surface, but the architecture still describes and implements that behavior too implicitly.
-
-Professional target:
-
-- One place defines shell state and screen-role policy.
-- One place defines secondary-window ownership as part of the product shell, not as an afterthought.
-- Root QML becomes thinner and more declarative.
-- QML can still bind to Qt screen objects where required, but it should not invent screen policy from scratch.
-
-Implementation strategy:
-
-1. Name the two product surfaces explicitly.
-2. Move screen-role policy toward `ScreenManager` or a dedicated shell/screen adapter.
-3. Reduce `MainWindow.qml` to composition and binding where practical.
-4. Preserve dual-screen touch ownership as a first-class product requirement.
-
-Exit criteria:
-
-- The dual-surface shell is explicitly modeled.
-- `MainWindow.qml` is no longer the place where raw screen count becomes product policy.
-- Secondary-window behavior has focused tests.
-
-Validation:
-
-- `tests/test_startup_smoke.py`
-- `tests/test_services_runtime.py`
-- `tests/test_qml_imports.py`
-- Manual multi-screen validation on hardware when available.
-
-Risks:
-
-- Qt screen timing is fragile.
-- Multi-window behavior is hardware-specific.
-- Offscreen tests cannot fully prove monitor placement.
-
-Rollback:
-
-- Add new shell/screen properties before removing old QML expressions.
-- Preserve current monitor behavior until the new source of truth is verified.
-
-## Stage 3: Break Control Selection Away From Command Execution
-
-Goal: remove the `OverlayController` / `ControlProcessor` coupling before treating overlay architecture as stable.
+Goal: remove the `OverlayController` / `ControlProcessor` coupling before broader overlay-placement or shell ownership work stabilizes around it.
 
 Complexity: High
 Risk: High
@@ -391,10 +342,11 @@ Primary files:
 - `tests/test_input_handler.py`
 - `tests/test_control_processor.py`
 - `tests/test_safety_integration.py`
+- `tests/test_startup_smoke.py`
 
 Current problem:
 
-Selection state, overlay presentation, display state, and command policy are intertwined.
+The live cycle is gone and selection ownership is extracted into `JoystickSelectionModel`, but Stage 2 is still incomplete because overlay presentation, compatibility methods, and the remaining selection-oriented facade surface are not fully separated yet.
 
 Professional target:
 
@@ -406,6 +358,10 @@ Professional target:
 Important design rule:
 
 This is one of the few areas where a dedicated Qt-facing model is strongly justified because it separates UI selection state from machine command policy.
+
+Progress note:
+
+- 2026-04-26: The Stage 2 cycle break is complete and `JoystickSelectionModel` now owns committed and temporary joystick selection state. The remaining Stage 2 work is to keep shrinking `OverlayController` toward presentation/compatibility duties without changing the current QML contract.
 
 Exit criteria:
 
@@ -430,7 +386,140 @@ Rollback:
 - Preserve old adapter methods during migration.
 - Move one caller at a time.
 
-## Stage 4: Formalize The Operational Overlay Contract
+## Stage 3: Establish The Two-Surface Shell With A Narrow ShellState Split
+
+Goal: make shell policy professional by treating the product as a coordinated two-surface operator shell, without collapsing facts, policy, bridge intents, and QML composition into one new god object.
+
+Complexity: Medium
+Risk: Medium to High
+Suggested sessions: 2 to 4
+
+Primary files:
+
+- `python/paint_controller/qml/core/MainWindow.qml`
+- `python/paint_controller/qml/overlays/MultiScreenListUI.qml`
+- `python/paint_controller/qml/navigation/SelectBar.qml`
+- `python/paint_controller/services/screen_manager.py`
+- `python/paint_controller/core/qt_bridge.py`
+- candidate `ShellState` model file justified by the chosen slice
+- `tests/test_startup_smoke.py`
+- `tests/test_services_runtime.py`
+
+Current problem:
+
+The product already behaves as a coordinated external mission surface plus built-in touch-operated surface, but the architecture still describes and implements that behavior too implicitly.
+
+Professional target:
+
+- `ScreenManager` remains the owner of screen facts, not product policy.
+- `ShellState` becomes the owner of product shell policy such as route identity, surface roles, secondary-surface existence, and fullscreen-video policy.
+- `QtBridge` remains the owner of imperative UI intents.
+- Root QML becomes thinner and more declarative, but still composes the actual windows.
+
+Implementation strategy:
+
+1. Name the two product surfaces explicitly.
+2. Keep screen discovery in `ScreenManager`.
+3. Introduce a narrow `ShellState` owner for product policy.
+4. Fold route cleanup into the same stage by making `SelectBar.qml` consume shell-owned route metadata.
+5. Reduce `MainWindow.qml` to composition and binding where practical.
+6. Preserve dual-screen touch ownership as a first-class product requirement.
+
+Exit criteria:
+
+- The dual-surface shell is explicitly modeled.
+- `MainWindow.qml` is no longer the place where raw screen count becomes product policy.
+- `SelectBar.qml` no longer carries a hard-coded button catalog that duplicates route knowledge owned elsewhere.
+- Secondary-window behavior has focused tests.
+
+Validation:
+
+- `tests/test_startup_smoke.py`
+- `tests/test_services_runtime.py`
+- `tests/test_qml_imports.py`
+- Manual multi-screen validation on hardware when available.
+
+Risks:
+
+- Qt screen timing is fragile.
+- Multi-window behavior is hardware-specific.
+- Offscreen tests cannot fully prove monitor placement.
+
+Rollback:
+
+- Add new shell/state properties before removing old QML expressions.
+- Preserve current monitor behavior until the new source of truth is verified.
+
+## Stage 4: Define Settings Authority, Capability Classes, And Role-Based Surfaces
+
+Goal: make settings architecture professional by clarifying authority, role, and operating-state legality, while folding the remaining settings outliers into the same durable settings model.
+
+Complexity: Medium
+Risk: Medium to High
+Suggested sessions: 2 to 4
+
+Primary files:
+
+- `python/paint_controller/core/settings.py`
+- `python/paint_controller/qml/overlays/systemcontrol/SettingsTab.qml`
+- `python/paint_controller/qml/overlays/systemcontrol/components/SettingInputField.qml`
+- `python/paint_controller/qml/pages/settings/PageSettings.qml`
+- `python/paint_controller/qml/pages/settings/components/`
+- `python/paint_controller/qml/pages/settings/pages/`
+- `python/paint_controller/qml/pages/tuning/PageTuning.qml`
+- `tests/test_settings_runtime.py`
+- `tests/test_startup_smoke.py`
+- `tests/test_qml_imports.py`
+
+Current problem:
+
+The repo already has a good settings authority on the Python side. The UI problem is that settings surfaces do not yet have a clear relationship by role and capability, and a few remaining overlay paths still mix persistence with direct runtime mutation.
+
+Professional target:
+
+- One authority for persisted values and validation.
+- One explicit distinction between quick operational adjustments and broader maintenance/setup surfaces.
+- Clear capability classes such as `live-adjustable`, `safe-stop-required`, `commissioning-only`, and `diagnostic-only`.
+- No placeholder settings surface pretending to be authoritative.
+- No duplicated local QML state where Python authority already exists.
+
+Design rule:
+
+The goal is not “one settings page.” The goal is “one settings authority with intentional operator/admin presentations and explicit legality rules.”
+
+Implementation strategy:
+
+1. Classify each setting as `persisted only`, `persisted + immediate apply`, `runtime-only`, or `deprecated`.
+2. Classify each setting by capability and operating-state legality.
+3. Identify which settings belong in the operator overlay because they are genuinely in-operation adjustments.
+4. Identify which settings belong in maintenance/setup surfaces.
+5. Remove placeholder local state from `PageSettings.qml` before treating it as part of the real architecture.
+6. Fold the remaining settings outliers into the same authority model rather than leaving one-off direct runtime mutations in QML.
+7. Introduce grouped metadata or a settings adapter only if it simplifies the UI contract meaningfully.
+
+Exit criteria:
+
+- Each setting has one authority.
+- Multiple surfaces may exist, but their roles and legality rules are explicit.
+- Placeholder local settings state is removed or clearly marked transitional.
+- Atomic persistence and validation remain intact.
+
+Validation:
+
+- `tests/test_settings_runtime.py`
+- `tests/test_startup_smoke.py`
+- `tests/test_qml_imports.py`
+
+Risks:
+
+- Operational settings may need immediate machine side effects.
+- Users may rely on current overlay placement for quick adjustment.
+
+Rollback:
+
+- Keep the operational overlay settings path working while maintenance/setup surfaces are stabilized.
+
+## Stage 5: Formalize The Operational Overlay Contract
 
 Goal: turn the overlay-first operating model into explicit architecture after the action boundary and selection-state boundary are cleaner.
 
@@ -503,124 +592,7 @@ Rollback:
 - Keep existing overlay entry points during transition.
 - Introduce any maintenance/setup alternative alongside the overlay, not instead of it, until validated.
 
-## Stage 5: Bounded Navigation Registry Cleanup
-
-Goal: remove fragile page-index routing once the shell is better defined.
-
-Complexity: Medium
-Risk: Medium
-Suggested sessions: 1 to 3
-
-Primary files:
-
-- `python/paint_controller/qml/core/MainWindow.qml`
-- `python/paint_controller/qml/navigation/SelectBar.qml`
-- optional new QML registry file if justified
-- `tests/test_startup_smoke.py`
-- `tests/test_qml_imports.py`
-
-Current problem:
-
-`SelectBar.qml` still maps page indexes to components via switch logic, while `MainWindow.qml` defines those components and transition rules separately.
-
-Professional target:
-
-- One route registry exists.
-- Route identity is explicit.
-- Button rendering consumes the route registry rather than duplicating it.
-- Indexes may remain as compatibility metadata during transition, but they stop being the real architecture.
-
-Why this stays bounded:
-
-Navigation cleanup is worthwhile, but it is still a shell consequence, not the core product-architecture problem.
-
-Exit criteria:
-
-- No hard-coded page switch statement remains.
-- Adding a route requires one source-of-truth edit.
-- Compatibility with current transitions and button selection is preserved.
-
-Validation:
-
-- `tests/test_startup_smoke.py`
-- `tests/test_qml_imports.py`
-- add route-navigation smoke coverage if the shell test surface is widened
-
-Risks:
-
-- StackView direction logic still depends on relative order.
-- Steam Deck navigation may still assume index-compatible behavior.
-
-Rollback:
-
-- Keep legacy route order metadata until all callers are migrated.
-
-## Stage 6: Define Settings Authority, Capability Classes, And Role-Based Surfaces
-
-Goal: make settings architecture professional by clarifying authority, role, and operating-state legality.
-
-Complexity: Medium
-Risk: Medium
-Suggested sessions: 2 to 4
-
-Primary files:
-
-- `python/paint_controller/core/settings.py`
-- `python/paint_controller/qml/overlays/systemcontrol/SettingsTab.qml`
-- `python/paint_controller/qml/pages/settings/PageSettings.qml`
-- `python/paint_controller/qml/pages/settings/components/`
-- `python/paint_controller/qml/pages/settings/pages/`
-- `python/paint_controller/qml/pages/tuning/PageTuning.qml`
-- `tests/test_settings_runtime.py`
-
-Current problem:
-
-The repo already has a good settings authority on the Python side. The UI problem is that settings surfaces do not yet have a clear relationship by role and capability.
-
-Professional target:
-
-- One authority for persisted values and validation.
-- One explicit distinction between quick operational adjustments and broader maintenance/setup surfaces.
-- Clear capability classes such as `live-adjustable`, `safe-stop-required`, `commissioning-only`, and `diagnostic-only`.
-- No placeholder settings surface pretending to be authoritative.
-- No duplicated local QML state where Python authority already exists.
-
-Design rule:
-
-The goal is not “one settings page.” The goal is “one settings authority with intentional operator/admin presentations and explicit legality rules.”
-
-Implementation strategy:
-
-1. Classify each setting as `persisted only`, `persisted + immediate apply`, `runtime-only`, or `deprecated`.
-2. Classify each setting by capability and operating-state legality.
-3. Identify which settings belong in the operator overlay because they are genuinely in-operation adjustments.
-4. Identify which settings belong in maintenance/setup surfaces.
-5. Remove placeholder local state from `PageSettings.qml` before treating it as part of the real architecture.
-6. Introduce grouped metadata or a settings adapter only if it simplifies the UI contract meaningfully.
-
-Exit criteria:
-
-- Each setting has one authority.
-- Multiple surfaces may exist, but their roles and legality rules are explicit.
-- Placeholder local settings state is removed or clearly marked transitional.
-- Atomic persistence and validation remain intact.
-
-Validation:
-
-- `tests/test_settings_runtime.py`
-- `tests/test_startup_smoke.py`
-- `tests/test_qml_imports.py`
-
-Risks:
-
-- Operational settings may need immediate machine side effects.
-- Users may rely on current overlay placement for quick adjustment.
-
-Rollback:
-
-- Keep the operational overlay settings path working while maintenance/setup surfaces are stabilized.
-
-## Stage 7: Workflow Stabilization And Conditional Behavior-Tree Readiness
+## Stage 6: Workflow Stabilization And Conditional Behavior-Tree Readiness
 
 Goal: keep the current workflow path safe and maintainable as a real current service while keeping future behavior-tree language explicitly conditional.
 
@@ -653,7 +625,7 @@ Professional target:
 
 Design rule:
 
-Prefer tightening `WorkFlowRunner` in place over inventing a large second abstraction layer.
+Prefer tightening the existing workflow runtime in place after the Stage 1 editor/runtime split, rather than inventing a large second abstraction layer.
 
 Exit criteria:
 
@@ -678,7 +650,7 @@ Rollback:
 
 - Keep the existing `workFlowRunner` contract while making internal hardening improvements.
 
-## Stage 8: Narrow The QML Contract After Owners Are Clear
+## Stage 7: Narrow The QML Contract After Owners Are Clear
 
 Goal: reduce raw context-property exposure only after action boundaries, shell ownership, overlay ownership, settings authority, and control ownership are better defined.
 
@@ -704,10 +676,10 @@ Professional target:
 
 Good candidates after earlier stages succeed:
 
-- a shell/navigation model if shell ownership is stabilized
-- a control-selection model as part of Stage 3
+- a `ShellState` contract if shell ownership is stabilized
+- a control-selection model as part of Stage 2
 - a settings adapter only if it meaningfully clarifies grouped metadata, capability classes, and legality rules
-- a screen/shell adapter only if it becomes the cleanest owner of the dual-surface shell
+- a workflow editor/runtime split if it remains clearer than keeping both responsibilities on one object
 
 Bad candidates:
 
@@ -736,7 +708,7 @@ Rollback:
 
 - Keep old context properties while new contracts are proven.
 
-## Stage 9: Optional Feature-Shell Recomposition
+## Stage 8: Optional Feature-Shell Recomposition
 
 Goal: reorganize visible destinations only if earlier ownership work shows a real product benefit.
 
@@ -781,7 +753,7 @@ Rollback:
 
 - keep legacy destinations available until new flows are validated
 
-## Stage 10: Design-System And Styling Cleanup
+## Stage 9: Design-System And Styling Cleanup
 
 Goal: finish visual consistency after architecture is stable.
 
@@ -815,27 +787,27 @@ Validation:
 Use this order unless a production bug interrupts it:
 
 1. Stage 0 authority map.
-2. Stage 1 QML-to-application action boundary freeze.
-3. Stage 2 two-surface shell and screen authority.
-4. Stage 3 control-selection boundary.
-5. Stage 4 operational overlay contract.
-6. Stage 5 bounded navigation registry cleanup.
-7. Stage 6 settings authority, capability classes, and role-based surfaces.
-8. Stage 7 workflow stabilization and conditional behavior-tree readiness.
-9. Stage 8 narrower QML contract where justified.
-10. Stage 9 optional feature-shell recomposition.
-11. Stage 10 design-system cleanup.
+2. Stage 1 QML-to-application action boundary freeze, in sub-slice order 1A manual commands, 1B hard device actions, 1C device/ops side effects, 1D workflow editor persistence, 1E workflow execution.
+3. Stage 2 control-selection boundary.
+4. Stage 3 `ShellState` split for the two-surface shell, with route cleanup folded in.
+5. Stage 4 settings authority, capability classes, and role-based surfaces.
+6. Stage 5 operational overlay contract.
+7. Stage 6 workflow stabilization and conditional behavior-tree readiness.
+8. Stage 7 narrower QML contract where justified.
+9. Stage 8 optional feature-shell recomposition.
+10. Stage 9 design-system cleanup.
 
 Why this order changed:
 
-The earlier order still attacked the shell and route symptoms before the highest-risk application boundary. The new order first freezes dangerous QML-to-application action paths, then models the product shell as a coordinated two-surface system, then untangles control state before overlay formalization. Route cleanup and context-surface reduction remain important, but they are now explicitly downstream consequences.
+The earlier order still attacked shell symptoms too early, left the control-selection cycle under later overlay and shell work, and would have revisited the workflow seam twice by separating execution before editor persistence. The validated order first freezes dangerous QML-to-application action paths, then removes the documented overlay/control cycle, then introduces the narrower shell split, then clarifies settings and overlay ownership. Route cleanup and context-surface reduction remain important, but they are now explicitly downstream consequences.
 
 ## Technical Guardrails
 
 - Never use `qmlRegisterSingletonInstance()` in this repo.
 - Do not move safety logic or actuator command math into QML.
 - Do not let new QML surfaces directly combine persistence writes, controller side effects, and operator intent handling in one place.
-- Do not replace 22 context properties with one giant `Backend` object.
+- Do not replace the broad context-property contract with one giant `Backend` object.
+- Do not let `ShellState` grow into a new shell god object that absorbs facts, bridge intents, and QML composition.
 - Do not remove the overlay-first operating workflow unless the user explicitly changes product direction.
 - Do not treat all overlays as transient by default.
 - Do not treat the built-in touchscreen window as an auxiliary surface; it is part of the product shell.
@@ -903,22 +875,21 @@ When a stage becomes wrong:
 
 ## Next Recommended Session
 
-Stage 1A is now complete for the manual-command family. The next recommended session is Stage 1B preparation and implementation planning for the immediate-apply settings outliers.
+Stage 0 is published, Stage 1A through Stage 1E are complete, and Stage 2 is in progress. The next recommended session is to continue Stage 2 by narrowing the remaining `OverlayController` facade responsibility now that selection ownership is extracted.
 
-Task title: Formalize the Stage 0 authority map artifact and plan the Stage 1B settings-outlier boundary freeze.
+Task title: Continue Stage 2 overlay-facade narrowing.
 
 The session should:
 
-1. Reconfirm the current owners of shell, screen, overlay, settings, control-selection, and machine-affecting application actions against the merged Stage 1A code.
-2. Decide whether the Stage 0 authority map should be merged as its own durable artifact before more implementation slices land.
-3. Identify the exact `SettingsTab.qml` paths where QML still combines UI parsing, persistence writes, and immediate side effects.
-4. Keep the Stage 1B slice narrow to the immediate-apply settings outliers rather than broadening into all settings UI.
-5. Create `PLANNING.md`.
-6. Ask for confirmation.
+1. Reconfirm that `JoystickSelectionModel` remains the single owner of committed and temporary selection state.
+2. Identify which remaining `OverlayController` methods are still true compatibility shims versus real presentation responsibilities.
+3. Keep the existing QML-facing `overlayController` contract stable while reducing any remaining selection-oriented ownership leakage through the facade.
+4. Create `PLANNING.md`.
+5. Ask for confirmation.
 
 The likely next implementation slice after approval:
 
-- move the immediate-apply settings outliers behind Python-owned methods without changing operator behavior
+- reduce remaining selection-oriented `OverlayController` facade duties without changing operator behavior
 - preserve dual-screen behavior
 - preserve overlay-first operation
-- validate startup, imports, and the relevant focused settings/runtime tests for the migrated action family
+- validate startup, input/control-selection regressions, and the focused Stage 2 ownership slice before widening scope

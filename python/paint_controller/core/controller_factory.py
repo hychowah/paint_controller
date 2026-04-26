@@ -14,6 +14,8 @@ from paint_controller.controllers.wheel import WheelController
 from paint_controller.controllers.winch import WinchController
 from paint_controller.controllers.wind_monitor import WindMonitor
 from paint_controller.handlers.control_processor import ControlProcessor
+from paint_controller.handlers.device_actions import DeviceActionHandler
+from paint_controller.handlers.device_operations import DeviceOperationsHandler
 from paint_controller.handlers.emergency import EmergencyButtonHandler
 from paint_controller.handlers.heartbeat import UIHeartbeatHandler
 from paint_controller.handlers.input import UIInputHandler
@@ -25,7 +27,10 @@ from paint_controller.services.ros_bag_recorder import RosBagRecorder
 from paint_controller.services.screen_manager import ScreenManager
 from paint_controller.services.screen_recorder import ScreenRecorder
 from paint_controller.services.workflow.hardware import HardwareControllers
+from paint_controller.services.workflow.workflow_catalog import WorkflowCatalog
+from paint_controller.services.workflow.workflow_editor import WorkflowEditor
 from paint_controller.services.workflow.workflow_runner import WorkFlowRunner
+from paint_controller.models.joystick_selection import JoystickSelectionModel
 from paint_controller.ui.overlay import OverlayController
 
 
@@ -51,6 +56,8 @@ class ControllerBundle:
     overlay_controller: OverlayController
     control_processor: ControlProcessor
     manual_command_handler: ManualCommandHandler
+    device_action_handler: DeviceActionHandler
+    device_operations_handler: DeviceOperationsHandler
     input_handler: UIInputHandler
     emergency_handler: EmergencyButtonHandler
 
@@ -59,12 +66,16 @@ class ControllerBundle:
     screen_manager: ScreenManager
     screen_recorder: ScreenRecorder
     ros_bag_recorder: RosBagRecorder
+    workflow_catalog: WorkflowCatalog
+    workflow_editor: WorkflowEditor
     workflow_runner: WorkFlowRunner
 
     def cleanup(self, logger: Any = None) -> None:
         """Cleanup all controllers in reverse creation order."""
         cleanup_order = [
+            'workflow_editor',
             'workflow_runner',
+            'workflow_catalog',
             'ros_bag_recorder', 'screen_recorder', 'screen_manager',
             'ssh_controller',
             'emergency_handler', 'input_handler',
@@ -90,6 +101,7 @@ def create_controllers(
     settings_manager: Any,
     state_store: Any,
     steam_deck_handler: SteamDeckHandler,
+    video_stream_handler: Any,
     show_popup_fn: Any,
     close_popup_fn: Any,
 ) -> ControllerBundle:
@@ -132,23 +144,19 @@ def create_controllers(
     heartbeat = UIHeartbeatHandler(node, state_store=state_store, safety_coordinator=safety_coordinator)
 
     # === Layer 4: Cross-controller handlers ===
-    # OverlayController and ControlProcessor have a circular dependency:
-    #   Overlay reads control_processor for selected option dispatch
-    #   ControlProcessor reads overlay for get_left/right_selected_option
-    # Resolve by creating overlay first, wiring control_processor after.
-    overlay = OverlayController(teensy=teensy)
+    selection_model = JoystickSelectionModel()
+    overlay = OverlayController(selection_model=selection_model)
 
     control_processor = ControlProcessor(
         wheel=wheel,
         winch=winch,
         teensy=teensy,
         esp32_valve=esp32_valve,
-        overlay=overlay,
+        selection_model=selection_model,
         heartbeat_handler=heartbeat,
         settings_manager=settings_manager,
         state_store=state_store,
     )
-    cast(Any, overlay).set_control_processor(control_processor)
 
     manual_command_handler = ManualCommandHandler(
         teensy=teensy,
@@ -156,8 +164,17 @@ def create_controllers(
         logger=logger,
     )
 
+    device_action_handler = DeviceActionHandler(
+        teensy=teensy,
+        winch=winch,
+        wheel=wheel,
+        logger=logger,
+    )
+
     hardware = cast(Any, HardwareControllers).from_controllers(teensy, winch, esp32_valve)
-    workflow_runner = WorkFlowRunner(node, hardware)
+    workflow_catalog = WorkflowCatalog(logger=logger)
+    workflow_editor = WorkflowEditor(catalog=workflow_catalog, logger=logger)
+    workflow_runner = WorkFlowRunner(node, hardware, logger=logger, catalog=workflow_catalog)
 
     input_handler = UIInputHandler(
         teensy=teensy,
@@ -188,6 +205,16 @@ def create_controllers(
     screen_rec = ScreenRecorder(screen_manager=screen_mgr)
     ros_bag = RosBagRecorder(show_popup_fn=show_popup_fn)
 
+    device_operations_handler = DeviceOperationsHandler(
+        teensy=teensy,
+        winch=winch,
+        video_stream_handler=video_stream_handler,
+        screen_recorder=screen_rec,
+        ros_bag_recorder=ros_bag,
+        heartbeat_handler=heartbeat,
+        logger=logger,
+    )
+
     logger.info('All controllers created with explicit DI')
 
     return ControllerBundle(
@@ -204,11 +231,15 @@ def create_controllers(
         overlay_controller=overlay,
         control_processor=control_processor,
         manual_command_handler=manual_command_handler,
+        device_action_handler=device_action_handler,
+        device_operations_handler=device_operations_handler,
         input_handler=input_handler,
         emergency_handler=emergency,
         ssh_controller=ssh,
         screen_manager=screen_mgr,
         screen_recorder=screen_rec,
         ros_bag_recorder=ros_bag,
+        workflow_catalog=workflow_catalog,
+        workflow_editor=workflow_editor,
         workflow_runner=workflow_runner,
     )

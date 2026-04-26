@@ -7,10 +7,10 @@ ROS2 node with PySide6/QML UI for robotic paint control on a Steam Deck. The liv
 - This branch is **refactor-first**. Runtime/workflow/service validation hardening is complete, and **`TD-001` Stage 1 is complete**: verified-dead QML was removed, false shared-component folders were flattened, constructor-driven QML surfaces were hardened with `required` / `readonly`, startup/import smoke coverage was expanded, and warn-only `qmllint` CI is now in place.
 - **`TD-031` is complete**: the page registry is explicit, `systemcontrol` and fullscreen video now have dedicated feature roots, and canonical theme ownership lives under `qml/theme/CommonStyle.qml`. Focused smoke coverage was expanded to the new feature roots; compatibility wrappers remain intentionally to keep import churn out of the blocking stage.
 - The QML cleanup is intentionally split into **two stages**. Stage 1 was the safe flatten + hardening batch; Stage 2 is the narrowed `TD-031` structural pass. URI-module migration, broad lidar/pointcloud restructuring, and any optional root-file rename are explicitly out of scope for this stage.
-- The current architecture direction is tracked in **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** and the current slice status is tracked in **`docs/plan/00_ARCHITECTURE_PROGRESS.md`**. **Stage 1A is complete**: `CommandTab.qml` now routes manual commands through a Python-owned boundary, Linux validation is complete, and the next recommended implementation path is **Stage 1B** for the immediate-apply settings outliers.
+- The current architecture direction is tracked in **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** and the current slice status is tracked in **`docs/plan/00_ARCHITECTURE_PROGRESS.md`**. **Stage 1A through Stage 1E are complete**, and **Stage 2 is in progress**: the live `OverlayController` / `ControlProcessor` cycle is gone, joystick selection ownership now lives in `JoystickSelectionModel`, and the next recommended implementation path is to keep narrowing the `OverlayController` compatibility facade.
 - **Net-new feature work is intentionally deferred** until medium/high-priority debt is closed and the validation gates stay green (pytest, pyright for covered scope, ROS build, and offscreen startup/shutdown smoke).
 - Low-priority design-system backlog may remain backlog. By default it is **not** the feature-blocking path unless the user explicitly reprioritizes.
-- Latest verified local validation on 2026-04-25 is green at `179 passed` for `python/paint_controller/venv/bin/python -m pytest -q`, with the focused Stage 1A Linux slice green at `20 passed` for `tests/test_manual_command_handler.py`, `tests/test_controller_factory_runtime.py`, and `tests/test_startup_smoke.py`.
+- Latest verified local validation on 2026-04-26 is green at `196 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q`. Focused Stage 2 ownership and regression slices are also green for `tests/test_joystick_selection.py`, `tests/test_control_processor.py`, `tests/test_input_handler.py`, `tests/test_controller_factory_runtime.py`, `tests/test_safety_integration.py`, `tests/test_startup_smoke.py`, and `tests/test_qml_imports.py`.
 
 ---
 
@@ -52,7 +52,7 @@ paint_controller_ros2/
 │   ├── controllers/               # Hardware controllers (ESP32, Teensy, winch, wheel, etc.)
 │   ├── handlers/                  # Input processing, emergency, heartbeat, warnings
 │   ├── services/                  # Video streaming, workflow execution, screen mgr
-│   ├── models/                    # Lightweight model namespace (currently minimal after workflow cleanup)
+│   ├── models/                    # Lightweight state models, including joystick-selection ownership
 │   ├── ui/                        # Overlay controller (non-QML)
 │   ├── utils/                     # Pure utilities: CRC, input math, constants
 │   ├── qml/                       # All QML UI components
@@ -125,5 +125,5 @@ Older notes may still mention `REFACTOR_TRACKER.md`; that historical tracker is 
 
 - **VS Code interpreter**: use `python/paint_controller/venv/bin/python` for editor tooling and tests
 - **`QT_QPA_PLATFORM`**: force-assigned `"offscreen"` in `tests/conftest.py` — overrides any shell-level `xcb`
-- **Test suite**: latest verified local full-suite status is `179 passed` on 2026-04-25; the focused Stage 1A Linux slice is also green at `20 passed`; revalidate with the venv python before commit if you need a fresher claim
+- **Test suite**: latest verified local full-suite status is `196 passed` on 2026-04-26; focused Stage 2 ownership and regression slices are also green; revalidate with the venv python before commit if you need a fresher claim
 - If PySide6 or pytest appear missing in-editor, check the selected interpreter first

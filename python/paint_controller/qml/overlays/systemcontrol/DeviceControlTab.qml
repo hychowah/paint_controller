@@ -70,7 +70,7 @@ Item {
                         enabledState: teensyController.all_status.relay_on
                         iconText: "TR"
                         
-                        onClicked: teensyController.setRelayEnabled(!teensyController.all_status.relay_on)
+                        onClicked: deviceActionHandler.toggleTeensyRelay(teensyController.all_status.relay_on)
                     }
                     
                     // Teensy Enable Control
@@ -81,7 +81,7 @@ Item {
                         enabledState: teensyController.all_status.enabled
                         iconText: "T"
                         
-                        onClicked: teensyController.setEnabled(!teensyController.all_status.enabled)
+                        onClicked: deviceActionHandler.toggleTeensyEnable(teensyController.all_status.enabled)
                     }
                 }
             }
@@ -139,7 +139,7 @@ Item {
                         enabledState: winchController.enabled
                         iconText: "W"
                         
-                        onClicked: winchController.setEnabled(!winchController.enabled)
+                        onClicked: deviceActionHandler.toggleWinchEnable(winchController.enabled)
                     }
                     
                     // Winch Load Detection Control
@@ -150,7 +150,7 @@ Item {
                         enabledState: winchController.load_detection_enabled
                         iconText: "LD"
                         
-                        onClicked: winchController.setLoadDetectionEnabled(!winchController.load_detection_enabled)
+                        onClicked: deviceOperationsHandler.toggleLoadDetection(winchController.load_detection_enabled)
                     }
                 }
             }
@@ -208,13 +208,7 @@ Item {
                         enabledState: wheelController ? wheelController.enabled : false
                         iconText: "🛞"
                         
-                        onClicked: {
-                            if (wheelController) {
-                                wheelController.setEnabled(!wheelController.enabled)
-                            } else {
-                                console.log("Wheel controller not available")
-                            }
-                        }
+                        onClicked: deviceActionHandler.toggleWheelEnable(wheelController ? wheelController.enabled : false)
                     }
                     
                     // Wheel Reset Position Button
@@ -226,11 +220,8 @@ Item {
                         iconType: "reset"
                         
                         onClicked: {
-                            if (wheelController) {
-                                wheelController.resetWheelPosition()
+                            if (deviceActionHandler.resetWheelPosition()) {
                                 showFeedback()
-                            } else {
-                                console.log("Wheel controller not available")
                             }
                         }
                     }
@@ -290,7 +281,7 @@ Item {
                         enabledState: baseStreamHandler.is_recording
                         iconText: "REC"
                         
-                        onClicked: baseStreamHandler.toggleRecording()
+                        onClicked: deviceOperationsHandler.toggleEndEffectorRecording()
                     }
 
                     // Base Camera Recording Control
@@ -301,7 +292,7 @@ Item {
                         enabledState: baseStreamHandler.is_base_recording
                         iconText: "BASE"
                         
-                        onClicked: baseStreamHandler.toggleBaseRecording()
+                        onClicked: deviceOperationsHandler.toggleBaseRecording()
                     }
 
                     // Screen Recording Control
@@ -322,7 +313,7 @@ Item {
                         enabledState: screenRecorder.is_recording
                         iconText: "SCR"
                         
-                        onClicked: screenRecorder.toggleRecording()
+                        onClicked: deviceOperationsHandler.toggleScreenRecording()
                     }
 
                     // ROS Bag Recording Control (Remote End Effector)
@@ -347,7 +338,7 @@ Item {
                         enabled: !rosBagRecorder.is_compressing
                         opacity: rosBagRecorder.is_compressing ? 0.6 : 1.0
                         
-                        onClicked: rosBagRecorder.toggleBagRecording()
+                        onClicked: deviceOperationsHandler.toggleRosBagRecording()
                     }
                 }
             }
@@ -405,7 +396,7 @@ Item {
                         enabledState: teensyController.stability_enabled
                         iconText: "SC"
                         
-                        onClicked: teensyController.setStabilityEnabled(!teensyController.stability_enabled)
+                        onClicked: deviceOperationsHandler.toggleStability(teensyController.stability_enabled)
                     }
 
                     // Yaw Control
@@ -416,7 +407,7 @@ Item {
                         enabledState: teensyController.all_status.yaw_enabled
                         iconText: "Y"
                         
-                        onClicked: teensyController.setYawEnabled(!teensyController.all_status.yaw_enabled)
+                        onClicked: deviceOperationsHandler.toggleYaw(teensyController.all_status.yaw_enabled)
                     }
 
                     // Auto Correction Control
@@ -427,7 +418,7 @@ Item {
                         enabledState: teensyController.auto_correction_enabled
                         iconText: "AC"
                         
-                        onClicked: teensyController.setAutoCorrectonEnabled(!teensyController.auto_correction_enabled)
+                        onClicked: deviceOperationsHandler.toggleAutoCorrection(teensyController.auto_correction_enabled)
                     }
 
                     // SprayGun Levelling
@@ -438,7 +429,7 @@ Item {
                         enabledState: teensyController.spray_gun_leveling_enabled
                         iconText: "SL"
 
-                        onClicked: teensyController.setSprayGunLevelingEnabled(!teensyController.spray_gun_leveling_enabled)
+                        onClicked: deviceOperationsHandler.toggleSprayGunLeveling(teensyController.spray_gun_leveling_enabled)
                     }
 
                     // Roller Steering Control
@@ -449,7 +440,7 @@ Item {
                         enabledState: teensyController.roller_steering_enabled
                         iconText: "RS"
                         
-                        onClicked: teensyController.setRollerSteeringEnabled(!teensyController.roller_steering_enabled)
+                        onClicked: deviceOperationsHandler.toggleRollerSteering(teensyController.roller_steering_enabled)
                     }
 
                     // Swing Damping Control
@@ -460,7 +451,7 @@ Item {
                         enabledState: teensyController.swing_damping_enabled
                         iconText: "SD"
                         
-                        onClicked: teensyController.setSwingDampingEnabled(!teensyController.swing_damping_enabled)
+                        onClicked: deviceOperationsHandler.toggleSwingDamping(teensyController.swing_damping_enabled)
                     }
                 }
             }
@@ -518,7 +509,7 @@ Item {
                         enabledState: teensyController.spray_gun_led_on
                         iconText: "LED"
                         
-                        onClicked: teensyController.setSprayGunLED(!teensyController.spray_gun_led_on)
+                        onClicked: deviceOperationsHandler.toggleSprayGunLed(teensyController.spray_gun_led_on)
                     }
 
                     ControlPanel {
@@ -528,7 +519,7 @@ Item {
                         iconText: "LID"
                         selfContained: true 
                         
-                        onClicked: teensyController.setLidarPower(enabledState)
+                        onClicked: deviceOperationsHandler.setLidarPower(enabledState)
                     }
                     
                     ActionButton {
@@ -539,11 +530,8 @@ Item {
                         iconType: "reset"
                         
                         onClicked: {
-                            if (teensyController) {
-                                teensyController.homeTopRail(true)
+                            if (deviceActionHandler.homeTopRail()) {
                                 showFeedback()
-                            } else {
-                                console.log("Teensy controller not available")
                             }
                         }
                     }
@@ -556,11 +544,8 @@ Item {
                         iconType: "reset"
 
                         onClicked: {
-                            if (teensyController) {
-                                teensyController.homeArm(true)
+                            if (deviceActionHandler.homeArm()) {
                                 showFeedback()
-                            } else {
-                                console.log("Teensy controller not available")
                             }
                         }
                     }
@@ -613,7 +598,7 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        heartbeatHandler.clear_error_state()
+                        deviceOperationsHandler.clearErrors()
                     }
                 }
                 

@@ -508,7 +508,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
-                model: workFlowRunner ? workFlowRunner.workflow_list : []
+                model: workflowEditor ? workflowEditor.workflow_list : []
 
                 delegate: Rectangle {
                     width: workflowList.width
@@ -1078,13 +1078,13 @@ Item {
 
     function loadWorkflowFile(name) {
         console.log("Loading workflow:", name)
-        if (!workFlowRunner) {
-            console.log("WorkflowRunner not available")
+        if (!workflowEditor) {
+            console.log("WorkflowEditor not available")
             return
         }
         
         // Get full workflow data from Python
-        var workflowJson = workFlowRunner.get_workflow_data(name)
+        var workflowJson = workflowEditor.get_workflow_data(name)
         if (workflowJson === "") {
             console.log("Failed to load workflow data")
             return
@@ -1110,8 +1110,8 @@ Item {
             return
         }
         
-        if (!workFlowRunner) {
-            console.log("WorkflowRunner not available")
+        if (!workflowEditor) {
+            console.log("WorkflowEditor not available")
             return
         }
         
@@ -1125,7 +1125,7 @@ Item {
         
         // Convert to JSON and save via Python
         var workflowJson = JSON.stringify(workflow)
-        var success = workFlowRunner.save_workflow_data(workflowName, workflowJson)
+        var success = workflowEditor.save_workflow_data(workflowName, workflowJson)
         
         if (success) {
             console.log("Successfully saved workflow:", workflowName)

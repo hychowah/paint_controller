@@ -65,19 +65,25 @@ def test_controller_bundle_cleanup_runs_reverse_order_and_logs_errors() -> None:
         overlay_controller=cleanup_factory("overlay_controller"),
         control_processor=cleanup_factory("control_processor"),
         manual_command_handler=object(),
+        device_action_handler=object(),
+        device_operations_handler=object(),
         input_handler=cleanup_factory("input_handler"),
         emergency_handler=BrokenCleanup(),
         ssh_controller=cleanup_factory("ssh_controller"),
         screen_manager=cleanup_factory("screen_manager"),
         screen_recorder=cleanup_factory("screen_recorder"),
         ros_bag_recorder=cleanup_factory("ros_bag_recorder"),
+        workflow_catalog=cleanup_factory("workflow_catalog"),
+        workflow_editor=cleanup_factory("workflow_editor"),
         workflow_runner=cleanup_factory("workflow_runner"),
     )
 
     bundle.cleanup(logger)
 
     assert call_log == [
+        "workflow_editor",
         "workflow_runner",
+        "workflow_catalog",
         "ros_bag_recorder",
         "screen_recorder",
         "screen_manager",
@@ -107,10 +113,6 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
                 construction_log.append((name, args, kwargs))
                 self.args = args
                 self.kwargs = kwargs
-                self.set_control_processor_calls = []
-
-            def set_control_processor(self, processor) -> None:
-                self.set_control_processor_calls.append(processor)
 
         return Recorded
 
@@ -132,9 +134,14 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     monkeypatch.setattr(module, "TeensyController", record("TeensyController"))
     monkeypatch.setattr(module, "SafetyCoordinator", record("SafetyCoordinator"))
     monkeypatch.setattr(module, "UIHeartbeatHandler", record("UIHeartbeatHandler"))
+    monkeypatch.setattr(module, "JoystickSelectionModel", record("JoystickSelectionModel"))
     monkeypatch.setattr(module, "OverlayController", record("OverlayController"))
     monkeypatch.setattr(module, "ControlProcessor", record("ControlProcessor"))
     monkeypatch.setattr(module, "ManualCommandHandler", record("ManualCommandHandler"))
+    monkeypatch.setattr(module, "DeviceActionHandler", record("DeviceActionHandler"))
+    monkeypatch.setattr(module, "DeviceOperationsHandler", record("DeviceOperationsHandler"))
+    monkeypatch.setattr(module, "WorkflowCatalog", record("WorkflowCatalog"))
+    monkeypatch.setattr(module, "WorkflowEditor", record("WorkflowEditor"))
     monkeypatch.setattr(module, "WorkFlowRunner", record("WorkFlowRunner"))
     monkeypatch.setattr(module, "UIInputHandler", record("UIInputHandler"))
     monkeypatch.setattr(module, "EmergencyButtonHandler", record("EmergencyButtonHandler"))
@@ -148,6 +155,7 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     settings_manager = object()
     state_store = object()
     steam_deck_handler = object()
+    video_stream_handler = object()
     show_popup = object()
     close_popup = object()
 
@@ -156,6 +164,7 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
         settings_manager=settings_manager,
         state_store=state_store,
         steam_deck_handler=steam_deck_handler,
+        video_stream_handler=video_stream_handler,
         show_popup_fn=show_popup,
         close_popup_fn=close_popup,
     )
@@ -165,11 +174,28 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
         bundle.winch_controller,
         bundle.esp32_valve_controller,
     )]
+    assert bundle.workflow_catalog.kwargs["logger"] is node.get_logger()
+    assert bundle.workflow_editor.kwargs["catalog"] is bundle.workflow_catalog
+    assert bundle.workflow_editor.kwargs["logger"] is node.get_logger()
+    assert bundle.overlay_controller.kwargs["selection_model"] is not None
+    assert bundle.control_processor.kwargs["selection_model"] is bundle.overlay_controller.kwargs["selection_model"]
     assert bundle.workflow_runner.args == (node, "hardware-bundle")
-    assert bundle.overlay_controller.set_control_processor_calls == [bundle.control_processor]
+    assert bundle.workflow_runner.kwargs["logger"] is node.get_logger()
+    assert bundle.workflow_runner.kwargs["catalog"] is bundle.workflow_catalog
     assert bundle.manual_command_handler.kwargs["teensy"] is bundle.teensy_controller
     assert bundle.manual_command_handler.kwargs["winch"] is bundle.winch_controller
     assert bundle.manual_command_handler.kwargs["logger"] is node.get_logger()
+    assert bundle.device_action_handler.kwargs["teensy"] is bundle.teensy_controller
+    assert bundle.device_action_handler.kwargs["winch"] is bundle.winch_controller
+    assert bundle.device_action_handler.kwargs["wheel"] is bundle.wheel_controller
+    assert bundle.device_action_handler.kwargs["logger"] is node.get_logger()
+    assert bundle.device_operations_handler.kwargs["teensy"] is bundle.teensy_controller
+    assert bundle.device_operations_handler.kwargs["winch"] is bundle.winch_controller
+    assert bundle.device_operations_handler.kwargs["video_stream_handler"] is video_stream_handler
+    assert bundle.device_operations_handler.kwargs["screen_recorder"] is bundle.screen_recorder
+    assert bundle.device_operations_handler.kwargs["ros_bag_recorder"] is bundle.ros_bag_recorder
+    assert bundle.device_operations_handler.kwargs["heartbeat_handler"] is bundle.heartbeat_handler
+    assert bundle.device_operations_handler.kwargs["logger"] is node.get_logger()
     assert bundle.input_handler.kwargs["close_popup_fn"] is close_popup
     assert bundle.emergency_handler.kwargs["safety_coordinator"] is bundle.safety_coordinator
     assert bundle.screen_recorder.kwargs["screen_manager"] is bundle.screen_manager
@@ -332,6 +358,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     runtime.state_store = object()
     runtime.steam_deck_handler = _SteamDeckHandlerRecorder()
     runtime.base_top_view_service = object()
+    runtime.video_stream_handler = _VideoHandlerRecorder()
     runtime.qt_bridge = _QtBridgeRecorder()
     runtime.engine = _EngineRecorder()
     runtime.bundle = type(
@@ -350,11 +377,14 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
             "heartbeat_handler": object(),
             "control_processor": _ControlProcessorRecorder(),
             "manual_command_handler": object(),
+            "device_action_handler": object(),
+            "device_operations_handler": object(),
             "ssh_controller": object(),
             "system_monitor": object(),
             "screen_manager": object(),
             "screen_recorder": object(),
             "ros_bag_recorder": object(),
+            "workflow_editor": object(),
             "input_handler": _InputHandlerRecorder(),
             "emergency_handler": _EmergencyHandlerRecorder(),
             "safety_coordinator": _SafetyCoordinatorRecorder(),
@@ -377,6 +407,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
 
     assert create_calls[0]["show_popup_fn"] == runtime.qt_bridge.show_popup
     assert create_calls[0]["close_popup_fn"] == runtime.qt_bridge.close_popup
+    assert create_calls[0]["video_stream_handler"] is runtime.video_stream_handler
     assert runtime.qt_bridge.base_top_view_service is runtime.base_top_view_service
     assert runtime.qt_bridge.input_handler is runtime.bundle.input_handler
     assert set(runtime.engine.context.properties) == set(module._EXPECTED_CONTEXT_PROPERTY_NAMES)

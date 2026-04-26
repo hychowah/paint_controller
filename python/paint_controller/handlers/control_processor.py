@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from paint_controller.core.settings import SettingsManager
     from paint_controller.core.state_store import StateStore
     from paint_controller.handlers.heartbeat import UIHeartbeatHandler
-    from paint_controller.ui.overlay import OverlayController
+    from paint_controller.models.joystick_selection import JoystickSelectionModel
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ class ControlProcessor(QObject):
         winch: WinchController,
         teensy: TeensyController,
         esp32_valve: ESP32ValveController,
-        overlay: OverlayController,
+        selection_model: JoystickSelectionModel,
         heartbeat_handler: UIHeartbeatHandler,
         settings_manager: SettingsManager | None,
         state_store: StateStore,
@@ -61,10 +61,14 @@ class ControlProcessor(QObject):
         self._winch = winch
         self._teensy = teensy
         self._esp32_valve = esp32_valve
-        self._overlay = overlay
+        self._selection_model = selection_model
         self._heartbeat_handler = heartbeat_handler
         self._settings_manager = settings_manager
         self._state_store = state_store
+        self._last_selection_pair = (
+            self._selection_model.get_left_selected_option(),
+            self._selection_model.get_right_selected_option(),
+        )
 
         self.last_command_times: dict[str, float] = {}
         self.last_message_time = 0.0
@@ -277,7 +281,7 @@ class ControlProcessor(QObject):
     def _update_display(self):
         """Update the display with current control values at 5Hz"""
         if self._can_send_message():
-            if self._overlay.get_left_selected_option() == "None":
+            if self._selection_model.get_left_selected_option() == "None":
                 left_part = "None"
                 left_mode = "None"
                 left_value = ""
@@ -303,7 +307,7 @@ class ControlProcessor(QObject):
                 else:
                     left_part = f"{left_mode} {left_value:.2f}" if left_mode else "None"
 
-            if self._overlay.get_right_selected_option() == "None":
+            if self._selection_model.get_right_selected_option() == "None":
                 right_part = "None"
                 right_mode = "None"
                 right_value = ""
@@ -714,16 +718,30 @@ class ControlProcessor(QObject):
         handler = self._control_handlers.get(mode, self._process_standard_control)
         handler(input_state, mode, stick)
 
+    def _sync_selection_state(self) -> tuple[str, str]:
+        """Track joystick control selection changes and seed yaw target on selection updates."""
+        left_mode = self._selection_model.get_left_selected_option()
+        right_mode = self._selection_model.get_right_selected_option()
+        selection_pair = (left_mode, right_mode)
+
+        if selection_pair != self._last_selection_pair:
+            if "EF Yaw Angle" in selection_pair:
+                teensy_imu_yaw = self._teensy.get_status_value('imu_yaw') or 0.0
+                self.controls["EF Yaw Angle"].offset = float(teensy_imu_yaw)
+            self._last_selection_pair = selection_pair
+
+        return selection_pair
+
     def process_input(self, input_state: dict[str, Any]) -> None:
         """Process all control inputs with rate limiting"""
         try:
+            left_mode, right_mode = self._sync_selection_state()
+
             # Process left joystick
-            left_mode = self._overlay.get_left_selected_option()
             if left_mode in self.controls and self._can_send_command(left_mode):
                 self._process_control_with_dispatch(input_state, left_mode, 'left')
 
             # Process right joystick
-            right_mode = self._overlay.get_right_selected_option()
             if right_mode in self.controls and self._can_send_command(right_mode):
                 self._process_control_with_dispatch(input_state, right_mode, 'right')
             

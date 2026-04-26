@@ -7,13 +7,12 @@ ROS 2 + PySide6/QML control application for the paint robot.
 - This repository is currently in a **refactor-first** phase. The intent is to improve architecture, safety, shutdown/threading behavior, tests, and typing gates before resuming net-new feature development.
 - `TD-001` Stage 1 is complete: verified-dead QML was removed, false shared-component folders were flattened, constructor-driven QML surfaces were hardened with `required` / `readonly`, offscreen startup/import smoke coverage was expanded, and warn-only `qmllint` CI is in place.
 - `TD-031` is complete: the shell now uses an explicit page registry, `systemcontrol` and fullscreen video have dedicated feature roots under `qml/features/`, and canonical theme ownership lives under `qml/theme/CommonStyle.qml` with compatibility shims left at the old paths.
-- The current architecture roadmap is in `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`. The next implementation path starts with the authority map and the first QML-to-application action-boundary slice.
+- The current architecture roadmap is in `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`. The current implementation path has already completed Stage 1A through Stage 1E and is now partway through Stage 2 control-selection decoupling.
 - Current slice status is tracked in `docs/plan/00_ARCHITECTURE_PROGRESS.md`.
-- Stage 1A is complete: `CommandTab.qml` now routes manual command execution through a Python-owned boundary instead of dispatching directly from QML.
-- Linux validation is complete for Stage 1A, and the next recommended implementation path is Stage 1B for the immediate-apply settings outliers.
+- Stage 2 is in progress: the live `OverlayController` / `ControlProcessor` cycle is removed, joystick selection ownership now lives in `JoystickSelectionModel`, and the next recommended implementation path is to keep narrowing `OverlayController` toward presentation/compatibility duties.
 - Python runtime is the only live application path in this repository; the old C++ UI path has been removed from the tree.
 - Runtime objects are exposed to QML through `setContextProperty()`. Do not use `qmlRegisterSingletonInstance()` in this repo.
-- Latest verified local validation on 2026-04-25 is green at `179 passed` via `python/paint_controller/venv/bin/python -m pytest -q`.
+- Latest verified local validation on 2026-04-26 is green at `196 passed` via `python/paint_controller/venv/bin/python -m pytest tests -q`.
 - Active architecture planning status is tracked in `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`.
 - For authority and session-start order: use `INDEX.md` first, prefer `DEVNOTES.md` for the latest verified runtime state, and use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for the active roadmap.
 

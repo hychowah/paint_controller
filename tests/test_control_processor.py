@@ -52,7 +52,7 @@ def _make_cp(
         winch=winch or FakeWinch(),
         teensy=teensy or FakeTeensy(),
         esp32_valve=esp32_valve or FakeEsp32Valve(),
-        overlay=overlay or FakeOverlay(),
+        selection_model=overlay or FakeOverlay(),
         heartbeat_handler=heartbeat or FakeHeartbeatHandler(),
         settings_manager=settings_manager,
         state_store=state_store or FakeStateStore(),
@@ -249,6 +249,62 @@ def test_winch_not_locked_when_both_idle(qt_app) -> None:
     cp.winch_speed_has_been_active = True
     cp._process_winch_speed(_full_winch_input(), "Winch Speed", "left")
     assert len(winch.speed_commands) == 1
+
+
+class _MutableOverlay:
+    def __init__(self, left: str = "None", right: str = "None") -> None:
+        self.left = left
+        self.right = right
+
+    def get_left_selected_option(self) -> str:
+        return self.left
+
+    def get_right_selected_option(self) -> str:
+        return self.right
+
+
+def test_process_input_seeds_yaw_offset_when_selection_changes_to_yaw(qt_app) -> None:
+    teensy = FakeTeensy()
+    teensy._imu_yaw = 12.5
+    overlay = _MutableOverlay(left="None", right="None")
+    cp = _make_cp(teensy=teensy, overlay=overlay)
+
+    cp.controls["EF Yaw Angle"].offset = -1.0
+    overlay.left = "EF Yaw Angle"
+
+    cp.process_input(_stick_state())
+
+    assert cp.controls["EF Yaw Angle"].offset == 12.5
+    assert teensy.yaw_commands == [12.5]
+
+
+def test_process_input_does_not_reseed_yaw_offset_when_selection_is_unchanged(qt_app) -> None:
+    teensy = FakeTeensy()
+    teensy._imu_yaw = 7.0
+    overlay = _MutableOverlay(left="EF Yaw Angle", right="None")
+    cp = _make_cp(teensy=teensy, overlay=overlay)
+
+    cp.controls["EF Yaw Angle"].offset = 3.0
+
+    cp.process_input(_stick_state())
+
+    assert cp.controls["EF Yaw Angle"].offset == 3.0
+    assert teensy.yaw_commands == [3.0]
+
+
+def test_process_input_reseeds_yaw_offset_when_selection_changes_but_yaw_remains_active(qt_app) -> None:
+    teensy = FakeTeensy()
+    teensy._imu_yaw = 21.0
+    overlay = _MutableOverlay(left="EF Yaw Angle", right="None")
+    cp = _make_cp(teensy=teensy, overlay=overlay)
+
+    cp.controls["EF Yaw Angle"].offset = 5.0
+    overlay.right = "Track Control Right"
+
+    cp.process_input(_stick_state())
+
+    assert cp.controls["EF Yaw Angle"].offset == 21.0
+    assert teensy.yaw_commands == [21.0]
 
 
 def test_winch_activation_gate_blocks_until_joystick_moved(qt_app) -> None:
