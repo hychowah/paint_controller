@@ -44,3 +44,15 @@ def test_selection_model_allows_independent_track_selection_on_both_sides(qt_app
     model.commit_temporary_selection()
 
     assert model.get_current_joystick_controls() == ["Track Control Left", "Track Control Left"]
+
+
+def test_selection_model_remembers_controls_per_mode(qt_app) -> None:
+    model = JoystickSelectionModel()
+    model.set_joystick_controls("Track Control Left", "Track Control Right")
+    model.remember_current_controls("base")
+
+    model.set_joystick_controls("EF arm", "Winch Speed")
+    model.remember_current_controls("ef")
+
+    assert model.get_remembered_controls("base") == ("Track Control Left", "Track Control Right")
+    assert model.get_remembered_controls("ef") == ("EF arm", "Winch Speed")

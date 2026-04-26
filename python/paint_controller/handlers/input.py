@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from paint_controller.core.settings import SettingsManager
     from paint_controller.core.state_store import StateStore
     from paint_controller.handlers.control_processor import ControlProcessor
+    from paint_controller.models.joystick_selection import JoystickSelectionModel
     from paint_controller.ui.overlay import OverlayController
 
 
@@ -26,6 +27,7 @@ class UIInputHandler(QObject):
         self,
         teensy: TeensyController,
         overlay: OverlayController,
+        selection_model: JoystickSelectionModel,
         control_processor: ControlProcessor,
         settings_manager: SettingsManager | None,
         state_store: StateStore,
@@ -35,6 +37,7 @@ class UIInputHandler(QObject):
         super().__init__()
         self._teensy = teensy
         self._overlay = overlay
+        self._selection_model = selection_model
         self._control_processor = control_processor
         self._settings_manager = settings_manager
         self._state_store = state_store
@@ -55,10 +58,6 @@ class UIInputHandler(QObject):
             self._arm_retract_length = 250
             self._arm_extend_length = 800
         self._arm_preset_index = 0
-        
-        # Mode-specific joystick control memory
-        self._base_mode_joystick_controls: list[str] | tuple[str, str] | None = None
-        self._ef_mode_joystick_controls: list[str] | tuple[str, str] | None = None
 
     def _on_arm_retract_length_changed(self, new_value: int) -> None:
         """Handle arm_retract_length change from SettingsManager"""
@@ -89,25 +88,20 @@ class UIInputHandler(QObject):
             self._close_popup_fn()
         except Exception as e:
             logger.warning("Could not close popup: %s", e)
-        
-        # Save current joystick controls before switching modes
-        current_controls = self._overlay.get_current_joystick_controls()
-        
+
+        current_mode = self._state_store.control_mode
+        self._selection_model.remember_current_controls(current_mode)
+
         if self._state_store.control_mode == ControlMode.BASE:
-            # Save base mode controls
-            self._base_mode_joystick_controls = current_controls
-            
             # Switch to EF mode (triggers video overlay change)
             self._state_store.control_mode = ControlMode.END_EFFECTOR
-            
-            # Restore EF mode controls or use defaults
-            if self._ef_mode_joystick_controls is not None:
-                left_control, right_control = self._ef_mode_joystick_controls
-            else:
-                # Default EF mode controls
-                left_control, right_control = (JoystickControl.NONE, JoystickControl.WINCH_SPEED)
-            
-            self._overlay.set_joystick_controls(left_control, right_control)
+
+            remembered_controls = self._selection_model.get_remembered_controls(ControlMode.END_EFFECTOR)
+            if remembered_controls is None:
+                remembered_controls = (JoystickControl.NONE, JoystickControl.WINCH_SPEED)
+
+            left_control, right_control = remembered_controls
+            self._selection_model.set_joystick_controls(left_control, right_control)
             
             # Reset winch activation to prevent spurious commands from centered joystick
             self._control_processor.reset_winch_activation()
@@ -117,20 +111,15 @@ class UIInputHandler(QObject):
                 "Control Mode", "Switched to EF control mode", "info"
             ))
         else:
-            # Save EF mode controls
-            self._ef_mode_joystick_controls = current_controls
-            
             # Switch to base mode (triggers video overlay change)
             self._state_store.control_mode = ControlMode.BASE
-            
-            # Restore base mode controls or use defaults
-            if self._base_mode_joystick_controls is not None:
-                left_control, right_control = self._base_mode_joystick_controls
-            else:
-                # Default base mode controls
-                left_control, right_control = (JoystickControl.TRACK_LEFT, JoystickControl.TRACK_RIGHT)
-            
-            self._overlay.set_joystick_controls(left_control, right_control)
+
+            remembered_controls = self._selection_model.get_remembered_controls(ControlMode.BASE)
+            if remembered_controls is None:
+                remembered_controls = (JoystickControl.TRACK_LEFT, JoystickControl.TRACK_RIGHT)
+
+            left_control, right_control = remembered_controls
+            self._selection_model.set_joystick_controls(left_control, right_control)
             
             # Defer popup to let video overlay Loader stabilize (150ms)
             QTimer.singleShot(150, lambda: self._show_popup_fn(
@@ -159,17 +148,14 @@ class UIInputHandler(QObject):
 
     @Slot()
     def on_r4_pressed(self):
-        self._overlay.set_active_menu("right")
         self._overlay.toggle_right_menu()
 
     @Slot()
     def on_l4_pressed(self):
-        self._overlay.set_active_menu("left")
         self._overlay.toggle_left_menu()
 
     @Slot()
     def on_menu_pressed(self):
-        self._overlay.set_active_menu("system")
         self._overlay.toggle_system_menu()
 
     @Slot()

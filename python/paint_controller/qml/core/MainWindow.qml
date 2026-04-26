@@ -23,11 +23,15 @@ ApplicationWindow {
     visible: true
     visibility: Window.FullScreen
     
-    // Multi-screen support - use screenManager from Python for reliable detection
-    property int screenCount: screenManager ? screenManager.get_screen_count() : 1
-    
-    // Main UI goes on second monitor (index 1) when available, otherwise primary (index 0)
-    property int mainScreenIndex: Qt.application.screens.length > 1 ? 1 : 0
+    // Shell policy is owned by shellState; QML consumes it and keeps window composition declarative.
+    property int screenCount: shellState ? shellState.screen_count : 1
+    property int mainScreenIndex: shellState ? shellState.main_surface_screen_index : 0
+    property int secondaryScreenIndex: shellState ? shellState.secondary_surface_screen_index : 0
+    property bool secondarySurfaceActive: shellState ? shellState.secondary_surface_active : false
+    property bool secondarySurfaceFullscreen: shellState ? shellState.secondary_surface_fullscreen : false
+    property bool showSystemControlOnMainSurface: shellState ? shellState.show_system_control_on_main_surface : true
+    property bool showSystemControlOnSecondarySurface: shellState ? shellState.show_system_control_on_secondary_surface : false
+    property bool videoFullscreenOnMainSurface: shellState ? shellState.video_fullscreen_on_main_surface : true
     
     // Use Qt's Screen type for positioning - access via Screen attached property
     screen: Qt.application.screens[mainScreenIndex] || Qt.application.screens[0]
@@ -254,9 +258,7 @@ ApplicationWindow {
         z: 1001
         showOverlay: overlayController.show_overlay
         activeMenu: overlayController.active_menu
-        // Hide the system control menu on main window when in dual-monitor mode
-        // It will appear on the secondary screen (touchscreen) instead
-        visible: screenCount <= 1
+        visible: showSystemControlOnMainSurface
     }
 
     CustomPopup {
@@ -308,8 +310,8 @@ ApplicationWindow {
         
         if (multiScreenWindow === null) {
             // Use the fullscreen function if we have 2 screens
-            if (appScreens.length > 1) {
-                openSecondaryScreenFullscreen()
+            if (secondarySurfaceActive && appScreens.length > secondaryScreenIndex) {
+                ensureSecondaryScreenWindow(appScreens)
             } else {
                 // Create windowed on primary if only one screen
                 multiScreenWindow = multiScreenComponent.createObject(mainWindow)
@@ -320,10 +322,60 @@ ApplicationWindow {
             }
         } else {
             // Close and destroy the window
+            closeSecondaryScreenWindow()
+            console.log("Multi-screen test window closed")
+        }
+    }
+
+    function closeSecondaryScreenWindow() {
+        if (multiScreenWindow !== null) {
             multiScreenWindow.hideWindow()
             multiScreenWindow.destroy()
             multiScreenWindow = null
-            console.log("Multi-screen test window closed")
+        }
+    }
+
+    function ensureSecondaryScreenWindow(appScreens) {
+        if (!secondarySurfaceActive || appScreens.length <= secondaryScreenIndex) {
+            closeSecondaryScreenWindow()
+            return
+        }
+
+        if (multiScreenWindow === null) {
+            multiScreenWindow = multiScreenComponent.createObject(mainWindow)
+            if (!multiScreenWindow) {
+                return
+            }
+        }
+
+        var secondaryScreen = appScreens[secondaryScreenIndex]
+        multiScreenWindow.screen = secondaryScreen
+        multiScreenWindow.x = secondaryScreen.virtualX
+        multiScreenWindow.y = secondaryScreen.virtualY
+        multiScreenWindow.width = secondaryScreen.width
+        multiScreenWindow.height = secondaryScreen.height
+        multiScreenWindow.targetScreenIndex = secondaryScreenIndex
+        multiScreenWindow.fullscreenMode = secondarySurfaceFullscreen
+        multiScreenWindow.showWindow()
+    }
+
+    function applyShellSurfacePolicy() {
+        var appScreens = Qt.application.screens
+        console.log("Applying shell surface policy, Qt screens: " + appScreens.length)
+
+        var mainSurfaceScreen = appScreens[mainScreenIndex] || appScreens[0]
+        if (mainSurfaceScreen) {
+            mainWindow.screen = mainSurfaceScreen
+            mainWindow.x = mainSurfaceScreen.virtualX
+            mainWindow.y = mainSurfaceScreen.virtualY
+            mainWindow.width = mainSurfaceScreen.width
+            mainWindow.height = mainSurfaceScreen.height
+        }
+
+        if (secondarySurfaceActive && appScreens.length > secondaryScreenIndex) {
+            ensureSecondaryScreenWindow(appScreens)
+        } else {
+            closeSecondaryScreenWindow()
         }
     }
     
@@ -332,14 +384,7 @@ ApplicationWindow {
         target: screenManager
         
         function onScreens_changed() {
-            // Use screenManager count - it's more reliable than Qt.application.screens
-            // which may not have updated yet when this signal fires
-            var newScreenCount = screenManager.get_screen_count()
-            console.log("MainWindow: Screen configuration changed, count: " + newScreenCount)
-            
-            // Update screen count property
-            screenCount = newScreenCount
-            
+            console.log("MainWindow: Screen configuration changed, shell policy count: " + screenCount)
             // Use a small delay to let Qt.application.screens update
             screenUpdateTimer.restart()
         }
@@ -366,6 +411,10 @@ ApplicationWindow {
         }
 
         function onToggleVideoOverlayRequested(active, videoSource) {
+            if (!videoFullscreenOnMainSurface) {
+                return
+            }
+
             if (videoFullscreenOverlay.active) {
                 videoFullscreenOverlay.active = false
             } else {
@@ -387,46 +436,7 @@ ApplicationWindow {
         interval: 100  // 100ms delay for Qt to update screen list
         repeat: false
         onTriggered: {
-            var appScreens = Qt.application.screens
-            var count = appScreens.length
-            console.log("Screen update timer triggered, Qt screens: " + count)
-            
-            if (count > 1) {
-                // Two monitors: Main UI on external (index 1), secondary on built-in (index 0)
-                console.log("Two screens - repositioning: Main UI -> external, Secondary -> built-in")
-                
-                // Move main window to external monitor
-                mainScreenIndex = 1
-                mainWindow.screen = appScreens[1]
-                mainWindow.x = appScreens[1].virtualX
-                mainWindow.y = appScreens[1].virtualY
-                
-                // Open/reposition secondary window on built-in screen
-                if (multiScreenWindow === null) {
-                    openSecondaryScreenFullscreen()
-                } else {
-                    var builtInScreen = appScreens[0]
-                    multiScreenWindow.screen = builtInScreen
-                    multiScreenWindow.x = builtInScreen.virtualX
-                    multiScreenWindow.y = builtInScreen.virtualY
-                    multiScreenWindow.width = builtInScreen.width
-                    multiScreenWindow.height = builtInScreen.height
-                }
-            } else {
-                // Only one monitor: Main UI on primary, close secondary window
-                console.log("Single screen - Main UI on built-in only")
-                mainScreenIndex = 0
-                mainWindow.screen = appScreens[0]
-                mainWindow.x = appScreens[0].virtualX
-                mainWindow.y = appScreens[0].virtualY
-                
-                if (multiScreenWindow !== null) {
-                    console.log("Closing secondary display")
-                    multiScreenWindow.hideWindow()
-                    multiScreenWindow.destroy()
-                    multiScreenWindow = null
-                }
-            }
+            applyShellSurfacePolicy()
         }
     }
     
@@ -443,50 +453,7 @@ ApplicationWindow {
         }
         console.log("ScreenManager count: " + (screenManager ? screenManager.get_screen_count() : "N/A"))
         
-        // When two monitors detected:
-        // - Main UI shows on second monitor (external display, index 1)
-        // - Secondary window shows on first monitor (built-in Steam Deck, index 0)
-        if (appScreens.length > 1) {
-            console.log("Two screens detected:")
-            console.log("  Main UI -> Screen 1 (" + appScreens[1].name + ")")
-            console.log("  Secondary window -> Screen 0 (" + appScreens[0].name + ")")
-            
-            // Move main window to second screen
-            mainScreenIndex = 1
-            mainWindow.screen = appScreens[1]
-            mainWindow.x = appScreens[1].virtualX
-            mainWindow.y = appScreens[1].virtualY
-            
-            // Open secondary window on first screen (built-in)
-            openSecondaryScreenFullscreen()
-        }
-    }
-    
-    // Function to open secondary screen window on the built-in display (screen 0)
-    function openSecondaryScreenFullscreen() {
-        var appScreens = Qt.application.screens
-        if (appScreens.length < 2) {
-            console.log("Cannot open secondary screen - only one monitor detected")
-            return
-        }
-        
-        if (multiScreenWindow === null) {
-            multiScreenWindow = multiScreenComponent.createObject(mainWindow)
-            if (multiScreenWindow) {
-                // Secondary window goes on first screen (built-in Steam Deck display)
-                var builtInScreen = appScreens[0]
-                console.log("Opening fullscreen on built-in screen: " + builtInScreen.name)
-                multiScreenWindow.screen = builtInScreen
-                multiScreenWindow.x = builtInScreen.virtualX
-                multiScreenWindow.y = builtInScreen.virtualY
-                multiScreenWindow.width = builtInScreen.width
-                multiScreenWindow.height = builtInScreen.height
-                multiScreenWindow.targetScreenIndex = 0
-                multiScreenWindow.fullscreenMode = true
-                multiScreenWindow.showWindow()  // Use showWindow() to avoid visible/visibility conflict
-                console.log("Secondary screen window opened in fullscreen on built-in display")
-            }
-        }
+        applyShellSurfacePolicy()
     }
 }
 

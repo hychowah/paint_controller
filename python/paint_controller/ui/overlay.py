@@ -74,52 +74,38 @@ class OverlayController(QObject):
     def _reset_input_lock(self):
         self._input_locked = False
         self._input_timer.stop()
-    
-    @Slot(str)
-    def set_active_menu(self, menu):
-        """Set active menu and show overlay"""
+
+    def _activate_menu(self, menu: str) -> None:
         if menu in ["left", "right", "system"]:
             self._active_menu = menu
             self.activeMenuChanged.emit(menu)
 
+    def _toggle_menu(self, menu: str) -> None:
+        self._activate_menu(menu)
+
+        if self._show_overlay:
+            self.hide_menu()
+            return
+
+        if menu in ["left", "right"]:
+            self._selection_model.initialize_temporary_selection()
+
+        self.show_menu()
+    
     @Slot()
     def toggle_system_menu(self):
         """Toggle the system menu"""
-        # Always set the active menu first
-        self._active_menu = "system"
-        self.activeMenuChanged.emit("system")
-        
-        # Then toggle visibility
-        if self._show_overlay:
-            self.hide_menu()
-        else:
-            self.show_menu()
+        self._toggle_menu("system")
     
     @Slot()
     def toggle_left_menu(self):
         """Toggle the left joystick menu"""
-        self._active_menu = "left"
-        self.activeMenuChanged.emit("left")
-        
-        if self._show_overlay:
-            self.hide_menu()
-        else:
-            # Initialize temporary selection with current selection
-            self._selection_model.initialize_temporary_selection()
-            self.show_menu()
+        self._toggle_menu("left")
 
     @Slot()
     def toggle_right_menu(self):
         """Toggle the right joystick menu"""
-        self._active_menu = "right"
-        self.activeMenuChanged.emit("right")
-        
-        if self._show_overlay:
-            self.hide_menu()
-        else:
-            # Initialize temporary selection with current selection
-            self._selection_model.initialize_temporary_selection()
-            self.show_menu()
+        self._toggle_menu("right")
 
     @Slot(result=bool)
     def is_showing_menu(self):
@@ -149,12 +135,6 @@ class OverlayController(QObject):
             self.leftSelectedIndexChanged.emit(self.left_selected_index)
             self.rightSelectedIndexChanged.emit(self.right_selected_index)
 
-    # set left and right selected index to None
-    @Slot()
-    def avoidAutoRunOverwrite(self):
-        """Reset the selected indices to None if the selected option related to winch and spray gun"""
-        self._selection_model.avoidAutoRunOverwrite()
-            
     @Slot()
     def move_up(self):
         """Move selection up in the active menu"""
@@ -203,24 +183,3 @@ class OverlayController(QObject):
         self._input_locked = True
         self._input_timer.start()
 
-
-    @Slot(str, str)
-    def set_joystick_controls(self, left_control: str, right_control: str):
-        """
-        Configure left and right joystick controls
-        
-        Args:
-            left_control: Control option for left joystick
-            right_control: Control option for right joystick
-        """
-        self._selection_model.set_joystick_controls(left_control, right_control)
-        
-    @Slot(result=list)
-    def get_current_joystick_controls(self):
-        """
-        Get the current joystick control names
-        
-        Returns:
-            list[str]: A list containing [left_control_name, right_control_name]
-        """
-        return self._selection_model.get_current_joystick_controls()

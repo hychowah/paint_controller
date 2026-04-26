@@ -1,6 +1,22 @@
 # Development Notes
 
 ---
+### 2026-04-26 14:30 - Stage 3A Shell Policy Split
+
+**Goal**: Start Stage 3 by extracting dual-surface shell policy out of `MainWindow.qml` without widening into route hardening.
+**Issues**: Root QML still turned raw screen count into product behavior, owned secondary-surface policy directly, and coupled shell composition to screen-role policy. The slice also had to avoid recreating a broad coordinator object or accidentally pulling `SelectBar` route metadata work into Stage 3A.
+**Tried**: Added a narrow `ShellState` model for main-surface role, secondary-surface activation/fullscreen policy, system-control host-surface policy, and fullscreen host policy; registered it in the QML context; rewired `MainWindow.qml` and `MultiScreenListUI.qml` to consume that policy; added direct `ShellState` tests; and reran focused shell/startup/runtime coverage.
+**Result**: ✅ Stage 3A is complete. Product shell policy now lives in `ShellState` instead of root QML, startup/runtime validation is green at `26 passed` for `tests/test_shell_state.py`, `tests/test_startup_smoke.py`, `tests/test_services_runtime.py`, and `tests/test_qt_bridge.py`, and the full suite is green at `205 passed`. The remaining Stage 3 work is Stage 3B route hardening after Stage 4A settings truthfulness.
+**Files**: `python/paint_controller/models/shell_state.py`, `python/paint_controller/core/app_runtime.py`, `python/paint_controller/qml/core/MainWindow.qml`, `python/paint_controller/qml/overlays/MultiScreenListUI.qml`, `tests/test_shell_state.py`, `tests/test_startup_smoke.py`, `docs/plan/00_ARCHITECTURE_PROGRESS.md`, `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`, `DEVNOTES.md`
+
+### 2026-04-26 10:42 - Stage 2 Overlay/Input Ownership Freeze
+
+**Goal**: Freeze the Stage 2 overlay/input seam by pinning the live `OverlayController` compatibility behavior and moving mode-specific joystick preset memory out of `UIInputHandler` into the dedicated selection owner.
+**Issues**: The overlay/menu contract had no direct regression file, so the current temporary-selection and commit timing behavior was easy to break during refactor. `UIInputHandler` also still owned base/EF preset memory even though those selections are part of joystick-selection state, not raw input translation.
+**Tried**: Added direct `OverlayController` regressions for menu visibility, temporary-vs-committed selection behavior, and yaw reset handling; added remembered-controls storage to `JoystickSelectionModel`; rewired `UIInputHandler` and `controller_factory.py` to use the model directly for mode restoration; removed the redundant input-side `set_active_menu(...)` step so menu selection stays overlay-owned; centralized the overlay toggle behavior behind one internal helper; removed the dead overlay compatibility wrappers with no live callers; and expanded focused handler/model/factory/startup tests.
+**Result**: ✅ Stage 2 is complete. The seam now has direct regression coverage, preset memory lives with selection ownership instead of input handling, the live `overlayController` surface is narrowed to the actual QML-facing menu/presentation contract, focused overlay/input/startup validation is green, and the full suite is green at `202 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q`.
+**Files**: `python/paint_controller/models/joystick_selection.py`, `python/paint_controller/handlers/input.py`, `python/paint_controller/ui/overlay.py`, `python/paint_controller/core/controller_factory.py`, `tests/test_overlay_controller.py`, `tests/test_input_handler.py`, `tests/test_joystick_selection.py`, `tests/test_controller_factory_runtime.py`, `tests/test_startup_smoke.py`, `INDEX.md`, `docs/plan/00_ARCHITECTURE_PROGRESS.md`, `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`, `docs/tech-debt.md`, `DEVNOTES.md`
+
 ### 2026-04-26 08:51 - Stage 2 Selection Model Extraction
 
 **Goal**: Continue Stage 2 past the initial cycle break by moving joystick selection ownership into a dedicated Qt-facing model while preserving the existing `overlayController` QML contract.

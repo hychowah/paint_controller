@@ -179,6 +179,7 @@ def create_controllers(
     input_handler = UIInputHandler(
         teensy=teensy,
         overlay=overlay,
+        selection_model=selection_model,
         control_processor=control_processor,
         settings_manager=settings_manager,
         state_store=state_store,

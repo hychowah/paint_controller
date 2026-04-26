@@ -34,6 +34,7 @@ class JoystickSelectionModel(QObject):
         self._right_selected_index = 0
         self._temp_left_index = 0
         self._temp_right_index = 0
+        self._remembered_controls_by_mode: dict[str, tuple[str, str]] = {}
 
     @Property(list, notify=control_options_changed)
     def control_options(self) -> list[str]:
@@ -121,6 +122,15 @@ class JoystickSelectionModel(QObject):
     @Slot(result=list)
     def get_current_joystick_controls(self) -> list[str]:
         return [self.get_left_selected_option(), self.get_right_selected_option()]
+
+    def remember_current_controls(self, mode: str) -> None:
+        self._remembered_controls_by_mode[mode] = (
+            self.get_left_selected_option(),
+            self.get_right_selected_option(),
+        )
+
+    def get_remembered_controls(self, mode: str) -> tuple[str, str] | None:
+        return self._remembered_controls_by_mode.get(mode)
 
     @Slot()
     def avoidAutoRunOverwrite(self) -> None:

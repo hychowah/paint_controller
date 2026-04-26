@@ -52,6 +52,7 @@ Window {
         z: 1001
         showOverlay: overlayController.show_overlay
         activeMenu: overlayController.active_menu
+        visible: shellState ? shellState.show_system_control_on_secondary_surface : true
     }
     
     Component.onCompleted: {

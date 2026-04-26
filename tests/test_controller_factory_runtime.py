@@ -196,6 +196,7 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     assert bundle.device_operations_handler.kwargs["ros_bag_recorder"] is bundle.ros_bag_recorder
     assert bundle.device_operations_handler.kwargs["heartbeat_handler"] is bundle.heartbeat_handler
     assert bundle.device_operations_handler.kwargs["logger"] is node.get_logger()
+    assert bundle.input_handler.kwargs["selection_model"] is bundle.overlay_controller.kwargs["selection_model"]
     assert bundle.input_handler.kwargs["close_popup_fn"] is close_popup
     assert bundle.emergency_handler.kwargs["safety_coordinator"] is bundle.safety_coordinator
     assert bundle.screen_recorder.kwargs["screen_manager"] is bundle.screen_manager

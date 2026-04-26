@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "stateStore",
     "backend",
+    "shellState",
     "overlayController",
     "workFlowRunner",
     "warningHandler",
@@ -112,6 +113,7 @@ class AppRuntime:
         self.engine: QQmlApplicationEngine | None = None
         self.qt_bridge = None
         self.bundle = None
+        self.shell_state = None
         self.status_timer: QTimer | None = None
         self.qml_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'qml')
 
@@ -204,6 +206,7 @@ class AppRuntime:
 
     def _create_controller_bundle(self) -> None:
         from paint_controller.core.controller_factory import create_controllers
+        from paint_controller.models.shell_state import ShellState
 
         assert self.node is not None
         assert self.settings_manager is not None
@@ -225,6 +228,7 @@ class AppRuntime:
 
         self.qt_bridge.set_base_top_view_service(self.base_top_view_service)
         self.qt_bridge.set_input_handler(self.bundle.input_handler)
+        self.shell_state = ShellState(screen_manager=self.bundle.screen_manager)
 
     def _wire_steam_deck_callbacks(self) -> None:
         assert self.bundle is not None
@@ -295,6 +299,7 @@ class AppRuntime:
         assert self.bundle is not None
         assert self.state_store is not None
         assert self.qt_bridge is not None
+        assert self.shell_state is not None
         assert self.video_stream_handler is not None
         assert self.steam_deck_handler is not None
         assert self.settings_manager is not None
@@ -303,6 +308,7 @@ class AppRuntime:
         return {
             "stateStore": self.state_store,
             "backend": self.qt_bridge,
+            "shellState": self.shell_state,
             "overlayController": self.bundle.overlay_controller,
             "workFlowRunner": self.bundle.workflow_runner,
             "warningHandler": self.bundle.warning_handler,

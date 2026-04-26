@@ -227,6 +227,16 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
     return {
         "stateStore": StateStore(),
         "backend": FakeBackend(),
+        "shellState": DynamicObject(
+            screen_count=1,
+            main_surface_screen_index=0,
+            secondary_surface_screen_index=0,
+            secondary_surface_active=False,
+            secondary_surface_fullscreen=False,
+            show_system_control_on_main_surface=True,
+            show_system_control_on_secondary_surface=False,
+            video_fullscreen_on_main_surface=True,
+        ),
         "overlayController": DynamicObject(
             show_overlay=False,
             left_selected_index=0,
