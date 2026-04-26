@@ -356,6 +356,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
 
     runtime.node = FakeNode()
     runtime.settings_manager = type("Settings", (), {"_show_popup_fn": None})()
+    runtime.capability_catalog = object()
     runtime.state_store = object()
     runtime.steam_deck_handler = _SteamDeckHandlerRecorder()
     runtime.base_top_view_service = object()

@@ -7,8 +7,8 @@ ScrollView {
     id: root
     contentWidth: availableWidth
     clip: true
-    
-    property var coordinateValues: [10.5, 25.3, -5.2, 45.0, 90.0]
+
+    signal backRequested()
     
     
     ColumnLayout {
@@ -18,6 +18,7 @@ ScrollView {
         SettingsHeader {
             title: "Camera Settings"
             showBack: true
+            onBackClicked: root.backRequested()
         }
         
         Rectangle {
@@ -26,44 +27,20 @@ ScrollView {
             color: "#F5F5F5"
         }
         
-        DetailSettingItem {
-            title: "Camera Position"
-            subtitle: "Set camera coordinates and orientation"
-            showMultipleInputs: true
-            valueLabels: ["X", "Y", "Z", "Pitch", "Yaw"]
-            currentValues: root.coordinateValues
-            minValue: -100
-            maxValue: 100
-            unit: "mm"
-            applyButtonText: "Update Position"
-            
-            onApplyInputValues: function(values) {
-                console.log("Camera position applied:", values)
-            }
+        SettingsItem {
+            title: "Base-Top Calibration"
+            subtitle: settingsManager
+                ? "Saved zoom " + settingsManager.base_top_view_zoom.toFixed(2)
+                    + ", crop " + (settingsManager.base_top_view_crop_enabled ? "enabled" : "disabled")
+                    + ". Full calibration remains overlay-primary."
+                : "The truthful camera calibration surface currently lives in the video overlay settings popup."
+            showArrow: false
         }
-        
-        DetailSettingItem {
-            title: "Auto Focus"
-            subtitle: "Run automatic camera focus routine"
-            showActionButton: true
-            buttonText: "Start Auto Focus"
-            buttonColor: "#2196F3"
-            
-            onActionButtonClicked: {
-                console.log("Starting camera auto focus...")
-            }
-        }
-        
-        DetailSettingItem {
-            title: "Capture Test Image"
-            subtitle: "Take a test photo with current settings"
-            showActionButton: true
-            buttonText: "Capture Image"
-            buttonColor: "#9C27B0"
-            
-            onActionButtonClicked: {
-                console.log("Capturing test image...")
-            }
+
+        SettingsItem {
+            title: "Route Scope"
+            subtitle: "This route is summary-only for camera calibration in Stage 4. Live base-top adjustments, source points, save, and reset continue to run through the overlay popup."
+            showArrow: false
         }
     }
 }

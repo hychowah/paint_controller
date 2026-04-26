@@ -10,11 +10,6 @@ Rectangle {
     color: "#F5F5F5"
     
     property string currentPage: "main"
-    property real winchMaxSpeed: 50.0
-    property bool winchTorqueLimitEnabled: true
-    property real winchTorqueLimit: 75.0
-    property var pidValues: [1.0, 0.5, 0.1, 0.0]
-    property var coordinateValues: [10.5, 25.3, -5.2, 45.0, 90.0]
     
     StackLayout {
         anchors.fill: parent
@@ -31,8 +26,6 @@ Rectangle {
         
         MainSettingsPage {
             id: mainPage
-            winchMaxSpeed: settingsMenu.winchMaxSpeed
-            
             onPageRequested: function(page) {
                 settingsMenu.currentPage = page
             }
@@ -40,25 +33,22 @@ Rectangle {
         
         WinchSettingsPage {
             id: winchPage
-            winchMaxSpeed: settingsMenu.winchMaxSpeed
-            winchTorqueLimitEnabled: settingsMenu.winchTorqueLimitEnabled
-            winchTorqueLimit: settingsMenu.winchTorqueLimit
-            pidValues: settingsMenu.pidValues
-            
+            onBackRequested: settingsMenu.currentPage = "main"
         }
         
         WheelsSettingsPage {
             id: wheelsPage
+            onBackRequested: settingsMenu.currentPage = "main"
         }
         
         CameraSettingsPage {
             id: cameraPage
-            coordinateValues: settingsMenu.coordinateValues
-
+            onBackRequested: settingsMenu.currentPage = "main"
         }
         
         ArmSettingsPage {
             id: armPage
+            onBackRequested: settingsMenu.currentPage = "main"
         }
     }
 }

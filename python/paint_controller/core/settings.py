@@ -526,6 +526,13 @@ class SettingsManager(QObject):
             error_msg = f"Failed to save settings: {e}"
             logger.error("%s", error_msg)
             return (False, error_msg)
+
+    def apply_value(self, key: str, value: Any) -> Tuple[bool, str]:
+        """Set a value in memory and persist it without UI-specific popup behavior."""
+        success, message = self.set(key, value)
+        if not success:
+            return (False, message)
+        return self.save_all()
     
     @Slot(str, result=bool)
     def resetSetting(self, key: str) -> bool:
@@ -616,6 +623,27 @@ class SettingsManager(QObject):
     def setInt(self, key: str, value: int) -> bool:
         """Set an int setting value from QML"""
         success, _ = self.set(key, value)
+        return success
+
+    @Slot(str, float, result=bool)
+    def applyFloat(self, key: str, value: float) -> bool:
+        """Set and persist a float setting value from QML without popup notification."""
+        success, message = self.apply_value(key, value)
+        self.operation_result.emit(success, message)
+        return success
+
+    @Slot(str, int, result=bool)
+    def applyInt(self, key: str, value: int) -> bool:
+        """Set and persist an int setting value from QML without popup notification."""
+        success, message = self.apply_value(key, value)
+        self.operation_result.emit(success, message)
+        return success
+
+    @Slot(str, bool, result=bool)
+    def applyBool(self, key: str, value: bool) -> bool:
+        """Set and persist a bool setting value from QML without popup notification."""
+        success, message = self.apply_value(key, value)
+        self.operation_result.emit(success, message)
         return success
     
     @Slot(str, result=float)

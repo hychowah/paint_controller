@@ -7,6 +7,8 @@ ScrollView {
     id: root
     contentWidth: availableWidth
     clip: true
+
+    signal backRequested()
     
     
     ColumnLayout {
@@ -16,6 +18,7 @@ ScrollView {
         SettingsHeader {
             title: "Arm Settings"
             showBack: true
+            onBackClicked: root.backRequested()
         }
         
         Rectangle {
@@ -23,45 +26,53 @@ ScrollView {
             Layout.preferredHeight: 8
             color: "#F5F5F5"
         }
-        
-        DetailSettingItem {
-            title: "Joint Positions"
-            subtitle: "Set target angles for arm joints"
-            showMultipleInputs: true
-            valueLabels: ["Base", "Shoulder", "Elbow", "Wrist"]
-            currentValues: [0, 90, -45, 0]
-            minValue: -180
-            maxValue: 180
-            unit: "°"
-            applyButtonText: "Move Joints"
-            
-            onApplyInputValues: function(values) {
-                console.log("Joint positions applied:", values)
-            }
+
+        SettingsCategory {
+            title: "Arm Presets"
+        }
+
+        ManagedSettingSpinBox {
+            title: "Retract Length"
+            subtitle: "Persisted preset for arm retracted position"
+            settingKey: "arm_retract_length"
+            integerValue: true
+            unit: " mm"
+        }
+
+        ManagedSettingSpinBox {
+            title: "Extend Length"
+            subtitle: "Persisted preset for arm extended position"
+            settingKey: "arm_extend_length"
+            integerValue: true
+            unit: " mm"
+        }
+
+        SettingsCategory {
+            title: "Live End Effector"
+        }
+
+        ManagedSettingSpinBox {
+            title: "Thrust Force"
+            subtitle: "Persisted and live-applied thrust force target"
+            settingKey: "thrust_force"
+        }
+
+        ManagedSettingSpinBox {
+            title: "Thrust Ramp Rate"
+            subtitle: "How quickly thrust force ramps toward target"
+            settingKey: "thrust_ramp_rate"
+        }
+
+        ManagedSettingSpinBox {
+            title: "Valve Turn Maximum"
+            subtitle: "Maximum valve turn value for live operation"
+            settingKey: "valve_turn_max"
         }
         
-        DetailSettingItem {
-            title: "Move to Home Position"
-            subtitle: "Return arm to safe home position"
-            showActionButton: true
-            buttonText: "Go Home"
-            buttonColor: "#4CAF50"
-            
-            onActionButtonClicked: {
-                console.log("Moving arm to home position...")
-            }
-        }
-        
-        DetailSettingItem {
-            title: "Emergency Stop"
-            subtitle: "Immediately stop all arm movement"
-            showActionButton: true
-            buttonText: "EMERGENCY STOP"
-            buttonColor: "#F44336"
-            
-            onActionButtonClicked: {
-                console.log("EMERGENCY STOP activated!")
-            }
+        SettingsItem {
+            title: "Route Scope"
+            subtitle: "This mixed admin route now owns persisted arm presets and selected live end-effector settings. Direct motion controls still live on the runtime surfaces."
+            showArrow: false
         }
     }
 }

@@ -1,4 +1,5 @@
 DetailSettingItem 1.0 DetailSettingItem.qml
+ManagedSettingSpinBox 1.0 ManagedSettingSpinBox.qml
 SettingsCategory 1.0 SettingsCategory.qml
 SettingsHeader 1.0 SettingsHeader.qml
 SettingsItem 1.0 SettingsItem.qml

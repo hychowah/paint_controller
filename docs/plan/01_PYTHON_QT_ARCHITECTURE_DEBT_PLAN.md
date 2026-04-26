@@ -10,9 +10,10 @@ The direction remains ownership-first. The product should stay Python-first, ove
 
 The validated truths are these:
 
-- Stage 1 command, device, and workflow boundary work is complete, but the roadmap must stop pretending the Settings quick-apply path is already solved. `SettingsTab.qml` still contains a mixed QML path that combines operator intent, persistence, and direct controller mutation, and that gap is now carried explicitly into Stage 4A instead of being hand-waved as finished.
+- Stage 1 command, device, and workflow boundary work is complete, and the last Settings quick-apply authority leak that was carried into Stage 4A has now been removed. `SettingsTab.qml` no longer mutates `teensyController` directly for thrust force.
 - Stage 2 has removed the live `OverlayController` / `ControlProcessor` cycle, extracted `JoystickSelectionModel`, moved per-mode preset memory to the selection owner, and trimmed dead overlay compatibility wrappers. The remaining overlay/menu facade is now stable enough for shell work to bind to it.
-- Shell work is no longer blocked on Stage 2. Stage 3A shell policy is now complete, and the next architecture slice is Stage 4A settings truthfulness so Stage 3B route hardening has a truthful Settings route to formalize.
+- Shell work is no longer blocked on Stage 2. Stage 3A shell policy is complete, Stage 4 is complete, and the next architecture slice is Stage 3B1 route normalization before later route formalization.
+- Stage 4 is now complete: the Settings route is truthful for schema-backed mixed-admin settings, the camera route is explicit summary-only while overlay calibration remains primary, and a thin `CapabilityCatalog` now inventories settings/admin legality metadata for later shell and overlay stages.
 - The top-level Settings route remains a real long-term admin or maintenance surface.
 - In dual-screen mode, the built-in Steam Deck display remains the dedicated touch/control surface and the external display remains the mission surface.
 - Behavior-tree migration is now a committed future direction, but the current workflow system is still a live product surface and must be stabilized on its own terms.
@@ -70,7 +71,9 @@ The repo is not over-complicated mainly because it has many files. The file coun
 
 Current evidence:
 
-- `python/paint_controller/qml/overlays/systemcontrol/SettingsTab.qml` performs persisted updates and immediate hardware-side effects in the same QML interaction path.
+- `python/paint_controller/qml/overlays/video/components/BaseTopViewSettingsPopup.qml` still performs live calibration adjustments and save/reset actions directly against `baseTopViewController`.
+- `python/paint_controller/qml/pages/tuning/PageTuning.qml` still applies PID tuning directly through `teensyController` methods.
+- `python/paint_controller/qml/pages/status/PageStatus.qml` and `python/paint_controller/qml/pages/status/components/TeensyStatus.qml` still toggle live controller state directly.
 - QML operational surfaces can directly trigger device, command, and workflow actions through raw runtime objects.
 - The runtime context contract still exposes many internal objects directly to QML.
 
@@ -121,19 +124,20 @@ Why it matters:
 - Python refactors have a wider blast radius than necessary.
 - It is difficult to answer which UI surface truly owns which backend contract.
 
-### Root Reason E: Settings Truthfulness Is Still Weak
+### Root Reason E: Settings Truthfulness Is Stronger, But Admin Capability Enforcement Still Lags
 
 Current evidence:
 
 - `python/paint_controller/core/settings.py` is the strong persistence and validation core.
-- `python/paint_controller/qml/overlays/systemcontrol/SettingsTab.qml` is the stronger live settings surface for real machine control, but still has a mixed quick-apply mutation path in QML.
-- `python/paint_controller/qml/pages/settings/PageSettings.qml` still contains placeholder-like local values and should not yet be treated as a truthful architecture surface.
+- `python/paint_controller/qml/overlays/systemcontrol/SettingsTab.qml` now routes the thrust-force quick-apply path through `SettingsManager` only.
+- `python/paint_controller/qml/pages/settings/PageSettings.qml` and its winch/wheels/arm pages are now truthful for schema-backed mixed-admin settings, while the camera route is explicit summary-only.
+- `python/paint_controller/models/capability_catalog.py` now inventories settings/admin capability and legality metadata, but later stages still need to decide where legality is enforced in UI behavior.
 
 Why it matters:
 
-- The problem is not that multiple settings surfaces exist. The problem is that their authority relationship is still unclear.
-- Trying to collapse everything into one settings location too early would solve the wrong problem.
-- A professional Qt architecture should support both operational quick-adjust surfaces and broader admin/setup surfaces when the workflow demands it.
+- The problem is no longer fake settings data. The remaining problem is consistent legality enforcement across route, overlay, tuning, and status surfaces.
+- Trying to collapse everything into one settings location would still solve the wrong problem.
+- A professional Qt architecture should support both operational quick-adjust surfaces and broader admin/setup surfaces when the workflow demands it, but it should not duplicate legality rules per surface.
 
 ### Root Reason F: Selection, Menu, And Mode-Preset Ownership Are Still Split
 
@@ -194,16 +198,15 @@ This plan deliberately avoids these traps:
 
 The most defensible direction is:
 
-1. Keep the Stage 1 command, device, and workflow boundary work as complete, but stop claiming the remaining Settings quick-apply path is already frozen. Carry that gap explicitly into the settings roadmap instead of burying it.
+1. Keep the Stage 1 command, device, and workflow boundary work as complete, and keep the former Settings quick-apply exception closed now that Stage 4 resolved it explicitly instead of leaving it ambiguous.
 2. Treat Stage 2 as complete and keep its stabilized overlay/menu facade as the shell-facing contract unless a concrete regression forces reopening it.
 3. Run Stage 3A next: shell policy only. `ScreenManager` keeps screen facts, a narrow `ShellState` keeps product shell policy, `QtBridge` keeps imperative UI intents, and QML stays responsible for composition.
-4. Run Stage 4A before route semantics harden: convert the top-level Settings route from a placeholder surface into a truthful admin/maintenance surface, and remove the remaining mixed QML persistence plus direct-controller mutation from the overlay settings path.
-5. Return to Stage 3B after Stage 4A to harden route metadata and selected-route ownership without canonizing false settings semantics.
-6. Run Stage 4B after that to classify settings by role, capability, and legality using a per-setting matrix rather than broad prose.
-7. Formalize the overlay contract across all live overlay classes: system-control overlay, joystick overlay, emergency precedence, and fullscreen-video HUD layering.
-8. Split workflow work into current-system stabilization and future behavior-tree preparation instead of treating both concerns as one vague stage.
-9. Narrow the QML contract only after those owners are actually clear.
-10. Leave feature-shell recomposition and design-system cleanup downstream.
+4. Treat Stage 4 as complete: the Settings route is now truthful where schema-backed settings exist, the camera route is explicit summary-only, and a thin `CapabilityCatalog` now carries executable settings/admin metadata.
+5. Return to Stage 3B1 next: normalize route manifest data and selected-route ownership without widening `ShellState`.
+6. Follow Stage 3B1 with a narrow Stage 6A current-system workflow public-model slice, then Stage 3B2 route formalization after route metadata is ready to freeze.
+7. Formalize the overlay contract in two passes: Stage 5A overlay hosting/layering, then Stage 5B operator-action legality using the existing capability metadata layer instead of a second policy model.
+8. Narrow the QML contract incrementally after those owners are actually clear.
+9. Leave feature-shell recomposition and design-system cleanup downstream.
 
 The broad `OperatorSession` alternative was considered and rejected. A narrow shell coordinator is practical here. A broad session object would centralize unrelated concerns and recreate the coordinator problem in a different form.
 
@@ -285,7 +288,7 @@ Validated Stage 1 sub-slices:
 
 Remaining explicit caveat:
 
-- The quick-apply settings path in `SettingsTab.qml` is not treated as fully complete boundary work. It is carried forward explicitly into Stage 4A because it overlaps long-term settings truthfulness and surface-legitimacy work.
+- At the end of Stage 1, the quick-apply settings path in `SettingsTab.qml` was not treated as fully complete boundary work. It was carried forward explicitly into Stage 4A because it overlapped long-term settings truthfulness and surface-legitimacy work.
 
 Exit criteria:
 
@@ -404,7 +407,7 @@ Primary files:
 
 Current problem:
 
-The product already behaves as a coordinated external mission surface plus built-in touch-operated surface, and Stage 3A has now made that shell policy explicit with a narrow `ShellState`. The remaining Stage 3 work is narrower: route metadata and selected-route hardening are still split across `MainWindow.qml` and `SelectBar.qml`, and that formalization should still wait until Stage 4A has made the Settings route truthful.
+The product already behaves as a coordinated external mission surface plus built-in touch-operated surface, and Stage 3A has now made that shell policy explicit with a narrow `ShellState`. Stage 4 has also completed the Settings-route truthfulness prerequisite. The remaining Stage 3 work is narrower: route manifest data and selected-route ownership are still split across `MainWindow.qml` and `SelectBar.qml`, and the next step is to normalize that before formal route semantics are frozen.
 
 Professional target:
 
@@ -416,7 +419,8 @@ Professional target:
 Stage structure:
 
 - Stage 3A: shell policy only. Name the two product surfaces explicitly, move surface-role assignment, secondary-window ownership, emergency precedence, and fullscreen activation policy out of root QML, and keep video-workspace internals out of scope.
-- Stage 3B: route metadata and selected-route hardening, after Stage 4A has made the Settings route truthful enough to formalize.
+- Stage 3B1: route manifest normalization and selected-route ownership unification now that Stage 4 has made the Settings route truthful enough to formalize later.
+- Stage 3B2: route metadata and selected-route formalization after the route model is ready to freeze.
 
 Progress note:
 
@@ -472,22 +476,13 @@ Professional target:
 - No placeholder settings surface pretending to be authoritative.
 - No duplicated local QML state where Python authority already exists.
 
-Implementation strategy:
+Status: completed on 2026-04-26.
 
-Stage 4A: settings truthfulness and surface legitimacy.
+Implementation summary:
 
-1. Remove placeholder local state from `PageSettings.qml` and its subpages before treating the Settings route as a real architecture surface.
-2. Decide the long-term role of each Settings-route sub-surface as admin, maintenance, commissioning, or diagnostics.
-3. Remove the remaining mixed QML persistence plus direct-controller mutation path from `SettingsTab.qml`.
-
-Stage 4B: broader settings capability and legality model.
-
-4. Classify each setting as `persisted only`, `persisted + immediate apply`, `runtime-only`, or `deprecated`.
-5. Classify each setting by capability and operating-state legality.
-6. Identify which settings belong in the operator overlay because they are genuinely in-operation adjustments.
-7. Identify which settings belong in maintenance/setup surfaces.
-8. Use a per-setting matrix with key, authority, consumers, legality, and verification instead of broad prose only.
-9. Introduce grouped metadata or a settings adapter only if it simplifies the UI contract meaningfully.
+- Stage 4A is complete: `PageSettings.qml` no longer carries fake placeholder state, schema-backed settings now live truthfully on the mixed admin route for winch/wheels/arm, the camera route is explicit summary-only, and `SettingsTab.qml` no longer mutates `teensyController` directly for thrust force.
+- Stage 4B is complete: `CapabilityCatalog` now publishes executable settings/admin metadata covering route pages, settings surfaces, and the known admin/calibration mutators that remain direct by design today.
+- The next work is no longer Stage 4. It is Stage 3B1 route normalization.
 
 Exit criteria:
 
@@ -736,19 +731,20 @@ Use this order unless a production bug interrupts it:
 2. Stage 1 command, device, and workflow action-boundary freeze, with the remaining settings quick-apply gap carried explicitly into Stage 4A.
 3. Stage 2 overlay and input ownership freeze.
 4. Stage 3A narrow shell policy split for the two-surface shell.
-5. Stage 4A settings truthfulness and Settings-route legitimacy.
-6. Stage 3B route metadata and selected-route hardening.
-7. Stage 4B broader settings authority, capability classes, and legality rules.
-8. Stage 5 overlay contract.
-9. Stage 6A current workflow stabilization.
-10. Stage 6B behavior-tree preparation.
+5. Stage 4 settings truthfulness and executable capability model.
+6. Stage 3B1 route normalization.
+7. Stage 6A current workflow public-model stabilization.
+8. Stage 3B2 route metadata and selected-route formalization.
+9. Stage 5A overlay hosting and layering.
+10. Stage 5B operator-action legality.
 11. Stage 7 narrower QML contract where justified.
-12. Stage 8 optional feature-shell recomposition.
-13. Stage 9 design-system cleanup.
+12. Stage 6B behavior-tree preparation.
+13. Stage 8 optional feature-shell recomposition.
+14. Stage 9 design-system cleanup.
 
 Why this order changed:
 
-The validated order keeps the ownership-first direction but adds three corrections. First, it stops overstating Stage 1 by carrying the remaining settings quick-apply gap forward explicitly. Second, it blocks shell work only on the narrow Stage 2 ownership freeze rather than on every residual Stage 2 cleanup item. Third, it inserts Settings-route truthfulness before route hardening so the shell does not canonize a placeholder surface as if it were already legitimate.
+The validated order keeps the ownership-first direction but adds three corrections. First, it corrected the old Stage 1 overstatement by carrying the former settings quick-apply gap forward until Stage 4 closed it explicitly. Second, it blocks shell work only on the narrow Stage 2 ownership freeze rather than on every residual Stage 2 cleanup item. Third, it inserted Settings-route truthfulness before route hardening so the shell would not canonize a placeholder surface as if it were already legitimate; that prerequisite is now satisfied, so Stage 3B1 is next.
 
 ## Technical Guardrails
 
@@ -826,22 +822,21 @@ When a stage becomes wrong:
 
 ## Next Recommended Session
 
-Stage 0 is published, Stage 1 command, device, and workflow boundaries are complete with the remaining settings quick-apply gap now carried explicitly into Stage 4A, Stage 2 is complete, and Stage 3A shell policy is complete. The next recommended session is to start Stage 4A settings truthfulness before returning to Stage 3B route hardening.
+Stage 0 is published, Stage 1 command, device, and workflow boundaries are complete, Stage 2 is complete, Stage 3A shell policy is complete, and Stage 4 is complete. The next recommended session is to start Stage 3B1 route normalization.
 
-Task title: Start Stage 4A settings truthfulness.
+Task title: Start Stage 3B1 route normalization.
 
 The session should:
 
-1. Remove placeholder or local-only state from the top-level Settings route before treating it as a real architecture surface.
-2. Classify the Settings-route surfaces by real role so Stage 3B does not formalize false route semantics.
-3. Remove the remaining mixed QML persistence plus direct-controller mutation path from `SettingsTab.qml`.
-4. Keep the new `shellState` narrow and avoid pulling route hardening into the Stage 4A slice.
+1. Move `MainWindow.qml` and `SelectBar.qml` onto one shared route manifest rather than duplicating route catalog data.
+2. Pick one selected-route owner and one write path without widening `ShellState` into a coordinator.
+3. Add focused tests for route manifest lookup and selected-route synchronization.
+4. Keep the new `shellState` narrow and avoid pulling settings or overlay legality into the Stage 3B1 slice.
 5. Create `PLANNING.md`.
 6. Ask for confirmation.
 
 The likely next implementation slice after approval:
 
-- freeze symbol-level ownership for the overlay and input seam without changing operator behavior
-- preserve dual-screen behavior
-- preserve overlay-first operation
-- validate joystick-selection, input, control-selection, startup, and QML import regressions before widening scope
+- normalize route catalog data without changing route names or dual-screen shell behavior
+- preserve overlay-first operation and current Settings-route semantics
+- validate startup and QML import regressions plus any new direct route tests before widening scope

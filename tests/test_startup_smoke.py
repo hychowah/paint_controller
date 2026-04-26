@@ -416,6 +416,36 @@ def test_multi_screen_monitor_window_loads_offscreen(monkeypatch, tmp_path, qt_a
     assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
 
 
+def test_settings_route_loads_offscreen(monkeypatch, tmp_path, qt_app):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    qml_path = qml_dir / "pages" / "settings" / "PageSettings.qml"
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    engine.load(QUrl.fromLocalFile(str(qml_path)))
+    qt_app.processEvents()
+
+    assert engine.rootObjects(), "PageSettings.qml failed to load"
+
+    fatal_warning_fragments = (
+        "failed to load component",
+        "no such file or directory",
+        "is not a type",
+        "required property",
+    )
+    assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+
+
 def test_system_control_workspace_loads_with_required_properties(monkeypatch, tmp_path, qt_app, qtbot):
     repo_root = Path(__file__).resolve().parent.parent
     qml_dir = repo_root / "python" / "paint_controller" / "qml"

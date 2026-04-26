@@ -231,10 +231,6 @@ Item {
                                                 var num = parseFloat(thrustForceInput.text)
                                                 if (!isNaN(num) && settingsManager) {
                                                     settingsManager.thrust_force = num
-                                                    // Also update teensyController for immediate effect
-                                                    if (teensyController) {
-                                                        teensyController.thrust_force = num
-                                                    }
                                                     settingsManager.saveSetting("thrust_force")
                                                 }
                                             }

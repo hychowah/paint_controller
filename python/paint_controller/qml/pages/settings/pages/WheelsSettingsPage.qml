@@ -7,6 +7,8 @@ ScrollView {
     id: root
     contentWidth: availableWidth
     clip: true
+
+    signal backRequested()
         
     ColumnLayout {
         width: parent.width
@@ -15,6 +17,7 @@ ScrollView {
         SettingsHeader {
             title: "Wheels Settings"
             showBack: true
+            onBackClicked: root.backRequested()
         }
         
         Rectangle {
@@ -22,33 +25,48 @@ ScrollView {
             Layout.preferredHeight: 8
             color: "#F5F5F5"
         }
-        
-        DetailSettingItem {
-            title: "Wheel Position"
-            subtitle: "Set target position for all wheels"
-            showMultipleInputs: true
-            valueLabels: ["Front L", "Front R", "Rear L", "Rear R"]
-            currentValues: [0, 0, 0, 0]
-            minValue: -180
-            maxValue: 180
-            unit: "°"
-            applyButtonText: "Set Positions"
-            
-            onApplyInputValues: function(values) {
-                console.log("Wheel positions applied:", values)
-            }
+
+        SettingsCategory {
+            title: "Travel And Speed"
+        }
+
+        ManagedSettingSpinBox {
+            title: "Track Maximum Speed"
+            subtitle: "Upper speed limit for track and wheel motion"
+            settingKey: "track_max_speed"
+        }
+
+        ManagedSettingSpinBox {
+            title: "Track Minimum Speed"
+            subtitle: "Minimum speed used to overcome static friction"
+            settingKey: "track_min_speed"
+        }
+
+        ManagedSettingSpinBox {
+            title: "Wheel Travel Maximum"
+            subtitle: "Maximum wheel travel distance"
+            settingKey: "wheel_travel_max"
+            unit: " mm"
+        }
+
+        ManagedSettingSpinBox {
+            title: "Wheel Travel Rate"
+            subtitle: "Adjustment rate for wheel travel commands"
+            settingKey: "wheel_travel_rate"
+            unit: " mm/s"
+        }
+
+        ManagedSettingSpinBox {
+            title: "Wheel Travel RPM"
+            subtitle: "Fixed RPM used for wheel travel commands"
+            settingKey: "wheel_travel_rpm"
+            integerValue: true
         }
         
-        DetailSettingItem {
-            title: "Move to Position"
-            subtitle: "Execute wheel movement to set positions"
-            showActionButton: true
-            buttonText: "Move Wheels"
-            buttonColor: "#4CAF50"
-            
-            onActionButtonClicked: {
-                console.log("Moving wheels to position...")
-            }
+        SettingsItem {
+            title: "Route Scope"
+            subtitle: "This route owns persisted wheel and travel settings. Live wheel enabling and motion remain on the runtime status and wheel control surfaces."
+            showArrow: false
         }
     }
 }

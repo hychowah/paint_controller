@@ -18,6 +18,7 @@ Rectangle {
     property real currentValue: 50
     property bool toggleValue: false
     property string unit: ""
+    property int spinBoxDecimals: 1
     property var valueLabels: []
     property var currentValues: []
     property var inputValues: []
@@ -112,7 +113,7 @@ Rectangle {
                 stepSize: 10
                 Layout.preferredWidth: 120
                 
-                property int decimals: 1
+                property int decimals: root.spinBoxDecimals
                 property real realValue: value / 10
                 
                 validator: DoubleValidator {

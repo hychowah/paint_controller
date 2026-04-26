@@ -10,6 +10,7 @@
   "wheel_travel_max": 500.0,
   "wheel_travel_rate": 100.0,
   "wheel_travel_rpm": 220,
+  "emergency_hold_duration_s": 1.0,
   "ui_section_states": {
     "device_winch": true,
     "device_wheel": true

@@ -17,6 +17,7 @@ from paint_controller.core.config import RuntimeDefaults
 from paint_controller.core.ros_node import RosThread
 from paint_controller.core.settings import SettingsManager
 from paint_controller.handlers.steam_deck import SteamDeckHandler
+from paint_controller.models.capability_catalog import CapabilityCatalog
 from paint_controller.services.base_top_view_service import BaseTopViewService
 from paint_controller.services.video_stream import VideoStreamHandler
 from paint_controller.utils.qt_env import ensure_pyside6_windows_dll_path
@@ -49,6 +50,7 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "rosBagRecorder",
     "workflowEditor",
     "settingsManager",
+    "capabilityCatalog",
     "screenManager",
     "baseTopViewController",
 )
@@ -106,6 +108,7 @@ class AppRuntime:
         self.state_store = None
         self.node = None
         self.settings_manager: SettingsManager | None = None
+        self.capability_catalog: CapabilityCatalog | None = None
         self.steam_deck_handler: SteamDeckHandler | None = None
         self.video_stream_handler: VideoStreamHandler | None = None
         self.base_top_view_service: BaseTopViewService | None = None
@@ -168,6 +171,7 @@ class AppRuntime:
         self._log_startup("PaintRosNode created")
 
         self.settings_manager = SettingsManager(show_popup_fn=None)
+        self.capability_catalog = CapabilityCatalog(settings_manager=self.settings_manager)
         self.steam_deck_handler = SteamDeckHandler(deadzone=self.config.joystick_deadzone)
         self._log_startup("Core state/services created")
 
@@ -303,6 +307,7 @@ class AppRuntime:
         assert self.video_stream_handler is not None
         assert self.steam_deck_handler is not None
         assert self.settings_manager is not None
+        assert self.capability_catalog is not None
         assert self.base_top_view_service is not None
 
         return {
@@ -331,6 +336,7 @@ class AppRuntime:
             "rosBagRecorder": self.bundle.ros_bag_recorder,
             "workflowEditor": self.bundle.workflow_editor,
             "settingsManager": self.settings_manager,
+            "capabilityCatalog": self.capability_catalog,
             "screenManager": self.bundle.screen_manager,
             "baseTopViewController": self.base_top_view_service,
         }
