@@ -394,6 +394,9 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
     availability = DynamicObject(BASE=True, EF=True)
     ping_times = DynamicObject(BASE="42", END_EFFECTOR="38")
     settings_manager = _settings_manager(monkeypatch, tmp_path)
+    workflow_runner = FakeWorkFlowRunner()
+    workflow_editor = FakeWorkflowEditor()
+    manual_command_handler = FakeManualCommandHandler()
 
     return {
         "stateStore": StateStore(),
@@ -432,7 +435,11 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             control_options=[],
         ),
         "actionLegality": FakeActionLegality(),
-        "workFlowRunner": FakeWorkFlowRunner(),
+        "systemControlServices": DynamicObject(
+            workflowRunner=workflow_runner,
+            workflowEditor=workflow_editor,
+            manualCommandHandler=manual_command_handler,
+        ),
         "warningHandler": DynamicObject(active_warning=""),
         "baseStreamHandler": FakeStreamHandler(),
         "wheelController": DynamicObject(
@@ -488,7 +495,6 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             right_control_mode="None",
             right_control_value="",
         ),
-        "manualCommandHandler": FakeManualCommandHandler(),
         "deviceActionHandler": FakeDeviceActionHandler(),
         "deviceOperationsHandler": FakeDeviceOperationsHandler(),
         "sshHandler": DynamicObject(deviceAvailability=availability, devicePingTimes=ping_times),
@@ -513,7 +519,6 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             bag_recording_duration=0,
             bag_status_message="",
         ),
-        "workflowEditor": FakeWorkflowEditor(),
         "settingsManager": settings_manager,
         "baseTopViewAdminHandler": FakeBaseTopViewAdminHandler(),
         "screenManager": FakeScreenManager(),
@@ -880,6 +885,7 @@ Item {{
         anchors.fill: parent
         showOverlay: true
         activeMenu: "system"
+        systemControlServices: systemControlServices
     }}
 }}
 '''.encode(),
@@ -940,6 +946,7 @@ Item {{
         anchors.fill: parent
         active: true
         videoSource: "{video_source}"
+        workflowServices: systemControlServices
     }}
 }}
 '''.encode(),
@@ -999,6 +1006,7 @@ Item {{
         anchors.fill: parent
         active: true
         videoSource: "image://base_front_live/frame"
+        workflowServices: systemControlServices
     }}
 }}
 '''.encode(),
@@ -1053,10 +1061,59 @@ Item {{
 
     WorkFlowTab {{
         anchors.fill: parent
+        workflowRunner: systemControlServices.workflowRunner
     }}
 }}
 '''.encode(),
         QUrl("inmemory:WorkFlowTabHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+        qt_app.processEvents()
+        assert not any("failed to load component" in warning.lower() for warning in warnings), warnings
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
+def test_command_tab_loads_with_explicit_handler(monkeypatch, tmp_path, qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    systemcontrol_import_url = _qml_import_url(qml_dir / "overlays" / "systemcontrol")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{systemcontrol_import_url}"
+
+Item {{
+    width: 1280
+    height: 800
+
+    CommandTab {{
+        anchors.fill: parent
+        manualCommandHandler: systemControlServices.manualCommandHandler
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:CommandTabHarness.qml"),
     )
 
     _assert_component_ready(qtbot, component)
@@ -1084,7 +1141,10 @@ def test_workflow_status_overlay_loads_with_runner_read_model(monkeypatch, tmp_p
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
-    context_objects["workFlowRunner"] = FakeWorkFlowRunner(execution_state=1)
+    context_objects["systemControlServices"] = DynamicObject(
+        workflowRunner=FakeWorkFlowRunner(execution_state=1),
+        workflowEditor=FakeWorkflowEditor(),
+    )
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
         ctx.setContextProperty(name, obj)
@@ -1101,6 +1161,7 @@ Item {{
 
     WorkFlowStatusOverlay {{
         anchors.fill: parent
+        workflowRunner: systemControlServices.workflowRunner
     }}
 }}
 '''.encode(),

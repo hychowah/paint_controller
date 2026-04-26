@@ -5,6 +5,7 @@ import QtQuick.Layouts
 Rectangle {
     id: workFlowTab
     color: "transparent"
+    required property var workflowRunner
 
     ColumnLayout {
         anchors {

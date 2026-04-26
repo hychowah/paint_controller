@@ -5,6 +5,7 @@ import "./components"
 
 Item {
     id: commandTab
+    required property var manualCommandHandler
 
     // Command definitions with their parameters
     readonly property var commandDefinitions: {

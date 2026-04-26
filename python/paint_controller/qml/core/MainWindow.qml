@@ -301,6 +301,7 @@ ApplicationWindow {
         z: overlayHost ? overlayHost.system_control_layer : 1001
         showOverlay: overlayController.show_overlay
         activeMenu: overlayController.active_menu
+        systemControlServices: systemControlServices
         visible: showSystemControlOnMainSurface
     }
 
@@ -338,6 +339,7 @@ ApplicationWindow {
         z: overlayHost ? overlayHost.video_fullscreen_layer : 500
         active: overlayHost ? (overlayHost.video_fullscreen_active && overlayHost.video_fullscreen_on_main_surface) : false
         videoSource: overlayHost ? overlayHost.video_fullscreen_source : ""
+        workflowServices: systemControlServices
     }
 
     // LiDAR 3D View

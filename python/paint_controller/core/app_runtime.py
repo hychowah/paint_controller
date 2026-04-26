@@ -9,7 +9,7 @@ from collections.abc import Callable
 from typing import Any
 
 import rclpy
-from PySide6.QtCore import QCoreApplication, QEvent, QTimer, QUrl, Qt
+from PySide6.QtCore import Property, QCoreApplication, QEvent, QObject, QTimer, QUrl, Qt
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWidgets import QApplication
 
@@ -31,8 +31,8 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "shellState",
     "overlayHost",
     "actionLegality",
+    "systemControlServices",
     "overlayController",
-    "workFlowRunner",
     "warningHandler",
     "baseStreamHandler",
     "wheelController",
@@ -42,7 +42,6 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "lidarController",
     "heartbeatHandler",
     "controlProcessor",
-    "manualCommandHandler",
     "deviceActionHandler",
     "deviceOperationsHandler",
     "winchMotionHandler",
@@ -52,11 +51,30 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "systemMonitor",
     "screenRecorder",
     "rosBagRecorder",
-    "workflowEditor",
     "settingsManager",
     "screenManager",
     "baseTopViewController",
 )
+
+
+class _SystemControlServices(QObject):
+    def __init__(self, workflow_runner: object, workflow_editor: object, manual_command_handler: object) -> None:
+        super().__init__()
+        self._workflow_runner = workflow_runner
+        self._workflow_editor = workflow_editor
+        self._manual_command_handler = manual_command_handler
+
+    @Property(object, constant=True)
+    def workflowRunner(self) -> object:
+        return self._workflow_runner
+
+    @Property(object, constant=True)
+    def workflowEditor(self) -> object:
+        return self._workflow_editor
+
+    @Property(object, constant=True)
+    def manualCommandHandler(self) -> object:
+        return self._manual_command_handler
 
 
 def teardown_qml_runtime(
@@ -119,6 +137,7 @@ class AppRuntime:
         self.engine: QQmlApplicationEngine | None = None
         self.qt_bridge = None
         self.bundle = None
+        self.system_control_services: _SystemControlServices | None = None
         self.shell_state = None
         self.overlay_host = None
         self.action_legality = None
@@ -246,6 +265,11 @@ class AppRuntime:
             admin_action_gate=self.bundle.admin_action_gate,
             capability_catalog=self.capability_catalog,
         )
+        self.system_control_services = _SystemControlServices(
+            workflow_runner=self.bundle.workflow_runner,
+            workflow_editor=self.bundle.workflow_editor,
+            manual_command_handler=self.bundle.manual_command_handler,
+        )
 
     def _wire_steam_deck_callbacks(self) -> None:
         assert self.bundle is not None
@@ -319,6 +343,7 @@ class AppRuntime:
         assert self.shell_state is not None
         assert self.overlay_host is not None
         assert self.action_legality is not None
+        assert self.system_control_services is not None
         assert self.video_stream_handler is not None
         assert self.steam_deck_handler is not None
         assert self.settings_manager is not None
@@ -331,8 +356,8 @@ class AppRuntime:
             "shellState": self.shell_state,
             "overlayHost": self.overlay_host,
             "actionLegality": self.action_legality,
+            "systemControlServices": self.system_control_services,
             "overlayController": self.bundle.overlay_controller,
-            "workFlowRunner": self.bundle.workflow_runner,
             "warningHandler": self.bundle.warning_handler,
             "baseStreamHandler": self.video_stream_handler,
             "wheelController": self.bundle.wheel_controller,
@@ -342,7 +367,6 @@ class AppRuntime:
             "lidarController": self.bundle.lidar_controller,
             "heartbeatHandler": self.bundle.heartbeat_handler,
             "controlProcessor": self.bundle.control_processor,
-            "manualCommandHandler": self.bundle.manual_command_handler,
             "deviceActionHandler": self.bundle.device_action_handler,
             "deviceOperationsHandler": self.bundle.device_operations_handler,
             "winchMotionHandler": self.bundle.winch_motion_handler,
@@ -352,7 +376,6 @@ class AppRuntime:
             "systemMonitor": self.bundle.system_monitor,
             "screenRecorder": self.bundle.screen_recorder,
             "rosBagRecorder": self.bundle.ros_bag_recorder,
-            "workflowEditor": self.bundle.workflow_editor,
             "settingsManager": self.settings_manager,
             "screenManager": self.bundle.screen_manager,
             "baseTopViewController": self.base_top_view_service,

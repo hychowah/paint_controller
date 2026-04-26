@@ -9,14 +9,15 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for the architecture rati
 ## Current State
 
 - Overall status: in progress
-- Most recent completed slice: Workstream D QML-contract reduction completion
-- Last completed implementation slice: Workstream D QML-contract reduction completion
+- Most recent completed slice: Workstream E1 slice 2 system-control command contract reduction
+- Last completed implementation slice: Workstream E1 slice 2 system-control command contract reduction
+- Core refactor purpose: turn the app into a more professional Qt program by reducing global coupling, clarifying ownership, shrinking the app-scope QML contract, and making the codebase easier to maintain, scale, and understand
 - Active execution framework: completed stages remain historical record; unfinished work now executes as workstreams with hard checkpoints and touched-slice contract-retirement rules
 - North-star rule: each operator-visible behavior should have one canonical Python owner and one declarative QML consumer, with no equal second read path left behind after a checkpoint lands
-- Next recommended checkpoint: Start Workstream E future automation seam design while keeping optional feature-shell recomposition and design cleanup downstream only
+- Next recommended checkpoint: Continue Workstream E1 by retiring the next app-scope QML read path after the workflow/editor and command globals moved behind `systemControlServices`
 - Linux validation status: complete after rebasing onto `refactor`
-- Last focused validation: focused Workstream D contract validation is green at `35 passed` for `tests/test_settings_runtime.py`, `tests/test_controller_factory_runtime.py`, `tests/test_startup_smoke.py`, and `tests/test_qml_imports.py`
-- Latest full validation: `248 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q`
+- Last focused validation: focused Workstream E1 command-contract validation is green at `3 passed` for `tests/test_controller_factory_runtime.py` plus `tests/test_startup_smoke.py`
+- Latest full validation: `249 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q`
 
 ## Historical Stage Board
 
@@ -38,8 +39,8 @@ Unfinished work is no longer tracked here as a simple future stage ladder. It no
 | Workstream A — Workflow runtime/editor stabilization | completed | A1-A3 landed | Workstream B complete | Keep the editor surface transitional and do not reopen a second workflow read path |
 | Workstream B — Overlay contract/operator legality | completed | B1 overlay host and layer matrix landed; B2 legality seam landed | Workstream C complete | Keep legality narrow and shared; do not sprawl per-surface gate logic back into QML |
 | Workstream C — Shell/route formalization | completed | C0 route-contract tests plus key-first shell route contract landed | Workstream D dedicated contract reduction | Keep `pageKey` canonical and do not reopen duplicate int-based shell route lookup |
-| Workstream D — QML contract reduction | completed | Settings-family raw property-bag semantics retired; unused `capabilityCatalog`, `steamDeckHandler`, and `windMonitor` QML context exposure removed | Workstream E next | Keep future slices from re-growing the app-scope QML context bag |
-| Workstream E — Future automation seam/downstream UX cleanup | active next | Future automation seam design | Optional feature-shell recomposition and design cleanup | Keep behavior-tree preparation separate from current workflow stabilization |
+| Workstream D — QML contract reduction | completed | Settings-family raw property-bag semantics retired; unused `capabilityCatalog`, `steamDeckHandler`, and `windMonitor` QML context exposure removed | Workstream E1 next | Keep future slices from re-growing the app-scope QML context bag |
+| Workstream E — Contract-first infrastructure and downstream automation | active in progress | E1 workflow/editor globals plus the system-control command global read path are now retired behind `systemControlServices` | Continue E1 by shrinking the next system-control or shared app-scope read family before E2 automation-contract work | Keep `AppRuntime` as the composition root, but any touched slice must retire at least one app-scope QML read path and must not widen `ShellState`, `OverlayHostPolicy`, or the global context bag |
 
 ## Baseline Authority Map
 
@@ -175,17 +176,24 @@ Unfinished work is no longer tracked here as a simple future stage ladder. It no
 - Retired unused `capabilityCatalog`, `steamDeckHandler`, and `windMonitor` exposure from the QML context-property contract to make the app-scope runtime surface materially smaller.
 - Fixed deterministic workflow-name ordering in `WorkflowCatalog` during the final validation pass, then reran the focused D contract band to `35 passed` and the full suite to `248 passed`.
 
+### 2026-04-26 - Workstream E1 Contract-First Infrastructure Slices 1-2
+
+- Added `systemControlServices` as a feature-scoped contract in `AppRuntime`, retired the ambient `workFlowRunner` and `workflowEditor` root globals, and rewired the touched system-control plus video workflow surfaces to consume explicit required inputs instead of ambient root reads.
+- Extended the same boundary to carry `manualCommandHandler`, rewired `CommandTab.qml` off the root context, and retired the last direct system-control command global read path from the app-scope QML contract.
+- Revalidated the focused E1 command slice to `3 passed` for `tests/test_controller_factory_runtime.py` plus `tests/test_startup_smoke.py`, then reran the full suite to `249 passed`.
+
 ## Active Risks
 
-- The broad QML context-property contract remains intentionally additive; the repo is safer than before, but the mental surface area is still too wide until touched slices begin retiring old read paths immediately.
-- The workflow runtime/editor contract is now materially narrower, but `EditWorkFlowTab.qml` remains explicitly transitional and future automation-seam work is still downstream.
+- The broad QML context-property contract remains the biggest remaining maintainability problem; the repo is safer than before, but the mental surface area is still too wide until touched slices retire real app-scope reads in the same change.
+- Feature roots such as `SystemControlWorkspace.qml` are materially cleaner than before and now own workflow/editor plus command handoff explicitly, but settings/device/admin families still depend on broad app-scope runtime exposure and remain the next likely E1 targets.
+- The workflow runtime/editor contract is now materially narrower, but `EditWorkFlowTab.qml` remains explicitly transitional and future automation work should start only after the app-wide contract is smaller.
 - The direct-admin QML mutator gap is closed for the tracked Stage 4.5 and Workstream B surfaces, but later route families still need the same ownership discipline rather than reopening local page heuristics.
-- Workstream D is complete for the current runtime/QML contract target, but the remaining downstream work now shifts from contract retirement to future automation seam design and optional product/UI cleanup.
+- Workstream D is complete for the settings family, but the remaining downstream work now shifts first to contract-first infrastructure and only then to future automation and optional product/UI cleanup.
 
 ## Next Session Checklist
 
-1. Start Workstream E future automation seam design without reopening the completed D contract reductions.
-2. Keep `pageKey` canonical; do not reintroduce int-based route requests or duplicate shell route lookup in later shell changes.
-3. Keep `ShellState` narrow; do not widen shell policy into legality, workflow, or broad session ownership while contract reduction proceeds.
-4. Keep behavior-tree preparation separate from optional feature-shell recomposition and design-system cleanup.
-5. Keep `docs/tech-debt.md` and this tracker in sync as the workstream focus moves from contract reduction to downstream seam/design work.
+1. Continue Workstream E1 by retiring the next app-scope QML read path after the workflow/editor and command system-control slices.
+2. Any slice touching `python/paint_controller/core/app_runtime.py` must retire at least one direct app-scope QML read path in the same change.
+3. Keep `pageKey` canonical and keep `ShellState` plus `OverlayHostPolicy` narrow; do not reopen the completed shell/overlay ownership split while contract reduction proceeds.
+4. Keep `EditWorkFlowTab.qml` explicitly transitional and do not treat current workflow-editor placement as a reason to broaden shell recomposition; keep reusing bounded feature contracts instead.
+5. Keep future automation work downstream from the contract-first slice, and keep optional feature-shell recomposition and design-system cleanup non-blocking unless a later checkpoint proves they are still justified.

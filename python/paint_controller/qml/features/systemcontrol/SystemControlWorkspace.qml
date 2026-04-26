@@ -11,6 +11,7 @@ Item {
 
     required property bool showOverlay
     required property string activeMenu
+    required property var systemControlServices
     readonly property bool showSystemMenu: showOverlay && activeMenu === "system"
 
     visible: true
@@ -162,6 +163,7 @@ Item {
 
                 LegacySystemControl.CommandTab {
                     id: commandTabContent
+                    manualCommandHandler: systemControlWorkspace.systemControlServices.manualCommandHandler
                 }
 
                 LegacySystemControl.SettingsTab {
@@ -171,10 +173,12 @@ Item {
 
                 LegacySystemControl.WorkFlowTab {
                     id: workFlowTabContent
+                    workflowRunner: systemControlWorkspace.systemControlServices.workflowRunner
                 }
 
                 LegacySystemControl.EditWorkFlowTab {
                     id: editWorkFlowTabContent
+                    workflowEditor: systemControlWorkspace.systemControlServices.workflowEditor
                 }
             }
         }

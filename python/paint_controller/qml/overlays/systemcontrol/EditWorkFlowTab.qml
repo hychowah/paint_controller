@@ -5,6 +5,7 @@ import "./components"
 
 Item {
     id: editWorkFlowTab
+    required property var workflowEditor
 
     // Properties for workflow editing
     property var currentWorkflow: null

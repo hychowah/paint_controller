@@ -9,6 +9,7 @@ Rectangle {
 
     property string videoSource: ""
     property bool active: false
+    required property var workflowServices
 
     readonly property int panelWidth: CommonStyle.videoControlPanelWidth
     readonly property int panelHeight: CommonStyle.videoControlPanelHeight
@@ -98,12 +99,16 @@ Rectangle {
 
     Component {
         id: endEffectorOverlayComponent
-        EndEffectorOverlay { }
+        EndEffectorOverlay {
+            workflowRunner: root.workflowServices.workflowRunner
+        }
     }
 
     Component {
         id: baseFrontOverlayComponent
-        BaseFrontOverlay { }
+        BaseFrontOverlay {
+            workflowRunner: root.workflowServices.workflowRunner
+        }
     }
 
     ControlInfoPanel {

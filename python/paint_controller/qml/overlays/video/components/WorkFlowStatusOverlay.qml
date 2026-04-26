@@ -6,9 +6,10 @@ import "../../../core"
 Item {
     id: root
     anchors.fill: parent
+    required property var workflowRunner
     
     // Only visible when workflow is running
-    visible: workFlowRunner && workFlowRunner.execution_state === 1
+    visible: workflowRunner && workflowRunner.execution_state === 1
     
     // Runtime formatter function
     function formatRuntime(seconds) {
@@ -122,7 +123,7 @@ Item {
             RowLayout {
                 Layout.alignment: Qt.AlignLeft
                 spacing: 8
-                visible: workFlowRunner && workFlowRunner.is_loop_enabled
+                visible: workflowRunner && workflowRunner.is_loop_enabled
                 
                 Rectangle {
                     width: 12
@@ -132,8 +133,8 @@ Item {
                 }
                 
                 Text {
-                    text: workFlowRunner && workFlowRunner.loop_iteration > 0 
-                          ? "Loop Iteration: " + workFlowRunner.loop_iteration
+                      text: workflowRunner && workflowRunner.loop_iteration > 0 
+                          ? "Loop Iteration: " + workflowRunner.loop_iteration
                           : "Loop: Enabled"
                     color: CommonStyle.videoLoop
                     font.family: CommonStyle.fontSans
@@ -156,7 +157,7 @@ Item {
                 
                 Text {
                     id: runtimeText
-                    text: "Runtime: " + formatRuntime(workFlowRunner ? workFlowRunner.workflow_runtime : 0)
+                    text: "Runtime: " + formatRuntime(workflowRunner ? workflowRunner.workflow_runtime : 0)
                     color: CommonStyle.videoRuntime
                     font.family: CommonStyle.fontSans
                     font.pixelSize: CommonStyle.fontCaption + 1
@@ -167,11 +168,11 @@ Item {
             // WorkFlow name
             Text {
                 Layout.alignment: Qt.AlignLeft
-                text: workFlowRunner ? workFlowRunner.current_workflow : ""
+                text: workflowRunner ? workflowRunner.current_workflow : ""
                 color: CommonStyle.textPrimary
                 font.family: CommonStyle.fontSans
                 font.pixelSize: CommonStyle.fontCaption + 1
-                visible: workFlowRunner && workFlowRunner.current_workflow !== ""
+                visible: workflowRunner && workflowRunner.current_workflow !== ""
             }
             
             // Separator
@@ -199,7 +200,7 @@ Item {
                 Text {
                     id: currentActionText
                     Layout.alignment: Qt.AlignLeft
-                    text: workFlowRunner ? workFlowRunner.current_action_display : ""
+                    text: workflowRunner ? workflowRunner.current_action_display : ""
                     color: CommonStyle.videoAction
                     font.family: CommonStyle.fontSans
                     font.pixelSize: CommonStyle.fontCaption + 1
@@ -209,7 +210,7 @@ Item {
                 // Action description
                 Text {
                     Layout.alignment: Qt.AlignLeft
-                    text: workFlowRunner ? workFlowRunner.current_action_description : ""
+                    text: workflowRunner ? workflowRunner.current_action_description : ""
                     color: CommonStyle.textSecondary
                     font.family: CommonStyle.fontSans
                     font.pixelSize: CommonStyle.fontLabel
@@ -222,7 +223,7 @@ Item {
                 Layout.alignment: Qt.AlignLeft
                 Layout.topMargin: 4
                 spacing: 8
-                visible: workFlowRunner && workFlowRunner.current_action_index >= 0
+                visible: workflowRunner && workflowRunner.current_action_index >= 0
                 
                 Text {
                     text: "Progress:"
@@ -232,7 +233,7 @@ Item {
                 }
                 
                 Text {
-                    text: workFlowRunner ? workFlowRunner.workflow_progress_text : ""
+                    text: workflowRunner ? workflowRunner.workflow_progress_text : ""
                     color: "#FFFFFF"
                     font.family: "Helvetica"
                     font.pixelSize: 12

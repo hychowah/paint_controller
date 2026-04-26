@@ -444,7 +444,10 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.qt_bridge.base_top_view_service is runtime.base_top_view_service
     assert runtime.qt_bridge.input_handler is runtime.bundle.input_handler
     assert runtime.action_legality is not None
+    assert runtime.system_control_services is not None
     assert runtime.engine.context.properties["actionLegality"] is runtime.action_legality
+    assert runtime.engine.context.properties["systemControlServices"] is runtime.system_control_services
+    assert runtime.system_control_services.manualCommandHandler is runtime.bundle.manual_command_handler
     assert set(runtime.engine.context.properties) == set(module._EXPECTED_CONTEXT_PROPERTY_NAMES)
     assert [button for button, _ in runtime.steam_deck_handler.callbacks] == [
         "up", "down", "left", "right", "r4", "l4", "menu", "switch", "l5", "r5", "dot", "a", "l1"

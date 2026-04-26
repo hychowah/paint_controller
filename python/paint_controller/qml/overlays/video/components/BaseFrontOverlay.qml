@@ -7,6 +7,7 @@ Rectangle {
     id: overlay
     anchors.fill: parent
     color: "transparent"
+    required property var workflowRunner
 
     readonly property var style: CommonStyle
     
@@ -14,6 +15,7 @@ Rectangle {
     WorkFlowStatusOverlay {
         id: workFlowStatusOverlay
         z: 150  // Above other overlays but below top bar
+        workflowRunner: overlay.workflowRunner
     }
     
     // Top bar

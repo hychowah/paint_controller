@@ -8,16 +8,25 @@
 
 The direction remains ownership-first. The product should stay Python-first, overlay-first, dual-surface aware, and safety conservative. What changed after the attack review and final first-principles review is not the destination. It is the precision of the route and the convergence rule.
 
+The core purpose of this refactor is explicit:
+
+- make the app easier to maintain by reducing blast radius and equal-owner ambiguity
+- make the app easier to scale by shrinking the app-scope QML contract and clarifying feature boundaries
+- make the app easier for humans to understand by ensuring each operator-visible behavior has one obvious Python owner and one obvious QML consumer
+- make the app feel more like a professional Qt program because QML composes and presents, while Python owns policy, state, persistence, and machine-affecting behavior
+
+This refactor is not being done to chase aesthetics, framework purity, or page-based neatness. It is being done to reduce global coupling and make future development more coherent.
+
 The validated truths are these:
 
 - Stage 1 command, device, and workflow boundary work is complete, and the last Settings quick-apply authority leak that was carried into Stage 4A has now been removed. `SettingsTab.qml` no longer mutates `teensyController` directly for thrust force.
 - Stage 2 has removed the live `OverlayController` / `ControlProcessor` cycle, extracted `JoystickSelectionModel`, moved per-mode preset memory to the selection owner, and trimmed dead overlay compatibility wrappers. The remaining overlay/menu facade is now stable enough for shell work to bind to it.
-- Shell work is no longer blocked on Stage 2. Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 direct-admin boundary/default-gating is complete, Workstream A workflow runtime/editor stabilization is complete, Workstream B overlay host plus touched-surface operator legality are complete, Workstream C shell/route formalization is complete for the touched shell family, and Workstream D QML-contract reduction is now complete. The next architecture checkpoint is Workstream E future automation seam design.
+- Shell work is no longer blocked on Stage 2. Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 direct-admin boundary/default-gating is complete, Workstream A workflow runtime/editor stabilization is complete, Workstream B overlay host plus touched-surface operator legality are complete, Workstream C shell/route formalization is complete for the touched shell family, and Workstream D QML-contract reduction is now complete. The next architecture checkpoint is hybrid contract-first infrastructure: reduce the app-wide QML contract and feature-surface coupling before future automation work.
 - Stage 4 is now complete: the Settings route is truthful for schema-backed mixed-admin settings, the camera route is explicit summary-only while overlay calibration remains primary, and a thin `CapabilityCatalog` now inventories settings/admin legality metadata for later shell and overlay stages.
 - The top-level Settings route remains a real long-term admin or maintenance surface.
 - In dual-screen mode, the built-in Steam Deck display remains the dedicated touch/control surface and the external display remains the mission surface.
 - Behavior-tree migration is now a committed future direction, but the current workflow system is still a live product surface and must be stabilized on its own terms.
-- The broad QML context-property contract is still a scalability risk, but it should be reduced through the touched slices that establish stable owners, not deferred mechanically as a late cleanup-only event.
+- The broad QML context-property contract is still the biggest remaining professionalism and scalability risk, so the next checkpoint must reduce that global surface before the roadmap invests in future automation seams or optional shell/design cleanup.
 
 The north star is now explicit:
 
@@ -35,6 +44,18 @@ The roadmap now centers on six architecture goals:
 6. A narrower, explicit QML contract that exposes operator-facing state instead of runtime internals.
 
 That is the path toward a professional Qt program for this robot controller.
+
+## Core Purpose Of This Refactor
+
+The purpose of this refactor is not simply to "clean up QML" or make the tree look more modular. It is to produce a more professional Qt application in the ways that matter long-term:
+
+- fewer places to look when understanding one operator-visible behavior
+- smaller blast radius when Python internals change
+- clearer ownership boundaries between QML presentation, Python policy, persistence, and machine actions
+- less app-wide global exposure and more intentional feature contracts
+- future changes that are easier to validate because the contract surface is smaller and more explicit
+
+That is why the roadmap favors ownership, contract retirement, and explicit invariants over broad UI rearrangement.
 
 ## How Future LLM Sessions Should Use This Plan
 
@@ -217,7 +238,9 @@ The most defensible direction is:
 9. Treat Workstream B as complete for the touched overlay families: host topology is explicit and pre-click legality now shares one result seam with handler enforcement.
 10. Treat Workstream C as complete for the touched shell family: `pageKey` is canonical, the duplicate int-based shell route request path is retired, and numeric route order is internal-only.
 11. Treat Workstream D as complete: the settings-family raw property-bag reads are retired and unused app-scope QML context exposure is reduced.
-12. Leave future automation seam work, feature-shell recomposition, and design-system cleanup downstream.
+12. Run Workstream E1 contract-first infrastructure next: reduce the app-wide QML contract and feature-surface coupling before any future automation seam work.
+13. Run the narrowed automation-contract work only after the contract-first slice materially reduces global coupling.
+14. Leave optional feature-shell recomposition and design-system cleanup downstream only if they are still justified after the contract-first and automation slices.
 
 ## Active Execution Framework
 
@@ -232,6 +255,8 @@ The governing rules for the unfinished tail are:
 - each checkpoint must name the canonical owner it is establishing
 - each checkpoint must retire or clearly quarantine the old read path it supersedes
 - no new additive QML contract should be introduced without an explicit retirement or quarantine decision for the touched family
+
+The current unfinished tail now starts with contract-first infrastructure. That means reducing the app-wide QML contract and giving feature surfaces smaller, more legible contracts before the roadmap invests in future automation seams or optional shell/design recomposition.
 
 The broad `OperatorSession` alternative was considered and rejected. A narrow shell coordinator is practical here. A broad session object would centralize unrelated concerns and recreate the coordinator problem in a different form.
 
@@ -795,21 +820,41 @@ Delivered result:
 - Unused `capabilityCatalog`, `steamDeckHandler`, and `windMonitor` exposure is retired from the app-scope QML context contract.
 - Focused Workstream D contract validation is green at `35 passed`, and the full suite is green at `248 passed`.
 
-## Active Workstream E: Future Automation Seam And Downstream UX Cleanup
+## Active Workstream E: Contract-First Infrastructure And Downstream Automation
 
-Historical aliases: Stage 6B behavior-tree preparation, Stage 8 optional feature-shell recomposition, and Stage 9 design-system cleanup.
+Historical aliases: the former Workstream E future automation seam design, Stage 6B behavior-tree preparation, Stage 8 optional feature-shell recomposition, and Stage 9 design-system cleanup.
 
-Goal: keep future automation seam design explicit and downstream while leaving feature-shell recomposition and visual cleanup out of the critical maintainability lane.
+Goal: make the app more professional first by shrinking the app-wide QML contract and feature-surface coupling before future automation and optional shell/design cleanup proceed.
 
-Complexity: Variable
-Risk: Variable
-Suggested sessions: downstream only
+Complexity: High
+Risk: High
+Suggested sessions: 2 to 5 for the contract-first slice, downstream only afterward for automation and optional cleanup
 
 Rules:
 
-- Behavior-tree preparation is seam design, not permission to rebuild the current workflow UI speculatively.
-- Feature-shell recomposition is optional product design work enabled by earlier architecture improvements, not a substitute for them.
-- Design-system cleanup stays backlog-only unless the user explicitly reprioritizes it.
+- Treat `AppRuntime` as the composition root, not as a behavior god object or permanent service locator.
+- Any slice that touches `python/paint_controller/core/app_runtime.py` must retire at least one direct app-scope QML read path in the same change, or it does not count as maintainability progress.
+- Keep `ShellState`, `OverlayHostPolicy`, and the completed route/overlay ownership splits narrow; shell cleanup is allowed only when it directly retires a global dependency or duplicate ownership path.
+- Keep `EditWorkFlowTab.qml` explicitly transitional; do not use its current placement as justification for broad shell recomposition.
+- Future automation work stays downstream from the contract-first slice, and optional feature-shell recomposition plus design-system cleanup stay non-blocking unless the user explicitly reprioritizes them.
+
+Checkpoint E1: App-wide QML contract reduction
+
+- Reduce the app-scope context-property surface where a touched slice can retire a real direct QML read path.
+- Prefer smaller feature-facing contracts over continued reliance on app-wide global exposure.
+- Do not add new mega-owners such as `Backend`, `OperatorSession`, or an expanded `ShellState`.
+
+Checkpoint E2: Feature-surface contract reduction
+
+- Make feature roots such as `SystemControlWorkspace.qml` more architectural and less dependent on broad app-scope runtime exposure.
+- Touch `MainWindow.qml` only when it directly clarifies ownership or retires a global dependency.
+- Keep existing workflow runtime boundaries valid while reducing feature-surface coupling.
+
+Checkpoint E3: Narrowed automation-contract work
+
+- Only after E1 and E2 materially reduce global coupling.
+- Define future automation seams without speculative workflow UI rewrites.
+- Keep behavior-tree preparation explicit and downstream from the already-stabilized current workflow contract.
 
 ## Suggested Session Order
 
@@ -827,8 +872,8 @@ Use this order unless a production bug interrupts it:
 10. Workstream B2 operator-action legality.
 11. Workstream C route formalization.
 12. Workstream D dedicated QML-contract reduction, while continuing touched-slice retirement rules.
-13. Later automation-seam and downstream design slices.
-14. Workstream E future automation seam work only after the current workflow contract is stable.
+13. Workstream E1 app-wide QML contract reduction and feature-surface narrowing.
+14. Workstream E2 narrowed automation-contract work only after the contract-first slice materially reduces global coupling.
 15. Optional feature-shell recomposition if still justified.
 16. Design-system cleanup.
 
@@ -916,22 +961,22 @@ When a stage becomes wrong:
 
 ## Next Recommended Session
 
-Stage 0 is published, Stage 1 command, device, and workflow boundaries are complete, Stage 2 is complete, Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 is complete, Workstream A is complete, Workstream B is complete, Workstream C is complete for the touched shell family, and Workstream D is complete. The next recommended session is to start Workstream E future automation seam design.
+Stage 0 is published, Stage 1 command, device, and workflow boundaries are complete, Stage 2 is complete, Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 is complete, Workstream A is complete, Workstream B is complete, Workstream C is complete for the touched shell family, Workstream D is complete, and Workstream E is active in progress. The next recommended session is to continue Workstream E1 contract-first infrastructure after slices 1-2 retired the workflow/editor and system-control command globals behind `systemControlServices`.
 
-Task title: Start Workstream E future automation seam design.
+Task title: Continue Workstream E1 app-wide QML contract reduction after slices 1-2.
 
 The session should:
 
-1. Use the completed shell route contract, host matrix, legality seam, and Workstream D contract reductions as fixed inputs rather than reopening them in the same slice.
-2. Preserve the narrow `ShellState` / `OverlayHostPolicy` / `QtBridge` ownership boundaries while contract reduction proceeds.
-3. Keep future automation seam work separate from optional feature-shell redesign or broader product/UI cleanup.
-4. Keep startup/import smoke green and add focused tests for any new seam or runtime contract.
-5. Keep automation seam design explicit and downstream from the already-stabilized current workflow contract.
+1. Use the completed shell route contract, host matrix, legality seam, Workstream D reductions, and the completed E1 slices 1-2 as fixed inputs rather than reopening them in the same slice.
+2. Continue reducing the app-wide QML contract or feature-surface dependence in a way that retires at least one additional real direct app-scope read path.
+3. Preserve the narrow `ShellState` / `OverlayHostPolicy` / `QtBridge` ownership boundaries while contract reduction proceeds.
+4. Keep future automation work separate from optional feature-shell redesign or broader product/UI cleanup.
+5. Keep startup/import smoke green and add focused tests for any new feature-facing contract.
 6. Create `PLANNING.md`.
 7. Ask for confirmation.
 
 The likely next implementation slice after approval:
 
-- keep the current workflow runtime/editor contract stable while identifying the minimal future automation seam needed for later behavior-tree work
-- preserve the completed shell, overlay, legality, and settings contracts while future-design work proceeds
-- validate focused seam tests plus startup and QML import coverage before widening scope
+- keep the current shell, overlay, legality, settings, and workflow runtime contracts stable while reducing app-scope QML exposure further
+- make the next touched feature surfaces consume smaller, clearer contracts before future automation work starts
+- validate focused contract tests plus startup and QML import coverage before widening scope
