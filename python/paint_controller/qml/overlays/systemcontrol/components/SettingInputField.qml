@@ -7,6 +7,21 @@ ColumnLayout {
     id: root
     Layout.fillWidth: true
     spacing: CommonStyle.spacingSm
+
+    function currentSettingText() {
+        if (!settingsManager) {
+            return root.defaultValue
+        }
+
+        var value = root.decimalPlaces === 0
+            ? settingsManager.getInt(root.settingKey)
+            : settingsManager.getFloat(root.settingKey)
+        return root.decimalPlaces === 0 ? value.toString() : value.toFixed(root.decimalPlaces)
+    }
+
+    function refreshDisplayText() {
+        inputField.text = root.currentSettingText()
+    }
     
     // Component properties
     required property string label
@@ -46,12 +61,7 @@ ColumnLayout {
                 id: inputField
                 anchors.fill: parent
                 anchors.margins: CommonStyle.spacingMd
-                text: {
-                    if (!settingsManager) return root.defaultValue
-                    var value = settingsManager[root.settingKey]
-                    if (value === undefined || value === null) return root.defaultValue
-                    return root.decimalPlaces === 0 ? value.toString() : value.toFixed(root.decimalPlaces)
-                }
+                text: root.defaultValue
                 color: CommonStyle.textPrimary
                 font.family: CommonStyle.fontMono
                 font.pixelSize: Math.max(14, root.fieldHeight * 0.35)
@@ -100,11 +110,28 @@ ColumnLayout {
                         parseFloat(inputField.text)
                     
                     if (!isNaN(num) && settingsManager) {
-                        settingsManager[root.settingKey] = num
-                        settingsManager.saveSetting(root.settingKey)
+                        var updated = root.decimalPlaces === 0
+                            ? settingsManager.setInt(root.settingKey, num)
+                            : settingsManager.setFloat(root.settingKey, num)
+                        if (updated) {
+                            settingsManager.saveSetting(root.settingKey)
+                            root.refreshDisplayText()
+                        }
                     }
                 }
             }
         }
     }
+
+    Connections {
+        target: settingsManager
+
+        function onSetting_changed(key, value) {
+            if (key === root.settingKey) {
+                root.refreshDisplayText()
+            }
+        }
+    }
+
+    Component.onCompleted: root.refreshDisplayText()
 }

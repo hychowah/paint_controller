@@ -37,8 +37,6 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "baseStreamHandler",
     "wheelController",
     "winchController",
-    "steamDeckHandler",
-    "windMonitor",
     "teensyController",
     "esp32ValveController",
     "lidarController",
@@ -56,7 +54,6 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "rosBagRecorder",
     "workflowEditor",
     "settingsManager",
-    "capabilityCatalog",
     "screenManager",
     "baseTopViewController",
 )
@@ -340,8 +337,6 @@ class AppRuntime:
             "baseStreamHandler": self.video_stream_handler,
             "wheelController": self.bundle.wheel_controller,
             "winchController": self.bundle.winch_controller,
-            "steamDeckHandler": self.steam_deck_handler,
-            "windMonitor": self.bundle.wind_monitor,
             "teensyController": self.bundle.teensy_controller,
             "esp32ValveController": self.bundle.esp32_valve_controller,
             "lidarController": self.bundle.lidar_controller,
@@ -359,7 +354,6 @@ class AppRuntime:
             "rosBagRecorder": self.bundle.ros_bag_recorder,
             "workflowEditor": self.bundle.workflow_editor,
             "settingsManager": self.settings_manager,
-            "capabilityCatalog": self.capability_catalog,
             "screenManager": self.bundle.screen_manager,
             "baseTopViewController": self.base_top_view_service,
         }

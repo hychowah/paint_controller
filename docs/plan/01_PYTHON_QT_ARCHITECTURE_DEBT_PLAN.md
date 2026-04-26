@@ -12,7 +12,7 @@ The validated truths are these:
 
 - Stage 1 command, device, and workflow boundary work is complete, and the last Settings quick-apply authority leak that was carried into Stage 4A has now been removed. `SettingsTab.qml` no longer mutates `teensyController` directly for thrust force.
 - Stage 2 has removed the live `OverlayController` / `ControlProcessor` cycle, extracted `JoystickSelectionModel`, moved per-mode preset memory to the selection owner, and trimmed dead overlay compatibility wrappers. The remaining overlay/menu facade is now stable enough for shell work to bind to it.
-- Shell work is no longer blocked on Stage 2. Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 direct-admin boundary/default-gating is complete, Workstream A workflow runtime/editor stabilization is complete, Workstream B overlay host plus touched-surface operator legality are complete, and Workstream C shell/route formalization is complete for the touched shell family. The next architecture checkpoint is Workstream D dedicated QML-contract reduction.
+- Shell work is no longer blocked on Stage 2. Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 direct-admin boundary/default-gating is complete, Workstream A workflow runtime/editor stabilization is complete, Workstream B overlay host plus touched-surface operator legality are complete, Workstream C shell/route formalization is complete for the touched shell family, and Workstream D QML-contract reduction is now complete. The next architecture checkpoint is Workstream E future automation seam design.
 - Stage 4 is now complete: the Settings route is truthful for schema-backed mixed-admin settings, the camera route is explicit summary-only while overlay calibration remains primary, and a thin `CapabilityCatalog` now inventories settings/admin legality metadata for later shell and overlay stages.
 - The top-level Settings route remains a real long-term admin or maintenance surface.
 - In dual-screen mode, the built-in Steam Deck display remains the dedicated touch/control surface and the external display remains the mission surface.
@@ -216,7 +216,7 @@ The most defensible direction is:
 8. Treat Workstream B1 as complete: overlay host placement, fullscreen-video placement, joystick-overlay placement, and safety-overlay precedence are now published through one Python-owned host policy consumed declaratively by the touched QML surfaces.
 9. Treat Workstream B as complete for the touched overlay families: host topology is explicit and pre-click legality now shares one result seam with handler enforcement.
 10. Treat Workstream C as complete for the touched shell family: `pageKey` is canonical, the duplicate int-based shell route request path is retired, and numeric route order is internal-only.
-11. Run Workstream D next: reduce the mental surface area of the runtime/QML contract now that shell vocabulary is explicit.
+11. Treat Workstream D as complete: the settings-family raw property-bag reads are retired and unused app-scope QML context exposure is reduced.
 12. Leave future automation seam work, feature-shell recomposition, and design-system cleanup downstream.
 
 ## Active Execution Framework
@@ -751,7 +751,7 @@ Delivered result:
 - `SelectBar.qml` now emits key-based navigation requests and no longer carries duplicate route lookup logic.
 - Focused shell/import validation is green at `17 passed`, and the full suite is green at `245 passed`.
 
-## Active Workstream D: QML Contract Reduction
+## Completed Workstream D: QML Contract Reduction
 
 Historical alias: Stage 7 narrower QML contract.
 
@@ -781,10 +781,19 @@ Bad outcomes:
 
 Validation:
 
+- `tests/test_settings_runtime.py`
 - `tests/test_controller_factory_runtime.py`
 - `tests/test_startup_smoke.py`
 - `tests/test_qml_imports.py`
 - focused tests for any new adapter/model
+
+Delivered result:
+
+- `SettingInputField.qml` and `ManagedSettingSpinBox.qml` consume typed `SettingsManager` helper slots plus `setting_changed` refresh instead of raw `settingsManager` property/index access.
+- The Settings route summary pages now consume owner-side summary helpers instead of formatting raw settings values directly in page QML.
+- The last inline thrust-force and thrust-ramp-rate special cases in `SettingsTab.qml` now use the same shared typed settings contract as the rest of the settings family.
+- Unused `capabilityCatalog`, `steamDeckHandler`, and `windMonitor` exposure is retired from the app-scope QML context contract.
+- Focused Workstream D contract validation is green at `35 passed`, and the full suite is green at `248 passed`.
 
 ## Active Workstream E: Future Automation Seam And Downstream UX Cleanup
 
@@ -907,22 +916,22 @@ When a stage becomes wrong:
 
 ## Next Recommended Session
 
-Stage 0 is published, Stage 1 command, device, and workflow boundaries are complete, Stage 2 is complete, Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 is complete, Workstream A is complete, Workstream B is complete, and Workstream C is complete for the touched shell family. The next recommended session is to start Workstream D dedicated QML-contract reduction.
+Stage 0 is published, Stage 1 command, device, and workflow boundaries are complete, Stage 2 is complete, Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 is complete, Workstream A is complete, Workstream B is complete, Workstream C is complete for the touched shell family, and Workstream D is complete. The next recommended session is to start Workstream E future automation seam design.
 
-Task title: Start Workstream D dedicated QML-contract reduction.
+Task title: Start Workstream E future automation seam design.
 
 The session should:
 
-1. Use the completed shell route contract, host matrix, and legality seam as fixed inputs rather than reopening them in the same slice.
+1. Use the completed shell route contract, host matrix, legality seam, and Workstream D contract reductions as fixed inputs rather than reopening them in the same slice.
 2. Preserve the narrow `ShellState` / `OverlayHostPolicy` / `QtBridge` ownership boundaries while contract reduction proceeds.
-3. Retire one focused family of direct runtime/QML read paths rather than adding new adapters without retirement.
-4. Keep startup/import smoke green and add focused tests for any new adapter or reduced contract.
-5. Keep contract reduction separate from feature-shell redesign or broader workflow/settings restructuring.
+3. Keep future automation seam work separate from optional feature-shell redesign or broader product/UI cleanup.
+4. Keep startup/import smoke green and add focused tests for any new seam or runtime contract.
+5. Keep automation seam design explicit and downstream from the already-stabilized current workflow contract.
 6. Create `PLANNING.md`.
 7. Ask for confirmation.
 
 The likely next implementation slice after approval:
 
-- start with one focused shell/runtime contract family rather than a repo-wide context-property cleanup
-- preserve the completed shell route, host, and legality seams while retiring a touched old read path
-- validate focused adapter/contract tests plus startup and QML import coverage before widening scope
+- keep the current workflow runtime/editor contract stable while identifying the minimal future automation seam needed for later behavior-tree work
+- preserve the completed shell, overlay, legality, and settings contracts while future-design work proceeds
+- validate focused seam tests plus startup and QML import coverage before widening scope

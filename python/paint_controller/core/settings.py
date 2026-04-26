@@ -679,6 +679,37 @@ class SettingsManager(QObject):
         """Get the description for a setting from QML"""
         schema = self.get_schema(key)
         return schema.get("description", "") if schema else ""
+
+    @Slot(str, result=str)
+    def getRouteSummary(self, route_key: str) -> str:
+        """Return the current subtitle text for a settings route summary card."""
+        if route_key == "winch":
+            return f"Max speed: {self.getFloat('winch_max_speed_mmps'):.1f} mm/s"
+        if route_key == "wheels":
+            return (
+                f"Track max: {self.getFloat('track_max_speed'):.1f}, "
+                f"travel max: {self.getFloat('wheel_travel_max'):.0f} mm"
+            )
+        if route_key == "camera":
+            return (
+                f"Base-top zoom: {self.getFloat('base_top_view_zoom'):.2f}; "
+                "full calibration remains overlay-primary"
+            )
+        if route_key == "arm":
+            return (
+                f"Retract: {self.getInt('arm_retract_length')} mm, "
+                f"extend: {self.getInt('arm_extend_length')} mm"
+            )
+        return ""
+
+    @Slot(result=str)
+    def getCameraCalibrationSummary(self) -> str:
+        """Return the current camera calibration summary shown on the settings route."""
+        crop_state = "enabled" if bool(self.get("base_top_view_crop_enabled", False)) else "disabled"
+        return (
+            f"Saved zoom {self.getFloat('base_top_view_zoom'):.2f}, "
+            f"crop {crop_state}. Full calibration remains overlay-primary."
+        )
     
     @Slot(str, result=bool)
     def requiresRestart(self, key: str) -> bool:

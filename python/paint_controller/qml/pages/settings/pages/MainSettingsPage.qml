@@ -9,6 +9,26 @@ ScrollView {
     clip: true
     
     signal pageRequested(string page)
+
+    property string winchSubtitle: "Max speed settings"
+    property string wheelsSubtitle: "Wheel speed and travel settings"
+    property string cameraSubtitle: "Base-top calibration and camera settings"
+    property string armSubtitle: "Arm presets and end-effector settings"
+
+    function refreshSummaries() {
+        if (!settingsManager) {
+            winchSubtitle = "Max speed settings"
+            wheelsSubtitle = "Wheel speed and travel settings"
+            cameraSubtitle = "Base-top calibration and camera settings"
+            armSubtitle = "Arm presets and end-effector settings"
+            return
+        }
+
+        winchSubtitle = settingsManager.getRouteSummary("winch")
+        wheelsSubtitle = settingsManager.getRouteSummary("wheels")
+        cameraSubtitle = settingsManager.getRouteSummary("camera")
+        armSubtitle = settingsManager.getRouteSummary("arm")
+    }
     
     ColumnLayout {
         width: parent.width
@@ -31,29 +51,21 @@ ScrollView {
         
         SettingsItem {
             title: "Winch"
-            subtitle: settingsManager
-                ? "Max speed: " + settingsManager.winch_max_speed_mmps.toFixed(1) + " mm/s"
-                : "Max speed settings"
+            subtitle: root.winchSubtitle
             
             onClicked: root.pageRequested("winch")
         }
         
         SettingsItem {
             title: "Wheels"
-            subtitle: settingsManager
-                ? "Track max: " + settingsManager.track_max_speed.toFixed(1)
-                    + ", travel max: " + settingsManager.wheel_travel_max.toFixed(0) + " mm"
-                : "Wheel speed and travel settings"
+            subtitle: root.wheelsSubtitle
             
             onClicked: root.pageRequested("wheels")
         }
         
         SettingsItem {
             title: "Camera"
-            subtitle: settingsManager
-                ? "Base-top zoom: " + settingsManager.base_top_view_zoom.toFixed(2)
-                    + "; full calibration remains overlay-primary"
-                : "Base-top calibration and camera settings"
+            subtitle: root.cameraSubtitle
             
             onClicked: root.pageRequested("camera")
         }
@@ -64,10 +76,7 @@ ScrollView {
         
         SettingsItem {
             title: "Arm"
-            subtitle: settingsManager
-                ? "Retract: " + settingsManager.arm_retract_length + " mm, extend: "
-                    + settingsManager.arm_extend_length + " mm"
-                : "Arm presets and end-effector settings"
+            subtitle: root.armSubtitle
             
             onClicked: root.pageRequested("arm")
         }
@@ -93,4 +102,14 @@ ScrollView {
             color: "transparent"
         }
     }
+
+    Connections {
+        target: settingsManager
+
+        function onSetting_changed(key, value) {
+            root.refreshSummaries()
+        }
+    }
+
+    Component.onCompleted: root.refreshSummaries()
 }

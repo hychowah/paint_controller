@@ -174,3 +174,46 @@ def test_save_all_keeps_last_good_file_when_json_dump_fails(monkeypatch, tmp_pat
     assert json.loads(config_path.read_text()) == {"winch_max_speed_mmps": 123.0}
     assert list(config_path.parent.glob("*.tmp")) == []
     monkeypatch.setattr(settings_module.json, "dump", original_dump)
+
+
+def test_typed_qml_slots_roundtrip_and_clamp_values(monkeypatch, tmp_path, qt_core_app):
+    manager, _ = _make_manager(monkeypatch, tmp_path)
+
+    assert manager.setFloat("winch_max_speed_mmps", 999.0) is True
+    assert manager.getFloat("winch_max_speed_mmps") == 400.0
+
+    assert manager.setInt("wheel_travel_rpm", 999) is True
+    assert manager.getInt("wheel_travel_rpm") == 600
+
+
+def test_apply_slots_persist_without_popup_side_effects(monkeypatch, tmp_path, qt_core_app):
+    popup_calls = []
+    manager, config_path = _make_manager(monkeypatch, tmp_path, show_popup_fn=lambda *args: popup_calls.append(args))
+    operation_results = []
+
+    manager.operation_result.connect(lambda success, message: operation_results.append((success, message)))
+
+    assert manager.applyFloat("track_max_speed", 999.0) is True
+
+    saved_json = json.loads(config_path.read_text())
+    assert saved_json["track_max_speed"] == 500.0
+    assert operation_results == [(True, "Settings saved successfully")]
+    assert popup_calls == []
+
+
+def test_settings_route_summaries_reflect_current_values(monkeypatch, tmp_path, qt_core_app):
+    manager, _ = _make_manager(monkeypatch, tmp_path)
+
+    manager.set("winch_max_speed_mmps", 250.5)
+    manager.set("track_max_speed", 321.0)
+    manager.set("wheel_travel_max", 888.0)
+    manager.set("base_top_view_zoom", 0.73)
+    manager.set("base_top_view_crop_enabled", False)
+    manager.set("arm_retract_length", 111)
+    manager.set("arm_extend_length", 999)
+
+    assert manager.getRouteSummary("winch") == "Max speed: 250.5 mm/s"
+    assert manager.getRouteSummary("wheels") == "Track max: 321.0, travel max: 888 mm"
+    assert manager.getRouteSummary("camera") == "Base-top zoom: 0.73; full calibration remains overlay-primary"
+    assert manager.getRouteSummary("arm") == "Retract: 111 mm, extend: 999 mm"
+    assert manager.getCameraCalibrationSummary() == "Saved zoom 0.73, crop disabled. Full calibration remains overlay-primary."

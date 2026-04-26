@@ -164,82 +164,15 @@ Item {
                             width: parent ? parent.width : 300
                             implicitHeight: childrenRect.height
                             
-                            // Thrust Force - kept inline due to special teensyController logic
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 8
-                                
-                                Text {
-                                    text: "Thrust Force (Range: -1.0 to +1.0)"
-                                    color: "#FFFFFF"
-                                    font.pixelSize: 13
-                                    font.bold: true
-                                }
-                                
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 10
-                                    
-                                    Rectangle {
-                                        Layout.fillWidth: true
-                                        height: 45
-                                        color: "#1A1A1A"
-                                        border.color: thrustForceInput.activeFocus ? "#3A5A8C" : "#333333"
-                                        border.width: 1
-                                        radius: 6
-                                        
-                                        TextInput {
-                                            id: thrustForceInput
-                                            anchors.fill: parent
-                                            anchors.margins: 10
-                                            text: settingsManager ? settingsManager.thrust_force.toFixed(2) : "-1.00"
-                                            color: "#FFFFFF"
-                                            font.pixelSize: 14
-                                            verticalAlignment: TextInput.AlignVCenter
-                                            horizontalAlignment: TextInput.AlignRight
-                                            selectByMouse: true
-                                            
-                                            onActiveFocusChanged: {
-                                                if (activeFocus) {
-                                                    numberPad.targetField = thrustForceInput
-                                                    numberPad.open()
-                                                }
-                                            }
-                                        }
-                                    }
-                                    
-                                    Rectangle {
-                                        width: 70
-                                        height: 45
-                                        radius: 6
-                                        color: thrustForceSaveArea.containsMouse ? "#4CAF50" : "#3A8F3A"
-                                        
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: "Save"
-                                            color: "#FFFFFF"
-                                            font.pixelSize: 12
-                                            font.bold: true
-                                        }
-                                        
-                                        MouseArea {
-                                            id: thrustForceSaveArea
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                var num = parseFloat(thrustForceInput.text)
-                                                if (!isNaN(num) && settingsManager) {
-                                                    settingsManager.thrust_force = num
-                                                    settingsManager.saveSetting("thrust_force")
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                            SettingInputField {
+                                label: "Thrust Force (Range: -1.0 to +1.0)"
+                                settingKey: "thrust_force"
+                                decimalPlaces: 2
+                                defaultValue: "-1.00"
+                                numberPadTarget: numberPad
+                                confirmationPopup: confirmationPopup
                             }
-                            
-                            // Thrust Ramp Rate - kept inline due to special clamping logic
+
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 spacing: 8
@@ -258,70 +191,14 @@ Item {
                                     wrapMode: Text.WordWrap
                                     Layout.fillWidth: true
                                 }
-                                
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 10
-                                    
-                                    Rectangle {
-                                        Layout.fillWidth: true
-                                        height: 45
-                                        color: "#1A1A1A"
-                                        border.color: thrustRampRateInput.activeFocus ? "#3A5A8C" : "#333333"
-                                        border.width: 1
-                                        radius: 6
-                                        
-                                        TextInput {
-                                            id: thrustRampRateInput
-                                            anchors.fill: parent
-                                            anchors.margins: 10
-                                            text: settingsManager ? settingsManager.thrust_ramp_rate.toFixed(2) : "1.00"
-                                            color: "#FFFFFF"
-                                            font.pixelSize: 14
-                                            verticalAlignment: TextInput.AlignVCenter
-                                            horizontalAlignment: TextInput.AlignRight
-                                            selectByMouse: true
-                                            
-                                            onActiveFocusChanged: {
-                                                if (activeFocus) {
-                                                    numberPad.targetField = thrustRampRateInput
-                                                    numberPad.open()
-                                                }
-                                            }
-                                        }
-                                    }
-                                    
-                                    Rectangle {
-                                        width: 70
-                                        height: 45
-                                        radius: 6
-                                        color: thrustRampRateSaveArea.containsMouse ? "#4CAF50" : "#3A8F3A"
-                                        
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: "Save"
-                                            color: "#FFFFFF"
-                                            font.pixelSize: 12
-                                            font.bold: true
-                                        }
-                                        
-                                        MouseArea {
-                                            id: thrustRampRateSaveArea
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                var num = parseFloat(thrustRampRateInput.text)
-                                                if (!isNaN(num) && settingsManager) {
-                                                    // Clamp to valid range (0.1 - 10.0)
-                                                    num = Math.max(0.1, Math.min(10.0, num))
-                                                    settingsManager.thrust_ramp_rate = num
-                                                    thrustRampRateInput.text = num.toFixed(2)  // Update display with clamped value
-                                                    settingsManager.saveSetting("thrust_ramp_rate")
-                                                }
-                                            }
-                                        }
-                                    }
+
+                                SettingInputField {
+                                    label: "Thrust Ramp Rate (thrust/second, Range: 0.1 - 10.0)"
+                                    settingKey: "thrust_ramp_rate"
+                                    decimalPlaces: 2
+                                    defaultValue: "1.00"
+                                    numberPadTarget: numberPad
+                                    confirmationPopup: confirmationPopup
                                 }
                             }
                             

@@ -9,6 +9,16 @@ ScrollView {
     clip: true
 
     signal backRequested()
+    property string calibrationSubtitle: "The truthful camera calibration surface currently lives in the video overlay settings popup."
+
+    function refreshSummary() {
+        if (!settingsManager) {
+            calibrationSubtitle = "The truthful camera calibration surface currently lives in the video overlay settings popup."
+            return
+        }
+
+        calibrationSubtitle = settingsManager.getCameraCalibrationSummary()
+    }
     
     
     ColumnLayout {
@@ -29,11 +39,7 @@ ScrollView {
         
         SettingsItem {
             title: "Base-Top Calibration"
-            subtitle: settingsManager
-                ? "Saved zoom " + settingsManager.base_top_view_zoom.toFixed(2)
-                    + ", crop " + (settingsManager.base_top_view_crop_enabled ? "enabled" : "disabled")
-                    + ". Full calibration remains overlay-primary."
-                : "The truthful camera calibration surface currently lives in the video overlay settings popup."
+            subtitle: root.calibrationSubtitle
             showArrow: false
         }
 
@@ -43,4 +49,14 @@ ScrollView {
             showArrow: false
         }
     }
+
+    Connections {
+        target: settingsManager
+
+        function onSetting_changed(key, value) {
+            root.refreshSummary()
+        }
+    }
+
+    Component.onCompleted: root.refreshSummary()
 }

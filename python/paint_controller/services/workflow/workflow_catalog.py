@@ -87,7 +87,7 @@ class WorkflowCatalog(QObject):
                 for filename in os.listdir(self._workflows_dir)
                 if filename.endswith(".yaml") or filename.endswith(".yml")
             }
-            new_list = sorted(workflow_names, key=str.casefold)
+            new_list = sorted(workflow_names, key=lambda name: (name.casefold(), name))
 
             if new_list != self._workflow_list:
                 self._workflow_list = new_list

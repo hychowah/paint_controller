@@ -9,14 +9,14 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for the architecture rati
 ## Current State
 
 - Overall status: in progress
-- Most recent completed slice: Workstream C shell/route formalization
-- Last completed implementation slice: Workstream C shell/route formalization
+- Most recent completed slice: Workstream D QML-contract reduction completion
+- Last completed implementation slice: Workstream D QML-contract reduction completion
 - Active execution framework: completed stages remain historical record; unfinished work now executes as workstreams with hard checkpoints and touched-slice contract-retirement rules
 - North-star rule: each operator-visible behavior should have one canonical Python owner and one declarative QML consumer, with no equal second read path left behind after a checkpoint lands
-- Next recommended checkpoint: Start Workstream D dedicated QML-contract reduction now that pageKey is canonical in the touched shell family and the duplicate int-based route path is retired
+- Next recommended checkpoint: Start Workstream E future automation seam design while keeping optional feature-shell recomposition and design cleanup downstream only
 - Linux validation status: complete after rebasing onto `refactor`
-- Last focused validation: focused Workstream C shell validation is green at `17 passed` for `tests/test_startup_smoke.py` and `tests/test_qml_imports.py`
-- Latest full validation: `245 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q`
+- Last focused validation: focused Workstream D contract validation is green at `35 passed` for `tests/test_settings_runtime.py`, `tests/test_controller_factory_runtime.py`, `tests/test_startup_smoke.py`, and `tests/test_qml_imports.py`
+- Latest full validation: `248 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q`
 
 ## Historical Stage Board
 
@@ -38,8 +38,8 @@ Unfinished work is no longer tracked here as a simple future stage ladder. It no
 | Workstream A — Workflow runtime/editor stabilization | completed | A1-A3 landed | Workstream B complete | Keep the editor surface transitional and do not reopen a second workflow read path |
 | Workstream B — Overlay contract/operator legality | completed | B1 overlay host and layer matrix landed; B2 legality seam landed | Workstream C complete | Keep legality narrow and shared; do not sprawl per-surface gate logic back into QML |
 | Workstream C — Shell/route formalization | completed | C0 route-contract tests plus key-first shell route contract landed | Workstream D dedicated contract reduction | Keep `pageKey` canonical and do not reopen duplicate int-based shell route lookup |
-| Workstream D — QML contract reduction | active next | Choose the first touched family for app-runtime/QML contract retirement | Continue family-by-family retirement | Retirement rule starts immediately in any earlier touched slice |
-| Workstream E — Future automation seam/downstream UX cleanup | downstream | Future automation seam design | Optional feature-shell recomposition and design cleanup | Keep behavior-tree preparation separate from current workflow stabilization |
+| Workstream D — QML contract reduction | completed | Settings-family raw property-bag semantics retired; unused `capabilityCatalog`, `steamDeckHandler`, and `windMonitor` QML context exposure removed | Workstream E next | Keep future slices from re-growing the app-scope QML context bag |
+| Workstream E — Future automation seam/downstream UX cleanup | active next | Future automation seam design | Optional feature-shell recomposition and design cleanup | Keep behavior-tree preparation separate from current workflow stabilization |
 
 ## Baseline Authority Map
 
@@ -50,7 +50,7 @@ Unfinished work is no longer tracked here as a simple future stage ladder. It no
 | Route identity and selection | `python/paint_controller/qml/core/MainWindow.qml` | `python/paint_controller/qml/navigation/SelectBar.qml` as presenter/requester | `MainWindow.qml` now owns the shared route manifest and selected-route writes; `SelectBar.qml` renders from that manifest and emits navigation requests without owning route state |
 | Overlay visibility and active-menu policy | `python/paint_controller/ui/overlay.py` | `python/paint_controller/qml/features/systemcontrol/SystemControlWorkspace.qml`, `MainWindow.qml`, `MultiScreenListUI.qml` | Overlay/menu presentation is now a stable Python-owned facade consumed by multiple QML surfaces; the next shell work is about host-surface policy, not unresolved Stage 2 menu ownership |
 | Control selection vs command execution | `python/paint_controller/models/joystick_selection.py` for selection state | `python/paint_controller/ui/overlay.py`, `python/paint_controller/handlers/control_processor.py` | Selection ownership is explicit, `OverlayController` is now a presentation facade, and `UIInputHandler` no longer stores long-term preset state |
-| Settings authority | `python/paint_controller/core/settings.py` | `python/paint_controller/qml/overlays/systemcontrol/SettingsTab.qml`, `python/paint_controller/qml/overlays/systemcontrol/components/SettingInputField.qml`, `python/paint_controller/qml/pages/settings/PageSettings.qml`, `python/paint_controller/models/capability_catalog.py` | Python is authoritative; the Settings route now exposes schema-backed mixed-admin settings where a truthful contract exists, and `CapabilityCatalog` publishes executable metadata for settings/admin surfaces |
+| Settings authority | `python/paint_controller/core/settings.py` | `python/paint_controller/qml/overlays/systemcontrol/SettingsTab.qml`, `python/paint_controller/qml/pages/settings/PageSettings.qml` | Python is authoritative; shared settings widgets and route summaries now consume typed `SettingsManager` helpers instead of raw setting lookup/mutation logic, and the Settings route exposes schema-backed mixed-admin settings where a truthful contract exists |
 | Workflow runtime | `python/paint_controller/services/workflow/workflow_runner.py` | `python/paint_controller/qml/overlays/systemcontrol/WorkFlowTab.qml`, `python/paint_controller/qml/overlays/video/components/WorkFlowStatusOverlay.qml` | Runtime control and status stay on `workFlowRunner`, which now publishes a cached declarative read model, canonical workflow-order current-action identity, and notify-driven runtime/progress state |
 | Workflow persistence | `python/paint_controller/services/workflow/workflow_editor.py` | `python/paint_controller/qml/overlays/systemcontrol/EditWorkFlowTab.qml` | Editor persistence is split away from runtime execution, shares catalog ownership through `workflow_catalog.py`, writes atomically, normalizes workflow documents, and follows explicit runtime collision rules |
 | Machine-affecting QML actions | `python/paint_controller/handlers/manual_commands.py`, `python/paint_controller/handlers/device_actions.py`, `python/paint_controller/handlers/device_operations.py`, `python/paint_controller/handlers/winch_motion.py`, `python/paint_controller/handlers/tuning_admin.py`, `python/paint_controller/handlers/base_top_view_admin.py`, `python/paint_controller/services/workflow/workflow_runner.py` | `WorkFlowTab.qml`, `EditWorkFlowTab.qml` | The remaining direct admin/calibration page and popup mutators now route through narrow Python-owned boundaries. The next legality work is about consuming these seams explicitly, not removing raw QML controller writes that are already gone |
@@ -163,17 +163,29 @@ Unfinished work is no longer tracked here as a simple future stage ladder. It no
 - Reworked `MainWindow.qml` so route lookup resolves by `pageKey`, demoted numeric route ordering to internal `routeOrder` metadata for StackView transitions, and rewired `SelectBar.qml` to emit key-based navigation requests without carrying duplicate route lookup logic.
 - Updated the focused MainWindow and SelectBar smoke harnesses to assert key-first navigation and invalid-route no-op behavior, reran the focused shell/import band to `17 passed`, and reran the full suite to `245 passed`.
 
+### 2026-04-26 - Workstream D1 Settings Typed-Contract Reduction
+
+- Rewired `SettingInputField.qml` and `ManagedSettingSpinBox.qml` to use typed `SettingsManager` helper slots plus `setting_changed` refresh instead of raw `settingsManager` property/index access.
+- Added direct runtime coverage for the typed QML-facing settings slots that the shared widgets now depend on.
+- Revalidated the focused settings/runtime/QML smoke band to `27 passed` and reran the full suite to `247 passed`.
+
+### 2026-04-26 - Workstream D Completion
+
+- Added owner-side settings summary helpers in `SettingsManager`, rewired the Settings route pages to those helpers, and replaced the last inline special-case settings fields in `SettingsTab.qml` with the shared typed `SettingInputField` contract.
+- Retired unused `capabilityCatalog`, `steamDeckHandler`, and `windMonitor` exposure from the QML context-property contract to make the app-scope runtime surface materially smaller.
+- Fixed deterministic workflow-name ordering in `WorkflowCatalog` during the final validation pass, then reran the focused D contract band to `35 passed` and the full suite to `248 passed`.
+
 ## Active Risks
 
 - The broad QML context-property contract remains intentionally additive; the repo is safer than before, but the mental surface area is still too wide until touched slices begin retiring old read paths immediately.
 - The workflow runtime/editor contract is now materially narrower, but `EditWorkFlowTab.qml` remains explicitly transitional and future automation-seam work is still downstream.
 - The direct-admin QML mutator gap is closed for the tracked Stage 4.5 and Workstream B surfaces, but later route families still need the same ownership discipline rather than reopening local page heuristics.
-- The broad QML context-property contract is now one property wider again (`actionLegality`) until later checkpoints retire older direct contracts and route/page families consume narrower seams.
+- Workstream D is complete for the current runtime/QML contract target, but the remaining downstream work now shifts from contract retirement to future automation seam design and optional product/UI cleanup.
 
 ## Next Session Checklist
 
-1. Start Workstream D dedicated QML-contract reduction now that route identity is explicit in the touched shell family.
+1. Start Workstream E future automation seam design without reopening the completed D contract reductions.
 2. Keep `pageKey` canonical; do not reintroduce int-based route requests or duplicate shell route lookup in later shell changes.
 3. Keep `ShellState` narrow; do not widen shell policy into legality, workflow, or broad session ownership while contract reduction proceeds.
-4. Prefer retirement of touched app-runtime/QML read paths over additive adapters or new global context properties.
-5. Keep `docs/tech-debt.md` and this tracker in sync as the workstream focus moves from route formalization to contract reduction.
+4. Keep behavior-tree preparation separate from optional feature-shell recomposition and design-system cleanup.
+5. Keep `docs/tech-debt.md` and this tracker in sync as the workstream focus moves from contract reduction to downstream seam/design work.
