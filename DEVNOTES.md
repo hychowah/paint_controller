@@ -1,6 +1,22 @@
 # Development Notes
 
 ---
+### 2026-04-26 21:14 - Workstream C Shell/Route Formalization Complete
+
+**Goal**: Finish Workstream C by making the touched shell-family route contract key-first, retiring the duplicate int-based route request path, and validating that the shell behavior stays green before moving on to broader contract reduction.
+**Issues**: After the C0 test slice, the real shell still navigated by `pageIndex`, `MainWindow.qml` and `SelectBar.qml` still duplicated route lookup logic, and the sparse numeric page registry still carried more semantic weight than intended. The work had to avoid widening `ShellState`, `QtBridge`, or the AppRuntime context-property contract.
+**Tried**: Reworked `MainWindow.qml` so route lookup resolves by `buttonKey`, demoted numeric route order to internal-only `routeOrder` metadata for StackView transitions, rewired `SelectBar.qml` to emit key-based navigation requests and removed its local route lookup duplication, updated the startup smoke harnesses to drive route changes by key and assert the internal ordering remains stable, reran the focused shell/import validation band, then reran the full pytest suite to confirm the whole repo stayed green.
+**Result**: ✅ Workstream C is complete for the touched shell family. `pageKey` is now the canonical top-level route identity, `SelectBar.qml` no longer carries a second route lookup path, the focused shell/import validation band is green at `17 passed`, and the full suite is green at `245 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q`. The next recommended checkpoint is Workstream D dedicated QML-contract reduction.
+**Files**: `PLANNING.md`, `python/paint_controller/qml/core/MainWindow.qml`, `python/paint_controller/qml/navigation/SelectBar.qml`, `tests/test_startup_smoke.py`, `docs/plan/00_ARCHITECTURE_PROGRESS.md`, `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`, `docs/tech-debt.md`, `INDEX.md`, `README.md`, `DEVNOTES.md`
+
+### 2026-04-26 21:08 - Workstream C0 Route Contract Tests
+
+**Goal**: Start Workstream C with a test-first slice that proves the real shell route owner before any route-identity refactor lands.
+**Issues**: The shell still keeps both `selectedPageIndex` and `selectedPageKey`, `MainWindow.qml` and `SelectBar.qml` still duplicate route lookup behavior, and the existing smoke coverage proved the SelectBar harness more directly than the real MainWindow route contract.
+**Tried**: Added focused startup-smoke harnesses that instantiate the real `MainWindow` type with the existing fake context bundle, drive route changes through `navigateToPage(...)`, assert that route selection is reflected through `selectedPageKey` plus the shell `stackView`, and assert that an invalid route request leaves the previous route intact. Revalidated first with the narrow route-only slice, then with the broader shell/import validation band.
+**Result**: ✅ Workstream C0 is in place. The repo now has direct smoke coverage for MainWindow-owned route transitions and invalid-route no-op behavior, the focused route slice passed at `3 passed`, and the broader shell/import band is green at `17 passed` for `tests/test_startup_smoke.py` plus `tests/test_qml_imports.py`.
+**Files**: `PLANNING.md`, `tests/test_startup_smoke.py`, `DEVNOTES.md`
+
 ### 2026-04-26 20:16 - Workstream B2 Operator-Action Legality Complete
 
 **Goal**: Finish Workstream B by making pre-click operator affordance state consume the same legality seam as backend enforcement instead of leaving legality visible only after a rejected click.

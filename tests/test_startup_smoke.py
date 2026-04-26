@@ -568,6 +568,141 @@ def test_main_window_loads_offscreen_with_context_properties(monkeypatch, tmp_pa
     assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
 
 
+def test_main_window_navigation_updates_selected_page_key(monkeypatch, tmp_path, qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    core_import_url = _qml_import_url(qml_dir / "core")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+    engine.addImageProvider("ef_live", BlankImageProvider())
+    engine.addImageProvider("base_front_live", BlankImageProvider())
+    engine.addImageProvider("base_rear_live", BlankImageProvider())
+    engine.addImageProvider("base_top_view", BlankImageProvider())
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{core_import_url}"
+
+MainWindow {{
+    id: rootWindow
+    objectName: "mainWindowHarness"
+    property bool routeScenarioComplete: false
+
+    Timer {{
+        interval: 0
+        running: true
+        repeat: false
+        onTriggered: {{
+            rootWindow.navigateToPage("settings")
+            rootWindow.routeScenarioComplete = true
+        }}
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:MainWindowRouteHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+
+        qtbot.waitUntil(lambda: root.property("routeScenarioComplete") is True, timeout=2000)
+        qt_app.processEvents()
+
+        stack_view = root.findChild(QObject, "stackView")
+        assert stack_view is not None
+        assert root.property("selectedPageKey") == "settings"
+        assert stack_view.property("currentIndex") == 6
+        assert stack_view.property("targetIndex") == 6
+
+        fatal_warning_fragments = (
+            "failed to load component",
+            "no such file or directory",
+            "is not a type",
+        )
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
+def test_main_window_invalid_navigation_keeps_previous_route(monkeypatch, tmp_path, qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    core_import_url = _qml_import_url(qml_dir / "core")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+    engine.addImageProvider("ef_live", BlankImageProvider())
+    engine.addImageProvider("base_front_live", BlankImageProvider())
+    engine.addImageProvider("base_rear_live", BlankImageProvider())
+    engine.addImageProvider("base_top_view", BlankImageProvider())
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{core_import_url}"
+
+MainWindow {{
+    id: rootWindow
+    objectName: "mainWindowInvalidRouteHarness"
+    property bool routeScenarioComplete: false
+
+    Timer {{
+        interval: 0
+        running: true
+        repeat: false
+        onTriggered: {{
+            rootWindow.navigateToPage("settings")
+            rootWindow.navigateToPage("missing")
+            rootWindow.routeScenarioComplete = true
+        }}
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:MainWindowInvalidRouteHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+
+        qtbot.waitUntil(lambda: root.property("routeScenarioComplete") is True, timeout=2000)
+        qt_app.processEvents()
+
+        stack_view = root.findChild(QObject, "stackView")
+        assert stack_view is not None
+        assert root.property("selectedPageKey") == "settings"
+        assert stack_view.property("currentIndex") == 6
+        assert stack_view.property("targetIndex") == 6
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
 def test_main_window_teardown_does_not_emit_null_binding_warnings(monkeypatch, tmp_path, qt_app):
     repo_root = Path(__file__).resolve().parent.parent
     qml_dir = repo_root / "python" / "paint_controller" / "qml"
@@ -1190,13 +1325,13 @@ Item {{
     property string selectedPageKey: "home"
 
     property var pageRegistry: [
-        {{ pageIndex: 0, buttonKey: "home", buttonText: "Home", component: homeComponent }},
-        {{ pageIndex: 8, buttonKey: "settings", buttonText: "Settings", component: settingsComponent }}
+        {{ routeOrder: 0, buttonKey: "home", buttonText: "Home", component: homeComponent }},
+        {{ routeOrder: 1, buttonKey: "settings", buttonText: "Settings", component: settingsComponent }}
     ]
 
-    function getPageConfig(index) {{
+    function getPageConfig(pageKey) {{
         for (var i = 0; i < pageRegistry.length; i++) {{
-            if (pageRegistry[i].pageIndex === index) {{
+            if (pageRegistry[i].buttonKey === pageKey) {{
                 return pageRegistry[i]
             }}
         }}
@@ -1232,16 +1367,16 @@ Item {{
         objectName: "selectBar"
         pageRegistry: harnessRoot.pageRegistry
         selectedPageKey: harnessRoot.selectedPageKey
-        onNavigateRequested: function(index) {{
-            var targetPage = harnessRoot.getPageConfig(index)
+        onNavigateRequested: function(pageKey) {{
+            var targetPage = harnessRoot.getPageConfig(pageKey)
             if (!targetPage) {{
                 return
             }}
 
             harnessRoot.selectedPageKey = targetPage.buttonKey
-            fakeStackView.targetIndex = index
+            fakeStackView.targetIndex = targetPage.routeOrder
             fakeStackView.replace(fakeStackView.currentItem, targetPage.component)
-            fakeStackView.currentIndex = index
+            fakeStackView.currentIndex = targetPage.routeOrder
         }}
     }}
 }}
@@ -1262,18 +1397,18 @@ Item {{
         assert fake_stack_view is not None
         assert select_bar.property("navigationCount") == 2
 
-        select_bar.navigateToPage(8)
+        select_bar.navigateToPage("settings")
         qt_app.processEvents()
 
-        assert fake_stack_view.property("currentIndex") == 8
-        assert fake_stack_view.property("targetIndex") == 8
+        assert fake_stack_view.property("currentIndex") == 1
+        assert fake_stack_view.property("targetIndex") == 1
         assert select_bar.property("selectedPageKey") == "settings"
         assert fake_stack_view.property("lastComponent") is not None
 
-        select_bar.navigateToPage(404)
+        select_bar.navigateToPage("missing")
         qt_app.processEvents()
 
-        assert fake_stack_view.property("currentIndex") == 8
+        assert fake_stack_view.property("currentIndex") == 1
         assert select_bar.property("selectedPageKey") == "settings"
     finally:
         if root is not None:

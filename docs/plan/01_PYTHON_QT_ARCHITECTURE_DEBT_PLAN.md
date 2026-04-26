@@ -12,7 +12,7 @@ The validated truths are these:
 
 - Stage 1 command, device, and workflow boundary work is complete, and the last Settings quick-apply authority leak that was carried into Stage 4A has now been removed. `SettingsTab.qml` no longer mutates `teensyController` directly for thrust force.
 - Stage 2 has removed the live `OverlayController` / `ControlProcessor` cycle, extracted `JoystickSelectionModel`, moved per-mode preset memory to the selection owner, and trimmed dead overlay compatibility wrappers. The remaining overlay/menu facade is now stable enough for shell work to bind to it.
-- Shell work is no longer blocked on Stage 2. Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 direct-admin boundary/default-gating is complete, Workstream A workflow runtime/editor stabilization is complete, and Workstream B overlay host plus touched-surface operator legality are complete. The next architecture checkpoint is Workstream C shell/route formalization.
+- Shell work is no longer blocked on Stage 2. Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 direct-admin boundary/default-gating is complete, Workstream A workflow runtime/editor stabilization is complete, Workstream B overlay host plus touched-surface operator legality are complete, and Workstream C shell/route formalization is complete for the touched shell family. The next architecture checkpoint is Workstream D dedicated QML-contract reduction.
 - Stage 4 is now complete: the Settings route is truthful for schema-backed mixed-admin settings, the camera route is explicit summary-only while overlay calibration remains primary, and a thin `CapabilityCatalog` now inventories settings/admin legality metadata for later shell and overlay stages.
 - The top-level Settings route remains a real long-term admin or maintenance surface.
 - In dual-screen mode, the built-in Steam Deck display remains the dedicated touch/control surface and the external display remains the mission surface.
@@ -215,8 +215,8 @@ The most defensible direction is:
 7. Treat Workstream A as complete: the workflow runner now owns the public read model, runtime/persistence semantics are explicit, and the old direct workflow QML read path is retired from the live workflow surfaces.
 8. Treat Workstream B1 as complete: overlay host placement, fullscreen-video placement, joystick-overlay placement, and safety-overlay precedence are now published through one Python-owned host policy consumed declaratively by the touched QML surfaces.
 9. Treat Workstream B as complete for the touched overlay families: host topology is explicit and pre-click legality now shares one result seam with handler enforcement.
-10. Run Workstream C next: formalize route identity and shell contract now that overlay hosting and legality semantics are explicit enough to stop guessing.
-11. Keep the dedicated QML-contract reduction workstream, but start its retirement rule immediately in any touched slice rather than waiting for a late standalone cleanup.
+10. Treat Workstream C as complete for the touched shell family: `pageKey` is canonical, the duplicate int-based shell route request path is retired, and numeric route order is internal-only.
+11. Run Workstream D next: reduce the mental surface area of the runtime/QML contract now that shell vocabulary is explicit.
 12. Leave future automation seam work, feature-shell recomposition, and design-system cleanup downstream.
 
 ## Active Execution Framework
@@ -711,7 +711,7 @@ Validation:
 - focused legality tests for touched handler and UI families
 - manual operator validation on target hardware when possible
 
-## Active Workstream C: Shell And Route Formalization
+## Completed Workstream C: Shell And Route Formalization
 
 Historical alias: deferred Stage 3B2 route formalization.
 
@@ -743,6 +743,13 @@ Validation:
 - `tests/test_qml_imports.py`
 - `tests/test_qt_bridge.py`
 - `tests/test_services_runtime.py`
+
+Delivered result:
+
+- `pageKey` is now the canonical top-level route identity in the touched shell family.
+- `MainWindow.qml` owns key-based route resolution and keeps numeric route order internal-only for StackView transition behavior.
+- `SelectBar.qml` now emits key-based navigation requests and no longer carries duplicate route lookup logic.
+- Focused shell/import validation is green at `17 passed`, and the full suite is green at `245 passed`.
 
 ## Active Workstream D: QML Contract Reduction
 
@@ -810,8 +817,8 @@ Use this order unless a production bug interrupts it:
 9. Workstream B1 overlay host and layer matrix.
 10. Workstream B2 operator-action legality.
 11. Workstream C route formalization.
-12. Later contract reduction, automation-seam, and downstream design slices.
-13. Workstream D dedicated QML-contract reduction, while continuing touched-slice retirement rules.
+12. Workstream D dedicated QML-contract reduction, while continuing touched-slice retirement rules.
+13. Later automation-seam and downstream design slices.
 14. Workstream E future automation seam work only after the current workflow contract is stable.
 15. Optional feature-shell recomposition if still justified.
 16. Design-system cleanup.
@@ -900,22 +907,22 @@ When a stage becomes wrong:
 
 ## Next Recommended Session
 
-Stage 0 is published, Stage 1 command, device, and workflow boundaries are complete, Stage 2 is complete, Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 is complete, Workstream A is complete, and Workstream B is complete. The next recommended session is to start Workstream C shell/route formalization.
+Stage 0 is published, Stage 1 command, device, and workflow boundaries are complete, Stage 2 is complete, Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 is complete, Workstream A is complete, Workstream B is complete, and Workstream C is complete for the touched shell family. The next recommended session is to start Workstream D dedicated QML-contract reduction.
 
-Task title: Start Workstream C shell/route formalization.
+Task title: Start Workstream D dedicated QML-contract reduction.
 
 The session should:
 
-1. Use the completed host matrix and legality seam as fixed inputs rather than reopening overlay placement or operator-affordance legality in the same slice.
-2. Preserve the completed Workstream A workflow contracts and the narrow `ShellState` / `OverlayHostPolicy` ownership boundaries while route formalization is added.
-3. Make `pageKey` the canonical route identity and retire transitional route duplication in the touched shell family.
-4. Add focused shell/route regressions and keep startup/import smoke green.
-5. Keep route formalization separate from broader contract reduction; do not expand shell policy into a broad coordinator.
+1. Use the completed shell route contract, host matrix, and legality seam as fixed inputs rather than reopening them in the same slice.
+2. Preserve the narrow `ShellState` / `OverlayHostPolicy` / `QtBridge` ownership boundaries while contract reduction proceeds.
+3. Retire one focused family of direct runtime/QML read paths rather than adding new adapters without retirement.
+4. Keep startup/import smoke green and add focused tests for any new adapter or reduced contract.
+5. Keep contract reduction separate from feature-shell redesign or broader workflow/settings restructuring.
 6. Create `PLANNING.md`.
 7. Ask for confirmation.
 
 The likely next implementation slice after approval:
 
-- start with one canonical route identity and one focused route family rather than mixing route work, contract reduction, and additional overlay changes in one change
-- preserve the completed host and legality seams while tightening shell/route ownership
-- validate focused shell/route tests plus startup and QML import coverage before widening scope
+- start with one focused shell/runtime contract family rather than a repo-wide context-property cleanup
+- preserve the completed shell route, host, and legality seams while retiring a touched old read path
+- validate focused adapter/contract tests plus startup and QML import coverage before widening scope

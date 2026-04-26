@@ -17,7 +17,7 @@ Rectangle {
     property int navigationCount: navButtonRepeater.count
 
     signal expandedStateChanged(bool isExpanded, int newWidth)
-    signal navigateRequested(int pageIndex)
+    signal navigateRequested(string pageKey)
     
     width: expanded ? expandedWidth : collapsedWidth
     Layout.fillHeight: true
@@ -31,7 +31,6 @@ Rectangle {
         property string buttonKey: ""
         property string buttonText: ""
         property string iconSource: ""
-        property int pageIndex: 0
         property bool isSelected: false
         property int targetSize: selectBar.buttonSize
         property real iconScale: 0.6
@@ -102,7 +101,7 @@ Rectangle {
             anchors.fill: parent
             onClicked: {
                 if (!isSelected) {
-                    selectBar.navigateToPage(pageIndex)
+                    selectBar.navigateToPage(buttonKey)
                 }
             }
         }
@@ -147,23 +146,13 @@ Rectangle {
         }
     }
 
-    function getPageConfig(index) {
-        for (var i = 0; i < pageRegistry.length; i++) {
-            if (pageRegistry[i].pageIndex === index) {
-                return pageRegistry[i]
-            }
-        }
-        return null
-    }
-    
-    function navigateToPage(index) {
-        var targetPage = getPageConfig(index)
-        if (!targetPage || !targetPage.component) {
-            console.warn("SelectBar: unknown page index", index)
+    function navigateToPage(pageKey) {
+        if (!pageKey) {
+            console.warn("SelectBar: missing page key")
             return
         }
 
-        navigateRequested(index)
+        navigateRequested(pageKey)
     }
 
     // Top spacer
@@ -216,7 +205,6 @@ Rectangle {
                     buttonKey: modelData.buttonKey
                     buttonText: modelData.buttonText || modelData.buttonKey
                     iconSource: modelData.iconSource || ""
-                    pageIndex: modelData.pageIndex
                     isSelected: selectBar.selectedPageKey === modelData.buttonKey
                     iconScale: modelData.iconScale !== undefined ? modelData.iconScale : 0.6
                 }

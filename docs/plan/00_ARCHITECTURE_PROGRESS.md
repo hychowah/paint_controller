@@ -9,14 +9,14 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for the architecture rati
 ## Current State
 
 - Overall status: in progress
-- Most recent completed slice: Workstream B2 operator-action legality
-- Last completed implementation slice: Workstream B2 operator-action legality
+- Most recent completed slice: Workstream C shell/route formalization
+- Last completed implementation slice: Workstream C shell/route formalization
 - Active execution framework: completed stages remain historical record; unfinished work now executes as workstreams with hard checkpoints and touched-slice contract-retirement rules
 - North-star rule: each operator-visible behavior should have one canonical Python owner and one declarative QML consumer, with no equal second read path left behind after a checkpoint lands
-- Next recommended checkpoint: Start Workstream C shell/route formalization now that overlay host and operator-legality semantics are explicit for the touched overlay surfaces
+- Next recommended checkpoint: Start Workstream D dedicated QML-contract reduction now that pageKey is canonical in the touched shell family and the duplicate int-based route path is retired
 - Linux validation status: complete after rebasing onto `refactor`
-- Last focused validation: focused Workstream B2 validation is green at `39 passed` for `tests/test_action_legality_model.py`, `tests/test_device_actions.py`, `tests/test_device_operations.py`, `tests/test_base_top_view_admin_handler.py`, `tests/test_controller_factory_runtime.py`, `tests/test_startup_smoke.py`, and `tests/test_qml_imports.py`
-- Latest full validation: `233 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q`
+- Last focused validation: focused Workstream C shell validation is green at `17 passed` for `tests/test_startup_smoke.py` and `tests/test_qml_imports.py`
+- Latest full validation: `245 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q`
 
 ## Historical Stage Board
 
@@ -25,7 +25,7 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for the architecture rati
 | Stage 0 | completed | Durable authority map is now published in this tracker |
 | Stage 1 | completed | Command, device, and workflow boundary freezes are implemented and validated; the former Settings quick-apply exception was carried forward explicitly and is now closed by Stage 4 |
 | Stage 2 | completed | The live cycle is removed, joystick selection ownership lives in a dedicated model, per-mode preset memory is selection-owned, direct overlay compatibility regressions exist, and the dead overlay compatibility wrappers are trimmed |
-| Stage 3 | in progress | Stage 3A shell policy and Stage 3B1 route normalization are complete; Stage 3B2 route formalization remains intentionally deferred until overlay hosting and legality semantics are clearer |
+| Stage 3 | completed | Stage 3A shell policy, Stage 3B1 route normalization, and the deferred Stage 3B2 route formalization checkpoint are complete without widening ShellState or reopening overlay ownership |
 | Stage 4 | completed | The Settings route is now truthful for schema-backed mixed-admin settings, camera remains explicit summary-only, and `CapabilityCatalog` publishes executable settings/admin metadata for later route and overlay slices |
 | Stage 4.5 | completed | Status, wheel, winch, tuning, and base-top calibration surfaces now route through Python-owned admin boundaries, and a thin `AdminActionGate` makes default gating explicit for later legality work |
 
@@ -36,9 +36,9 @@ Unfinished work is no longer tracked here as a simple future stage ladder. It no
 | Workstream | Status | Current checkpoint | Next checkpoint after that | Blocking rule |
 |---|---|---|---|---|
 | Workstream A — Workflow runtime/editor stabilization | completed | A1-A3 landed | Workstream B complete | Keep the editor surface transitional and do not reopen a second workflow read path |
-| Workstream B — Overlay contract/operator legality | completed | B1 overlay host and layer matrix landed; B2 legality seam landed | Workstream C shell/route formalization | Keep legality narrow and shared; do not sprawl per-surface gate logic back into QML |
-| Workstream C — Shell/route formalization | active next | Choose canonical route identity and formal route contract | Focused route formalization slice | `pageKey` should become canonical without widening shell policy or reopening overlay ownership |
-| Workstream D — QML contract reduction | deferred but active as a rule | Dedicated contract-reduction slices only after stable owners exist | Continue family-by-family retirement | Retirement rule starts immediately in any earlier touched slice |
+| Workstream B — Overlay contract/operator legality | completed | B1 overlay host and layer matrix landed; B2 legality seam landed | Workstream C complete | Keep legality narrow and shared; do not sprawl per-surface gate logic back into QML |
+| Workstream C — Shell/route formalization | completed | C0 route-contract tests plus key-first shell route contract landed | Workstream D dedicated contract reduction | Keep `pageKey` canonical and do not reopen duplicate int-based shell route lookup |
+| Workstream D — QML contract reduction | active next | Choose the first touched family for app-runtime/QML contract retirement | Continue family-by-family retirement | Retirement rule starts immediately in any earlier touched slice |
 | Workstream E — Future automation seam/downstream UX cleanup | downstream | Future automation seam design | Optional feature-shell recomposition and design cleanup | Keep behavior-tree preparation separate from current workflow stabilization |
 
 ## Baseline Authority Map
@@ -157,18 +157,23 @@ Unfinished work is no longer tracked here as a simple future stage ladder. It no
 - Rewired `BaseTopViewSettingsPopup.qml` to consume the same legality seam for live adjustments, save, and reset affordances, and extended `CapabilityCatalog` surface metadata for the overlay device-control family.
 - Focused Workstream B2 validation is green at `39 passed`, and the last verified full-suite baseline remains `233 passed`.
 
+### 2026-04-26 - Workstream C Shell/Route Formalization
+
+- Added a test-first route-contract checkpoint, then completed the touched shell-family route formalization without widening `ShellState`, `QtBridge`, or the AppRuntime context-property contract.
+- Reworked `MainWindow.qml` so route lookup resolves by `pageKey`, demoted numeric route ordering to internal `routeOrder` metadata for StackView transitions, and rewired `SelectBar.qml` to emit key-based navigation requests without carrying duplicate route lookup logic.
+- Updated the focused MainWindow and SelectBar smoke harnesses to assert key-first navigation and invalid-route no-op behavior, reran the focused shell/import band to `17 passed`, and reran the full suite to `245 passed`.
+
 ## Active Risks
 
 - The broad QML context-property contract remains intentionally additive; the repo is safer than before, but the mental surface area is still too wide until touched slices begin retiring old read paths immediately.
 - The workflow runtime/editor contract is now materially narrower, but `EditWorkFlowTab.qml` remains explicitly transitional and future automation-seam work is still downstream.
-- Overlay host placement and operator legality are now explicit for the touched overlay surfaces, but route semantics and page-level affordance vocabulary still need a canonical shell contract before later contract reduction work proceeds.
 - The direct-admin QML mutator gap is closed for the tracked Stage 4.5 and Workstream B surfaces, but later route families still need the same ownership discipline rather than reopening local page heuristics.
 - The broad QML context-property contract is now one property wider again (`actionLegality`) until later checkpoints retire older direct contracts and route/page families consume narrower seams.
 
 ## Next Session Checklist
 
-1. Start Workstream C shell/route formalization now that Workstream B host and legality semantics are explicit for the touched overlay surfaces.
-2. Keep `ShellState` narrow; do not widen shell policy into legality, workflow, or broad session ownership while route formalization proceeds.
-3. Keep the Workstream A runner/editor contract and the Workstream B `actionLegality` seam stable; do not reintroduce ad hoc QML workflow reads or per-surface legality logic.
-4. Use `pageKey` as the canonical route identity and retire transitional page-index assumptions in touched route families.
-5. Keep `docs/tech-debt.md` and this tracker in sync as the workstream focus moves from overlay legality to route formalization.
+1. Start Workstream D dedicated QML-contract reduction now that route identity is explicit in the touched shell family.
+2. Keep `pageKey` canonical; do not reintroduce int-based route requests or duplicate shell route lookup in later shell changes.
+3. Keep `ShellState` narrow; do not widen shell policy into legality, workflow, or broad session ownership while contract reduction proceeds.
+4. Prefer retirement of touched app-runtime/QML read paths over additive adapters or new global context properties.
+5. Keep `docs/tech-debt.md` and this tracker in sync as the workstream focus moves from route formalization to contract reduction.
