@@ -8,6 +8,7 @@ import "../../../core"
 IndustrialCard {
     title: "Wheels"
 
+    required property var wheelStatus
     required property real maxWheelCurrent
     
     RowLayout {
@@ -36,13 +37,13 @@ IndustrialCard {
                     width: 14
                     height: 14
                     radius: 7
-                    color: wheelController.left_motor_available ? CommonStyle.statusSuccess : CommonStyle.statusError
+                    color: wheelStatus.leftMotorAvailable ? CommonStyle.statusSuccess : CommonStyle.statusError
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
             
             Text {
-                text: Math.abs(wheelController.left_wheel_speed || 0).toFixed(2)
+                text: Math.abs(wheelStatus.leftWheelSpeed || 0).toFixed(2)
                 font.pixelSize: CommonStyle.fontDisplay + CommonStyle.spacingXs
                 font.family: CommonStyle.fontMono
                 font.bold: true
@@ -61,7 +62,7 @@ IndustrialCard {
             }
             
             Text {
-                text: Math.abs(wheelController.left_wheel_current || 0).toFixed(1) + " A"
+                text: Math.abs(wheelStatus.leftWheelCurrent || 0).toFixed(1) + " A"
                 font.pixelSize: CommonStyle.fontBody
                 font.family: CommonStyle.fontMono
                 color: CommonStyle.accentPrimary
@@ -72,7 +73,7 @@ IndustrialCard {
             ProgressBarIndicator {
                 Layout.fillWidth: true
                 Layout.margins: 4
-                value: Math.abs(wheelController.left_wheel_current || 0)
+                value: Math.abs(wheelStatus.leftWheelCurrent || 0)
                 maxValue: maxWheelCurrent
                 barColor: CommonStyle.statusSuccess
             }
@@ -100,13 +101,13 @@ IndustrialCard {
                     width: 14
                     height: 14
                     radius: 7
-                    color: wheelController.right_motor_available ? CommonStyle.statusSuccess : CommonStyle.statusError
+                    color: wheelStatus.rightMotorAvailable ? CommonStyle.statusSuccess : CommonStyle.statusError
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
             
             Text {
-                text: Math.abs(wheelController.right_wheel_speed || 0).toFixed(2)
+                text: Math.abs(wheelStatus.rightWheelSpeed || 0).toFixed(2)
                 font.pixelSize: CommonStyle.fontDisplay + CommonStyle.spacingXs
                 font.family: CommonStyle.fontMono
                 font.bold: true
@@ -125,7 +126,7 @@ IndustrialCard {
             }
             
             Text {
-                text: Math.abs(wheelController.right_wheel_current || 0).toFixed(1) + " A"
+                text: Math.abs(wheelStatus.rightWheelCurrent || 0).toFixed(1) + " A"
                 font.pixelSize: CommonStyle.fontBody
                 font.family: CommonStyle.fontMono
                 color: CommonStyle.accentPrimary
@@ -136,7 +137,7 @@ IndustrialCard {
             ProgressBarIndicator {
                 Layout.fillWidth: true
                 Layout.margins: 4
-                value: Math.abs(wheelController.right_wheel_current || 0)
+                value: Math.abs(wheelStatus.rightWheelCurrent || 0)
                 maxValue: maxWheelCurrent
                 barColor: CommonStyle.statusSuccess
             }

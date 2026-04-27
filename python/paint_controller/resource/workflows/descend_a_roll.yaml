@@ -1,11 +1,12 @@
 name: descend_a_roll
 description: Descend and Roll
+loop: false
 actions:
 - id: open_valve
   name: open_valve
   type: valve_turn
   params:
-    turn_value: 5.5
+    turn_value: 5.6
   estimated_duration: 2000
   wait_for_completion: true
 - id: main_winch_descent

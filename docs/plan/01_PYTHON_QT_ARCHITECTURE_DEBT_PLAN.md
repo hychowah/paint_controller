@@ -839,13 +839,20 @@ Rules:
 - Future automation work stays downstream from the contract-first slice, and optional feature-shell recomposition plus design-system cleanup stay non-blocking unless the user explicitly reprioritizes them.
 - A feature contract must be a true consumer-facing feature model or bounded command surface. Namespacing a cluster of existing globals does not count as convergence by itself.
 - The main success metric is smaller permanent QML runtime surface and fewer durable architecture concepts, not document neatness or a lower context-property count alone.
+- Workstream E family status must be explicit: `active`, `partial retirement`, `quarantined remainder`, or `complete`. Do not use completion language that outruns the live callers.
+- Every Workstream E slice must publish a retirement ledger: touched QML surfaces, ambient globals consumed before, ambient globals consumed after, canonical Python owner, and any explicit quarantine remainder.
+- No new feature contract may become a controller-shaped mirror, a generic device bag, or a raw `all_status` passthrough disguised as architecture progress.
+- A family is not complete until its declared target surfaces stop reading the raw global family directly, or the remaining callers are explicitly quarantined by file and sequence.
+- Any slice that changes feature-contract shape must add runtime-parity smoke coverage for that contract.
+- Any slice that touches timers, worker pools, QThreads, controller cleanup, or QObject lifetime must add teardown regression coverage before the slice closes.
 
 Active family-by-family execution model:
 
 - Workstream E remains the umbrella, but named retirement families are now the unit of execution.
 - The first question in any E1 slice is not “what object can be wrapped next?” It is “which high-fanout ambient read family can be retired next without widening the architecture?”
-- Each family should end with one named replacement contract or an explicit quarantine decision.
+- Each family should end with one named replacement contract or an explicit quarantine decision, not a vague statement that the area is “cleaner now”.
 - Do not add a new root context object unless the same slice retires an old family or materially reduces the fanout of existing ambient reads.
+- Prefer smaller proof-backed checkpoints over larger abstract “families” when the remaining work is a collection of mixed seams rather than one coherent rewrite target.
 
 Checkpoint E1: App-wide QML contract reduction
 
@@ -870,9 +877,10 @@ Checkpoint E3: Narrowed automation-contract work
 
 | Family | Why it is next | Current ambient globals | Primary surfaces | Replacement contract goal | Exit criteria |
 |---|---|---|---|---|---|
-| Video/runtime | Best leverage-to-risk ratio after E1 slices 1-2. The video feature already has a shared root and one bounded workflow-facing precedent, but still depends on high-fanout ambient runtime reads. | `baseStreamHandler`, `controlProcessor`, and other direct video-runtime globals still read from the app-wide context | `python/paint_controller/qml/features/video/VideoFullscreenWorkspace.qml`, `python/paint_controller/qml/overlays/video/components/VideoOverlayTopBar.qml`, related video overlay surfaces | One true feature-facing video/runtime contract that replaces direct ambient reads in the touched subtree | The touched video subtree consumes the new contract rather than the retired root globals, and the slice reduces real concept count instead of only renaming access |
-| Device/status | Largest remaining payoff, but too broad for one rewrite. This family should follow video/runtime in bounded sub-slices. | Mixed direct controller and service reads plus handler intent seams across status and device surfaces | `python/paint_controller/qml/overlays/systemcontrol/DeviceControlTab.qml`, `python/paint_controller/qml/pages/status/PageStatus.qml`, `python/paint_controller/qml/pages/winch/PageWinch.qml`, adjacent status surfaces | Bounded status-facing or intent-facing contracts introduced one seam at a time | Each sub-slice retires one mixed read-plus-intent seam without creating another large ambient bag |
-| Settings cleanup | Important only where it still reduces ambient exposure. The family already has a strong owner and typed QML-facing helper path. | Residual `settingsManager` ambient access that no longer carries the main architecture risk | `python/paint_controller/qml/overlays/systemcontrol/SettingsTab.qml`, `python/paint_controller/qml/pages/settings/`, touched settings widgets | Small route- or overlay-facing contracts only when they produce a real reduction in surface area | Cleanup is opportunistic and never displaces higher-leverage video/runtime or device/status work |
+| Video/runtime (partial retirement) | The shared video root and top-bar seams already moved behind `videoRuntime`, but direct fullscreen telemetry reads still remain in specific overlay components. The plan must keep that remainder explicit instead of silently widening `videoRuntime`. | `baseStreamHandler`, `controlProcessor`, and the remaining direct fullscreen telemetry reads that still bypass the bounded video contract | `python/paint_controller/qml/features/video/VideoFullscreenWorkspace.qml`, `python/paint_controller/qml/overlays/video/components/VideoOverlayTopBar.qml`, `python/paint_controller/qml/overlays/video/components/BaseFrontOverlay.qml`, `python/paint_controller/qml/overlays/video/components/EndEffectorOverlay.qml` | Keep `videoRuntime` bounded to the touched control, frame-refresh, and top-bar seams while quarantining or later retiring the remaining fullscreen telemetry reads explicitly | The declared video/runtime surfaces either consume `videoRuntime` directly or the remaining fullscreen telemetry callers are explicitly quarantined by file and later sequence |
+| Device/status (active bounded remainder) | This family is still active, but the current implementation lead is now shell/connectivity telemetry after the wheel shared summary/control, recording-status, and shared teensy feature-toggle slices landed. Remaining device/status callers stay explicit bounded remainder until a later touched slice picks them up on purpose. | Mixed direct controller and service reads plus handler intent seams across status, system-control, and shell-status surfaces | `python/paint_controller/qml/overlays/systemcontrol/DeviceControlTab.qml`, `python/paint_controller/qml/pages/status/PageStatus.qml`, `python/paint_controller/qml/pages/status/PageMonitor.qml`, `python/paint_controller/qml/navigation/ConnectionStatusPanel.qml`, adjacent status surfaces | Bounded status-facing or intent-facing contracts introduced one seam at a time without creating another large ambient bag | Each sub-slice retires one mixed read-plus-intent seam, records the before/after consumers, and leaves no untracked second read path behind |
+| Shell/connectivity telemetry (active in progress) | This family is now started: the shared `ConnectionStatusPanel.qml` shell chrome is retired behind `shellConnectivityStatus`, but `PageHome.qml` and `PageLauncher.qml` still make the app feel like a global context bag. | `sshHandler`, `heartbeatHandler`, and `baseStreamHandler` still consumed directly from the app-scope context in home/launcher surfaces | `python/paint_controller/qml/navigation/ConnectionStatusPanel.qml`, `python/paint_controller/qml/pages/home/PageHome.qml`, `python/paint_controller/qml/pages/home/PageLauncher.qml`, touched shell chrome | One Python-owned shell/connectivity telemetry contract that carries bounded shell availability, heartbeat, IP, and later launcher/home status without exposing raw service/controller globals in shell-facing QML | The shell-facing connectivity surfaces stop binding raw SSH/heartbeat/stream globals directly, or the remaining callers are explicitly quarantined |
+| Settings cleanup (follow-on cleanup) | Still valuable only where it materially reduces ambient exposure. It should not displace the higher-leverage device/status wave or the named shell/connectivity family. | Residual `settingsManager` ambient access that no longer carries the main architecture risk | `python/paint_controller/qml/overlays/systemcontrol/SettingsTab.qml`, `python/paint_controller/qml/pages/settings/`, touched settings widgets | Small route- or overlay-facing contracts only when they produce a real reduction in surface area | Cleanup is opportunistic and never displaces higher-leverage device/status or shell/connectivity work |
 
 ## Suggested Session Order
 
@@ -890,16 +898,17 @@ Use this order unless a production bug interrupts it:
 10. Workstream B2 operator-action legality.
 11. Workstream C route formalization.
 12. Workstream D dedicated QML-contract reduction, while continuing touched-slice retirement rules.
-13. Workstream E1 video/runtime retirement family.
-14. Workstream E1 device/status retirement family in bounded sub-slices.
-15. Workstream E1 settings cleanup only where it still materially reduces ambient reads.
-16. Workstream E2 narrowed automation-contract work only after the contract-first families materially reduce global coupling.
-17. Optional feature-shell recomposition if still justified.
-18. Design-system cleanup.
+13. Workstream E1 partial video/runtime retirement truth pass plus explicit quarantine of any remaining fullscreen telemetry callers.
+14. Workstream E1 device/status retirement family in bounded sub-slices: wheel shared summary/control first, then recording status, then teensy feature-toggle status.
+15. Workstream E1 shell/connectivity telemetry family.
+16. Workstream E1 settings cleanup only where it still materially reduces ambient reads.
+17. Workstream E2 narrowed automation-contract work only after the contract-first families materially reduce global coupling.
+18. Optional feature-shell recomposition if still justified.
+19. Design-system cleanup.
 
 Why this order changed:
 
-The validated order keeps the ownership-first direction but adds one more first-principles rule to the previous corrections: contract retirement starts now. The next workflow checkpoint is not allowed to add a new read model while leaving the old workflow QML read path equally live. That rule exists to make the repo materially easier to understand, not only safer to modify.
+The validated order keeps the ownership-first direction but adds two more first-principles rules to the previous corrections: contract retirement starts now, and family status must stay truthful to the live callers. The next workflow checkpoint is not allowed to add a new read model while leaving the old workflow QML read path equally live, and no family is allowed to claim completion while high-fanout raw callers remain untracked. Those rules exist to make the repo materially easier to understand, not only safer to modify.
 
 ## Technical Guardrails
 
@@ -911,6 +920,8 @@ The validated order keeps the ownership-first direction but adds one more first-
 - Do not broaden `ShellState` into a large session or coordinator object that absorbs workflow runtime, settings authority, machine actions, and shell policy together.
 - Do not let `ShellState` grow into a new shell god object that absorbs facts, bridge intents, and QML composition.
 - A stage is not complete until it names the canonical owner and retires or clearly quarantines the superseded read path.
+- Every Workstream E slice must record a before/after consumer proof rather than relying on prose claims of “reduced coupling”.
+- Do not let `all_status` passthroughs or controller-shaped mirrors masquerade as feature contracts.
 - Do not remove the overlay-first operating workflow unless the user explicitly changes product direction.
 - Do not treat all overlays as transient by default.
 - Do not treat the built-in touchscreen window as an auxiliary surface; it is part of the product shell.
@@ -920,6 +931,8 @@ The validated order keeps the ownership-first direction but adds one more first-
 - Keep migrations additive while old QML consumers still exist.
 - Keep `AppRuntime` as the composition root, not as a behavior god object.
 - Keep cleanup order explicit and validated.
+- After feature-contract shape changes, run runtime-parity smoke validation for the touched contract.
+- After QObject lifecycle or background-worker cleanup changes, add teardown regression coverage before closing the slice.
 - After shell or screen changes, run startup and services validation.
 - After overlay or input changes, run input and smoke validation.
 - After control-state changes, run control processor and safety validation.
@@ -936,6 +949,8 @@ Track these across sessions:
 - Number of places where raw screen count or raw `Qt.application.screens` data becomes product policy.
 - Whether the two-surface shell has explicit named ownership.
 - Number of operational overlays with explicit ownership and lifecycle rules.
+- Number of named quarantined remainder files still allowed under Workstream E.
+- Number of shell/home/launcher surfaces still binding raw connectivity globals directly.
 - Number of settings surfaces classified by role, capability class, and authority.
 - Number of placeholder local settings values remaining in QML.
 - Whether the OverlayController compatibility surface has direct regression tests.
@@ -983,24 +998,24 @@ When a stage becomes wrong:
 
 ## Next Recommended Session
 
-Stage 0 is published, Stage 1 command, device, and workflow boundaries are complete, Stage 2 is complete, Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 is complete, Workstream A is complete, Workstream B is complete, Workstream C is complete for the touched shell family, Workstream D is complete, and Workstream E is active in progress. The next recommended session is to continue Workstream E1 with the device/status family after the shared video subtree moved the touched control, frame-refresh, and top-bar seams behind `videoRuntime`, the first shared winch summary/power/load seam moved behind `winchStatus`, and the shared teensy power/header seam moved behind `teensyStatus`.
+Stage 0 is published, Stage 1 command, device, and workflow boundaries are complete, Stage 2 is complete, Stage 3A shell policy is complete, Stage 3B1 route normalization is complete, Stage 4 is complete, Stage 4.5 is complete, Workstream A is complete, Workstream B is complete, Workstream C is complete for the touched shell family, Workstream D is complete, and Workstream E is active in progress. The shared video subtree is only partially retired: the touched control, frame-refresh, and top-bar seams moved behind `videoRuntime`, while the remaining fullscreen telemetry callers stay explicit remainder. The wheel shared summary/control slice is landed behind `wheelStatus`, the shared system-control recording slice is landed behind `recordingStatus`, the shared teensy feature-toggle system-control seam is landed behind bounded `teensyStatus` fields, and the shared shell `ConnectionStatusPanel.qml` seam is now landed behind bounded `shellConnectivityStatus`. The next recommended session is to continue the shell/connectivity telemetry family with a bounded `PageHome.qml` status-header follow-up before any opportunistic settings cleanup or broader launcher/device remainder.
 
-Task title: Continue Workstream E1 device/status contract reduction.
+Task title: Continue Workstream E1 shell/connectivity telemetry reduction with the PageHome status-header slice.
 
 The session should:
 
 1. Use the completed shell route contract, host matrix, legality seam, Workstream D reductions, and the completed E1 slices 1-2 as fixed inputs rather than reopening them in the same slice.
-2. Continue reducing the app-wide QML contract or feature-surface dependence in a way that retires at least one additional real direct app-scope read path from the touched device or status surfaces.
-3. Preserve the narrow `ShellState` / `OverlayHostPolicy` ownership boundaries and keep the new `videoRuntime`, `winchStatus`, and `teensyStatus` slices stable rather than reopening them while device/status work proceeds.
-4. Keep future automation work separate from optional feature-shell redesign or broader product/UI cleanup.
-5. Keep startup/import smoke green and add focused tests for any new feature-facing contract.
-6. Create `PLANNING.md`.
-7. Ask for confirmation.
+2. Retire one additional real direct app-scope shell/connectivity read family from the touched home surface and record the before/after consumer proof in the same slice.
+3. Preserve the narrow `ShellState` / `OverlayHostPolicy` ownership boundaries and keep the new `videoRuntime`, `winchStatus`, `teensyStatus`, `wheelStatus`, and `recordingStatus` slices stable rather than reopening them while shell/connectivity work proceeds.
+4. Explicitly quarantine untouched launcher commands/config editing, home video preview, and device/status remainder such as wheel detail telemetry or deeper teensy telemetry rather than broadening the shell/connectivity slice into a larger rewrite.
+5. Keep future automation work separate from optional feature-shell redesign or broader product/UI cleanup.
+6. Keep startup/import smoke green, add focused tests for any new feature-facing contract, and add runtime-parity smoke or teardown coverage when the slice changes contract shape or lifecycle behavior.
+7. Create `PLANNING.md`.
+8. Ask for confirmation.
 
 The likely next implementation slice after approval:
 
-- keep the current shell, overlay, legality, settings, workflow runtime, `videoRuntime`, `winchStatus`, and `teensyStatus` contracts stable while reducing app-scope QML exposure further
-- make the next touched device and status surfaces consume smaller, clearer contracts without widening controller internals into another global bag
-- the next strongest candidate is another bounded shared status seam that can retire real ambient reads without widening the landed teensy or winch models into controller-shaped mirrors
-- treat settings as follow-on cleanup only after the device/status precedent lands cleanly
-- validate focused contract tests plus startup and QML import coverage before widening scope
+- keep the current shell, overlay, legality, settings, workflow runtime, `videoRuntime`, `winchStatus`, `teensyStatus`, `wheelStatus`, `recordingStatus`, and `shellConnectivityStatus` contracts stable while reducing app-scope QML exposure further
+- extend the shell/connectivity family only into the touched `PageHome.qml` availability/heartbeat header/status seams without pulling `PageLauncher.qml` commands/config editing or home video preview into the same slice
+- treat remaining device/status callers, fullscreen telemetry remainder, optional shell redesign, and launcher command/config surfaces as explicit later follow-up or quarantine rather than justification to widen the shell/connectivity slice
+- validate focused contract tests plus startup/QML import coverage and record the retirement ledger before widening scope

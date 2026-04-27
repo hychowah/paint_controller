@@ -8,6 +8,7 @@ Rectangle {
     id: selectBar
     required property var pageRegistry
     required property string selectedPageKey
+    required property var shellConnectivityStatus
     property int expandedWidth: CommonStyle.shellSidebarExpandedWidth
     property int collapsedWidth: CommonStyle.shellSidebarCollapsedWidth
     property int buttonSize: expanded ? expandedWidth * 0.8 : collapsedWidth - 10
@@ -224,6 +225,7 @@ Rectangle {
     ConnectionStatusPanel {
         id: connectionStatusPanel
         expanded: selectBar.expanded
+        shellConnectivityStatus: selectBar.shellConnectivityStatus
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: buttonExit.top
         anchors.bottomMargin: selectBar.expanded ? CommonStyle.shellTopSpacerHeight : CommonStyle.spacingLg

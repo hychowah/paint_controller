@@ -12,6 +12,8 @@ Item {
     required property bool showOverlay
     required property string activeMenu
     required property var systemControlServices
+    required property var recordingStatus
+    required property var wheelStatus
     required property var winchStatus
     required property var teensyStatus
     readonly property bool showSystemMenu: showOverlay && activeMenu === "system"
@@ -161,6 +163,8 @@ Item {
 
                 LegacySystemControl.DeviceControlTab {
                     id: deviceControlTabContent
+                    recordingStatus: systemControlWorkspace.recordingStatus
+                    wheelStatus: systemControlWorkspace.wheelStatus
                     winchStatus: systemControlWorkspace.winchStatus
                     teensyStatus: systemControlWorkspace.teensyStatus
                 }

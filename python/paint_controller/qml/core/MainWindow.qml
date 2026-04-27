@@ -35,8 +35,11 @@ ApplicationWindow {
     property bool videoFullscreenOnMainSurface: overlayHost ? overlayHost.video_fullscreen_on_main_surface : (shellState ? shellState.video_fullscreen_on_main_surface : true)
     property var systemControlServicesModel: systemControlServices
     property var videoRuntimeModel: videoRuntime
+    property var recordingStatusModel: recordingStatus
+    property var wheelStatusModel: wheelStatus
     property var winchStatusModel: winchStatus
     property var teensyStatusModel: teensyStatus
+    property var shellConnectivityStatusModel: shellConnectivityStatus
     
     // Use Qt's Screen type for positioning - access via Screen attached property
     screen: Qt.application.screens[mainScreenIndex] || Qt.application.screens[0]
@@ -132,6 +135,7 @@ ApplicationWindow {
                     id: selectBar
                     pageRegistry: mainWindow.pageRegistry
                     selectedPageKey: mainWindow.selectedPageKey
+                    shellConnectivityStatus: mainWindow.shellConnectivityStatusModel
                     height: parent.height
                     onNavigateRequested: function(pageKey) {
                         mainWindow.navigateToPage(pageKey)
@@ -236,6 +240,7 @@ ApplicationWindow {
     Component {
         id: statusPageComponent
         PageStatus {
+            wheelStatus: mainWindow.wheelStatusModel
             winchStatus: mainWindow.winchStatusModel
             teensyStatus: mainWindow.teensyStatusModel
         }
@@ -311,6 +316,8 @@ ApplicationWindow {
         showOverlay: overlayController.show_overlay
         activeMenu: overlayController.active_menu
         systemControlServices: mainWindow.systemControlServicesModel
+        recordingStatus: mainWindow.recordingStatusModel
+        wheelStatus: mainWindow.wheelStatusModel
         winchStatus: mainWindow.winchStatusModel
         teensyStatus: mainWindow.teensyStatusModel
         visible: showSystemControlOnMainSurface

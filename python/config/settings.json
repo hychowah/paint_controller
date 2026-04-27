@@ -1,5 +1,5 @@
 {
-  "winch_max_speed_mmps": 201.0,
+  "winch_max_speed_mmps": 100.0,
   "track_max_speed": 500.0,
   "track_min_speed": 50.0,
   "thrust_force": -1.3,

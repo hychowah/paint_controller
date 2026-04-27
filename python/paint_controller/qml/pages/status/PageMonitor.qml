@@ -9,6 +9,7 @@ import "./components"
 Rectangle {
     id: monitorPage
     anchors.fill: parent
+    required property var wheelStatus
     required property var teensyStatus
     color: "#1e222b"  // Industrial dark background
     
@@ -51,6 +52,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.preferredHeight: 1  // Equal weight with ValvesCard
+                    wheelStatus: monitorPage.wheelStatus
                     maxWheelCurrent: monitorPage.maxWheelCurrent
                 }
                 

@@ -615,6 +615,29 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
     workflow_editor = FakeWorkflowEditor()
     manual_command_handler = FakeManualCommandHandler()
     video_runtime = FakeVideoRuntime()
+    recording_status = DynamicObject(
+        endEffectorRecording=True,
+        baseRecording=False,
+        screenRecording=True,
+        screenRecordingDuration=125,
+        screenFreeSpaceGb=8.5,
+        rosBagRecording=False,
+        rosBagRecordingDuration=0,
+        rosBagCompressing=True,
+        rosBagStatusMessage="Remote EF ready",
+    )
+    wheel_status = DynamicObject(
+        available=True,
+        enabled=True,
+        leftMotorAvailable=True,
+        rightMotorAvailable=True,
+        leftWheelSpeed=0.0,
+        rightWheelSpeed=0.0,
+        leftWheelCurrent=0.0,
+        rightWheelCurrent=0.0,
+        leftWheelPosition=0.0,
+        rightWheelPosition=0.0,
+    )
     winch_status = DynamicObject(
         available=True,
         enabled=True,
@@ -636,6 +659,24 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
         runTime=120.0,
         loopTime=450.0,
         loopTimeCounter=900.0,
+        stabilityEnabled=True,
+        yawEnabled=False,
+        autoCorrectionEnabled=False,
+        sprayGunLevelingEnabled=True,
+        rollerSteeringEnabled=False,
+        swingDampingEnabled=True,
+        sprayGunLedOn=False,
+    )
+    shell_connectivity_status = DynamicObject(
+        winchAvailable=True,
+        wheelAvailable=True,
+        endEffectorAvailable=True,
+        baseOnline=True,
+        baseStatus=0x00,
+        endEffectorOnline=True,
+        endEffectorStatus=0x00,
+        baseIpAddress="10.0.0.2",
+        endEffectorIpAddress="10.0.0.3",
     )
 
     return {
@@ -681,8 +722,11 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             manual_command_handler=manual_command_handler,
         ),
         "videoRuntime": video_runtime,
+        "recordingStatus": recording_status,
+        "wheelStatus": wheel_status,
         "winchStatus": winch_status,
         "teensyStatus": teensy_status,
+        "shellConnectivityStatus": shell_connectivity_status,
         "warningHandler": DynamicObject(active_warning=""),
         "baseStreamHandler": FakeStreamHandler(),
         "wheelController": DynamicObject(
@@ -1122,6 +1166,8 @@ Item {{
     width: 1280
     height: 800
     property var servicesModel: systemControlServices
+    property var recordingStatusModel: recordingStatus
+    property var wheelStatusModel: wheelStatus
     property var winchStatusModel: winchStatus
     property var teensyStatusModel: teensyStatus
 
@@ -1130,6 +1176,8 @@ Item {{
         showOverlay: true
         activeMenu: "system"
         systemControlServices: servicesModel
+        recordingStatus: recordingStatusModel
+        wheelStatus: wheelStatusModel
         winchStatus: winchStatusModel
         teensyStatus: teensyStatusModel
     }}
@@ -1321,9 +1369,11 @@ Item {{
     height: 800
     property var winchStatusModel: winchStatus
     property var teensyStatusModel: teensyStatus
+    property var wheelStatusModel: wheelStatus
 
     PageStatus {{
         anchors.fill: parent
+        wheelStatus: wheelStatusModel
         winchStatus: winchStatusModel
         teensyStatus: teensyStatusModel
     }}
@@ -1605,11 +1655,63 @@ import "{systemcontrol_import_url}"
 Item {{
     width: 1280
     height: 800
-    property var winchStatusModel: winchStatus
-    property var teensyStatusModel: teensyStatus
+    property var recordingStatusModel: ({{
+        endEffectorRecording: true,
+        baseRecording: false,
+        screenRecording: true,
+        screenRecordingDuration: 125,
+        screenFreeSpaceGb: 8.5,
+        rosBagRecording: false,
+        rosBagRecordingDuration: 0,
+        rosBagCompressing: true,
+        rosBagStatusMessage: "Remote EF ready"
+    }})
+    property var wheelStatusModel: ({{
+        available: true,
+        enabled: true,
+        leftMotorAvailable: true,
+        rightMotorAvailable: true,
+        leftWheelSpeed: 0,
+        rightWheelSpeed: 0,
+        leftWheelCurrent: 0,
+        rightWheelCurrent: 0,
+        leftWheelPosition: 0,
+        rightWheelPosition: 0
+    }})
+    property var winchStatusModel: ({{
+        available: true,
+        enabled: true,
+        loadDetectionEnabled: false,
+        cableLength: 0,
+        cableSpeed: 0,
+        winchTorque: 0,
+        motorTemperature: 25,
+        motorVoltage: 24,
+        motorBrake: true,
+        unusualLoadDetected: false
+    }})
+    property var teensyStatusModel: ({{
+        enabled: true,
+        relayOn: false,
+        voltage: 24,
+        current: 1.2,
+        temperature: 32,
+        runTime: 120,
+        loopTime: 450,
+        loopTimeCounter: 900,
+        stabilityEnabled: true,
+        yawEnabled: false,
+        autoCorrectionEnabled: false,
+        sprayGunLevelingEnabled: true,
+        rollerSteeringEnabled: false,
+        swingDampingEnabled: true,
+        sprayGunLedOn: false
+    }})
 
     DeviceControlTab {{
         anchors.fill: parent
+        recordingStatus: recordingStatusModel
+        wheelStatus: wheelStatusModel
         winchStatus: winchStatusModel
         teensyStatus: teensyStatusModel
     }}
@@ -1627,12 +1729,31 @@ Item {{
 
         winch_enable = root.findChild(QObject, "winchEnableControl")
         wheel_reset = root.findChild(QObject, "wheelResetAction")
+        ef_recording = root.findChild(QObject, "efRecordingControl")
+        screen_recording = root.findChild(QObject, "screenRecordingControl")
+        rosbag_recording = root.findChild(QObject, "rosBagRecordingControl")
+        stability_control = root.findChild(QObject, "stabilityControl")
+        yaw_control = root.findChild(QObject, "yawControl")
+        spray_gun_led_control = root.findChild(QObject, "sprayGunLedControl")
         assert winch_enable is not None
         assert wheel_reset is not None
+        assert ef_recording is not None
+        assert screen_recording is not None
+        assert rosbag_recording is not None
+        assert stability_control is not None
+        assert yaw_control is not None
+        assert spray_gun_led_control is not None
         assert winch_enable.property("actionAllowed") is False
         assert winch_enable.property("blockedReason") == "Winch enable requires the controller heartbeat to be idle"
         assert wheel_reset.property("actionAllowed") is False
         assert wheel_reset.property("blockedReason") == "Reset Wheel Position requires the system to be idle"
+        assert ef_recording.property("controlStatus") == "Recording"
+        assert screen_recording.property("controlStatus") == "Recording 2:05 (8.5 GB free)"
+        assert rosbag_recording.property("controlStatus") == "Compressing..."
+        assert rosbag_recording.property("enabled") is False
+        assert stability_control.property("controlStatus") == "Active"
+        assert yaw_control.property("controlStatus") == "Inactive"
+        assert spray_gun_led_control.property("controlStatus") == "Off"
 
         fatal_warning_fragments = (
             "failed to load component",
@@ -1768,6 +1889,17 @@ Item {{
     width: 1280
     height: 800
     property string selectedPageKey: "home"
+    property var shellConnectivityStatusModel: ({{
+        winchAvailable: true,
+        wheelAvailable: true,
+        endEffectorAvailable: false,
+        baseOnline: true,
+        baseStatus: 0,
+        endEffectorOnline: false,
+        endEffectorStatus: 2,
+        baseIpAddress: "10.0.0.2",
+        endEffectorIpAddress: "10.0.0.3"
+    }})
 
     property var pageRegistry: [
         {{ routeOrder: 0, buttonKey: "home", buttonText: "Home", component: homeComponent }},
@@ -1812,6 +1944,7 @@ Item {{
         objectName: "selectBar"
         pageRegistry: harnessRoot.pageRegistry
         selectedPageKey: harnessRoot.selectedPageKey
+        shellConnectivityStatus: harnessRoot.shellConnectivityStatusModel
         onNavigateRequested: function(pageKey) {{
             var targetPage = harnessRoot.getPageConfig(pageKey)
             if (!targetPage) {{
@@ -1838,9 +1971,14 @@ Item {{
         select_bar = root.findChild(QObject, "selectBar")
         assert select_bar is not None
 
+        connection_status_panel = root.findChild(QObject, "connectionStatusPanel")
+        assert connection_status_panel is not None
+
         fake_stack_view = root.findChild(QObject, "fakeStackView")
         assert fake_stack_view is not None
         assert select_bar.property("navigationCount") == 2
+        assert connection_status_panel.property("baseIpAddress") == "10.0.0.2"
+        assert connection_status_panel.property("efIpAddress") == "10.0.0.3"
 
         select_bar.navigateToPage("settings")
         qt_app.processEvents()

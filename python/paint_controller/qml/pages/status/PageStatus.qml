@@ -9,6 +9,7 @@ import "components"
 Rectangle {
     id: page3Rect
     objectName: "page3Rect"
+    required property var wheelStatus
     required property var winchStatus
     required property var teensyStatus
     Layout.fillWidth: true
@@ -146,6 +147,7 @@ Rectangle {
         WheelStatus {
             Layout.preferredWidth: parent.width / 4
             Layout.fillHeight: true
+            wheelStatus: page3Rect.wheelStatus
         }
     }
 }

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import time
@@ -33,8 +34,11 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "actionLegality",
     "systemControlServices",
     "videoRuntime",
+    "recordingStatus",
+    "wheelStatus",
     "winchStatus",
     "teensyStatus",
+    "shellConnectivityStatus",
     "overlayController",
     "warningHandler",
     "baseStreamHandler",
@@ -298,6 +302,179 @@ class _VideoRuntime(QObject):
         return self._top_bar
 
 
+class _RecordingStatus(QObject):
+    changed = Signal()
+
+    def __init__(self, video_stream_handler: object, screen_recorder: object, ros_bag_recorder: object) -> None:
+        super().__init__()
+        self._video_stream_handler = video_stream_handler
+        self._screen_recorder = screen_recorder
+        self._ros_bag_recorder = ros_bag_recorder
+
+        for owner, signal_names in (
+            (video_stream_handler, ("recordingStatusChanged", "baseRecordingStatusChanged")),
+            (screen_recorder, ("is_recording_changed", "recording_duration_changed", "free_space_gb_changed")),
+            (ros_bag_recorder, (
+                "is_bag_recording_changed",
+                "bag_recording_duration_changed",
+                "is_compressing_changed",
+                "bag_status_message_changed",
+            )),
+        ):
+            for signal_name in signal_names:
+                _connect_if_signal(owner, signal_name, self.changed.emit)
+
+    @Property(bool, notify=changed)
+    def endEffectorRecording(self) -> bool:
+        return bool(_read_object_value(self._video_stream_handler, "is_recording", default=False))
+
+    @Property(bool, notify=changed)
+    def baseRecording(self) -> bool:
+        return bool(_read_object_value(self._video_stream_handler, "is_base_recording", default=False))
+
+    @Property(bool, notify=changed)
+    def screenRecording(self) -> bool:
+        return bool(_read_object_value(self._screen_recorder, "is_recording", "isRecording", default=False))
+
+    @Property(int, notify=changed)
+    def screenRecordingDuration(self) -> int:
+        value = _read_object_value(self._screen_recorder, "recording_duration", default=0)
+        try:
+            return int(value or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    @Property(float, notify=changed)
+    def screenFreeSpaceGb(self) -> float:
+        value = _read_object_value(self._screen_recorder, "free_space_gb", default=0.0)
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(bool, notify=changed)
+    def rosBagRecording(self) -> bool:
+        return bool(_read_object_value(self._ros_bag_recorder, "is_bag_recording", default=False))
+
+    @Property(int, notify=changed)
+    def rosBagRecordingDuration(self) -> int:
+        value = _read_object_value(self._ros_bag_recorder, "bag_recording_duration", default=0)
+        try:
+            return int(value or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    @Property(bool, notify=changed)
+    def rosBagCompressing(self) -> bool:
+        return bool(_read_object_value(self._ros_bag_recorder, "is_compressing", default=False))
+
+    @Property(str, notify=changed)
+    def rosBagStatusMessage(self) -> str:
+        value = _read_object_value(self._ros_bag_recorder, "bag_status_message", default="")
+        return str(value if value is not None else "")
+
+
+class _ShellConnectivityStatus(QObject):
+    changed = Signal()
+
+    def __init__(
+        self,
+        ssh_controller: object,
+        heartbeat_handler: object,
+        winch_controller: object,
+        wheel_status: object,
+        teensy_controller: object,
+    ) -> None:
+        super().__init__()
+        self._ssh_controller = ssh_controller
+        self._heartbeat_handler = heartbeat_handler
+        self._winch_controller = winch_controller
+        self._wheel_status = wheel_status
+        self._teensy_controller = teensy_controller
+
+        for owner, signal_names in (
+            (ssh_controller, ("deviceAvailabilityChanged", "configUpdated")),
+            (heartbeat_handler, (
+                "base_online_changed",
+                "base_status_changed",
+                "ef_online_changed",
+                "ef_status_changed",
+            )),
+            (winch_controller, ("available_changed",)),
+            (wheel_status, ("changed",)),
+            (teensy_controller, ("connection_changed",)),
+        ):
+            for signal_name in signal_names:
+                _connect_if_signal(owner, signal_name, self.changed.emit)
+
+    def _device_ip_address(self, device_name: str) -> str:
+        get_device_config = getattr(self._ssh_controller, "get_device_config", None)
+        if not callable(get_device_config):
+            return "--"
+
+        try:
+            payload = get_device_config(device_name)
+        except Exception:
+            return "--"
+
+        if isinstance(payload, str):
+            try:
+                config = json.loads(payload)
+            except (TypeError, ValueError, json.JSONDecodeError):
+                return "--"
+        elif isinstance(payload, dict):
+            config = payload
+        else:
+            return "--"
+
+        ip_address = config.get("ip")
+        return str(ip_address).strip() or "--"
+
+    @Property(bool, notify=changed)
+    def winchAvailable(self) -> bool:
+        return bool(_read_object_value(self._winch_controller, "available", default=False))
+
+    @Property(bool, notify=changed)
+    def wheelAvailable(self) -> bool:
+        return bool(_read_object_value(self._wheel_status, "available", default=False))
+
+    @Property(bool, notify=changed)
+    def endEffectorAvailable(self) -> bool:
+        return bool(_read_object_value(self._teensy_controller, "available", default=False))
+
+    @Property(bool, notify=changed)
+    def baseOnline(self) -> bool:
+        return bool(_read_object_value(self._heartbeat_handler, "base_online", default=False))
+
+    @Property(int, notify=changed)
+    def baseStatus(self) -> int:
+        value = _read_object_value(self._heartbeat_handler, "base_status", default=0)
+        try:
+            return int(value or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    @Property(bool, notify=changed)
+    def endEffectorOnline(self) -> bool:
+        return bool(_read_object_value(self._heartbeat_handler, "ef_online", default=False))
+
+    @Property(int, notify=changed)
+    def endEffectorStatus(self) -> int:
+        value = _read_object_value(self._heartbeat_handler, "ef_status", default=0)
+        try:
+            return int(value or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    @Property(str, notify=changed)
+    def baseIpAddress(self) -> str:
+        return self._device_ip_address("BASE")
+
+    @Property(str, notify=changed)
+    def endEffectorIpAddress(self) -> str:
+        return self._device_ip_address("END_EFFECTOR")
+
+
 class _WinchStatus(QObject):
     changed = Signal()
 
@@ -379,6 +556,91 @@ class _WinchStatus(QObject):
         return bool(_read_object_value(self._winch_controller, "unusual_load_detected", default=False))
 
 
+class _WheelStatus(QObject):
+    changed = Signal()
+
+    def __init__(self, wheel_controller: object) -> None:
+        super().__init__()
+        self._wheel_controller = wheel_controller
+        for signal_name in (
+            "available_changed",
+            "enabled_changed",
+            "left_motor_available_changed",
+            "right_motor_available_changed",
+            "left_wheel_speed_changed",
+            "right_wheel_speed_changed",
+            "left_wheel_current_changed",
+            "right_wheel_current_changed",
+            "left_wheel_position_changed",
+            "right_wheel_position_changed",
+        ):
+            _connect_if_signal(wheel_controller, signal_name, self.changed.emit)
+
+    @Property(bool, notify=changed)
+    def available(self) -> bool:
+        return bool(_read_object_value(self._wheel_controller, "available", default=False))
+
+    @Property(bool, notify=changed)
+    def enabled(self) -> bool:
+        return bool(_read_object_value(self._wheel_controller, "enabled", default=False))
+
+    @Property(bool, notify=changed)
+    def leftMotorAvailable(self) -> bool:
+        return bool(_read_object_value(self._wheel_controller, "left_motor_available", default=False))
+
+    @Property(bool, notify=changed)
+    def rightMotorAvailable(self) -> bool:
+        return bool(_read_object_value(self._wheel_controller, "right_motor_available", default=False))
+
+    @Property(float, notify=changed)
+    def leftWheelSpeed(self) -> float:
+        value = _read_object_value(self._wheel_controller, "left_wheel_speed", default=0.0)
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(float, notify=changed)
+    def rightWheelSpeed(self) -> float:
+        value = _read_object_value(self._wheel_controller, "right_wheel_speed", default=0.0)
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(float, notify=changed)
+    def leftWheelCurrent(self) -> float:
+        value = _read_object_value(self._wheel_controller, "left_wheel_current", default=0.0)
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(float, notify=changed)
+    def rightWheelCurrent(self) -> float:
+        value = _read_object_value(self._wheel_controller, "right_wheel_current", default=0.0)
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(float, notify=changed)
+    def leftWheelPosition(self) -> float:
+        value = _read_object_value(self._wheel_controller, "left_wheel_position", default=0.0)
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(float, notify=changed)
+    def rightWheelPosition(self) -> float:
+        value = _read_object_value(self._wheel_controller, "right_wheel_position", default=0.0)
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+
 class _TeensyStatus(QObject):
     changed = Signal()
 
@@ -447,6 +709,34 @@ class _TeensyStatus(QObject):
         except (TypeError, ValueError):
             return 0.0
 
+    @Property(bool, notify=changed)
+    def stabilityEnabled(self) -> bool:
+        return bool(_read_object_value(self._teensy_controller, "stability_enabled", default=False))
+
+    @Property(bool, notify=changed)
+    def yawEnabled(self) -> bool:
+        return bool(self._status_value("yaw_enabled"))
+
+    @Property(bool, notify=changed)
+    def autoCorrectionEnabled(self) -> bool:
+        return bool(_read_object_value(self._teensy_controller, "auto_correction_enabled", default=False))
+
+    @Property(bool, notify=changed)
+    def sprayGunLevelingEnabled(self) -> bool:
+        return bool(_read_object_value(self._teensy_controller, "spray_gun_leveling_enabled", default=False))
+
+    @Property(bool, notify=changed)
+    def rollerSteeringEnabled(self) -> bool:
+        return bool(_read_object_value(self._teensy_controller, "roller_steering_enabled", default=False))
+
+    @Property(bool, notify=changed)
+    def swingDampingEnabled(self) -> bool:
+        return bool(_read_object_value(self._teensy_controller, "swing_damping_enabled", default=False))
+
+    @Property(bool, notify=changed)
+    def sprayGunLedOn(self) -> bool:
+        return bool(_read_object_value(self._teensy_controller, "spray_gun_led_on", default=False))
+
 
 def teardown_qml_runtime(
     engine: QQmlApplicationEngine,
@@ -510,8 +800,11 @@ class AppRuntime:
         self.bundle = None
         self.system_control_services: _SystemControlServices | None = None
         self.video_runtime: _VideoRuntime | None = None
+        self.recording_status: _RecordingStatus | None = None
+        self.wheel_status: _WheelStatus | None = None
         self.winch_status: _WinchStatus | None = None
         self.teensy_status: _TeensyStatus | None = None
+        self.shell_connectivity_status: _ShellConnectivityStatus | None = None
         self.shell_state = None
         self.overlay_host = None
         self.action_legality = None
@@ -653,8 +946,21 @@ class AppRuntime:
             teensy_controller=self.bundle.teensy_controller,
             winch_controller=self.bundle.winch_controller,
         )
+        self.recording_status = _RecordingStatus(
+            video_stream_handler=self.video_stream_handler,
+            screen_recorder=self.bundle.screen_recorder,
+            ros_bag_recorder=self.bundle.ros_bag_recorder,
+        )
+        self.wheel_status = _WheelStatus(self.bundle.wheel_controller)
         self.winch_status = _WinchStatus(self.bundle.winch_controller)
         self.teensy_status = _TeensyStatus(self.bundle.teensy_controller)
+        self.shell_connectivity_status = _ShellConnectivityStatus(
+            ssh_controller=self.bundle.ssh_controller,
+            heartbeat_handler=self.bundle.heartbeat_handler,
+            winch_controller=self.bundle.winch_controller,
+            wheel_status=self.wheel_status,
+            teensy_controller=self.bundle.teensy_controller,
+        )
 
     def _wire_steam_deck_callbacks(self) -> None:
         assert self.bundle is not None
@@ -730,8 +1036,11 @@ class AppRuntime:
         assert self.action_legality is not None
         assert self.system_control_services is not None
         assert self.video_runtime is not None
+        assert self.recording_status is not None
+        assert self.wheel_status is not None
         assert self.winch_status is not None
         assert self.teensy_status is not None
+        assert self.shell_connectivity_status is not None
         assert self.video_stream_handler is not None
         assert self.steam_deck_handler is not None
         assert self.settings_manager is not None
@@ -746,8 +1055,11 @@ class AppRuntime:
             "actionLegality": self.action_legality,
             "systemControlServices": self.system_control_services,
             "videoRuntime": self.video_runtime,
+            "recordingStatus": self.recording_status,
+            "wheelStatus": self.wheel_status,
             "winchStatus": self.winch_status,
             "teensyStatus": self.teensy_status,
+            "shellConnectivityStatus": self.shell_connectivity_status,
             "overlayController": self.bundle.overlay_controller,
             "warningHandler": self.bundle.warning_handler,
             "baseStreamHandler": self.video_stream_handler,

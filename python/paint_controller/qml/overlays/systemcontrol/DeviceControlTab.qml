@@ -5,6 +5,8 @@ import "./components"
 
 Item {
     id: deviceControlTab
+    required property var recordingStatus
+    required property var wheelStatus
     required property var winchStatus
     required property var teensyStatus
 
@@ -219,13 +221,13 @@ Item {
                         objectName: "wheelEnableControl"
                         Layout.fillWidth: true
                         controlName: "Wheel Enable"
-                        controlStatus: wheelController ? (wheelController.enabled ? "Motors active" : "Motors inactive") : "Unavailable"
-                        enabledState: wheelController ? wheelController.enabled : false
+                        controlStatus: deviceControlTab.wheelStatus.available ? (deviceControlTab.wheelStatus.enabled ? "Motors active" : "Motors inactive") : "Unavailable"
+                        enabledState: deviceControlTab.wheelStatus.enabled
                         iconText: "🛞"
                         actionKey: "wheel.enable"
                         legalityModel: actionLegality
                         
-                        onClicked: deviceActionHandler.toggleWheelEnable(wheelController ? wheelController.enabled : false)
+                        onClicked: deviceActionHandler.toggleWheelEnable(deviceControlTab.wheelStatus.enabled)
                     }
                     
                     // Wheel Reset Position Button
@@ -295,10 +297,11 @@ Item {
                     
                     // Camera Recording Control (End Effector)
                     ControlPanel {
+                        objectName: "efRecordingControl"
                         Layout.fillWidth: true
                         controlName: "EF Camera Recording"
-                        controlStatus: baseStreamHandler.is_recording ? "Recording" : "Streaming"
-                        enabledState: baseStreamHandler.is_recording
+                        controlStatus: deviceControlTab.recordingStatus.endEffectorRecording ? "Recording" : "Streaming"
+                        enabledState: deviceControlTab.recordingStatus.endEffectorRecording
                         iconText: "REC"
                         
                         onClicked: deviceOperationsHandler.toggleEndEffectorRecording()
@@ -306,10 +309,11 @@ Item {
 
                     // Base Camera Recording Control
                     ControlPanel {
+                        objectName: "baseRecordingControl"
                         Layout.fillWidth: true
                         controlName: "Base Camera Recording"
-                        controlStatus: baseStreamHandler.is_base_recording ? "Recording" : "Streaming"
-                        enabledState: baseStreamHandler.is_base_recording
+                        controlStatus: deviceControlTab.recordingStatus.baseRecording ? "Recording" : "Streaming"
+                        enabledState: deviceControlTab.recordingStatus.baseRecording
                         iconText: "BASE"
                         
                         onClicked: deviceOperationsHandler.toggleBaseRecording()
@@ -317,20 +321,21 @@ Item {
 
                     // Screen Recording Control
                     ControlPanel {
+                        objectName: "screenRecordingControl"
                         Layout.fillWidth: true
                         controlName: "Screen Recording"
                         controlStatus: {
-                            if (screenRecorder.free_space_gb < 5.0) {
-                                return "Low Storage! (" + screenRecorder.free_space_gb.toFixed(1) + " GB)"
-                            } else if (screenRecorder.is_recording) {
-                                var mins = Math.floor(screenRecorder.recording_duration / 60)
-                                var secs = screenRecorder.recording_duration % 60
-                                return "Recording " + mins + ":" + (secs < 10 ? "0" : "") + secs + " (" + screenRecorder.free_space_gb.toFixed(1) + " GB free)"
+                            if (deviceControlTab.recordingStatus.screenFreeSpaceGb < 5.0) {
+                                return "Low Storage! (" + deviceControlTab.recordingStatus.screenFreeSpaceGb.toFixed(1) + " GB)"
+                            } else if (deviceControlTab.recordingStatus.screenRecording) {
+                                var mins = Math.floor(deviceControlTab.recordingStatus.screenRecordingDuration / 60)
+                                var secs = deviceControlTab.recordingStatus.screenRecordingDuration % 60
+                                return "Recording " + mins + ":" + (secs < 10 ? "0" : "") + secs + " (" + deviceControlTab.recordingStatus.screenFreeSpaceGb.toFixed(1) + " GB free)"
                             } else {
-                                return "Idle (" + screenRecorder.free_space_gb.toFixed(1) + " GB free)"
+                                return "Idle (" + deviceControlTab.recordingStatus.screenFreeSpaceGb.toFixed(1) + " GB free)"
                             }
                         }
-                        enabledState: screenRecorder.is_recording
+                        enabledState: deviceControlTab.recordingStatus.screenRecording
                         iconText: "SCR"
                         
                         onClicked: deviceOperationsHandler.toggleScreenRecording()
@@ -338,25 +343,26 @@ Item {
 
                     // ROS Bag Recording Control (Remote End Effector)
                     ControlPanel {
+                        objectName: "rosBagRecordingControl"
                         Layout.fillWidth: true
                         controlName: "ROS Bag Recording"
                         controlStatus: {
-                            if (rosBagRecorder.is_compressing) {
+                            if (deviceControlTab.recordingStatus.rosBagCompressing) {
                                 return "Compressing..."
-                            } else if (rosBagRecorder.is_bag_recording) {
-                                var mins = Math.floor(rosBagRecorder.bag_recording_duration / 60)
-                                var secs = rosBagRecorder.bag_recording_duration % 60
+                            } else if (deviceControlTab.recordingStatus.rosBagRecording) {
+                                var mins = Math.floor(deviceControlTab.recordingStatus.rosBagRecordingDuration / 60)
+                                var secs = deviceControlTab.recordingStatus.rosBagRecordingDuration % 60
                                 return "Recording " + mins + ":" + (secs < 10 ? "0" : "") + secs
-                            } else if (rosBagRecorder.bag_status_message !== "") {
-                                return rosBagRecorder.bag_status_message
+                            } else if (deviceControlTab.recordingStatus.rosBagStatusMessage !== "") {
+                                return deviceControlTab.recordingStatus.rosBagStatusMessage
                             } else {
                                 return "Idle (Remote EF)"
                             }
                         }
-                        enabledState: rosBagRecorder.is_bag_recording
+                        enabledState: deviceControlTab.recordingStatus.rosBagRecording
                         iconText: "BAG"
-                        enabled: !rosBagRecorder.is_compressing
-                        opacity: rosBagRecorder.is_compressing ? 0.6 : 1.0
+                        enabled: !deviceControlTab.recordingStatus.rosBagCompressing
+                        opacity: deviceControlTab.recordingStatus.rosBagCompressing ? 0.6 : 1.0
                         
                         onClicked: deviceOperationsHandler.toggleRosBagRecording()
                     }
@@ -410,68 +416,74 @@ Item {
                     
                     // Stability Controller (Master Enable)
                     ControlPanel {
+                        objectName: "stabilityControl"
                         Layout.fillWidth: true
                         controlName: "Stability Controller"
-                        controlStatus: teensyController.stability_enabled ? "Active" : "Inactive"
-                        enabledState: teensyController.stability_enabled
+                        controlStatus: deviceControlTab.teensyStatus.stabilityEnabled ? "Active" : "Inactive"
+                        enabledState: deviceControlTab.teensyStatus.stabilityEnabled
                         iconText: "SC"
                         
-                        onClicked: deviceOperationsHandler.toggleStability(teensyController.stability_enabled)
+                        onClicked: deviceOperationsHandler.toggleStability(deviceControlTab.teensyStatus.stabilityEnabled)
                     }
 
                     // Yaw Control
                     ControlPanel {
+                        objectName: "yawControl"
                         Layout.fillWidth: true
                         controlName: "Yaw Control"
-                        controlStatus: teensyController.all_status.yaw_enabled ? "Active" : "Inactive"
-                        enabledState: teensyController.all_status.yaw_enabled
+                        controlStatus: deviceControlTab.teensyStatus.yawEnabled ? "Active" : "Inactive"
+                        enabledState: deviceControlTab.teensyStatus.yawEnabled
                         iconText: "Y"
                         
-                        onClicked: deviceOperationsHandler.toggleYaw(teensyController.all_status.yaw_enabled)
+                        onClicked: deviceOperationsHandler.toggleYaw(deviceControlTab.teensyStatus.yawEnabled)
                     }
 
                     // Auto Correction Control
                     ControlPanel {
+                        objectName: "autoCorrectionControl"
                         Layout.fillWidth: true
                         controlName: "Auto Correction"
-                        controlStatus: teensyController.auto_correction_enabled ? "Active" : "Inactive"
-                        enabledState: teensyController.auto_correction_enabled
+                        controlStatus: deviceControlTab.teensyStatus.autoCorrectionEnabled ? "Active" : "Inactive"
+                        enabledState: deviceControlTab.teensyStatus.autoCorrectionEnabled
                         iconText: "AC"
                         
-                        onClicked: deviceOperationsHandler.toggleAutoCorrection(teensyController.auto_correction_enabled)
+                        onClicked: deviceOperationsHandler.toggleAutoCorrection(deviceControlTab.teensyStatus.autoCorrectionEnabled)
                     }
 
                     // SprayGun Levelling
                     ControlPanel {
+                        objectName: "sprayGunLevelingControl"
                         Layout.fillWidth: true
                         controlName: "SprayGun Levelling"
-                        controlStatus: teensyController.spray_gun_leveling_enabled ? "Active" : "Inactive"
-                        enabledState: teensyController.spray_gun_leveling_enabled
+                        controlStatus: deviceControlTab.teensyStatus.sprayGunLevelingEnabled ? "Active" : "Inactive"
+                        enabledState: deviceControlTab.teensyStatus.sprayGunLevelingEnabled
                         iconText: "SL"
 
-                        onClicked: deviceOperationsHandler.toggleSprayGunLeveling(teensyController.spray_gun_leveling_enabled)
+                        onClicked: deviceOperationsHandler.toggleSprayGunLeveling(deviceControlTab.teensyStatus.sprayGunLevelingEnabled)
                     }
 
                     // Roller Steering Control
                     ControlPanel {
+                        objectName: "rollerSteeringControl"
                         Layout.fillWidth: true
                         controlName: "Roller Steering"
-                        controlStatus: teensyController.roller_steering_enabled ? "Enabled" : "Disabled"
-                        enabledState: teensyController.roller_steering_enabled
+                        controlStatus: deviceControlTab.teensyStatus.rollerSteeringEnabled ? "Enabled" : "Disabled"
+                        enabledState: deviceControlTab.teensyStatus.rollerSteeringEnabled
                         iconText: "RS"
                         
-                        onClicked: deviceOperationsHandler.toggleRollerSteering(teensyController.roller_steering_enabled)
+                        onClicked: deviceOperationsHandler.toggleRollerSteering(deviceControlTab.teensyStatus.rollerSteeringEnabled)
                     }
 
                     // Swing Damping Control
                     ControlPanel {
+                        objectName: "swingDampingControl"
                         Layout.fillWidth: true
                         controlName: "Swing Damping"
-                        controlStatus: teensyController.swing_damping_enabled ? "Active" : "Inactive"
-                        enabledState: teensyController.swing_damping_enabled
+                        controlStatus: deviceControlTab.teensyStatus.swingDampingEnabled ? "Active" : "Inactive"
+                        enabledState: deviceControlTab.teensyStatus.swingDampingEnabled
                         iconText: "SD"
                         
-                        onClicked: deviceOperationsHandler.toggleSwingDamping(teensyController.swing_damping_enabled)
+                        onClicked: deviceOperationsHandler.toggleSwingDamping(deviceControlTab.teensyStatus.swingDampingEnabled)
                     }
                 }
             }
@@ -523,13 +535,14 @@ Item {
 
                     // SprayGun Led Control
                     ControlPanel {
+                        objectName: "sprayGunLedControl"
                         Layout.fillWidth: true
                         controlName: "SprayGun LED"
-                        controlStatus: teensyController.spray_gun_led_on ? "On" : "Off"
-                        enabledState: teensyController.spray_gun_led_on
+                        controlStatus: deviceControlTab.teensyStatus.sprayGunLedOn ? "On" : "Off"
+                        enabledState: deviceControlTab.teensyStatus.sprayGunLedOn
                         iconText: "LED"
                         
-                        onClicked: deviceOperationsHandler.toggleSprayGunLed(teensyController.spray_gun_led_on)
+                        onClicked: deviceOperationsHandler.toggleSprayGunLed(deviceControlTab.teensyStatus.sprayGunLedOn)
                     }
 
                     ControlPanel {

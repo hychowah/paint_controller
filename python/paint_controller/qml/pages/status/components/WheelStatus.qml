@@ -7,6 +7,7 @@ Rectangle {
     id: wheelStatusRect
     color: "#FFFFFF"
     radius: 10
+    required property var wheelStatus
 
     ColumnLayout {
         anchors.fill: parent
@@ -30,50 +31,50 @@ Rectangle {
 
             Label { text: "Wheel Connected:"; font.bold: true }
             Label { 
-                text: wheelController.available ? "Connected" : "Disconnected"
-                color: wheelController.available ? "green" : "red"
+                text: wheelStatusRect.wheelStatus.available ? "Connected" : "Disconnected"
+                color: wheelStatusRect.wheelStatus.available ? "green" : "red"
             }
 
             Label { text: "Wheel Enabled:"; font.bold: true }
             Label { 
-                text: wheelController.enabled ? "Enabled" : "Disabled"
-                color: wheelController.enabled ? "green" : "red"
+                text: wheelStatusRect.wheelStatus.enabled ? "Enabled" : "Disabled"
+                color: wheelStatusRect.wheelStatus.enabled ? "green" : "red"
             }
 
             Label { text: "Left Wheel Speed:"; font.bold: true }
             Label { 
-                text: wheelController.left_wheel_speed.toFixed(1) + " rpm"
-                color: wheelController.left_wheel_speed > 0 ? "green" : "grey"
+                text: wheelStatusRect.wheelStatus.leftWheelSpeed.toFixed(1) + " rpm"
+                color: wheelStatusRect.wheelStatus.leftWheelSpeed > 0 ? "green" : "grey"
             }
 
             Label { text: "Right Wheel Speed:"; font.bold: true }
             Label { 
-                text: wheelController.right_wheel_speed.toFixed(1) + " rpm"
-                color: wheelController.right_wheel_speed > 0 ? "green" : "grey"
+                text: wheelStatusRect.wheelStatus.rightWheelSpeed.toFixed(1) + " rpm"
+                color: wheelStatusRect.wheelStatus.rightWheelSpeed > 0 ? "green" : "grey"
             }
             
             Label { text: "Left Wheel Current:"; font.bold: true }
             Label { 
-                text: wheelController.left_wheel_current.toFixed(1) + " A"
-                color: wheelController.left_wheel_current > 0 ? "green" : "grey"
+                text: wheelStatusRect.wheelStatus.leftWheelCurrent.toFixed(1) + " A"
+                color: wheelStatusRect.wheelStatus.leftWheelCurrent > 0 ? "green" : "grey"
             }
 
             Label { text: "Right Wheel Current:"; font.bold: true }
             Label { 
-                text: wheelController.right_wheel_current.toFixed(1) + " A"
-                color: wheelController.right_wheel_current > 0 ? "green" : "grey"
+                text: wheelStatusRect.wheelStatus.rightWheelCurrent.toFixed(1) + " A"
+                color: wheelStatusRect.wheelStatus.rightWheelCurrent > 0 ? "green" : "grey"
             }
 
             Label { text: "Left Wheel Travel:"; font.bold: true }
             Label { 
-                text: wheelController.left_wheel_position.toFixed(0) + " mm"
-                color: wheelController.left_wheel_position > 0 ? "green" : "grey"
+                text: wheelStatusRect.wheelStatus.leftWheelPosition.toFixed(0) + " mm"
+                color: wheelStatusRect.wheelStatus.leftWheelPosition > 0 ? "green" : "grey"
             }
 
             Label { text: "Right Wheel Travel:"; font.bold: true }
             Label { 
-                text: wheelController.right_wheel_position.toFixed(0) + " mm"
-                color: wheelController.right_wheel_position > 0 ? "green" : "grey"
+                text: wheelStatusRect.wheelStatus.rightWheelPosition.toFixed(0) + " mm"
+                color: wheelStatusRect.wheelStatus.rightWheelPosition > 0 ? "green" : "grey"
             }
         }
     }

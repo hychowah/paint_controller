@@ -22,6 +22,8 @@ Window {
     width: 1280
     height: 720
     property var systemControlServicesModel: systemControlServices
+    property var recordingStatusModel: recordingStatus
+    property var wheelStatusModel: wheelStatus
     property var winchStatusModel: winchStatus
     property var teensyStatusModel: teensyStatus
     property var videoRuntimeModel: videoRuntime
@@ -49,6 +51,7 @@ Window {
     // Industrial Monitor Content
     PageMonitor {
         anchors.fill: parent
+        wheelStatus: multiScreenWindow.wheelStatusModel
         teensyStatus: multiScreenWindow.teensyStatusModel
     }
     
@@ -61,6 +64,8 @@ Window {
         showOverlay: overlayController.show_overlay
         activeMenu: overlayController.active_menu
         systemControlServices: multiScreenWindow.systemControlServicesModel
+        recordingStatus: multiScreenWindow.recordingStatusModel
+        wheelStatus: multiScreenWindow.wheelStatusModel
         winchStatus: multiScreenWindow.winchStatusModel
         teensyStatus: multiScreenWindow.teensyStatusModel
         visible: overlayHost ? overlayHost.system_control_on_secondary_surface : (shellState ? shellState.show_system_control_on_secondary_surface : true)

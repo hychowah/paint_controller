@@ -6,17 +6,19 @@ import "../core"
 
 Rectangle {
     id: connectionStatusPanel
+    objectName: "connectionStatusPanel"
     width: parent.width
     color: CommonStyle.sidebarBackground
     
     required property bool expanded
+    required property var shellConnectivityStatus
     property bool showDeviceStatus: true
     property int titleFontSize: CommonStyle.shellStatusTitleFont
     property int metaFontSize: CommonStyle.shellStatusMetaFont
     property color labelColor: CommonStyle.textPrimary
     property color secondaryLabelColor: CommonStyle.textSecondary
-    property string efIpAddress: typeof uiData !== "undefined" && uiData ? uiData.ef_ip : "--"
-    property string baseIpAddress: typeof uiData !== "undefined" && uiData ? uiData.base_ip : "--"
+    property string efIpAddress: shellConnectivityStatus.endEffectorIpAddress
+    property string baseIpAddress: shellConnectivityStatus.baseIpAddress
     
     // Height adapts based on expanded state
     height: expanded ? CommonStyle.shellStatusBarHeight : CommonStyle.itemHeight
@@ -82,7 +84,7 @@ Rectangle {
                     width: 8
                     height: 8
                     radius: 4
-                    color: winchController.available ? availableColor : warningColor
+                    color: shellConnectivityStatus.winchAvailable ? availableColor : warningColor
                 }
                 
                 // Heartbeat indicator
@@ -90,7 +92,7 @@ Rectangle {
                     width: 8
                     height: 8
                     radius: 4
-                    color: getHeartbeatColor(heartbeatHandler.base_online, heartbeatHandler.base_status)
+                    color: getHeartbeatColor(shellConnectivityStatus.baseOnline, shellConnectivityStatus.baseStatus)
                 }
             }
             
@@ -103,7 +105,7 @@ Rectangle {
                     width: 8
                     height: 8
                     radius: 4
-                    color: wheelController.available ? availableColor : warningColor
+                    color: shellConnectivityStatus.wheelAvailable ? availableColor : warningColor
                 }
                 
                 // Heartbeat indicator
@@ -111,7 +113,7 @@ Rectangle {
                     width: 8
                     height: 8
                     radius: 4
-                    color: getHeartbeatColor(heartbeatHandler.base_online, heartbeatHandler.base_status)
+                    color: getHeartbeatColor(shellConnectivityStatus.baseOnline, shellConnectivityStatus.baseStatus)
                 }
             }
             
@@ -124,7 +126,7 @@ Rectangle {
                     width: 8
                     height: 8
                     radius: 4
-                    color: teensyController.available ? availableColor : warningColor
+                    color: shellConnectivityStatus.endEffectorAvailable ? availableColor : warningColor
                 }
                 
                 // Heartbeat indicator
@@ -132,7 +134,7 @@ Rectangle {
                     width: 8
                     height: 8
                     radius: 4
-                    color: getHeartbeatColor(heartbeatHandler.ef_online, heartbeatHandler.ef_status)
+                    color: getHeartbeatColor(shellConnectivityStatus.endEffectorOnline, shellConnectivityStatus.endEffectorStatus)
                 }
             }
         }
@@ -184,7 +186,7 @@ Rectangle {
                             width: 14
                             height: 14
                             radius: 7
-                            color: winchController.available ? availableColor : warningColor
+                            color: shellConnectivityStatus.winchAvailable ? availableColor : warningColor
                             anchors.verticalCenter: parent.verticalCenter
                             
                             // Add a subtle glow effect
@@ -202,7 +204,7 @@ Rectangle {
                             width: 14
                             height: 14
                             radius: 7
-                            color: getHeartbeatColor(heartbeatHandler.base_online, heartbeatHandler.base_status)
+                            color: getHeartbeatColor(shellConnectivityStatus.baseOnline, shellConnectivityStatus.baseStatus)
                             anchors.verticalCenter: parent.verticalCenter
                             
                             // Add a subtle glow effect
@@ -242,7 +244,7 @@ Rectangle {
                             width: 14
                             height: 14
                             radius: 7
-                            color: wheelController.available ? availableColor : warningColor
+                            color: shellConnectivityStatus.wheelAvailable ? availableColor : warningColor
                             anchors.verticalCenter: parent.verticalCenter
                             
                             // Add a subtle glow effect
@@ -260,7 +262,7 @@ Rectangle {
                             width: 14
                             height: 14
                             radius: 7
-                            color: getHeartbeatColor(heartbeatHandler.base_online, heartbeatHandler.base_status)
+                            color: getHeartbeatColor(shellConnectivityStatus.baseOnline, shellConnectivityStatus.baseStatus)
                             anchors.verticalCenter: parent.verticalCenter
                             
                             // Add a subtle glow effect
@@ -300,7 +302,7 @@ Rectangle {
                             width: 14
                             height: 14
                             radius: 7
-                            color: teensyController.available ? availableColor : warningColor
+                            color: shellConnectivityStatus.endEffectorAvailable ? availableColor : warningColor
                             anchors.verticalCenter: parent.verticalCenter
                             
                             // Add a subtle glow effect
@@ -318,7 +320,7 @@ Rectangle {
                             width: 14
                             height: 14
                             radius: 7
-                            color: getHeartbeatColor(heartbeatHandler.ef_online, heartbeatHandler.ef_status)
+                            color: getHeartbeatColor(shellConnectivityStatus.endEffectorOnline, shellConnectivityStatus.endEffectorStatus)
                             anchors.verticalCenter: parent.verticalCenter
                             
                             // Add a subtle glow effect

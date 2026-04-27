@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import importlib
 from dataclasses import dataclass
 
@@ -304,7 +305,27 @@ class _QtBridgeRecorder:
 
 class _WheelControllerRecorder:
     def __init__(self) -> None:
+        self.available_changed = _SignalRecorder()
+        self.enabled_changed = _SignalRecorder()
+        self.left_motor_available_changed = _SignalRecorder()
+        self.right_motor_available_changed = _SignalRecorder()
+        self.left_wheel_speed_changed = _SignalRecorder()
+        self.right_wheel_speed_changed = _SignalRecorder()
+        self.left_wheel_current_changed = _SignalRecorder()
+        self.right_wheel_current_changed = _SignalRecorder()
+        self.left_wheel_position_changed = _SignalRecorder()
+        self.right_wheel_position_changed = _SignalRecorder()
         self.error_state_changed = _SignalRecorder()
+        self.available = True
+        self.enabled = True
+        self.left_motor_available = True
+        self.right_motor_available = False
+        self.left_wheel_speed = 1.5
+        self.right_wheel_speed = -2.5
+        self.left_wheel_current = 3.0
+        self.right_wheel_current = 4.0
+        self.left_wheel_position = 125.0
+        self.right_wheel_position = 225.0
 
 
 class _EmergencyHandlerRecorder:
@@ -336,6 +357,10 @@ class _VideoHandlerRecorder:
         self.endEffectorFrameReady = _SignalRecorder()
         self.baseFrontFrameReady = _SignalRecorder()
         self.baseRearFrameReady = _SignalRecorder()
+        self.recordingStatusChanged = _SignalRecorder()
+        self.baseRecordingStatusChanged = _SignalRecorder()
+        self.is_recording = True
+        self.is_base_recording = False
         self.started = 0
 
     def start_all_streams(self) -> int:
@@ -346,15 +371,37 @@ class _VideoHandlerRecorder:
 class _SshControllerRecorder:
     def __init__(self) -> None:
         self.deviceAvailabilityChanged = _SignalRecorder()
+        self.configUpdated = _SignalRecorder()
         self.devicePingTimes = {"BASE": "42", "END_EFFECTOR": "38"}
+
+    def get_device_config(self, device_name: str) -> str:
+        configs = {
+            "BASE": {"ip": "10.0.0.2", "port": "22", "username": "deck", "key_path": "~/.ssh/id_base"},
+            "END_EFFECTOR": {"ip": "10.0.0.3", "port": "22", "username": "deck", "key_path": "~/.ssh/id_ef"},
+        }
+        return json.dumps(configs.get(device_name, {}))
 
 
 class _ScreenRecorderRecorder:
     def __init__(self) -> None:
         self.is_recording_changed = _SignalRecorder()
         self.recording_duration_changed = _SignalRecorder()
+        self.free_space_gb_changed = _SignalRecorder()
         self.is_recording = False
-        self.recording_duration = 0
+        self.recording_duration = 120
+        self.free_space_gb = 8.5
+
+
+class _RosBagRecorderRecorder:
+    def __init__(self) -> None:
+        self.is_bag_recording_changed = _SignalRecorder()
+        self.bag_recording_duration_changed = _SignalRecorder()
+        self.is_compressing_changed = _SignalRecorder()
+        self.bag_status_message_changed = _SignalRecorder()
+        self.is_bag_recording = True
+        self.bag_recording_duration = 33
+        self.is_compressing = False
+        self.bag_status_message = "Remote EF ready"
 
 
 class _SystemMonitorRecorder:
@@ -370,6 +417,14 @@ class _SystemMonitorRecorder:
 class _TeensyControllerRecorder:
     def __init__(self) -> None:
         self.status_changed = _SignalRecorder()
+        self.connection_changed = _SignalRecorder()
+        self.available = True
+        self.stability_enabled = True
+        self.auto_correction_enabled = False
+        self.spray_gun_leveling_enabled = True
+        self.roller_steering_enabled = False
+        self.swing_damping_enabled = True
+        self.spray_gun_led_on = False
         self.all_status = {
             "enabled": True,
             "relay_on": False,
@@ -379,6 +434,7 @@ class _TeensyControllerRecorder:
             "run_time": 120.0,
             "loop_time": 450.0,
             "loop_time_counter": 900.0,
+            "yaw_enabled": True,
         }
 
 
@@ -404,6 +460,18 @@ class _WinchStatusRecorder:
         self.motor_voltage = 24.0
         self.motor_brake = True
         self.unusual_load_detected = False
+
+
+class _HeartbeatHandlerRecorder:
+    def __init__(self) -> None:
+        self.base_online_changed = _SignalRecorder()
+        self.base_status_changed = _SignalRecorder()
+        self.ef_online_changed = _SignalRecorder()
+        self.ef_status_changed = _SignalRecorder()
+        self.base_online = True
+        self.base_status = 0x01
+        self.ef_online = False
+        self.ef_status = 0x02
 
 
 class _SafetyCoordinatorRecorder:
@@ -476,7 +544,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
             "teensy_controller": object(),
             "esp32_valve_controller": object(),
             "lidar_controller": object(),
-            "heartbeat_handler": object(),
+            "heartbeat_handler": _HeartbeatHandlerRecorder(),
             "control_processor": _ControlProcessorRecorder(),
             "admin_action_gate": object(),
             "manual_command_handler": object(),
@@ -489,7 +557,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
             "system_monitor": _SystemMonitorRecorder(),
             "screen_manager": object(),
             "screen_recorder": _ScreenRecorderRecorder(),
-            "ros_bag_recorder": object(),
+            "ros_bag_recorder": _RosBagRecorderRecorder(),
             "workflow_editor": object(),
             "input_handler": _InputHandlerRecorder(),
             "emergency_handler": _EmergencyHandlerRecorder(),
@@ -523,22 +591,60 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.action_legality is not None
     assert runtime.system_control_services is not None
     assert runtime.video_runtime is not None
+    assert runtime.recording_status is not None
+    assert runtime.wheel_status is not None
     assert runtime.winch_status is not None
     assert runtime.teensy_status is not None
+    assert runtime.shell_connectivity_status is not None
     assert runtime.engine.context.properties["actionLegality"] is runtime.action_legality
     assert runtime.engine.context.properties["systemControlServices"] is runtime.system_control_services
     assert runtime.engine.context.properties["videoRuntime"] is runtime.video_runtime
+    assert runtime.engine.context.properties["recordingStatus"] is runtime.recording_status
+    assert runtime.engine.context.properties["wheelStatus"] is runtime.wheel_status
     assert runtime.engine.context.properties["winchStatus"] is runtime.winch_status
     assert runtime.engine.context.properties["teensyStatus"] is runtime.teensy_status
+    assert runtime.engine.context.properties["shellConnectivityStatus"] is runtime.shell_connectivity_status
     assert runtime.system_control_services.manualCommandHandler is runtime.bundle.manual_command_handler
     assert runtime.video_runtime.controls.leftMode == "None"
     assert runtime.video_runtime.topBar.systemBatteryPercent == 100
+    assert runtime.recording_status.endEffectorRecording is True
+    assert runtime.recording_status.baseRecording is False
+    assert runtime.recording_status.screenRecording is False
+    assert runtime.recording_status.screenRecordingDuration == 120
+    assert runtime.recording_status.screenFreeSpaceGb == 8.5
+    assert runtime.recording_status.rosBagRecording is True
+    assert runtime.recording_status.rosBagRecordingDuration == 33
+    assert runtime.recording_status.rosBagCompressing is False
+    assert runtime.recording_status.rosBagStatusMessage == "Remote EF ready"
+    assert runtime.wheel_status.available is True
+    assert runtime.wheel_status.enabled is True
+    assert runtime.wheel_status.leftMotorAvailable is True
+    assert runtime.wheel_status.rightMotorAvailable is False
+    assert runtime.wheel_status.leftWheelSpeed == 1.5
+    assert runtime.wheel_status.rightWheelCurrent == 4.0
+    assert runtime.wheel_status.leftWheelPosition == 125.0
     assert runtime.winch_status.available is True
     assert runtime.winch_status.loadDetectionEnabled is True
     assert runtime.winch_status.cableLength == 1200.0
     assert runtime.teensy_status.enabled is True
     assert runtime.teensy_status.relayOn is False
     assert runtime.teensy_status.loopTime == 450.0
+    assert runtime.teensy_status.stabilityEnabled is True
+    assert runtime.teensy_status.yawEnabled is True
+    assert runtime.teensy_status.autoCorrectionEnabled is False
+    assert runtime.teensy_status.sprayGunLevelingEnabled is True
+    assert runtime.teensy_status.rollerSteeringEnabled is False
+    assert runtime.teensy_status.swingDampingEnabled is True
+    assert runtime.teensy_status.sprayGunLedOn is False
+    assert runtime.shell_connectivity_status.winchAvailable is True
+    assert runtime.shell_connectivity_status.wheelAvailable is True
+    assert runtime.shell_connectivity_status.endEffectorAvailable is True
+    assert runtime.shell_connectivity_status.baseOnline is True
+    assert runtime.shell_connectivity_status.baseStatus == 0x01
+    assert runtime.shell_connectivity_status.endEffectorOnline is False
+    assert runtime.shell_connectivity_status.endEffectorStatus == 0x02
+    assert runtime.shell_connectivity_status.baseIpAddress == "10.0.0.2"
+    assert runtime.shell_connectivity_status.endEffectorIpAddress == "10.0.0.3"
     assert set(runtime.engine.context.properties) == set(module._EXPECTED_CONTEXT_PROPERTY_NAMES)
     assert [button for button, _ in runtime.steam_deck_handler.callbacks] == [
         "up", "down", "left", "right", "r4", "l4", "menu", "switch", "l5", "r5", "dot", "a", "l1"
