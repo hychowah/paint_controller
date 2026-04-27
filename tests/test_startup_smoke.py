@@ -71,7 +71,19 @@ class FakeDeviceActionHandler(QObject):
         return True
 
     @Slot(bool, result=bool)
+    def requestTeensyRelayEnabled(self, _enabled: bool) -> bool:
+        return True
+
+    @Slot(bool, result=bool)
+    def requestTeensyEnabled(self, _enabled: bool) -> bool:
+        return True
+
+    @Slot(bool, result=bool)
     def toggleWinchEnable(self, _current_enabled: bool) -> bool:
+        return True
+
+    @Slot(bool, result=bool)
+    def requestWinchEnabled(self, _enabled: bool) -> bool:
         return True
 
     @Slot(bool, result=bool)
@@ -94,6 +106,10 @@ class FakeDeviceActionHandler(QObject):
 class FakeDeviceOperationsHandler(QObject):
     @Slot(bool, result=bool)
     def toggleLoadDetection(self, _current_enabled: bool) -> bool:
+        return True
+
+    @Slot(bool, result=bool)
+    def requestLoadDetectionEnabled(self, _enabled: bool) -> bool:
         return True
 
     @Slot(result=bool)
@@ -397,6 +413,48 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
     workflow_runner = FakeWorkFlowRunner()
     workflow_editor = FakeWorkflowEditor()
     manual_command_handler = FakeManualCommandHandler()
+    video_runtime = DynamicObject(
+        controls=DynamicObject(
+            leftMode="None",
+            leftValue="",
+            rightMode="None",
+            rightValue="",
+        ),
+        feeds=FakeStreamHandler(),
+        topBar=DynamicObject(
+            endEffectorPingMs=38.0,
+            basePingMs=42.0,
+            endEffectorBatteryVoltage=24.0,
+            baseBatteryVoltage=24.0,
+            isRecording=False,
+            recordingDuration=0,
+            systemBatteryPercent=100,
+            cpuTemperature=0.0,
+            batteryRemainingTime="--",
+        ),
+    )
+    winch_status = DynamicObject(
+        available=True,
+        enabled=True,
+        loadDetectionEnabled=False,
+        cableLength=0.0,
+        cableSpeed=0.0,
+        winchTorque=0.0,
+        motorTemperature=25.0,
+        motorVoltage=24.0,
+        motorBrake=True,
+        unusualLoadDetected=False,
+    )
+    teensy_status = DynamicObject(
+        enabled=True,
+        relayOn=False,
+        voltage=24.0,
+        current=1.2,
+        temperature=32.0,
+        runTime=120.0,
+        loopTime=450.0,
+        loopTimeCounter=900.0,
+    )
 
     return {
         "stateStore": StateStore(),
@@ -440,6 +498,9 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             workflowEditor=workflow_editor,
             manualCommandHandler=manual_command_handler,
         ),
+        "videoRuntime": video_runtime,
+        "winchStatus": winch_status,
+        "teensyStatus": teensy_status,
         "warningHandler": DynamicObject(active_warning=""),
         "baseStreamHandler": FakeStreamHandler(),
         "wheelController": DynamicObject(
@@ -880,12 +941,17 @@ import "{systemcontrol_import_url}"
 Item {{
     width: 1280
     height: 800
+    property var servicesModel: systemControlServices
+    property var winchStatusModel: winchStatus
+    property var teensyStatusModel: teensyStatus
 
     SystemControlWorkspace {{
         anchors.fill: parent
         showOverlay: true
         activeMenu: "system"
-        systemControlServices: systemControlServices
+        systemControlServices: servicesModel
+        winchStatus: winchStatusModel
+        teensyStatus: teensyStatusModel
     }}
 }}
 '''.encode(),
@@ -947,10 +1013,125 @@ Item {{
         active: true
         videoSource: "{video_source}"
         workflowServices: systemControlServices
+        videoRuntime: videoRuntime
     }}
 }}
 '''.encode(),
         QUrl("inmemory:VideoFullscreenWorkspaceHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+        qt_app.processEvents()
+
+        fatal_warning_fragments = (
+            "failed to load component",
+            "no such file or directory",
+            "is not a type",
+            "required property",
+        )
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
+def test_page_winch_loads_with_explicit_winch_status(monkeypatch, tmp_path, qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    winch_import_url = _qml_import_url(qml_dir / "pages" / "winch")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{winch_import_url}"
+
+Item {{
+    width: 1280
+    height: 800
+    property var winchStatusModel: winchStatus
+
+    PageWinch {{
+        anchors.fill: parent
+        winchStatus: winchStatusModel
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:PageWinchHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+        qt_app.processEvents()
+
+        fatal_warning_fragments = (
+            "failed to load component",
+            "no such file or directory",
+            "is not a type",
+            "required property",
+        )
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
+def test_page_status_loads_with_explicit_winch_status(monkeypatch, tmp_path, qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    status_import_url = _qml_import_url(qml_dir / "pages" / "status")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{status_import_url}"
+
+Item {{
+    width: 1280
+    height: 800
+    property var winchStatusModel: winchStatus
+    property var teensyStatusModel: teensyStatus
+
+    PageStatus {{
+        anchors.fill: parent
+        winchStatus: winchStatusModel
+        teensyStatus: teensyStatusModel
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:PageStatusHarness.qml"),
     )
 
     _assert_component_ready(qtbot, component)
@@ -1007,6 +1188,7 @@ Item {{
         active: true
         videoSource: "image://base_front_live/frame"
         workflowServices: systemControlServices
+        videoRuntime: videoRuntime
     }}
 }}
 '''.encode(),
@@ -1225,9 +1407,13 @@ import "{systemcontrol_import_url}"
 Item {{
     width: 1280
     height: 800
+    property var winchStatusModel: winchStatus
+    property var teensyStatusModel: teensyStatus
 
     DeviceControlTab {{
         anchors.fill: parent
+        winchStatus: winchStatusModel
+        teensyStatus: teensyStatusModel
     }}
 }}
 '''.encode(),

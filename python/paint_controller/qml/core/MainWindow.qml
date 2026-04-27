@@ -33,6 +33,8 @@ ApplicationWindow {
     property bool showJoystickOverlayOnMainSurface: overlayHost ? overlayHost.joystick_overlay_on_main_surface : true
     property bool showEmergencyOverlayOnMainSurface: overlayHost ? overlayHost.emergency_overlay_on_main_surface : true
     property bool videoFullscreenOnMainSurface: overlayHost ? overlayHost.video_fullscreen_on_main_surface : (shellState ? shellState.video_fullscreen_on_main_surface : true)
+    property var winchStatusModel: winchStatus
+    property var teensyStatusModel: teensyStatus
     
     // Use Qt's Screen type for positioning - access via Screen attached property
     screen: Qt.application.screens[mainScreenIndex] || Qt.application.screens[0]
@@ -224,12 +226,17 @@ ApplicationWindow {
     
     Component {
         id: winchPageComponent
-        PageWinch {}
+        PageWinch {
+            winchStatus: mainWindow.winchStatusModel
+        }
     }
     
     Component {
         id: statusPageComponent
-        PageStatus {}
+        PageStatus {
+            winchStatus: mainWindow.winchStatusModel
+            teensyStatus: mainWindow.teensyStatusModel
+        }
     }
 
     Component {
@@ -302,6 +309,8 @@ ApplicationWindow {
         showOverlay: overlayController.show_overlay
         activeMenu: overlayController.active_menu
         systemControlServices: systemControlServices
+        winchStatus: mainWindow.winchStatusModel
+        teensyStatus: mainWindow.teensyStatusModel
         visible: showSystemControlOnMainSurface
     }
 
@@ -340,6 +349,7 @@ ApplicationWindow {
         active: overlayHost ? (overlayHost.video_fullscreen_active && overlayHost.video_fullscreen_on_main_surface) : false
         videoSource: overlayHost ? overlayHost.video_fullscreen_source : ""
         workflowServices: systemControlServices
+        videoRuntime: videoRuntime
     }
 
     // LiDAR 3D View

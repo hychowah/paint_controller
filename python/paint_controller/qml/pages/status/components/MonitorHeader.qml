@@ -6,6 +6,7 @@ import "../../../core"
 
 Rectangle {
     id: headerBar
+    required property var teensyStatus
     height: 80
     color: CommonStyle.backgroundL1
     radius: CommonStyle.radiusMd
@@ -40,7 +41,7 @@ Rectangle {
                     }
                     
                     Text {
-                        text: (teensyController.all_status.voltage || 0).toFixed(1) + "V"
+                        text: (headerBar.teensyStatus.voltage || 0).toFixed(1) + "V"
                         font.pixelSize: CommonStyle.fontHeading
                         font.family: CommonStyle.fontMono
                         font.bold: true
@@ -71,7 +72,7 @@ Rectangle {
                     }
                     
                     Text {
-                        text: (teensyController.all_status.temperature || 0).toFixed(0) + "°C"
+                        text: (headerBar.teensyStatus.temperature || 0).toFixed(0) + "°C"
                         font.pixelSize: CommonStyle.fontHeading
                         font.family: CommonStyle.fontMono
                         font.bold: true
@@ -102,7 +103,7 @@ Rectangle {
                     }
                     
                     Text {
-                        text: "Loop: " + (teensyController.all_status.loop_time || 0).toFixed(0) + "us"
+                        text: "Loop: " + (headerBar.teensyStatus.loopTime || 0).toFixed(0) + "us"
                         font.pixelSize: CommonStyle.fontBody
                         font.family: CommonStyle.fontMono
                         font.bold: true
@@ -127,12 +128,12 @@ Rectangle {
                 Rectangle {
                     Layout.preferredWidth: 120
                     Layout.preferredHeight: 48
-                    color: teensyController.all_status.relay_on ? CommonStyle.statusSuccess : CommonStyle.textDisabled
+                    color: headerBar.teensyStatus.relayOn ? CommonStyle.statusSuccess : CommonStyle.textDisabled
                     radius: CommonStyle.radiusSm
                     
                     Text {
                         anchors.centerIn: parent
-                        text: teensyController.all_status.relay_on ? "RELAY ON" : "RELAY OFF"
+                        text: headerBar.teensyStatus.relayOn ? "RELAY ON" : "RELAY OFF"
                         font.pixelSize: CommonStyle.fontBody
                         font.family: CommonStyle.fontSans
                         font.bold: true
@@ -144,12 +145,12 @@ Rectangle {
                 Rectangle {
                     Layout.preferredWidth: 180
                     Layout.preferredHeight: 48
-                    color: teensyController.all_status.enabled ? CommonStyle.statusSuccess : CommonStyle.textDisabled
+                    color: headerBar.teensyStatus.enabled ? CommonStyle.statusSuccess : CommonStyle.textDisabled
                     radius: CommonStyle.radiusSm
                     
                     Text {
                         anchors.centerIn: parent
-                        text: teensyController.all_status.enabled ? "SYSTEM ENABLED" : "SYSTEM DISABLED"
+                        text: headerBar.teensyStatus.enabled ? "SYSTEM ENABLED" : "SYSTEM DISABLED"
                         font.pixelSize: CommonStyle.fontBody
                         font.family: CommonStyle.fontSans
                         font.bold: true

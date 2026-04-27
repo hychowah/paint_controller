@@ -9,6 +9,8 @@ import "components"
 Rectangle {
     id: page3Rect
     objectName: "page3Rect"
+    required property var winchStatus
+    required property var teensyStatus
     Layout.fillWidth: true
     Layout.fillHeight: true
     color: "#9F9F9F"
@@ -65,7 +67,7 @@ Rectangle {
                         }
                         TouchSwitch {
                                 id: winchEnableSwitch
-                                checked: winchController.enabled
+                                checked: page3Rect.winchStatus.enabled
                                 onToggled: {
                                     if (!deviceActionHandler.requestWinchEnabled(checked)) {
                                         winchEnableSwitch.checked = !checked
@@ -84,41 +86,41 @@ Rectangle {
 
                         Label { text: "Status:"; font.bold: true }
                         Label { 
-                            text: winchController.available ? "Connected" : "Disconnected"
-                            color: winchController.available ? "green" : "red"
+                            text: page3Rect.winchStatus.available ? "Connected" : "Disconnected"
+                            color: page3Rect.winchStatus.available ? "green" : "red"
                         }
 
                         Label { text: "Cable Length:"; font.bold: true }
-                        Label { text: String((winchController.cable_length).toFixed(0)) + " mm" }
+                        Label { text: String((page3Rect.winchStatus.cableLength).toFixed(0)) + " mm" }
 
                         Label {text: "Cable Speed:"; font.bold: true}
-                        Label {text: String(winchController.cable_speed.toFixed(0)) + " m/s"}
+                        Label {text: String(page3Rect.winchStatus.cableSpeed.toFixed(0)) + " m/s"}
 
                         Label { text: "Torque:"; font.bold: true }
-                        Label { text: String(winchController.winch_torque.toFixed(1)) + " Nm" }
+                        Label { text: String(page3Rect.winchStatus.winchTorque.toFixed(1)) + " Nm" }
 
                         Label { text: "Temperature:"; font.bold: true }
-                        Label { text: winchController.motor_temperature.toFixed(1) + " °C" }
+                        Label { text: page3Rect.winchStatus.motorTemperature.toFixed(1) + " °C" }
 
                         Label { text: "Voltage:"; font.bold: true }
-                        Label { text: winchController.motor_voltage.toFixed(1) + " V" }
+                        Label { text: page3Rect.winchStatus.motorVoltage.toFixed(1) + " V" }
 
                         Label { text: "Brake:"; font.bold: true }
                         Label { 
-                            text: winchController.motor_brake ? "Engaged" : "Released"
-                            color: winchController.motor_brake ? "red" : "green"
+                            text: page3Rect.winchStatus.motorBrake ? "Engaged" : "Released"
+                            color: page3Rect.winchStatus.motorBrake ? "red" : "green"
                         }
 
                         Label { text: "Load Detection:"; font.bold: true }
                         Label { 
-                            text: winchController.load_detection_enabled ? "True" : "False"
-                            color: winchController.load_detection_enabled ? "green" : "red"
+                            text: page3Rect.winchStatus.loadDetectionEnabled ? "True" : "False"
+                            color: page3Rect.winchStatus.loadDetectionEnabled ? "green" : "red"
                         }
 
                         Label { text: "Unusual Load:"; font.bold: true }
                         Label { 
-                            text: winchController.unusual_load_detected ? "True" : "False"
-                            color: winchController.unusual_load_detected ? "green" : "red"
+                            text: page3Rect.winchStatus.unusualLoadDetected ? "True" : "False"
+                            color: page3Rect.winchStatus.unusualLoadDetected ? "green" : "red"
                         }
                     }
                 }
@@ -137,6 +139,7 @@ Rectangle {
         TeensyStatus {
             Layout.preferredWidth: parent.width / 2
             Layout.fillHeight: true
+            teensyStatus: page3Rect.teensyStatus
         }
 
         // Wheel Status - now using the separate component  

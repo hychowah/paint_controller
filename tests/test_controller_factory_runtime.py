@@ -317,6 +317,16 @@ class _EmergencyHandlerRecorder:
 
 
 class _ControlProcessorRecorder:
+    def __init__(self) -> None:
+        self.left_control_mode = "None"
+        self.left_control_value = ""
+        self.right_control_mode = "None"
+        self.right_control_value = ""
+        self.left_control_mode_changed = _SignalRecorder()
+        self.left_control_value_changed = _SignalRecorder()
+        self.right_control_mode_changed = _SignalRecorder()
+        self.right_control_value_changed = _SignalRecorder()
+
     def process_input(self, _input_state) -> None:
         pass
 
@@ -324,11 +334,76 @@ class _ControlProcessorRecorder:
 class _VideoHandlerRecorder:
     def __init__(self) -> None:
         self.endEffectorFrameReady = _SignalRecorder()
+        self.baseFrontFrameReady = _SignalRecorder()
+        self.baseRearFrameReady = _SignalRecorder()
         self.started = 0
 
     def start_all_streams(self) -> int:
         self.started += 1
         return 4
+
+
+class _SshControllerRecorder:
+    def __init__(self) -> None:
+        self.deviceAvailabilityChanged = _SignalRecorder()
+        self.devicePingTimes = {"BASE": "42", "END_EFFECTOR": "38"}
+
+
+class _ScreenRecorderRecorder:
+    def __init__(self) -> None:
+        self.is_recording_changed = _SignalRecorder()
+        self.recording_duration_changed = _SignalRecorder()
+        self.is_recording = False
+        self.recording_duration = 0
+
+
+class _SystemMonitorRecorder:
+    def __init__(self) -> None:
+        self.battery_level_changed = _SignalRecorder()
+        self.battery_remaining_time_changed = _SignalRecorder()
+        self.cpu_temperature_changed = _SignalRecorder()
+        self.battery_level = 100
+        self.battery_remaining_time = "N/A"
+        self.cpu_temperature = 0.0
+
+
+class _TeensyControllerRecorder:
+    def __init__(self) -> None:
+        self.status_changed = _SignalRecorder()
+        self.all_status = {
+            "enabled": True,
+            "relay_on": False,
+            "voltage": 24.0,
+            "current": 1.2,
+            "temperature": 32.0,
+            "run_time": 120.0,
+            "loop_time": 450.0,
+            "loop_time_counter": 900.0,
+        }
+
+
+class _WinchStatusRecorder:
+    def __init__(self) -> None:
+        self.available_changed = _SignalRecorder()
+        self.enabled_changed = _SignalRecorder()
+        self.load_detection_changed = _SignalRecorder()
+        self.cable_length_changed = _SignalRecorder()
+        self.cable_speed_changed = _SignalRecorder()
+        self.winch_torque_changed = _SignalRecorder()
+        self.motor_temperature_changed = _SignalRecorder()
+        self.motor_voltage_changed = _SignalRecorder()
+        self.motor_brake_changed = _SignalRecorder()
+        self.unusual_load_detected_changed = _SignalRecorder()
+        self.available = True
+        self.enabled = False
+        self.load_detection_enabled = True
+        self.cable_length = 1200.0
+        self.cable_speed = 15.0
+        self.winch_torque = 12.5
+        self.motor_temperature = 31.0
+        self.motor_voltage = 24.0
+        self.motor_brake = True
+        self.unusual_load_detected = False
 
 
 class _SafetyCoordinatorRecorder:
@@ -410,15 +485,17 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
             "winch_motion_handler": object(),
             "tuning_admin_handler": object(),
             "base_top_view_admin_handler": object(),
-            "ssh_controller": object(),
-            "system_monitor": object(),
+            "ssh_controller": _SshControllerRecorder(),
+            "system_monitor": _SystemMonitorRecorder(),
             "screen_manager": object(),
-            "screen_recorder": object(),
+            "screen_recorder": _ScreenRecorderRecorder(),
             "ros_bag_recorder": object(),
             "workflow_editor": object(),
             "input_handler": _InputHandlerRecorder(),
             "emergency_handler": _EmergencyHandlerRecorder(),
             "safety_coordinator": _SafetyCoordinatorRecorder(),
+            "teensy_controller": _TeensyControllerRecorder(),
+            "winch_controller": _WinchStatusRecorder(),
         },
     )()
     runtime.video_stream_handler = _VideoHandlerRecorder()
@@ -445,9 +522,23 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.qt_bridge.input_handler is runtime.bundle.input_handler
     assert runtime.action_legality is not None
     assert runtime.system_control_services is not None
+    assert runtime.video_runtime is not None
+    assert runtime.winch_status is not None
+    assert runtime.teensy_status is not None
     assert runtime.engine.context.properties["actionLegality"] is runtime.action_legality
     assert runtime.engine.context.properties["systemControlServices"] is runtime.system_control_services
+    assert runtime.engine.context.properties["videoRuntime"] is runtime.video_runtime
+    assert runtime.engine.context.properties["winchStatus"] is runtime.winch_status
+    assert runtime.engine.context.properties["teensyStatus"] is runtime.teensy_status
     assert runtime.system_control_services.manualCommandHandler is runtime.bundle.manual_command_handler
+    assert runtime.video_runtime.controls.leftMode == "None"
+    assert runtime.video_runtime.topBar.systemBatteryPercent == 100
+    assert runtime.winch_status.available is True
+    assert runtime.winch_status.loadDetectionEnabled is True
+    assert runtime.winch_status.cableLength == 1200.0
+    assert runtime.teensy_status.enabled is True
+    assert runtime.teensy_status.relayOn is False
+    assert runtime.teensy_status.loopTime == 450.0
     assert set(runtime.engine.context.properties) == set(module._EXPECTED_CONTEXT_PROPERTY_NAMES)
     assert [button for button, _ in runtime.steam_deck_handler.callbacks] == [
         "up", "down", "left", "right", "r4", "l4", "menu", "switch", "l5", "r5", "dot", "a", "l1"

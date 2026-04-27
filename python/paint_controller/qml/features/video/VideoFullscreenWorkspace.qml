@@ -10,6 +10,7 @@ Rectangle {
     property string videoSource: ""
     property bool active: false
     required property var workflowServices
+    required property var videoRuntime
 
     readonly property int panelWidth: CommonStyle.videoControlPanelWidth
     readonly property int panelHeight: CommonStyle.videoControlPanelHeight
@@ -101,6 +102,7 @@ Rectangle {
         id: endEffectorOverlayComponent
         EndEffectorOverlay {
             workflowRunner: root.workflowServices.workflowRunner
+            videoRuntime: root.videoRuntime
         }
     }
 
@@ -108,6 +110,7 @@ Rectangle {
         id: baseFrontOverlayComponent
         BaseFrontOverlay {
             workflowRunner: root.workflowServices.workflowRunner
+            videoRuntime: root.videoRuntime
         }
     }
 
@@ -119,8 +122,8 @@ Rectangle {
         bottomMargin: root.panelBottomMargin
         width: root.panelWidth
         height: root.panelHeight
-        controlMode: controlProcessor.left_control_mode
-        controlValue: controlProcessor.left_control_value
+        controlMode: root.videoRuntime.controls.leftMode
+        controlValue: root.videoRuntime.controls.leftValue
         title: "LEFT CONTROL"
     }
 
@@ -132,8 +135,8 @@ Rectangle {
         bottomMargin: root.panelBottomMargin
         width: root.panelWidth
         height: root.panelHeight
-        controlMode: controlProcessor.right_control_mode
-        controlValue: controlProcessor.right_control_value
+        controlMode: root.videoRuntime.controls.rightMode
+        controlValue: root.videoRuntime.controls.rightValue
         title: "RIGHT CONTROL"
     }
 
@@ -172,7 +175,7 @@ Rectangle {
     }
 
     Connections {
-        target: baseStreamHandler
+        target: root.videoRuntime.feeds
         enabled: root.active
 
         function onEndEffectorFrameReady() {

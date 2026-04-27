@@ -10,6 +10,7 @@ Rectangle {
     anchors.fill: parent
     color: "transparent"
     required property var workflowRunner
+    required property var videoRuntime
 
     readonly property var style: CommonStyle
     
@@ -40,6 +41,7 @@ Rectangle {
     VideoOverlayTopBar {
         id: topBar
         z: 200  // Highest z-index
+        topBarModel: overlay.videoRuntime.topBar
     }
     
     // LEFT SIDE - Teensy Data (Extension & Gimbal Angle)

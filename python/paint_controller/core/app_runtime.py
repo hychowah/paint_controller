@@ -9,7 +9,7 @@ from collections.abc import Callable
 from typing import Any
 
 import rclpy
-from PySide6.QtCore import Property, QCoreApplication, QEvent, QObject, QTimer, QUrl, Qt
+from PySide6.QtCore import Property, QCoreApplication, QEvent, QObject, QTimer, QUrl, Qt, Signal
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWidgets import QApplication
 
@@ -32,6 +32,9 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "overlayHost",
     "actionLegality",
     "systemControlServices",
+    "videoRuntime",
+    "winchStatus",
+    "teensyStatus",
     "overlayController",
     "warningHandler",
     "baseStreamHandler",
@@ -75,6 +78,374 @@ class _SystemControlServices(QObject):
     @Property(object, constant=True)
     def manualCommandHandler(self) -> object:
         return self._manual_command_handler
+
+
+def _connect_if_signal(owner: object, signal_name: str, callback: Callable[..., None]) -> None:
+    signal = getattr(owner, signal_name, None)
+    if signal is None or not hasattr(signal, "connect"):
+        return
+    signal.connect(callback)
+
+
+def _read_mapping_value(mapping: object, key: str) -> Any:
+    if isinstance(mapping, dict):
+        return mapping.get(key)
+    if hasattr(mapping, "property"):
+        value = mapping.property(key)
+        if value is not None:
+            return value
+    return getattr(mapping, key, None)
+
+
+def _read_object_value(owner: object, *names: str, default: Any = None) -> Any:
+    for name in names:
+        if hasattr(owner, name):
+            return getattr(owner, name)
+        if hasattr(owner, "property"):
+            value = owner.property(name)
+            if value is not None:
+                return value
+    return default
+
+
+class _VideoRuntimeControls(QObject):
+    changed = Signal()
+
+    def __init__(self, control_processor: object) -> None:
+        super().__init__()
+        self._control_processor = control_processor
+        for signal_name in (
+            "left_control_mode_changed",
+            "left_control_value_changed",
+            "right_control_mode_changed",
+            "right_control_value_changed",
+        ):
+            _connect_if_signal(control_processor, signal_name, self.changed.emit)
+
+    @Property(str, notify=changed)
+    def leftMode(self) -> str:
+        return str(_read_object_value(self._control_processor, "left_control_mode", default=""))
+
+    @Property(str, notify=changed)
+    def leftValue(self) -> str:
+        return str(_read_object_value(self._control_processor, "left_control_value", default=""))
+
+    @Property(str, notify=changed)
+    def rightMode(self) -> str:
+        return str(_read_object_value(self._control_processor, "right_control_mode", default=""))
+
+    @Property(str, notify=changed)
+    def rightValue(self) -> str:
+        return str(_read_object_value(self._control_processor, "right_control_value", default=""))
+
+
+class _VideoRuntimeFeeds(QObject):
+    endEffectorFrameReady = Signal()
+    baseFrontFrameReady = Signal()
+    baseRearFrameReady = Signal()
+
+    def __init__(self, video_stream_handler: object) -> None:
+        super().__init__()
+        _connect_if_signal(video_stream_handler, "endEffectorFrameReady", self.endEffectorFrameReady.emit)
+        _connect_if_signal(video_stream_handler, "baseFrontFrameReady", self.baseFrontFrameReady.emit)
+        _connect_if_signal(video_stream_handler, "baseRearFrameReady", self.baseRearFrameReady.emit)
+
+
+class _VideoRuntimeTopBar(QObject):
+    changed = Signal()
+
+    def __init__(
+        self,
+        ssh_controller: object,
+        screen_recorder: object,
+        system_monitor: object,
+        teensy_controller: object,
+        winch_controller: object,
+    ) -> None:
+        super().__init__()
+        self._ssh_controller = ssh_controller
+        self._screen_recorder = screen_recorder
+        self._system_monitor = system_monitor
+        self._teensy_controller = teensy_controller
+        self._winch_controller = winch_controller
+
+        for owner, signal_names in (
+            (ssh_controller, ("deviceAvailabilityChanged",)),
+            (screen_recorder, ("is_recording_changed", "recording_duration_changed")),
+            (system_monitor, (
+                "battery_level_changed",
+                "battery_remaining_time_changed",
+                "cpu_temperature_changed",
+            )),
+            (teensy_controller, ("status_changed",)),
+            (winch_controller, ("motor_voltage_changed",)),
+        ):
+            for signal_name in signal_names:
+                _connect_if_signal(owner, signal_name, self.changed.emit)
+
+    def _ping_ms(self, device_name: str) -> float:
+        ping_times = _read_object_value(self._ssh_controller, "devicePingTimes", default={})
+        value = _read_mapping_value(ping_times, device_name)
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    def _teensy_voltage(self) -> float:
+        all_status = _read_object_value(self._teensy_controller, "all_status", default={})
+        value = _read_mapping_value(all_status, "voltage")
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(float, notify=changed)
+    def endEffectorPingMs(self) -> float:
+        return self._ping_ms("END_EFFECTOR")
+
+    @Property(float, notify=changed)
+    def basePingMs(self) -> float:
+        return self._ping_ms("BASE")
+
+    @Property(float, notify=changed)
+    def endEffectorBatteryVoltage(self) -> float:
+        return self._teensy_voltage()
+
+    @Property(float, notify=changed)
+    def baseBatteryVoltage(self) -> float:
+        value = _read_object_value(self._winch_controller, "motor_voltage", default=0.0)
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(bool, notify=changed)
+    def isRecording(self) -> bool:
+        return bool(_read_object_value(self._screen_recorder, "is_recording", "isRecording", default=False))
+
+    @Property(int, notify=changed)
+    def recordingDuration(self) -> int:
+        value = _read_object_value(self._screen_recorder, "recording_duration", default=0)
+        try:
+            return int(value or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    @Property(int, notify=changed)
+    def systemBatteryPercent(self) -> int:
+        value = _read_object_value(
+            self._system_monitor,
+            "battery_level",
+            "battery_percentage",
+            default=0,
+        )
+        try:
+            return int(value or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    @Property(float, notify=changed)
+    def cpuTemperature(self) -> float:
+        value = _read_object_value(self._system_monitor, "cpu_temperature", default=0.0)
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(str, notify=changed)
+    def batteryRemainingTime(self) -> str:
+        value = _read_object_value(
+            self._system_monitor,
+            "battery_remaining_time",
+            "battery_time_remaining",
+            default="N/A",
+        )
+        return str(value if value is not None else "N/A")
+
+
+class _VideoRuntime(QObject):
+    def __init__(
+        self,
+        control_processor: object,
+        video_stream_handler: object,
+        ssh_controller: object,
+        screen_recorder: object,
+        system_monitor: object,
+        teensy_controller: object,
+        winch_controller: object,
+    ) -> None:
+        super().__init__()
+        self._controls = _VideoRuntimeControls(control_processor)
+        self._feeds = _VideoRuntimeFeeds(video_stream_handler)
+        self._top_bar = _VideoRuntimeTopBar(
+            ssh_controller=ssh_controller,
+            screen_recorder=screen_recorder,
+            system_monitor=system_monitor,
+            teensy_controller=teensy_controller,
+            winch_controller=winch_controller,
+        )
+
+    @Property(object, constant=True)
+    def controls(self) -> object:
+        return self._controls
+
+    @Property(object, constant=True)
+    def feeds(self) -> object:
+        return self._feeds
+
+    @Property(object, constant=True)
+    def topBar(self) -> object:
+        return self._top_bar
+
+
+class _WinchStatus(QObject):
+    changed = Signal()
+
+    def __init__(self, winch_controller: object) -> None:
+        super().__init__()
+        self._winch_controller = winch_controller
+        for signal_name in (
+            "available_changed",
+            "enabled_changed",
+            "load_detection_changed",
+            "cable_length_changed",
+            "cable_speed_changed",
+            "winch_torque_changed",
+            "motor_temperature_changed",
+            "motor_voltage_changed",
+            "motor_brake_changed",
+            "unusual_load_detected_changed",
+        ):
+            _connect_if_signal(winch_controller, signal_name, self.changed.emit)
+
+    @Property(bool, notify=changed)
+    def available(self) -> bool:
+        return bool(_read_object_value(self._winch_controller, "available", default=False))
+
+    @Property(bool, notify=changed)
+    def enabled(self) -> bool:
+        return bool(_read_object_value(self._winch_controller, "enabled", default=False))
+
+    @Property(bool, notify=changed)
+    def loadDetectionEnabled(self) -> bool:
+        return bool(_read_object_value(self._winch_controller, "load_detection_enabled", default=False))
+
+    @Property(float, notify=changed)
+    def cableLength(self) -> float:
+        value = _read_object_value(self._winch_controller, "cable_length", default=0.0)
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(float, notify=changed)
+    def cableSpeed(self) -> float:
+        value = _read_object_value(self._winch_controller, "cable_speed", default=0.0)
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(float, notify=changed)
+    def winchTorque(self) -> float:
+        value = _read_object_value(self._winch_controller, "winch_torque", default=0.0)
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(float, notify=changed)
+    def motorTemperature(self) -> float:
+        value = _read_object_value(self._winch_controller, "motor_temperature", default=0.0)
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(float, notify=changed)
+    def motorVoltage(self) -> float:
+        value = _read_object_value(self._winch_controller, "motor_voltage", default=0.0)
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(bool, notify=changed)
+    def motorBrake(self) -> bool:
+        return bool(_read_object_value(self._winch_controller, "motor_brake", default=False))
+
+    @Property(bool, notify=changed)
+    def unusualLoadDetected(self) -> bool:
+        return bool(_read_object_value(self._winch_controller, "unusual_load_detected", default=False))
+
+
+class _TeensyStatus(QObject):
+    changed = Signal()
+
+    def __init__(self, teensy_controller: object) -> None:
+        super().__init__()
+        self._teensy_controller = teensy_controller
+        _connect_if_signal(teensy_controller, "status_changed", self.changed.emit)
+
+    def _status_value(self, key: str) -> Any:
+        all_status = _read_object_value(self._teensy_controller, "all_status", default={})
+        return _read_mapping_value(all_status, key)
+
+    @Property(bool, notify=changed)
+    def enabled(self) -> bool:
+        return bool(self._status_value("enabled"))
+
+    @Property(bool, notify=changed)
+    def relayOn(self) -> bool:
+        return bool(self._status_value("relay_on"))
+
+    @Property(float, notify=changed)
+    def voltage(self) -> float:
+        value = self._status_value("voltage")
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(float, notify=changed)
+    def current(self) -> float:
+        value = self._status_value("current")
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(float, notify=changed)
+    def temperature(self) -> float:
+        value = self._status_value("temperature")
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(float, notify=changed)
+    def runTime(self) -> float:
+        value = self._status_value("run_time")
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(float, notify=changed)
+    def loopTime(self) -> float:
+        value = self._status_value("loop_time")
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(float, notify=changed)
+    def loopTimeCounter(self) -> float:
+        value = self._status_value("loop_time_counter")
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
 
 
 def teardown_qml_runtime(
@@ -138,6 +509,9 @@ class AppRuntime:
         self.qt_bridge = None
         self.bundle = None
         self.system_control_services: _SystemControlServices | None = None
+        self.video_runtime: _VideoRuntime | None = None
+        self.winch_status: _WinchStatus | None = None
+        self.teensy_status: _TeensyStatus | None = None
         self.shell_state = None
         self.overlay_host = None
         self.action_legality = None
@@ -270,6 +644,17 @@ class AppRuntime:
             workflow_editor=self.bundle.workflow_editor,
             manual_command_handler=self.bundle.manual_command_handler,
         )
+        self.video_runtime = _VideoRuntime(
+            control_processor=self.bundle.control_processor,
+            video_stream_handler=self.video_stream_handler,
+            ssh_controller=self.bundle.ssh_controller,
+            screen_recorder=self.bundle.screen_recorder,
+            system_monitor=self.bundle.system_monitor,
+            teensy_controller=self.bundle.teensy_controller,
+            winch_controller=self.bundle.winch_controller,
+        )
+        self.winch_status = _WinchStatus(self.bundle.winch_controller)
+        self.teensy_status = _TeensyStatus(self.bundle.teensy_controller)
 
     def _wire_steam_deck_callbacks(self) -> None:
         assert self.bundle is not None
@@ -344,6 +729,9 @@ class AppRuntime:
         assert self.overlay_host is not None
         assert self.action_legality is not None
         assert self.system_control_services is not None
+        assert self.video_runtime is not None
+        assert self.winch_status is not None
+        assert self.teensy_status is not None
         assert self.video_stream_handler is not None
         assert self.steam_deck_handler is not None
         assert self.settings_manager is not None
@@ -357,6 +745,9 @@ class AppRuntime:
             "overlayHost": self.overlay_host,
             "actionLegality": self.action_legality,
             "systemControlServices": self.system_control_services,
+            "videoRuntime": self.video_runtime,
+            "winchStatus": self.winch_status,
+            "teensyStatus": self.teensy_status,
             "overlayController": self.bundle.overlay_controller,
             "warningHandler": self.bundle.warning_handler,
             "baseStreamHandler": self.video_stream_handler,

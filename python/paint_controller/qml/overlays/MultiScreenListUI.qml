@@ -21,6 +21,10 @@ Window {
     title: "Industrial Monitor - Paint Controller"
     width: 1280
     height: 720
+    property var systemControlServicesModel: systemControlServices
+    property var winchStatusModel: winchStatus
+    property var teensyStatusModel: teensyStatus
+    property var videoRuntimeModel: videoRuntime
     
     // Properties to control which screen this window appears on
     property int targetScreenIndex: 0
@@ -45,6 +49,7 @@ Window {
     // Industrial Monitor Content
     PageMonitor {
         anchors.fill: parent
+        teensyStatus: multiScreenWindow.teensyStatusModel
     }
     
     // SystemControlMenu appears on this screen when in dual-monitor mode
@@ -55,7 +60,9 @@ Window {
         z: overlayHost ? overlayHost.system_control_layer : 1001
         showOverlay: overlayController.show_overlay
         activeMenu: overlayController.active_menu
-        systemControlServices: systemControlServices
+        systemControlServices: multiScreenWindow.systemControlServicesModel
+        winchStatus: multiScreenWindow.winchStatusModel
+        teensyStatus: multiScreenWindow.teensyStatusModel
         visible: overlayHost ? overlayHost.system_control_on_secondary_surface : (shellState ? shellState.show_system_control_on_secondary_surface : true)
     }
 
@@ -79,7 +86,8 @@ Window {
         z: overlayHost ? overlayHost.video_fullscreen_layer : 500
         active: overlayHost ? (overlayHost.video_fullscreen_active && overlayHost.video_fullscreen_on_secondary_surface) : false
         videoSource: overlayHost ? overlayHost.video_fullscreen_source : ""
-        workflowServices: systemControlServices
+        workflowServices: multiScreenWindow.systemControlServicesModel
+        videoRuntime: multiScreenWindow.videoRuntimeModel
     }
 
     EmergencyOverlay {

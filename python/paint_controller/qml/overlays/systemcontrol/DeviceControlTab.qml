@@ -5,6 +5,8 @@ import "./components"
 
 Item {
     id: deviceControlTab
+    required property var winchStatus
+    required property var teensyStatus
 
     ScrollView {
         anchors.fill: parent
@@ -67,13 +69,13 @@ Item {
                         objectName: "teensyRelayControl"
                         Layout.fillWidth: true
                         controlName: "Teensy Relay"
-                        controlStatus: teensyController.all_status.relay_on ? "Connected" : "Disconnected"
-                        enabledState: teensyController.all_status.relay_on
+                        controlStatus: deviceControlTab.teensyStatus.relayOn ? "Connected" : "Disconnected"
+                        enabledState: deviceControlTab.teensyStatus.relayOn
                         iconText: "TR"
                         actionKey: "status.teensy_relay"
                         legalityModel: actionLegality
                         
-                        onClicked: deviceActionHandler.toggleTeensyRelay(teensyController.all_status.relay_on)
+                        onClicked: deviceActionHandler.toggleTeensyRelay(deviceControlTab.teensyStatus.relayOn)
                     }
                     
                     // Teensy Enable Control
@@ -81,13 +83,13 @@ Item {
                         objectName: "teensyEnableControl"
                         Layout.fillWidth: true
                         controlName: "Teensy Enable"
-                        controlStatus: teensyController.all_status.enabled ? "Powered" : "Unpowered"
-                        enabledState: teensyController.all_status.enabled
+                        controlStatus: deviceControlTab.teensyStatus.enabled ? "Powered" : "Unpowered"
+                        enabledState: deviceControlTab.teensyStatus.enabled
                         iconText: "T"
                         actionKey: "status.teensy_enable"
                         legalityModel: actionLegality
                         
-                        onClicked: deviceActionHandler.toggleTeensyEnable(teensyController.all_status.enabled)
+                        onClicked: deviceActionHandler.toggleTeensyEnable(deviceControlTab.teensyStatus.enabled)
                     }
                 }
             }
@@ -142,13 +144,13 @@ Item {
                         objectName: "winchEnableControl"
                         Layout.fillWidth: true
                         controlName: "Winch Enable"
-                        controlStatus: winchController.enabled ? "Enabled" : "Disabled"
-                        enabledState: winchController.enabled
+                        controlStatus: deviceControlTab.winchStatus.enabled ? "Enabled" : "Disabled"
+                        enabledState: deviceControlTab.winchStatus.enabled
                         iconText: "W"
                         actionKey: "status.winch_enable"
                         legalityModel: actionLegality
                         
-                        onClicked: deviceActionHandler.toggleWinchEnable(winchController.enabled)
+                        onClicked: deviceActionHandler.toggleWinchEnable(deviceControlTab.winchStatus.enabled)
                     }
                     
                     // Winch Load Detection Control
@@ -156,13 +158,13 @@ Item {
                         objectName: "loadDetectionControl"
                         Layout.fillWidth: true
                         controlName: "Load Detection"
-                        controlStatus: winchController.load_detection_enabled ? "Active" : "Inactive"
-                        enabledState: winchController.load_detection_enabled
+                        controlStatus: deviceControlTab.winchStatus.loadDetectionEnabled ? "Active" : "Inactive"
+                        enabledState: deviceControlTab.winchStatus.loadDetectionEnabled
                         iconText: "LD"
                         actionKey: "winch.load_detection"
                         legalityModel: actionLegality
                         
-                        onClicked: deviceOperationsHandler.toggleLoadDetection(winchController.load_detection_enabled)
+                        onClicked: deviceOperationsHandler.toggleLoadDetection(deviceControlTab.winchStatus.loadDetectionEnabled)
                     }
                 }
             }

@@ -9,6 +9,7 @@ import "./components"
 Rectangle {
     id: monitorPage
     anchors.fill: parent
+    required property var teensyStatus
     color: "#1e222b"  // Industrial dark background
     
     // Lidar angle chart timing
@@ -29,6 +30,7 @@ Rectangle {
         // Top Header Bar
         MonitorHeader {
             Layout.fillWidth: true
+            teensyStatus: monitorPage.teensyStatus
         }
         
         // Main Body (3-Column Layout)

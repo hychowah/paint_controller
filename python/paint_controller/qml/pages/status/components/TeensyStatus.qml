@@ -7,6 +7,7 @@ import "../../../components/displays"
 
 Rectangle {
     id: teensyStatusRect
+    required property var teensyStatus
     color: "#FFFFFF"
     radius: 10
 
@@ -35,7 +36,7 @@ Rectangle {
             
             TouchSwitch {
                 id: teensyEnableSwitch
-                checked: teensyController.all_status.enabled
+                checked: teensyStatusRect.teensyStatus.enabled
                 onToggled: {
                     if (!deviceActionHandler.requestTeensyEnabled(checked)) {
                         teensyEnableSwitch.checked = !checked
@@ -47,7 +48,7 @@ Rectangle {
             
             TouchSwitch {
                 id: teensyRelayEnableSwitch
-                checked: teensyController.all_status.relay_on
+                checked: teensyStatusRect.teensyStatus.relayOn
                 onToggled: {
                     if (!deviceActionHandler.requestTeensyRelayEnabled(checked)) {
                         teensyRelayEnableSwitch.checked = !checked
@@ -206,22 +207,22 @@ Rectangle {
                         
                         // Board status values
                         Label { text: "Voltage:"; font.bold: true }
-                        Label { text: teensyController.all_status.voltage.toFixed(1) + " V" }
+                        Label { text: teensyStatusRect.teensyStatus.voltage.toFixed(1) + " V" }
                         Label { text: "Current:"; font.bold: true }
-                        Label { text: teensyController.all_status.current.toFixed(1) + " A" }
+                        Label { text: teensyStatusRect.teensyStatus.current.toFixed(1) + " A" }
                         
                         Label { text: "Temperature:"; font.bold: true }
-                        Label { text: teensyController.all_status.temperature.toFixed(1) + " °C" }
+                        Label { text: teensyStatusRect.teensyStatus.temperature.toFixed(1) + " °C" }
                         Label { text: "Runtime:"; font.bold: true }
-                        Label { text: teensyController.all_status.run_time.toFixed(0) }
+                        Label { text: teensyStatusRect.teensyStatus.runTime.toFixed(0) }
                         
                         Label { text: "Loop Time:"; font.bold: true }
-                        Label { text: teensyController.all_status.loop_time.toFixed(0) + " µs" }
+                        Label { text: teensyStatusRect.teensyStatus.loopTime.toFixed(0) + " µs" }
                         Label { text: "Loop Counter:"; font.bold: true }
-                        Label { text: teensyController.all_status.loop_time_counter.toFixed(0) }
+                        Label { text: teensyStatusRect.teensyStatus.loopTimeCounter.toFixed(0) }
                         
                         Label { text: "Battery:"; font.bold: true }
-                        Label { text: calculateBatteryPercentage(teensyController.all_status.voltage) + "%" }
+                        Label { text: calculateBatteryPercentage(teensyStatusRect.teensyStatus.voltage) + "%" }
                         Label { text: "Status:"; font.bold: true }
                         Label { text: "Operating" }
                         

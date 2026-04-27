@@ -12,6 +12,8 @@ Item {
     required property bool showOverlay
     required property string activeMenu
     required property var systemControlServices
+    required property var winchStatus
+    required property var teensyStatus
     readonly property bool showSystemMenu: showOverlay && activeMenu === "system"
 
     visible: true
@@ -159,6 +161,8 @@ Item {
 
                 LegacySystemControl.DeviceControlTab {
                     id: deviceControlTabContent
+                    winchStatus: systemControlWorkspace.winchStatus
+                    teensyStatus: systemControlWorkspace.teensyStatus
                 }
 
                 LegacySystemControl.CommandTab {

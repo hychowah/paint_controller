@@ -8,6 +8,7 @@ import "../../../components/displays"
 
 Rectangle {
     id: topBar
+    required property var topBarModel
     width: root.width
     height: 50
     color: "transparent"
@@ -43,21 +44,8 @@ Rectangle {
     readonly property real baseBatteryMin: 39.0
     readonly property real baseBatteryMax: 54.6
     
-        // Network ping times (in milliseconds) - bind to sshHandler's devicePingTimes
-    property real efPingMs: {
-        if (sshHandler && sshHandler.devicePingTimes) {
-            var val = sshHandler.devicePingTimes["END_EFFECTOR"];
-            return val ? parseFloat(val) : 0;
-        }
-        return 0;
-    }
-    property real basePingMs: {
-        if (sshHandler && sshHandler.devicePingTimes) {
-            var val = sshHandler.devicePingTimes["BASE"];
-            return val ? parseFloat(val) : 0;
-        }
-        return 0;
-    }
+    property real efPingMs: topBarModel.endEffectorPingMs
+    property real basePingMs: topBarModel.basePingMs
     
     /**
      * Calculate battery percentage from voltage using Li-ion discharge curve
@@ -152,7 +140,7 @@ Rectangle {
             BatteryDisplay {
                 width: 100
                 height: parent.height
-                batteryPercent: calculateBatteryPercent(teensyController.all_status.voltage, efBatteryMin, efBatteryMax)
+                batteryPercent: calculateBatteryPercent(topBarModel.endEffectorBatteryVoltage, efBatteryMin, efBatteryMax)
                 borderColor: dividerColor
             }
             
@@ -237,7 +225,7 @@ Rectangle {
             Row {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 6
-                visible: screenRecorder.is_recording
+                visible: topBarModel.isRecording
                 
                 // Pulsing red dot
                 Rectangle {
@@ -248,7 +236,7 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                     
                     SequentialAnimation on opacity {
-                        running: screenRecorder.is_recording
+                        running: topBarModel.isRecording
                         loops: Animation.Infinite
                         NumberAnimation { from: 1.0; to: 0.3; duration: 500 }
                         NumberAnimation { from: 0.3; to: 1.0; duration: 500 }
@@ -257,8 +245,8 @@ Rectangle {
                 
                 Text {
                     text: {
-                        var mins = Math.floor(screenRecorder.recording_duration / 60)
-                        var secs = screenRecorder.recording_duration % 60
+                        var mins = Math.floor(topBarModel.recordingDuration / 60)
+                        var secs = topBarModel.recordingDuration % 60
                         return "REC " + mins + ":" + (secs < 10 ? "0" : "") + secs
                     }
                     color: recordingColor
@@ -275,13 +263,13 @@ Rectangle {
                 height: parent.height * 0.6
                 color: dividerColor
                 anchors.verticalCenter: parent.verticalCenter
-                visible: screenRecorder.is_recording
+                visible: topBarModel.isRecording
             }
             
             // System Battery Info
             BatteryDisplay {
                 anchors.verticalCenter: parent.verticalCenter
-                batteryPercent: systemMonitor.battery_level
+                batteryPercent: topBarModel.systemBatteryPercent
                 borderColor: dividerColor
             }
             
@@ -305,12 +293,12 @@ Rectangle {
                 }
                 
                 Text {
-                    text: systemMonitor.cpu_temperature.toFixed(1) + "°C"
-                          color: systemMonitor.cpu_temperature > 80 ? tempCriticalColor : 
-                              systemMonitor.cpu_temperature > 60 ? tempWarningColor : tempNormalColor
-                          font.pixelSize: topBarValueFontSize
+                    text: topBarModel.cpuTemperature.toFixed(1) + "°C"
+                    color: topBarModel.cpuTemperature > 80 ? tempCriticalColor : 
+                        topBarModel.cpuTemperature > 60 ? tempWarningColor : tempNormalColor
+                    font.pixelSize: topBarValueFontSize
                     font.bold: true
-                          font.family: topBarFontFamily
+                    font.family: topBarFontFamily
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
@@ -335,7 +323,7 @@ Rectangle {
                 }
                 
                 Text {
-                    text: systemMonitor.battery_remaining_time !== "N/A" ? systemMonitor.battery_remaining_time : "---"
+                    text: topBarModel.batteryRemainingTime !== "N/A" ? topBarModel.batteryRemainingTime : "---"
                     color: timeColor
                     font.pixelSize: topBarValueFontSize
                     font.bold: true
@@ -368,7 +356,7 @@ Rectangle {
                 anchors.right: dividerRight.left
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
-                batteryPercent: calculateBatteryPercent(winchController.motor_voltage, baseBatteryMin, baseBatteryMax)
+                batteryPercent: calculateBatteryPercent(topBarModel.baseBatteryVoltage, baseBatteryMin, baseBatteryMax)
                 borderColor: dividerColor
             }
             

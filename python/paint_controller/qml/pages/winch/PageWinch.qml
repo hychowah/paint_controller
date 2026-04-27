@@ -7,6 +7,7 @@ import "../../components/displays"
 Item {
     id: winchPageRoot
     objectName: "winchPageRoot"
+    required property var winchStatus
     Layout.fillWidth: true
     Layout.fillHeight: true
     
@@ -88,7 +89,7 @@ Item {
                     Rectangle {
                         Layout.fillWidth: true
                         height: 50
-                        color: winchController.available ? "#E3F2FD" : "#FFEBEE"
+                        color: winchPageRoot.winchStatus.available ? "#E3F2FD" : "#FFEBEE"
                         radius: 12
                         
                         RowLayout {
@@ -100,11 +101,11 @@ Item {
                                 width: 12
                                 height: 12
                                 radius: 6
-                                color: winchController.available ? primaryColor : dangerColor
+                                color: winchPageRoot.winchStatus.available ? primaryColor : dangerColor
                                 
                                 // Added: Pulsing animation for status indicator
                                 SequentialAnimation on opacity {
-                                    running: winchController.available
+                                    running: winchPageRoot.winchStatus.available
                                     loops: Animation.Infinite
                                     PropertyAnimation { to: 0.6; duration: 1000 }
                                     PropertyAnimation { to: 1.0; duration: 1000 }
@@ -121,8 +122,8 @@ Item {
                             Item { Layout.fillWidth: true }
                             
                             Text {
-                                text: winchController.available ? "Connected" : "Disconnected"
-                                color: winchController.available ? primaryColor : dangerColor
+                                text: winchPageRoot.winchStatus.available ? "Connected" : "Disconnected"
+                                color: winchPageRoot.winchStatus.available ? primaryColor : dangerColor
                                 font.pixelSize: 14
                                 font.bold: true
                             }
@@ -135,10 +136,10 @@ Item {
                         id: winchPowerControl
                         Layout.fillWidth: true
                         height: 50  // Base height - can be adjusted as needed
-                        color: winchController.enabled ? "#E3F2FD" : "#F5F5F5"
+                        color: winchPageRoot.winchStatus.enabled ? "#E3F2FD" : "#F5F5F5"
                         radius: 12
                         border.width: 1
-                        border.color: winchController.enabled ? "#90CAF9" : "#E0E0E0"
+                        border.color: winchPageRoot.winchStatus.enabled ? "#90CAF9" : "#E0E0E0"
                         
                         // Use Row instead of RowLayout to avoid recursive layout issues
                         Row {
@@ -153,7 +154,7 @@ Item {
                                 height: parent.height * 1
                                 anchors.verticalCenter: parent.verticalCenter
                                 radius: width / 2
-                                color: winchController.enabled ? primaryColor : disabledColor
+                                color: winchPageRoot.winchStatus.enabled ? primaryColor : disabledColor
                                 
                                 Text {
                                     anchors.centerIn: parent
@@ -183,9 +184,9 @@ Item {
                                 
                                 Text {
                                     width: parent.width
-                                    text: winchController.enabled ? "Enabled - Motor active" : "Disabled - Motor inactive"
+                                    text: winchPageRoot.winchStatus.enabled ? "Enabled - Motor active" : "Disabled - Motor inactive"
                                     font.pixelSize: parent.height * 0.4
-                                    color: winchController.enabled ? primaryColor : "#757575"
+                                    color: winchPageRoot.winchStatus.enabled ? primaryColor : "#757575"
                                     elide: Text.ElideRight
                                     wrapMode: Text.Wrap
                                     maximumLineCount: 2
@@ -204,7 +205,7 @@ Item {
                                     height: parent.height * 1
                                     radius: height / 2
                                     anchors.centerIn: parent
-                                    color: winchController.enabled ? primaryColor : "#E0E0E0"
+                                    color: winchPageRoot.winchStatus.enabled ? primaryColor : "#E0E0E0"
                                     
                                     Behavior on color {
                                         ColorAnimation { duration: 200 }
@@ -218,9 +219,9 @@ Item {
                                     radius: width / 2
                                     color: "white"
                                     border.width: 2
-                                    border.color: winchController.enabled ? primaryColor : "#BDBDBD"
+                                    border.color: winchPageRoot.winchStatus.enabled ? primaryColor : "#BDBDBD"
                                     anchors.verticalCenter: switchTrack.verticalCenter
-                                    x: powerToggleContainer.width/2 - width/2 + (winchController.enabled ? 15 : -15)
+                                    x: powerToggleContainer.width/2 - width/2 + (winchPageRoot.winchStatus.enabled ? 15 : -15)
                                     
                                     Behavior on x {
                                         NumberAnimation { duration: 200; easing.type: Easing.InOutQuad }
@@ -230,7 +231,7 @@ Item {
                                 MouseArea {
                                     anchors.fill: parent
                                     onClicked: {
-                                        var desiredEnabled = !winchController.enabled;
+                                        var desiredEnabled = !winchPageRoot.winchStatus.enabled;
                                         if (deviceActionHandler.requestWinchEnabled(desiredEnabled)) {
                                             notificationPopup.show(desiredEnabled ?
                                                 "Winch power enabled" : "Winch power disabled", 2000);
@@ -238,7 +239,7 @@ Item {
                                             notificationPopup.show("Winch power change rejected", 2000);
                                         }
                                     }
-                                    enabled: winchController.available
+                                    enabled: winchPageRoot.winchStatus.available
                                     
                                     onPressed: switchHandle.opacity = 0.8
                                     onReleased: switchHandle.opacity = 1.0
@@ -252,10 +253,10 @@ Item {
                         id: loadDetectionControl
                         Layout.fillWidth: true
                         height: 50  // Same height as winch power control for consistency
-                        color: winchController.load_detection_enabled ? "#E3F2FD" : "#F5F5F5"
+                        color: winchPageRoot.winchStatus.loadDetectionEnabled ? "#E3F2FD" : "#F5F5F5"
                         radius: 12
                         border.width: 1
-                        border.color: winchController.load_detection_enabled ? "#90CAF9" : "#E0E0E0"
+                        border.color: winchPageRoot.winchStatus.loadDetectionEnabled ? "#90CAF9" : "#E0E0E0"
                         
                         // Use Row instead of RowLayout to avoid recursive layout issues
                         Row {
@@ -269,7 +270,7 @@ Item {
                                 height: parent.height * 1
                                 anchors.verticalCenter: parent.verticalCenter
                                 radius: width / 2
-                                color: winchController.load_detection_enabled ? primaryColor : disabledColor
+                                color: winchPageRoot.winchStatus.loadDetectionEnabled ? primaryColor : disabledColor
                                 
                                 Text {
                                     anchors.centerIn: parent
@@ -298,11 +299,11 @@ Item {
                                 
                                 Text {
                                     width: parent.width
-                                    text: winchController.load_detection_enabled ? 
+                                    text: winchPageRoot.winchStatus.loadDetectionEnabled ? 
                                         "Enabled - Safety active" : 
                                         "Disabled - No load protection"
                                     font.pixelSize: parent.height * 0.4
-                                    color: winchController.load_detection_enabled ? primaryColor : "#757575"
+                                    color: winchPageRoot.winchStatus.loadDetectionEnabled ? primaryColor : "#757575"
                                     elide: Text.ElideRight
                                     wrapMode: Text.Wrap
                                     maximumLineCount: 2
@@ -320,7 +321,7 @@ Item {
                                     height: parent.height * 1
                                     radius: height / 2
                                     anchors.centerIn: parent
-                                    color: winchController.load_detection_enabled ? primaryColor : "#E0E0E0"
+                                    color: winchPageRoot.winchStatus.loadDetectionEnabled ? primaryColor : "#E0E0E0"
                                     
                                     Behavior on color {
                                         ColorAnimation { duration: 200 }
@@ -334,9 +335,9 @@ Item {
                                     radius: width / 2
                                     color: "white"
                                     border.width: 2
-                                    border.color: winchController.load_detection_enabled ? primaryColor : "#BDBDBD"
+                                    border.color: winchPageRoot.winchStatus.loadDetectionEnabled ? primaryColor : "#BDBDBD"
                                     anchors.verticalCenter: loadSwitchTrack.verticalCenter
-                                    x: loadToggleContainer.width/2 - width/2 + (winchController.load_detection_enabled ? 15 : -15)
+                                    x: loadToggleContainer.width/2 - width/2 + (winchPageRoot.winchStatus.loadDetectionEnabled ? 15 : -15)
                                     
                                     Behavior on x {
                                         NumberAnimation { duration: 200; easing.type: Easing.InOutQuad }
@@ -346,7 +347,7 @@ Item {
                                 MouseArea {
                                     anchors.fill: parent
                                     onClicked: {
-                                        var desiredLoadDetection = !winchController.load_detection_enabled;
+                                        var desiredLoadDetection = !winchPageRoot.winchStatus.loadDetectionEnabled;
                                         if (deviceOperationsHandler.requestLoadDetectionEnabled(desiredLoadDetection)) {
                                             notificationPopup.show(desiredLoadDetection ?
                                                 "Load detection enabled" :
@@ -355,7 +356,7 @@ Item {
                                             notificationPopup.show("Load detection change rejected", 2000);
                                         }
                                     }
-                                    enabled: winchController.enabled
+                                    enabled: winchPageRoot.winchStatus.enabled
                                     
                                     onPressed: loadSwitchHandle.opacity = 0.8
                                     onReleased: loadSwitchHandle.opacity = 1.0
