@@ -372,7 +372,10 @@ class _SshControllerRecorder:
     def __init__(self) -> None:
         self.deviceAvailabilityChanged = _SignalRecorder()
         self.configUpdated = _SignalRecorder()
+        self.deviceAvailability = {"BASE": True, "END_EFFECTOR": True}
         self.devicePingTimes = {"BASE": "42", "END_EFFECTOR": "38"}
+        self.update_calls: list[tuple[str, str, str, str, str]] = []
+        self.command_calls: list[tuple[str, str, str]] = []
 
     def get_device_config(self, device_name: str) -> str:
         configs = {
@@ -380,6 +383,13 @@ class _SshControllerRecorder:
             "END_EFFECTOR": {"ip": "10.0.0.3", "port": "22", "username": "deck", "key_path": "~/.ssh/id_ef"},
         }
         return json.dumps(configs.get(device_name, {}))
+
+    def update_device_config(self, device_name: str, ip: str, port: str, username: str, key_path: str) -> bool:
+        self.update_calls.append((device_name, ip, port, username, key_path))
+        return True
+
+    def handle_device_command(self, device_name: str, service_name: str, action: str) -> None:
+        self.command_calls.append((device_name, service_name, action))
 
 
 class _ScreenRecorderRecorder:
@@ -596,6 +606,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.winch_status is not None
     assert runtime.teensy_status is not None
     assert runtime.shell_connectivity_status is not None
+    assert runtime.launcher_admin is not None
     assert runtime.engine.context.properties["actionLegality"] is runtime.action_legality
     assert runtime.engine.context.properties["systemControlServices"] is runtime.system_control_services
     assert runtime.engine.context.properties["videoRuntime"] is runtime.video_runtime
@@ -604,6 +615,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.engine.context.properties["winchStatus"] is runtime.winch_status
     assert runtime.engine.context.properties["teensyStatus"] is runtime.teensy_status
     assert runtime.engine.context.properties["shellConnectivityStatus"] is runtime.shell_connectivity_status
+    assert runtime.engine.context.properties["launcherAdmin"] is runtime.launcher_admin
     assert runtime.system_control_services.manualCommandHandler is runtime.bundle.manual_command_handler
     assert runtime.video_runtime.controls.leftMode == "None"
     assert runtime.video_runtime.topBar.systemBatteryPercent == 100
@@ -638,6 +650,8 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.teensy_status.sprayGunLedOn is False
     assert runtime.shell_connectivity_status.winchAvailable is True
     assert runtime.shell_connectivity_status.wheelAvailable is True
+    assert runtime.shell_connectivity_status.baseReachable is True
+    assert runtime.shell_connectivity_status.endEffectorReachable is True
     assert runtime.shell_connectivity_status.endEffectorAvailable is True
     assert runtime.shell_connectivity_status.baseOnline is True
     assert runtime.shell_connectivity_status.baseStatus == 0x01
@@ -645,6 +659,20 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.shell_connectivity_status.endEffectorStatus == 0x02
     assert runtime.shell_connectivity_status.baseIpAddress == "10.0.0.2"
     assert runtime.shell_connectivity_status.endEffectorIpAddress == "10.0.0.3"
+    assert json.loads(runtime.launcher_admin.getDeviceConfig("BASE")) == {
+        "ip": "10.0.0.2",
+        "port": "22",
+        "username": "deck",
+        "key_path": "~/.ssh/id_base",
+    }
+    assert runtime.launcher_admin.updateDeviceConfig("BASE", "10.0.0.20", "2200", "operator", "~/.ssh/id_new") is True
+    runtime.launcher_admin.handleDeviceCommand("BASE", "Wheel", "start")
+    assert runtime.bundle.ssh_controller.update_calls == [
+        ("BASE", "10.0.0.20", "2200", "operator", "~/.ssh/id_new")
+    ]
+    assert runtime.bundle.ssh_controller.command_calls == [("BASE", "Wheel", "start")]
+    assert "heartbeatHandler" not in runtime.engine.context.properties
+    assert "sshHandler" not in runtime.engine.context.properties
     assert set(runtime.engine.context.properties) == set(module._EXPECTED_CONTEXT_PROPERTY_NAMES)
     assert [button for button, _ in runtime.steam_deck_handler.callbacks] == [
         "up", "down", "left", "right", "r4", "l4", "menu", "switch", "l5", "r5", "dot", "a", "l1"

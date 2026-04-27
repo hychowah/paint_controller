@@ -40,6 +40,7 @@ ApplicationWindow {
     property var winchStatusModel: winchStatus
     property var teensyStatusModel: teensyStatus
     property var shellConnectivityStatusModel: shellConnectivityStatus
+    property var launcherAdminModel: launcherAdmin
     
     // Use Qt's Screen type for positioning - access via Screen attached property
     screen: Qt.application.screens[mainScreenIndex] || Qt.application.screens[0]
@@ -222,7 +223,9 @@ ApplicationWindow {
     // Components
     Component {
         id: homeComponent
-        PageHome {}
+        PageHome {
+            shellConnectivityStatus: mainWindow.shellConnectivityStatusModel
+        }
     }
 
     Component {
@@ -253,7 +256,10 @@ ApplicationWindow {
 
     Component {
         id: launcherPageComponent
-        PageLauncher {}
+        PageLauncher {
+            shellConnectivityStatus: mainWindow.shellConnectivityStatusModel
+            launcherAdmin: mainWindow.launcherAdminModel
+        }
     }
 
     Component {

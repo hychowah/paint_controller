@@ -9,6 +9,8 @@ Rectangle {
     width: parent.width
     height: parent.height
     color: "#5E5C64"
+    required property var shellConnectivityStatus
+    required property var launcherAdmin
 
     property color availableColor: "#7ED957"  // Softer green
     property color unavailableColor: "#FF5E3A"  // Softer red
@@ -79,7 +81,7 @@ Rectangle {
         // Function to load existing configuration
         function loadConfig() {
             if (deviceName !== "") {
-                var configJson = sshHandler.get_device_config(deviceName)
+                var configJson = launcherAdmin.getDeviceConfig(deviceName)
                 try {
                     var config = JSON.parse(configJson)
                     ipAddress = config.ip || ""
@@ -225,7 +227,7 @@ Rectangle {
         deviceName: "BASE"
         
         onApplied: function(data) {
-            sshHandler.update_device_config("BASE", data.ip, data.port, data.username, data.key_path)
+            launcherAdmin.updateDeviceConfig("BASE", data.ip, data.port, data.username, data.key_path)
         }
     }
     
@@ -236,7 +238,7 @@ Rectangle {
         deviceName: "END_EFFECTOR"
         
         onApplied: function(data) {
-            sshHandler.update_device_config("END_EFFECTOR", data.ip, data.port, data.username, data.key_path)
+            launcherAdmin.updateDeviceConfig("END_EFFECTOR", data.ip, data.port, data.username, data.key_path)
         }
     }
     
@@ -315,7 +317,7 @@ Rectangle {
                     }
                     
                     onClicked: {
-                        sshHandler.handle_device_command(deviceHost, deviceName, "start")
+                        launcherAdmin.handleDeviceCommand(deviceHost, deviceName, "start")
                     }
                 }
                 
@@ -342,7 +344,7 @@ Rectangle {
                     }
                     
                     onClicked: {
-                        sshHandler.handle_device_command(deviceHost, deviceName, "stop")
+                        launcherAdmin.handleDeviceCommand(deviceHost, deviceName, "stop")
                     }
                 }
                 
@@ -431,7 +433,7 @@ Rectangle {
                             width: ledSize
                             height: ledSize
                             radius: ledSize / 2 // Circular LED
-                            color: sshHandler.deviceAvailability.BASE ? availableColor : unavailableColor
+                            color: shellConnectivityStatus.baseReachable ? availableColor : unavailableColor
                             border.color: "#ffffff"
                             border.width: 1
                             anchors.verticalCenter: parent.verticalCenter
@@ -523,7 +525,7 @@ Rectangle {
                             width: ledSize
                             height: ledSize
                             radius: ledSize / 2
-                            color: sshHandler.deviceAvailability.END_EFFECTOR ? availableColor : unavailableColor
+                            color: shellConnectivityStatus.endEffectorReachable ? availableColor : unavailableColor
                             border.color: "#ffffff"
                             border.width: 1
                             anchors.verticalCenter: parent.verticalCenter

@@ -8,6 +8,7 @@ Rectangle {
     width: parent.width
     height: parent.height
     color: "#1E1E1E"
+    required property var shellConnectivityStatus
 
     property color availableColor: "#7ED957"
     property color unavailableColor: "#FF5E3A"
@@ -95,7 +96,7 @@ Rectangle {
                                     Layout.preferredHeight: 50
                                     radius: 25
                                     color: "#3E3E42"
-                                    border.color: sshHandler.deviceAvailability.BASE ? availableColor : unavailableColor
+                                    border.color: shellConnectivityStatus.baseReachable ? availableColor : unavailableColor
                                     border.width: 3
 
                                     Text {
@@ -125,13 +126,13 @@ Rectangle {
                                             width: ledSize
                                             height: ledSize
                                             radius: ledSize / 2
-                                            color: sshHandler.deviceAvailability.BASE ? availableColor : unavailableColor
+                                            color: shellConnectivityStatus.baseReachable ? availableColor : unavailableColor
                                             border.color: "#FFFFFF"
                                             border.width: 2
 
                                             // Pulsing animation when available
                                             SequentialAnimation on opacity {
-                                                running: sshHandler.deviceAvailability.BASE ?? false
+                                                running: shellConnectivityStatus.baseReachable
                                                 loops: Animation.Infinite
                                                 NumberAnimation { from: 1.0; to: 0.5; duration: 1000; easing.type: Easing.InOutQuad }
                                                 NumberAnimation { from: 0.5; to: 1.0; duration: 1000; easing.type: Easing.InOutQuad }
@@ -139,10 +140,10 @@ Rectangle {
                                         }
 
                                         Text {
-                                            text: sshHandler.deviceAvailability.BASE ? "ONLINE" : "OFFLINE"
+                                            text: shellConnectivityStatus.baseReachable ? "ONLINE" : "OFFLINE"
                                             font.pixelSize: 14
                                             font.weight: Font.Medium
-                                            color: sshHandler.deviceAvailability.BASE ? availableColor : unavailableColor
+                                            color: shellConnectivityStatus.baseReachable ? availableColor : unavailableColor
                                         }
                                     }
                                 }
@@ -152,11 +153,11 @@ Rectangle {
                                     Layout.preferredWidth: 16
                                     Layout.preferredHeight: 16
                                     radius: 8
-                                    color: heartbeatHandler.base_online ? "#4CD964" : "#8E8E93"
+                                    color: shellConnectivityStatus.baseOnline ? "#4CD964" : "#8E8E93"
                                     
                                     // Heartbeat pulse
                                     SequentialAnimation on scale {
-                                        running: heartbeatHandler.base_online
+                                        running: shellConnectivityStatus.baseOnline
                                         loops: Animation.Infinite
                                         NumberAnimation { from: 1.0; to: 1.3; duration: 300; easing.type: Easing.InOutQuad }
                                         NumberAnimation { from: 1.3; to: 1.0; duration: 300; easing.type: Easing.InOutQuad }
@@ -331,7 +332,7 @@ Rectangle {
                                     Layout.preferredHeight: 50
                                     radius: 25
                                     color: "#3E3E42"
-                                    border.color: sshHandler.deviceAvailability.END_EFFECTOR ? availableColor : unavailableColor
+                                    border.color: shellConnectivityStatus.endEffectorReachable ? availableColor : unavailableColor
                                     border.width: 3
 
                                     Text {
@@ -361,13 +362,13 @@ Rectangle {
                                             width: ledSize
                                             height: ledSize
                                             radius: ledSize / 2
-                                            color: sshHandler.deviceAvailability.END_EFFECTOR ? availableColor : unavailableColor
+                                            color: shellConnectivityStatus.endEffectorReachable ? availableColor : unavailableColor
                                             border.color: "#FFFFFF"
                                             border.width: 2
 
                                             // Pulsing animation when available
                                             SequentialAnimation on opacity {
-                                                running: !!(sshHandler && sshHandler.deviceAvailability && sshHandler.deviceAvailability.END_EFFECTOR)
+                                                running: shellConnectivityStatus.endEffectorReachable
                                                 loops: Animation.Infinite
                                                 NumberAnimation { from: 1.0; to: 0.5; duration: 1000; easing.type: Easing.InOutQuad }
                                                 NumberAnimation { from: 0.5; to: 1.0; duration: 1000; easing.type: Easing.InOutQuad }
@@ -375,10 +376,10 @@ Rectangle {
                                         }
 
                                         Text {
-                                            text: sshHandler.deviceAvailability.END_EFFECTOR ? "ONLINE" : "OFFLINE"
+                                            text: shellConnectivityStatus.endEffectorReachable ? "ONLINE" : "OFFLINE"
                                             font.pixelSize: 14
                                             font.weight: Font.Medium
-                                            color: sshHandler.deviceAvailability.END_EFFECTOR ? availableColor : unavailableColor
+                                            color: shellConnectivityStatus.endEffectorReachable ? availableColor : unavailableColor
                                         }
                                     }
                                 }
@@ -388,11 +389,11 @@ Rectangle {
                                     Layout.preferredWidth: 16
                                     Layout.preferredHeight: 16
                                     radius: 8
-                                    color: heartbeatHandler.ef_online ? "#4CD964" : "#8E8E93"
+                                    color: shellConnectivityStatus.endEffectorOnline ? "#4CD964" : "#8E8E93"
                                     
                                     // Heartbeat pulse
                                     SequentialAnimation on scale {
-                                        running: heartbeatHandler.ef_online
+                                        running: shellConnectivityStatus.endEffectorOnline
                                         loops: Animation.Infinite
                                         NumberAnimation { from: 1.0; to: 1.3; duration: 300; easing.type: Easing.InOutQuad }
                                         NumberAnimation { from: 1.3; to: 1.0; duration: 300; easing.type: Easing.InOutQuad }
@@ -561,15 +562,15 @@ Rectangle {
                 }
 
                 Text {
-                    text: "BASE: " + (heartbeatHandler.base_online ? "Connected" : "Disconnected")
+                    text: "BASE: " + (shellConnectivityStatus.baseOnline ? "Connected" : "Disconnected")
                     font.pixelSize: 11
-                    color: heartbeatHandler.base_online ? availableColor : unavailableColor
+                    color: shellConnectivityStatus.baseOnline ? availableColor : unavailableColor
                 }
 
                 Text {
-                    text: "EF: " + (heartbeatHandler.ef_online ? "Connected" : "Disconnected")
+                    text: "EF: " + (shellConnectivityStatus.endEffectorOnline ? "Connected" : "Disconnected")
                     font.pixelSize: 11
-                    color: heartbeatHandler.ef_online ? availableColor : unavailableColor
+                    color: shellConnectivityStatus.endEffectorOnline ? availableColor : unavailableColor
                 }
 
                 Item { Layout.fillWidth: true }

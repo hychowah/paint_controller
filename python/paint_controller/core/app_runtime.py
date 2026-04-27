@@ -11,6 +11,7 @@ from typing import Any
 
 import rclpy
 from PySide6.QtCore import Property, QCoreApplication, QEvent, QObject, QTimer, QUrl, Qt, Signal
+from PySide6.QtCore import Slot
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWidgets import QApplication
 
@@ -39,6 +40,7 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "winchStatus",
     "teensyStatus",
     "shellConnectivityStatus",
+    "launcherAdmin",
     "overlayController",
     "warningHandler",
     "baseStreamHandler",
@@ -47,14 +49,12 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "teensyController",
     "esp32ValveController",
     "lidarController",
-    "heartbeatHandler",
     "controlProcessor",
     "deviceActionHandler",
     "deviceOperationsHandler",
     "winchMotionHandler",
     "tuningAdminHandler",
     "baseTopViewAdminHandler",
-    "sshHandler",
     "systemMonitor",
     "screenRecorder",
     "rosBagRecorder",
@@ -430,6 +430,20 @@ class _ShellConnectivityStatus(QObject):
         ip_address = config.get("ip")
         return str(ip_address).strip() or "--"
 
+    def _device_available(self, device_name: str) -> bool:
+        device_availability = _read_object_value(self._ssh_controller, "deviceAvailability", default={})
+        if isinstance(device_availability, dict):
+            return bool(device_availability.get(device_name, False))
+        return False
+
+    @Property(bool, notify=changed)
+    def baseReachable(self) -> bool:
+        return self._device_available("BASE")
+
+    @Property(bool, notify=changed)
+    def endEffectorReachable(self) -> bool:
+        return self._device_available("END_EFFECTOR")
+
     @Property(bool, notify=changed)
     def winchAvailable(self) -> bool:
         return bool(_read_object_value(self._winch_controller, "available", default=False))
@@ -473,6 +487,54 @@ class _ShellConnectivityStatus(QObject):
     @Property(str, notify=changed)
     def endEffectorIpAddress(self) -> str:
         return self._device_ip_address("END_EFFECTOR")
+
+
+class _LauncherAdmin(QObject):
+    def __init__(self, ssh_controller: object) -> None:
+        super().__init__()
+        self._ssh_controller = ssh_controller
+
+    @Slot(str, result=str)
+    def getDeviceConfig(self, device_name: str) -> str:
+        get_device_config = getattr(self._ssh_controller, "get_device_config", None)
+        if not callable(get_device_config):
+            return "{}"
+
+        try:
+            payload = get_device_config(device_name)
+        except Exception:
+            return "{}"
+
+        if isinstance(payload, str):
+            return payload
+        if isinstance(payload, dict):
+            try:
+                return json.dumps(payload)
+            except (TypeError, ValueError):
+                return "{}"
+        return "{}"
+
+    @Slot(str, str, str, str, str, result=bool)
+    def updateDeviceConfig(self, device_name: str, ip: str, port: str, username: str, key_path: str) -> bool:
+        update_device_config = getattr(self._ssh_controller, "update_device_config", None)
+        if not callable(update_device_config):
+            return False
+
+        try:
+            return bool(update_device_config(device_name, ip, port, username, key_path))
+        except Exception:
+            return False
+
+    @Slot(str, str, str)
+    def handleDeviceCommand(self, device_name: str, service_name: str, action: str) -> None:
+        handle_device_command = getattr(self._ssh_controller, "handle_device_command", None)
+        if not callable(handle_device_command):
+            return
+
+        try:
+            handle_device_command(device_name, service_name, action)
+        except Exception:
+            return
 
 
 class _WinchStatus(QObject):
@@ -805,6 +867,7 @@ class AppRuntime:
         self.winch_status: _WinchStatus | None = None
         self.teensy_status: _TeensyStatus | None = None
         self.shell_connectivity_status: _ShellConnectivityStatus | None = None
+        self.launcher_admin: _LauncherAdmin | None = None
         self.shell_state = None
         self.overlay_host = None
         self.action_legality = None
@@ -961,6 +1024,7 @@ class AppRuntime:
             wheel_status=self.wheel_status,
             teensy_controller=self.bundle.teensy_controller,
         )
+        self.launcher_admin = _LauncherAdmin(self.bundle.ssh_controller)
 
     def _wire_steam_deck_callbacks(self) -> None:
         assert self.bundle is not None
@@ -1041,6 +1105,7 @@ class AppRuntime:
         assert self.winch_status is not None
         assert self.teensy_status is not None
         assert self.shell_connectivity_status is not None
+        assert self.launcher_admin is not None
         assert self.video_stream_handler is not None
         assert self.steam_deck_handler is not None
         assert self.settings_manager is not None
@@ -1060,6 +1125,7 @@ class AppRuntime:
             "winchStatus": self.winch_status,
             "teensyStatus": self.teensy_status,
             "shellConnectivityStatus": self.shell_connectivity_status,
+            "launcherAdmin": self.launcher_admin,
             "overlayController": self.bundle.overlay_controller,
             "warningHandler": self.bundle.warning_handler,
             "baseStreamHandler": self.video_stream_handler,
@@ -1068,14 +1134,12 @@ class AppRuntime:
             "teensyController": self.bundle.teensy_controller,
             "esp32ValveController": self.bundle.esp32_valve_controller,
             "lidarController": self.bundle.lidar_controller,
-            "heartbeatHandler": self.bundle.heartbeat_handler,
             "controlProcessor": self.bundle.control_processor,
             "deviceActionHandler": self.bundle.device_action_handler,
             "deviceOperationsHandler": self.bundle.device_operations_handler,
             "winchMotionHandler": self.bundle.winch_motion_handler,
             "tuningAdminHandler": self.bundle.tuning_admin_handler,
             "baseTopViewAdminHandler": self.bundle.base_top_view_admin_handler,
-            "sshHandler": self.bundle.ssh_controller,
             "systemMonitor": self.bundle.system_monitor,
             "screenRecorder": self.bundle.screen_recorder,
             "rosBagRecorder": self.bundle.ros_bag_recorder,

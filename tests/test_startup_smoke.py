@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -20,6 +21,33 @@ class DynamicObject(QObject):
         super().__init__()
         for key, value in properties.items():
             self.setProperty(key, value)
+
+
+class FakeLauncherAdmin(QObject):
+    def __init__(self) -> None:
+        super().__init__()
+        self.configs = {
+            "BASE": {"ip": "10.0.0.2", "port": "22", "username": "deck", "key_path": "~/.ssh/id_base"},
+            "END_EFFECTOR": {"ip": "10.0.0.3", "port": "22", "username": "deck", "key_path": "~/.ssh/id_ef"},
+        }
+
+    @Slot(str, result=str)
+    def getDeviceConfig(self, device_name: str) -> str:
+        return json.dumps(self.configs.get(device_name, {}))
+
+    @Slot(str, str, str, str, str, result=bool)
+    def updateDeviceConfig(self, device_name: str, ip: str, port: str, username: str, key_path: str) -> bool:
+        self.configs[device_name] = {
+            "ip": ip,
+            "port": port,
+            "username": username,
+            "key_path": key_path,
+        }
+        return True
+
+    @Slot(str, str, str)
+    def handleDeviceCommand(self, device_name: str, service_name: str, action: str) -> None:
+        return
 
 
 class FakeBackend(QObject):
@@ -784,7 +812,7 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
         ),
         "deviceActionHandler": FakeDeviceActionHandler(),
         "deviceOperationsHandler": FakeDeviceOperationsHandler(),
-        "sshHandler": DynamicObject(deviceAvailability=availability, devicePingTimes=ping_times),
+        "launcherAdmin": FakeLauncherAdmin(),
         "systemMonitor": DynamicObject(
             battery_level=100,
             battery_percentage=100,
@@ -1993,6 +2021,65 @@ Item {{
 
         assert fake_stack_view.property("currentIndex") == 1
         assert select_bar.property("selectedPageKey") == "settings"
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
+def test_page_launcher_loads_with_shell_connectivity_status(qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    home_import_url = _qml_import_url(qml_dir / "pages" / "home")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+    engine.rootContext().setContextProperty("launcherAdmin", FakeLauncherAdmin())
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{home_import_url}"
+
+Item {{
+    width: 1280
+    height: 800
+    property var shellConnectivityStatusModel: ({{
+        baseReachable: true,
+        endEffectorReachable: false
+    }})
+    property var launcherAdminModel: launcherAdmin
+
+    PageLauncher {{
+        objectName: "pageLauncher"
+        anchors.fill: parent
+        shellConnectivityStatus: parent.shellConnectivityStatusModel
+        launcherAdmin: parent.launcherAdminModel
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:PageLauncherHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+        assert root.findChild(QObject, "pageLauncher") is not None
+
+        qt_app.processEvents()
+
+        fatal_warning_fragments = (
+            "required property",
+            "cannot read property",
+            "referenceerror",
+        )
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
     finally:
         if root is not None:
             root.deleteLater()
