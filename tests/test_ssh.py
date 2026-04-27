@@ -93,34 +93,71 @@ def test_save_json_file_keeps_last_good_file_when_dump_fails(monkeypatch, tmp_pa
     _install_paramiko_stub(monkeypatch)
     ssh_module = importlib.import_module("paint_controller.controllers.ssh")
     controller = ssh_module.UISSHController()
-    config_path = tmp_path / "ssh_config.json"
-    config_path.write_text(json.dumps({"device": {"hostname": "1.2.3.4"}}))
+    try:
+        config_path = tmp_path / "ssh_config.json"
+        config_path.write_text(json.dumps({"device": {"hostname": "1.2.3.4"}}))
 
-    def faulty_dump(payload, handle, indent=4):
-        handle.write('{"broken": ')
-        raise RuntimeError("simulated write failure")
+        def faulty_dump(payload, handle, indent=4):
+            handle.write('{"broken": ')
+            raise RuntimeError("simulated write failure")
 
-    monkeypatch.setattr(ssh_module.json, "dump", faulty_dump)
+        monkeypatch.setattr(ssh_module.json, "dump", faulty_dump)
 
-    assert controller._save_json_file(str(config_path), {"device": {"hostname": "5.6.7.8"}}) is False
-    assert json.loads(config_path.read_text()) == {"device": {"hostname": "1.2.3.4"}}
-    assert list(config_path.parent.glob("*.tmp")) == []
+        assert controller._save_json_file(str(config_path), {"device": {"hostname": "5.6.7.8"}}) is False
+        assert json.loads(config_path.read_text()) == {"device": {"hostname": "1.2.3.4"}}
+        assert list(config_path.parent.glob("*.tmp")) == []
+    finally:
+        controller.cleanup()
 
 
 def test_availability_callback_ignores_runtime_error_during_teardown(monkeypatch, qt_app):
     _install_paramiko_stub(monkeypatch)
     ssh_module = importlib.import_module("paint_controller.controllers.ssh")
     controller = ssh_module.UISSHController()
+    try:
+        class BrokenSignal:
+            def emit(self, *args, **kwargs) -> None:
+                raise RuntimeError("Signal source has been deleted")
 
-    class BrokenSignal:
-        def emit(self, *args, **kwargs) -> None:
-            raise RuntimeError("Signal source has been deleted")
+        monkeypatch.setattr(controller, "availabilityResultReady", BrokenSignal(), raising=False)
+        monkeypatch.setattr(
+            controller.thread_pool,
+            "start",
+            lambda runnable: runnable.callback("device", False, "late result", 0.0),
+        )
 
-    monkeypatch.setattr(controller, "availabilityResultReady", BrokenSignal(), raising=False)
-    monkeypatch.setattr(
-        controller.thread_pool,
-        "start",
-        lambda runnable: runnable.callback("device", False, "late result", 0.0),
-    )
+        controller._check_device_availability("device", "10.0.0.2")
+    finally:
+        controller.cleanup()
 
-    controller._check_device_availability("device", "10.0.0.2")
+
+def test_cleanup_stops_timers_and_waits_for_workers(monkeypatch, qt_app):
+    _install_paramiko_stub(monkeypatch)
+    ssh_module = importlib.import_module("paint_controller.controllers.ssh")
+    controller = ssh_module.UISSHController()
+    events = []
+
+    class FakePool:
+        def clear(self):
+            events.append("clear")
+
+        def waitForDone(self, timeout):
+            events.append(("wait", timeout))
+            return True
+
+    class FakeThread:
+        def join(self, timeout=None):
+            events.append(("join", timeout))
+
+        def is_alive(self):
+            return True
+
+    monkeypatch.setattr(controller, "_stop_all_availability_checks", lambda: events.append("stop"))
+    monkeypatch.setattr(controller, "thread_pool", FakePool(), raising=False)
+    monkeypatch.setattr(controller, "_prune_command_threads", lambda: None)
+    controller._command_threads = [FakeThread(), FakeThread()]
+
+    controller.cleanup()
+
+    assert controller._is_cleaning_up is True
+    assert events == ["stop", "clear", ("wait", 3000), ("join", 2), ("join", 2)]

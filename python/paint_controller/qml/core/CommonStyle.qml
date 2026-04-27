@@ -97,6 +97,21 @@ QtObject {
 	readonly property int videoTopBarSideWidth: Theme.CommonStyle.videoTopBarSideWidth
 	readonly property int videoSignalBarWidth: Theme.CommonStyle.videoSignalBarWidth
 	readonly property int videoSignalBarSpacing: Theme.CommonStyle.videoSignalBarSpacing
+	readonly property int panelWidth: Theme.CommonStyle.panelWidth
+	readonly property int panelHeight: Theme.CommonStyle.panelHeight
+	readonly property int panelMargins: Theme.CommonStyle.panelMargins
+	readonly property int contentSpacing: Theme.CommonStyle.contentSpacing
+	readonly property int labelFontSize: Theme.CommonStyle.labelFontSize
+	readonly property int valueFontSize: Theme.CommonStyle.valueFontSize
+	readonly property real labelLetterSpacing: Theme.CommonStyle.labelLetterSpacing
+	readonly property real valueLetterSpacing: Theme.CommonStyle.valueLetterSpacing
+	readonly property int controlPanelWidth: Theme.CommonStyle.controlPanelWidth
+	readonly property int controlPanelHeight: Theme.CommonStyle.controlPanelHeight
+	readonly property int controlPanelBottomMargin: Theme.CommonStyle.controlPanelBottomMargin
+	readonly property int controlPanelSideMargin: Theme.CommonStyle.controlPanelSideMargin
+	readonly property color labelColor: Theme.CommonStyle.labelColor
+	readonly property color valueColor: Theme.CommonStyle.valueColor
+	readonly property color dividerColor: Theme.CommonStyle.dividerColor
 
 	readonly property int motionFast: Theme.CommonStyle.motionFast
 	readonly property int motionStandard: Theme.CommonStyle.motionStandard

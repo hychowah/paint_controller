@@ -10,7 +10,36 @@ Rectangle {
     required property var workflowRunner
     required property var videoRuntime
 
-    readonly property var style: CommonStyle
+    readonly property int panelWidth: CommonStyle.panelWidth
+    readonly property int panelHeight: CommonStyle.panelHeight
+    readonly property int panelMargins: CommonStyle.panelMargins
+    readonly property real contentSpacing: CommonStyle.contentSpacing
+    readonly property int controlPanelWidth: CommonStyle.controlPanelWidth
+    readonly property int controlPanelBottomMargin: CommonStyle.controlPanelBottomMargin
+    readonly property int controlPanelSideMargin: CommonStyle.controlPanelSideMargin
+    readonly property color labelColor: CommonStyle.labelColor
+    readonly property color valueColor: CommonStyle.valueColor
+    readonly property color dividerColor: CommonStyle.dividerColor
+    readonly property int labelFontSize: CommonStyle.labelFontSize
+    readonly property int valueFontSize: CommonStyle.valueFontSize
+    readonly property real labelLetterSpacing: CommonStyle.labelLetterSpacing
+    readonly property real valueLetterSpacing: CommonStyle.valueLetterSpacing
+
+    function numericValue(value, fallback) {
+        return (typeof value === "number" && isFinite(value)) ? value : fallback
+    }
+
+    function controllerValue(controller, key, fallback) {
+        if (!controller) {
+            return fallback
+        }
+        var value = controller[key]
+        return value === undefined || value === null ? fallback : value
+    }
+
+    function formatFixed(value, digits, suffix) {
+        return numericValue(value, 0).toFixed(digits) + suffix
+    }
     
     // WorkFlow Status Overlay - Full screen with blinking border
     WorkFlowStatusOverlay {
@@ -31,98 +60,98 @@ Rectangle {
     Item { 
         id: leftDataPanel
         // Width and Height are still necessary for layout calculation
-        width: style.panelWidth 
-        height: style.panelHeight * 1.5
+        width: panelWidth
+        height: panelHeight * 1.5
         
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: style.controlPanelBottomMargin
+        anchors.bottomMargin: controlPanelBottomMargin
         anchors.left: parent.left
-        anchors.leftMargin: style.controlPanelSideMargin + style.controlPanelWidth + 10
+        anchors.leftMargin: controlPanelSideMargin + controlPanelWidth + 10
         
         // --- REMOVED: All background, border, and gradient code ---
 
         Column {
             anchors.fill: parent
-            anchors.margins: style.panelMargins
+            anchors.margins: panelMargins
             anchors.topMargin: 0 // Reduced margin for pure text look
-            spacing: style.contentSpacing * 1.2
+            spacing: contentSpacing * 1.2
             
             // Left RPM Row
-            Row {
+            Item {
                 width: parent.width
-                height: (parent.height - style.contentSpacing * 2.4) / 3
+                height: (parent.height - contentSpacing * 2.4) / 3
                 
                 Text {
                     text: "L RPM"
-                    color: style.labelColor
-                    font.pixelSize: style.labelFontSize
+                    color: labelColor
+                    font.pixelSize: labelFontSize
                     font.bold: false
-                    font.letterSpacing: style.labelLetterSpacing
+                    font.letterSpacing: labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 
                 Text {
-                    text: wheelController.left_wheel_speed.toFixed(0)
-                    color: style.valueColor
-                    font.pixelSize: style.valueFontSize
+                    text: formatFixed(controllerValue(wheelController, "left_wheel_speed", 0.0), 0, "")
+                    color: valueColor
+                    font.pixelSize: valueFontSize
                     font.bold: true
                     font.family: "Courier New"
-                    font.letterSpacing: style.valueLetterSpacing
+                    font.letterSpacing: valueLetterSpacing
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
             
             // Left Current Row
-            Row {
+            Item {
                 width: parent.width
-                height: (parent.height - style.contentSpacing * 2.4) / 3
+                height: (parent.height - contentSpacing * 2.4) / 3
                 
                 Text {
                     text: "L CURR"
-                    color: style.labelColor
-                    font.pixelSize: style.labelFontSize
+                    color: labelColor
+                    font.pixelSize: labelFontSize
                     font.bold: false
-                    font.letterSpacing: style.labelLetterSpacing
+                    font.letterSpacing: labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 
                 Text {
-                    text: wheelController.left_wheel_current.toFixed(1) + " A"
-                    color: style.valueColor
-                    font.pixelSize: style.valueFontSize
+                    text: formatFixed(controllerValue(wheelController, "left_wheel_current", 0.0), 1, " A")
+                    color: valueColor
+                    font.pixelSize: valueFontSize
                     font.bold: true
                     font.family: "Courier New"
-                    font.letterSpacing: style.valueLetterSpacing
+                    font.letterSpacing: valueLetterSpacing
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
             
             // Left Travel Row
-            Row {
+            Item {
                 width: parent.width
-                height: (parent.height - style.contentSpacing * 2.4) / 3
+                height: (parent.height - contentSpacing * 2.4) / 3
                 
                 Text {
                     text: "L TRAVEL"
-                    color: style.labelColor
-                    font.pixelSize: style.labelFontSize
+                    color: labelColor
+                    font.pixelSize: labelFontSize
                     font.bold: false
-                    font.letterSpacing: style.labelLetterSpacing
+                    font.letterSpacing: labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 
                 Text {
-                    text: wheelController.left_wheel_position.toFixed(0) + " mm"
-                    color: style.valueColor
-                    font.pixelSize: style.valueFontSize
+                    text: formatFixed(controllerValue(wheelController, "left_wheel_position", 0.0), 0, " mm")
+                    color: valueColor
+                    font.pixelSize: valueFontSize
                     font.bold: true
                     font.family: "Courier New"
-                    font.letterSpacing: style.valueLetterSpacing
+                    font.letterSpacing: valueLetterSpacing
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                 }
@@ -134,98 +163,98 @@ Rectangle {
     // --- CHANGE: Replaced Rectangle with Item for no visual container ---
     Item {
         id: rightDataPanel
-        width: style.panelWidth
-        height: style.panelHeight * 1.5
+        width: panelWidth
+        height: panelHeight * 1.5
         
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: style.controlPanelBottomMargin
+        anchors.bottomMargin: controlPanelBottomMargin
         anchors.right: parent.right
-        anchors.rightMargin: style.controlPanelSideMargin + style.controlPanelWidth + 10
+        anchors.rightMargin: controlPanelSideMargin + controlPanelWidth + 10
         
         // --- REMOVED: All background, border, and gradient code ---
         
         Column {
             anchors.fill: parent
-            anchors.margins: style.panelMargins
+            anchors.margins: panelMargins
             anchors.topMargin: 0 // Reduced margin
-            spacing: style.contentSpacing * 1.2
+            spacing: contentSpacing * 1.2
             
             // Right RPM Row
-            Row {
+            Item {
                 width: parent.width
-                height: (parent.height - style.contentSpacing * 2.4) / 3
+                height: (parent.height - contentSpacing * 2.4) / 3
                 
                 Text {
                     text: "R RPM"
-                    color: style.labelColor
-                    font.pixelSize: style.labelFontSize
+                    color: labelColor
+                    font.pixelSize: labelFontSize
                     font.bold: false
-                    font.letterSpacing: style.labelLetterSpacing
+                    font.letterSpacing: labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 
                 Text {
-                    text: wheelController.right_wheel_speed.toFixed(0)
-                    color: style.valueColor
-                    font.pixelSize: style.valueFontSize
+                    text: formatFixed(controllerValue(wheelController, "right_wheel_speed", 0.0), 0, "")
+                    color: valueColor
+                    font.pixelSize: valueFontSize
                     font.bold: true
                     font.family: "Courier New"
-                    font.letterSpacing: style.valueLetterSpacing
+                    font.letterSpacing: valueLetterSpacing
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
             
             // Right Current Row
-            Row {
+            Item {
                 width: parent.width
-                height: (parent.height - style.contentSpacing * 2.4) / 3
+                height: (parent.height - contentSpacing * 2.4) / 3
                 
                 Text {
                     text: "R CURR"
-                    color: style.labelColor
-                    font.pixelSize: style.labelFontSize
+                    color: labelColor
+                    font.pixelSize: labelFontSize
                     font.bold: false
-                    font.letterSpacing: style.labelLetterSpacing
+                    font.letterSpacing: labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 
                 Text {
-                    text: wheelController.right_wheel_current.toFixed(1) + " A"
-                    color: style.valueColor
-                    font.pixelSize: style.valueFontSize
+                    text: formatFixed(controllerValue(wheelController, "right_wheel_current", 0.0), 1, " A")
+                    color: valueColor
+                    font.pixelSize: valueFontSize
                     font.bold: true
                     font.family: "Courier New"
-                    font.letterSpacing: style.valueLetterSpacing
+                    font.letterSpacing: valueLetterSpacing
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
             
             // Right Travel Row
-            Row {
+            Item {
                 width: parent.width
-                height: (parent.height - style.contentSpacing * 2.4) / 3
+                height: (parent.height - contentSpacing * 2.4) / 3
                 
                 Text {
                     text: "R TRAVEL"
-                    color: style.labelColor
-                    font.pixelSize: style.labelFontSize
+                    color: labelColor
+                    font.pixelSize: labelFontSize
                     font.bold: false
-                    font.letterSpacing: style.labelLetterSpacing
+                    font.letterSpacing: labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 
                 Text {
-                    text: wheelController.right_wheel_position.toFixed(0) + " mm"
-                    color: style.valueColor
-                    font.pixelSize: style.valueFontSize
+                    text: formatFixed(controllerValue(wheelController, "right_wheel_position", 0.0), 0, " mm")
+                    color: valueColor
+                    font.pixelSize: valueFontSize
                     font.bold: true
                     font.family: "Courier New"
-                    font.letterSpacing: style.valueLetterSpacing
+                    font.letterSpacing: valueLetterSpacing
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                 }
@@ -244,7 +273,7 @@ Rectangle {
         anchors.rightMargin: 20
         
         color: "#1a1a1a"
-        border.color: style.dividerColor
+        border.color: dividerColor
         border.width: 2
         radius: 8
         
@@ -263,7 +292,7 @@ Rectangle {
         // Label overlay
         Text {
             text: "BASE TOP VIEW"
-            color: style.labelColor
+            color: labelColor
             font.pixelSize: 10
             font.bold: true
             font.letterSpacing: 1
@@ -276,7 +305,7 @@ Rectangle {
         // Tap to open settings (only when not in edit mode)
         MouseArea {
             anchors.fill: parent
-            enabled: !baseTopViewController.editMode
+            enabled: !controllerValue(baseTopViewController, "editMode", false)
             cursorShape: Qt.PointingHandCursor
             onClicked: baseTopViewSettingsPopup.open()
         }

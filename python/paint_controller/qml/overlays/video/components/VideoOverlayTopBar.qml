@@ -343,11 +343,10 @@ Rectangle {
         anchors.rightMargin: 10
         anchors.verticalCenter: parent.verticalCenter
         
-        Row {
+        Item {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             anchors.fill: parent
-            spacing: 8
             
             // Base Battery Info
             BatteryDisplay {

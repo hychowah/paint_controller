@@ -67,16 +67,16 @@ class _SystemControlServices(QObject):
         self._workflow_editor = workflow_editor
         self._manual_command_handler = manual_command_handler
 
-    @Property(object, constant=True)
-    def workflowRunner(self) -> object:
+    @Property(QObject, constant=True)
+    def workflowRunner(self) -> QObject:
         return self._workflow_runner
 
-    @Property(object, constant=True)
-    def workflowEditor(self) -> object:
+    @Property(QObject, constant=True)
+    def workflowEditor(self) -> QObject:
         return self._workflow_editor
 
-    @Property(object, constant=True)
-    def manualCommandHandler(self) -> object:
+    @Property(QObject, constant=True)
+    def manualCommandHandler(self) -> QObject:
         return self._manual_command_handler
 
 
@@ -84,7 +84,7 @@ def _connect_if_signal(owner: object, signal_name: str, callback: Callable[..., 
     signal = getattr(owner, signal_name, None)
     if signal is None or not hasattr(signal, "connect"):
         return
-    signal.connect(callback)
+    signal.connect(lambda *_args, **_kwargs: callback())
 
 
 def _read_mapping_value(mapping: object, key: str) -> Any:
@@ -285,16 +285,16 @@ class _VideoRuntime(QObject):
             winch_controller=winch_controller,
         )
 
-    @Property(object, constant=True)
-    def controls(self) -> object:
+    @Property(QObject, constant=True)
+    def controls(self) -> QObject:
         return self._controls
 
-    @Property(object, constant=True)
-    def feeds(self) -> object:
+    @Property(QObject, constant=True)
+    def feeds(self) -> QObject:
         return self._feeds
 
-    @Property(object, constant=True)
-    def topBar(self) -> object:
+    @Property(QObject, constant=True)
+    def topBar(self) -> QObject:
         return self._top_bar
 
 

@@ -71,7 +71,7 @@ class AdminActionGate(QObject):
 
         state_signal = getattr(state_store, "controller_heartbeat_state_changed", None)
         if callable(getattr(state_signal, "connect", None)):
-            state_signal.connect(self.gate_state_changed.emit)
+            state_signal.connect(lambda *_args, **_kwargs: self.gate_state_changed.emit())
 
     @Property(int, notify=gate_state_changed)
     def heartbeatState(self) -> int:

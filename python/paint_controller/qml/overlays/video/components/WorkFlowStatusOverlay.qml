@@ -7,9 +7,15 @@ Item {
     id: root
     anchors.fill: parent
     required property var workflowRunner
+    readonly property bool hasWorkflowRunner: workflowRunner !== null && workflowRunner !== undefined
+    readonly property bool isWorkflowRunning: hasWorkflowRunner ? workflowRunner.execution_state === 1 : false
+    readonly property bool hasCurrentWorkflow: hasWorkflowRunner ? workflowRunner.current_workflow !== "" : false
+    readonly property bool hasCurrentAction: currentActionText.text !== undefined && currentActionText.text !== ""
+    readonly property bool hasActionDescription: actionDescriptionText.text !== undefined && actionDescriptionText.text !== ""
+    readonly property bool hasWorkflowProgress: hasWorkflowRunner ? workflowRunner.current_action_index >= 0 : false
     
     // Only visible when workflow is running
-    visible: workflowRunner && workflowRunner.execution_state === 1
+    visible: isWorkflowRunning
     
     // Runtime formatter function
     function formatRuntime(seconds) {
@@ -123,7 +129,7 @@ Item {
             RowLayout {
                 Layout.alignment: Qt.AlignLeft
                 spacing: 8
-                visible: workflowRunner && workflowRunner.is_loop_enabled
+                visible: hasWorkflowRunner ? workflowRunner.is_loop_enabled : false
                 
                 Rectangle {
                     width: 12
@@ -168,11 +174,11 @@ Item {
             // WorkFlow name
             Text {
                 Layout.alignment: Qt.AlignLeft
-                text: workflowRunner ? workflowRunner.current_workflow : ""
+                text: hasWorkflowRunner ? workflowRunner.current_workflow : ""
                 color: CommonStyle.textPrimary
                 font.family: CommonStyle.fontSans
                 font.pixelSize: CommonStyle.fontCaption + 1
-                visible: workflowRunner && workflowRunner.current_workflow !== ""
+                visible: hasCurrentWorkflow
             }
             
             // Separator
@@ -180,14 +186,14 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 1
                 color: CommonStyle.videoDivider
-                visible: currentActionText.text !== ""
+                visible: hasCurrentAction
             }
             
             // Current action display
             ColumnLayout {
                 Layout.alignment: Qt.AlignLeft
                 spacing: 4
-                visible: currentActionText.text !== ""
+                visible: hasCurrentAction
                 
                 Text {
                     Layout.alignment: Qt.AlignLeft
@@ -209,12 +215,13 @@ Item {
                 
                 // Action description
                 Text {
+                    id: actionDescriptionText
                     Layout.alignment: Qt.AlignLeft
-                    text: workflowRunner ? workflowRunner.current_action_description : ""
+                    text: hasWorkflowRunner ? workflowRunner.current_action_description : ""
                     color: CommonStyle.textSecondary
                     font.family: CommonStyle.fontSans
                     font.pixelSize: CommonStyle.fontLabel
-                    visible: text !== ""
+                    visible: hasActionDescription
                 }
             }
             
@@ -223,7 +230,7 @@ Item {
                 Layout.alignment: Qt.AlignLeft
                 Layout.topMargin: 4
                 spacing: 8
-                visible: workflowRunner && workflowRunner.current_action_index >= 0
+                visible: hasWorkflowProgress
                 
                 Text {
                     text: "Progress:"

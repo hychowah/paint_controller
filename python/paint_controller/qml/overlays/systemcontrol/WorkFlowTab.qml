@@ -40,12 +40,12 @@ Rectangle {
                         fill: parent
                         margins: 6
                     }
-                    model: workFlowRunner ? workFlowRunner.workflow_list : []
+                    model: workflowRunner ? workflowRunner.workflow_list : []
                     currentIndex: -1
                     
                     onCurrentIndexChanged: {
-                        if (currentIndex >= 0 && workFlowRunner) {
-                            workFlowRunner.load_workflow(model[currentIndex])
+                        if (currentIndex >= 0 && workflowRunner) {
+                            workflowRunner.load_workflow(model[currentIndex])
                         }
                     }
 
@@ -67,8 +67,8 @@ Rectangle {
                     }
 
                     contentItem: Text {
-                        text: workFlowRunner && workFlowRunner.current_workflow 
-                              ? workFlowRunner.current_workflow 
+                        text: workflowRunner && workflowRunner.current_workflow 
+                            ? workflowRunner.current_workflow 
                               : "Select workflow..."
                         color: "#FFFFFF"
                         font.family: "Helvetica"
@@ -114,8 +114,8 @@ Rectangle {
                         margins: 10
                     }
                     text: {
-                        if (!workFlowRunner) return "No runner"
-                        switch (workFlowRunner.execution_state) {
+                        if (!workflowRunner) return "No runner"
+                        switch (workflowRunner.execution_state) {
                             case 0: return "Idle"
                             case 1: return "Running"
                             case 2: return "Paused"
@@ -125,8 +125,8 @@ Rectangle {
                         }
                     }
                     color: {
-                        if (!workFlowRunner) return "#CCCCCC"
-                        switch (workFlowRunner.execution_state) {
+                        if (!workflowRunner) return "#CCCCCC"
+                        switch (workflowRunner.execution_state) {
                             case 0: return "#CCCCCC"  // Idle - gray
                             case 1: return "#00FF00"  // Running - green
                             case 2: return "#FFFF00"  // Paused - yellow
@@ -186,7 +186,7 @@ Rectangle {
 
                             // Instructions if no workflow loaded
                             Text {
-                                visible: !workFlowRunner || !workFlowRunner.current_workflow
+                                visible: !workflowRunner || !workflowRunner.current_workflow
                                 text: "Load a workflow to see actions"
                                 color: "#888888"
                                 font.family: "Helvetica"
@@ -197,15 +197,15 @@ Rectangle {
 
                             // Action items (loaded from YAML)
                             Repeater {
-                                model: workFlowRunner ? workFlowRunner.workflow_actions : []
+                                model: workflowRunner ? workflowRunner.workflow_actions : []
 
                                 delegate: Rectangle {
                                     Layout.fillWidth: true
                                     height: 50
-                                    color: (workFlowRunner && workFlowRunner.current_action_index === index) 
+                                    color: (workflowRunner && workflowRunner.current_action_index === index) 
                                            ? "#3A5A8C"  // Highlight current action
                                            : "#1A1A1A"
-                                    border.color: (workFlowRunner && workFlowRunner.current_action_index === index)
+                                    border.color: (workflowRunner && workflowRunner.current_action_index === index)
                                                   ? "#00FF00"  // Green border for current
                                                   : "#333333"
                                     border.width: 1
@@ -315,8 +315,8 @@ Rectangle {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            if (workFlowRunner && workFlowRunner.current_workflow) {
-                                workFlowRunner.play()
+                            if (workflowRunner && workflowRunner.current_workflow) {
+                                workflowRunner.play()
                             }
                         }
                     }
@@ -350,8 +350,8 @@ Rectangle {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            if (workFlowRunner) {
-                                workFlowRunner.stop()
+                            if (workflowRunner) {
+                                workflowRunner.stop()
                             }
                         }
                     }

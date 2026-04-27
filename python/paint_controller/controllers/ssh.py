@@ -8,6 +8,7 @@ import threading
 import subprocess
 import time
 import platform
+import weakref
 from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
@@ -176,7 +177,7 @@ class UISSHController(QObject):
     def __init__(self, show_popup_fn: Callable[..., None] | None = None, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._show_popup_fn = show_popup_fn
-        self.thread_pool = QThreadPool.globalInstance()
+        self.thread_pool = QThreadPool(self)
         self._deviceAvailability = {}  # Backing store for device_availability property: {device_name: bool}
         self._devicePingTimes = {}  # Backing store for ping times: {device_name: float}
         self._is_cleaning_up = False  # Flag to prevent signal emission during cleanup
@@ -249,17 +250,23 @@ class UISSHController(QObject):
             logger.info("[%s] STDOUT:\n%s", device_name, stdout.strip() or 'Done.')
 
     def _check_device_availability(self, device_name: str, hostname: str, port: int = 22, timeout: float = 0.5):
+        controller_ref = weakref.ref(self)
+
         def handle_result(name, is_available, message, ping_time):
+            controller = controller_ref()
+
             # Skip if cleanup is in progress - object may be deleted
-            if self._is_cleaning_up:
+            if controller is None or controller._is_cleaning_up:
                 return
 
             try:
-                self.availabilityResultReady.emit(name, is_available, message, ping_time)
+                controller.availabilityResultReady.emit(name, is_available, message, ping_time)
             except RuntimeError:
                 logger.debug("Skipping availability result for %s during QObject teardown", name)
 
         runnable = AvailabilityCheckRunnable(device_name, hostname, timeout, handle_result)
+        if self._is_cleaning_up:
+            return
         self.thread_pool.start(runnable)
 
     def _start_all_availability_checks(self):
@@ -285,8 +292,11 @@ class UISSHController(QObject):
     def _stop_all_availability_checks(self):
         """Stop all periodic availability checks and clear timers."""
         for device_name, timer in list(self.availability_timers.items()):
+            try:
+                timer.timeout.disconnect()
+            except (RuntimeError, TypeError):
+                pass
             timer.stop()
-            timer.deleteLater()
             logger.info("Stopped availability check for %s", device_name)
         self.availability_timers.clear()
 
@@ -412,12 +422,15 @@ class UISSHController(QObject):
             logger.error("No '%s' command for %s on %s", action, service_name, device_name)
             return
 
+        controller_ref = weakref.ref(self)
+
         def callback(stdout, stderr):
-            if self._is_cleaning_up:
+            controller = controller_ref()
+            if controller is None or controller._is_cleaning_up:
                 return
 
             try:
-                self.commandResultReady.emit(device_name, command, stdout, stderr)
+                controller.commandResultReady.emit(device_name, command, stdout, stderr)
             except RuntimeError:
                 logger.debug("Skipping command result for %s during QObject teardown", device_name)
 
@@ -427,8 +440,27 @@ class UISSHController(QObject):
 
     def cleanup(self):
         """Cleanup SSH controller resources"""
+        if self._is_cleaning_up:
+            return
+
         self._is_cleaning_up = True
+
+        for signal, handler in (
+            (self.availabilityResultReady, self._handle_availability_result),
+            (self.commandResultReady, self._handle_command_result),
+        ):
+            if not hasattr(signal, "disconnect"):
+                continue
+            try:
+                signal.disconnect(handler)
+            except (RuntimeError, TypeError):
+                pass
+
         self._stop_all_availability_checks()
+        self.thread_pool.clear()
+        if not self.thread_pool.waitForDone(3000):
+            logger.warning("SSH worker tasks did not finish before cleanup timeout")
+
         self._prune_command_threads()
         for thread in self._command_threads:
             thread.join(timeout=2)

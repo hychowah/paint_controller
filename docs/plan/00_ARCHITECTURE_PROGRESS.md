@@ -17,8 +17,8 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for the architecture rati
 - First-principles convergence rule: success is reduction of permanent app-scope QML exposure and durable architecture concept count, not namespacing alone
 - Current active retirement family: device/status reduction in bounded sub-slices after the shared video subtree moved behind `videoRuntime`, the first shared winch seam moved behind `winchStatus`, and the shared teensy power/header seam moved behind `teensyStatus`
 - Next retirement family after that: settings cleanup only where it still materially reduces ambient reads
-- Last focused validation: focused Workstream E1 device/status teensy power/header validation is green at `27 passed` for `tests/test_controller_factory_runtime.py`, `tests/test_startup_smoke.py`, and `tests/test_qml_imports.py`
-- Latest full validation: `249 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q`
+- Recent validation hardening: fullscreen overlay warning coverage is green at `26 passed` for `tests/test_startup_smoke.py`, `tests/test_qml_imports.py`, and `tests/test_workflow_runner.py`, and the direct SSH teardown regression slice is green at `4 passed` for `tests/test_ssh.py`
+- Latest full validation: `252 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q`
 
 ## Historical Stage Board
 
@@ -50,6 +50,20 @@ Unfinished work is no longer tracked here as a simple future stage ladder. It no
 | Video/runtime | completed | `baseStreamHandler`, `controlProcessor`, plus the shared top-bar summary reads previously consumed from the app-scope context by the shared video feature root and overlays | `python/paint_controller/qml/features/video/VideoFullscreenWorkspace.qml`, `python/paint_controller/qml/overlays/video/components/VideoOverlayTopBar.qml`, related video overlay consumers | A true feature-facing `videoRuntime` contract now carries control-display state, frame-refresh signals, and top-bar summary state for the touched subtree | `tests/test_controller_factory_runtime.py`, `tests/test_startup_smoke.py`, `tests/test_qml_imports.py` | Complete: the touched video subtree now consumes `videoRuntime` instead of the retired root globals and focused validation is green at `25 passed` |
 | Device/status | active in progress | Mixed controller/service reads and handler intent seams still spread across page, status, and system-control device surfaces, but the shared winch summary/power-load seam is now behind `winchStatus` and the shared teensy power/header seam is now behind `teensyStatus` | `python/paint_controller/qml/overlays/systemcontrol/DeviceControlTab.qml`, `python/paint_controller/qml/pages/status/PageStatus.qml`, `python/paint_controller/qml/pages/status/PageMonitor.qml`, `python/paint_controller/qml/pages/winch/PageWinch.qml`, adjacent status surfaces | Add bounded status or intent-facing contracts in sub-slices without turning controller internals into another large global bag | `tests/test_device_actions.py`, `tests/test_startup_smoke.py`, `tests/test_qml_imports.py`, focused status-model or handler tests | Each landed sub-slice reduces one real mixed read-plus-intent seam and keeps the blast radius bounded; the family must not be attempted as one large rewrite |
 | Settings cleanup | follow-on cleanup | Residual ambient settings use remains lower leverage because the typed owner API and route truthfulness work are already in place | `python/paint_controller/qml/overlays/systemcontrol/SettingsTab.qml`, `python/paint_controller/qml/pages/settings/`, any touched settings widgets | Retire remaining ambient settings reads only where that still produces a real ownership or surface-area win | `tests/test_settings_runtime.py`, `tests/test_startup_smoke.py`, `tests/test_qml_imports.py` | Cleanup lands only when it materially reduces ambient exposure; it should not displace higher-leverage video/runtime or device/status work |
+
+## Recent Validation Hardening
+
+### 2026-04-27 - Fullscreen Overlay Warning Hardening
+
+- Repaired the tracked fullscreen overlay warning classes by making `workflow_runtime` notify-backed, guarding startup-time controller/status reads, replacing invalid anchored children inside `Row`, and extending the `CommonStyle.qml` compatibility shim with the video helper aliases the touched overlays already depended on.
+- Aligned the fullscreen smoke harness with the real runtime contracts by adding the missing base-top-view and lidar fakes, explicit image-provider registration, and source-specific warning assertions.
+- Revalidated the focused fullscreen warning slice to `26 passed` for `tests/test_startup_smoke.py`, `tests/test_qml_imports.py`, and `tests/test_workflow_runner.py`.
+
+### 2026-04-27 - SSH Teardown Crash Fix
+
+- Hardened `UISSHController` teardown with a dedicated `QThreadPool`, weakref-based callbacks, defensive timer disconnects, and idempotent cleanup so controller-owned timers and workers quiesce before QObject destruction.
+- Added explicit direct-test cleanup discipline plus a cleanup-order regression test in `tests/test_ssh.py` so the late full-suite shutdown path stays covered.
+- Revalidated `tests/test_ssh.py` to `4 passed` and restored the full suite to `252 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q`.
 
 ## Baseline Authority Map
 
@@ -215,6 +229,7 @@ Unfinished work is no longer tracked here as a simple future stage ladder. It no
 - Feature roots such as `SystemControlWorkspace.qml` are materially cleaner than before, the shared video subtree now consumes a bounded `videoRuntime` contract for the touched control, frame-refresh, and top-bar seams, and the first two device/status sub-slices now consume `winchStatus` plus `teensyStatus`; the remaining device/status family is still the next primary E1 target.
 - The workflow runtime/editor contract is now materially narrower, but `EditWorkFlowTab.qml` remains explicitly transitional and future automation work should start only after the app-wide contract is smaller.
 - The direct-admin QML mutator gap is closed for the tracked Stage 4.5 and Workstream B surfaces, but later route families still need the same ownership discipline rather than reopening local page heuristics.
+- The recent overlay-warning and SSH teardown regressions showed that harness drift and QObject cleanup discipline can still let real runtime faults escape slice-local architecture tests if the fake runtime shape or direct-controller teardown path drifts from production behavior.
 - Pass-through service bundles and generic bridge concepts can still create false progress if they only rename ambient access; the next slices need to reduce concepts, not just group names.
 
 ## Next Session Checklist
@@ -224,3 +239,4 @@ Unfinished work is no longer tracked here as a simple future stage ladder. It no
 3. Keep `pageKey` canonical and keep `ShellState` plus `OverlayHostPolicy` narrow; do not reopen the completed shell/overlay ownership split while contract reduction proceeds.
 4. Treat feature contracts as true feature-facing models or bounded intent surfaces, not as passive namespace wrappers over the same ambient objects; keep `winchStatus` and `teensyStatus` bounded to the landed seams instead of growing them into generic device bags.
 5. Keep `EditWorkFlowTab.qml` explicitly transitional and keep future automation work downstream from the contract-first slice; optional feature-shell recomposition and design-system cleanup stay non-blocking unless a later checkpoint proves they are still justified.
+6. Preserve the strengthened fullscreen smoke harness and SSH cleanup regression coverage while Workstream E continues; future slices should not reintroduce warning-blind fakes or controller teardown leaks.

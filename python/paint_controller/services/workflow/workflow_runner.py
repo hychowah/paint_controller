@@ -90,12 +90,10 @@ class WorkFlowRunner(QObject):
         """Get current loop iteration number (1-indexed, 0 if not looping)."""
         return self.executor.get_loop_iteration()
 
-    @Property(int, constant=False)
+    @Property(int, notify=workflow_runtime_changed)
     def workflow_runtime(self) -> int:
         """Get workflow runtime in seconds (returns 0 if not running)."""
-        if self.executor.current_state.value == 1:  # RUNNING
-            return int(time.time() - self._workflow_start_time)
-        return 0
+        return self._workflow_runtime_seconds
 
     @Property(list, notify=workflow_actions_changed)
     def workflow_actions(self) -> List[dict]:
@@ -509,7 +507,10 @@ class WorkFlowRunner(QObject):
             state_name = state_names.get(current_state, "Unknown")
             self.logger.info(f"Execution state changed to: {state_name}")
 
-        self._set_workflow_runtime_seconds(self.workflow_runtime)
+        runtime_seconds = 0
+        if current_state == ExecutionState.RUNNING.value:
+            runtime_seconds = int(time.time() - self._workflow_start_time)
+        self._set_workflow_runtime_seconds(runtime_seconds)
 
     @Slot()
     def refresh_workflow_list(self) -> None:

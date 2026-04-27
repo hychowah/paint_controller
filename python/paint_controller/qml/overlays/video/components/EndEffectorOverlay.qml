@@ -12,7 +12,43 @@ Rectangle {
     required property var workflowRunner
     required property var videoRuntime
 
-    readonly property var style: CommonStyle
+    readonly property int panelWidth: CommonStyle.panelWidth
+    readonly property int panelHeight: CommonStyle.panelHeight
+    readonly property int panelMargins: CommonStyle.panelMargins
+    readonly property real contentSpacing: CommonStyle.contentSpacing
+    readonly property int controlPanelWidth: CommonStyle.controlPanelWidth
+    readonly property int controlPanelBottomMargin: CommonStyle.controlPanelBottomMargin
+    readonly property int controlPanelSideMargin: CommonStyle.controlPanelSideMargin
+    readonly property color labelColor: CommonStyle.labelColor
+    readonly property color valueColor: CommonStyle.valueColor
+    readonly property int labelFontSize: CommonStyle.labelFontSize
+    readonly property int valueFontSize: CommonStyle.valueFontSize
+    readonly property real labelLetterSpacing: CommonStyle.labelLetterSpacing
+    readonly property real valueLetterSpacing: CommonStyle.valueLetterSpacing
+
+    function numericValue(value, fallback) {
+        return (typeof value === "number" && isFinite(value)) ? value : fallback
+    }
+
+    function controllerValue(controller, key, fallback) {
+        if (!controller) {
+            return fallback
+        }
+        var value = controller[key]
+        return value === undefined || value === null ? fallback : value
+    }
+
+    function statusValue(key, fallback) {
+        if (!teensyController || !teensyController.all_status) {
+            return fallback
+        }
+        var value = teensyController.all_status[key]
+        return value === undefined || value === null ? fallback : value
+    }
+
+    function formatFixed(value, digits, suffix) {
+        return numericValue(value, 0).toFixed(digits) + suffix
+    }
     
     // Top Center - Pitch Indicator Dial
     PitchIndicatorDial {
@@ -21,7 +57,7 @@ Rectangle {
         anchors.topMargin: 50
         anchors.horizontalCenter: parent.horizontalCenter
         
-        currentPitch: teensyController.all_status.imu_pitch
+        currentPitch: numericValue(statusValue("imu_pitch", 0.0), 0.0)
         z: 50
     }
     
@@ -48,13 +84,13 @@ Rectangle {
     Rectangle { 
         id: leftDataPanel
         // Width and Height are still necessary for layout calculation
-        width: style.panelWidth 
-        height: style.panelHeight 
+        width: panelWidth
+        height: panelHeight
         
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: style.controlPanelBottomMargin
+        anchors.bottomMargin: controlPanelBottomMargin
         anchors.left: parent.left
-        anchors.leftMargin: style.controlPanelSideMargin + style.controlPanelWidth + 10
+        anchors.leftMargin: controlPanelSideMargin + controlPanelWidth + 10
         
         color: "#AA000000" // Semi-transparent dark background for readability
         radius: 6
@@ -62,33 +98,33 @@ Rectangle {
 
         Column {
             anchors.fill: parent
-            anchors.margins: style.panelMargins
+            anchors.margins: panelMargins
             anchors.topMargin: 0 // Reduced margin for pure text look
-            spacing: style.contentSpacing * 1.5 // Increased spacing between data pairs
+            spacing: contentSpacing * 1.5 // Increased spacing between data pairs
             
             // Extension Distance Row
-            Row {
+            Item {
                 width: parent.width
                 // Simplified height calculation as divider is gone
-                height: (parent.height - style.contentSpacing * 1.5) / 2 
+                height: (parent.height - contentSpacing * 1.5) / 2 
                 
                 Text {
                     text: "EXT"
-                    color: style.labelColor // Softer color for secondary text
-                    font.pixelSize: style.labelFontSize
+                    color: labelColor // Softer color for secondary text
+                    font.pixelSize: labelFontSize
                     font.bold: false // Less emphasis
-                    font.letterSpacing: style.labelLetterSpacing
+                    font.letterSpacing: labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 
                 Text {
-                    text: teensyController.all_status.arm_extension_dist.toFixed(0) + " mm"
-                    color: style.valueColor // Bright/White for primary value
-                    font.pixelSize: style.valueFontSize
+                    text: formatFixed(statusValue("arm_extension_dist", 0.0), 0, " mm")
+                    color: valueColor // Bright/White for primary value
+                    font.pixelSize: valueFontSize
                     font.bold: true // Strong emphasis
                     font.family: "Courier New"
-                    font.letterSpacing: style.valueLetterSpacing
+                    font.letterSpacing: valueLetterSpacing
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                 }
@@ -97,27 +133,27 @@ Rectangle {
             // --- REMOVED: Divider line ---
             
             // Gimbal Angle Row
-            Row {
+            Item {
                 width: parent.width
-                height: (parent.height - style.contentSpacing * 1.5) / 2
+                height: (parent.height - contentSpacing * 1.5) / 2
                 
                 Text {
                     text: "GIMBAL"
-                    color: style.labelColor
-                    font.pixelSize: style.labelFontSize
+                    color: labelColor
+                    font.pixelSize: labelFontSize
                     font.bold: false // Less emphasis
-                    font.letterSpacing: style.labelLetterSpacing
+                    font.letterSpacing: labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 
                 Text {
-                    text: teensyController.all_status.gimbal_pitch_motor_angle.toFixed(1) + "°"
-                    color: style.valueColor
-                    font.pixelSize: style.valueFontSize
+                    text: formatFixed(statusValue("gimbal_pitch_motor_angle", 0.0), 1, "°")
+                    color: valueColor
+                    font.pixelSize: valueFontSize
                     font.bold: true // Strong emphasis
                     font.family: "Courier New"
-                    font.letterSpacing: style.valueLetterSpacing
+                    font.letterSpacing: valueLetterSpacing
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                 }
@@ -128,13 +164,13 @@ Rectangle {
     // RIGHT SIDE - Winch Data (Torque & Cable Length)
     Rectangle {
         id: rightDataPanel
-        width: style.panelWidth
-        height: style.panelHeight
+        width: panelWidth
+        height: panelHeight
         
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: style.controlPanelBottomMargin
+        anchors.bottomMargin: controlPanelBottomMargin
         anchors.right: parent.right
-        anchors.rightMargin: style.controlPanelSideMargin + style.controlPanelWidth + 10
+        anchors.rightMargin: controlPanelSideMargin + controlPanelWidth + 10
         
         color: "#AA000000" // Semi-transparent dark background for readability
         radius: 6
@@ -142,32 +178,32 @@ Rectangle {
         
         Column {
             anchors.fill: parent
-            anchors.margins: style.panelMargins
+            anchors.margins: panelMargins
             anchors.topMargin: 0 // Reduced margin
-            spacing: style.contentSpacing * 1.5 // Increased spacing between data pairs
+            spacing: contentSpacing * 1.5 // Increased spacing between data pairs
             
             // Winch Torque Row
-            Row {
+            Item {
                 width: parent.width
-                height: (parent.height - style.contentSpacing * 1.5) / 2
+                height: (parent.height - contentSpacing * 1.5) / 2
                 
                 Text {
                     text: "CURRENT"
-                    color: style.labelColor
-                    font.pixelSize: style.labelFontSize
+                    color: labelColor
+                    font.pixelSize: labelFontSize
                     font.bold: false // Less emphasis
-                    font.letterSpacing: style.labelLetterSpacing
+                    font.letterSpacing: labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 
                 Text {
-                    text: (winchController.winch_torque / 100).toFixed(2) + " A"
-                    color: style.valueColor
-                    font.pixelSize: style.valueFontSize
+                    text: formatFixed(numericValue(controllerValue(winchController, "winch_torque", 0.0), 0.0) / 100, 2, " A")
+                    color: valueColor
+                    font.pixelSize: valueFontSize
                     font.bold: true // Strong emphasis
                     font.family: "Courier New"
-                    font.letterSpacing: style.valueLetterSpacing
+                    font.letterSpacing: valueLetterSpacing
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                 }
@@ -176,27 +212,27 @@ Rectangle {
             // --- REMOVED: Divider line ---
             
             // Cable Length Row
-            Row {
+            Item {
                 width: parent.width
-                height: (parent.height - style.contentSpacing * 1.5) / 2
+                height: (parent.height - contentSpacing * 1.5) / 2
                 
                 Text {
                     text: "CABLE"
-                    color: style.labelColor
-                    font.pixelSize: style.labelFontSize
+                    color: labelColor
+                    font.pixelSize: labelFontSize
                     font.bold: false // Less emphasis
-                    font.letterSpacing: style.labelLetterSpacing
+                    font.letterSpacing: labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 
                 Text {
-                    text: (winchController.cable_length).toFixed(0) + " mm"
-                    color: style.valueColor
-                    font.pixelSize: style.valueFontSize
+                    text: formatFixed(controllerValue(winchController, "cable_length", 0.0), 0, " mm")
+                    color: valueColor
+                    font.pixelSize: valueFontSize
                     font.bold: true // Strong emphasis
                     font.family: "Courier New"
-                    font.letterSpacing: style.valueLetterSpacing
+                    font.letterSpacing: valueLetterSpacing
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                 }
@@ -207,12 +243,12 @@ Rectangle {
     // RIGHT SIDE MIDDLE - Valve Status Data
     Rectangle {
         id: valveStatusPanel
-        width: style.panelWidth
-        height: style.panelHeight + 50  // Increased height for 3 rows
+        width: panelWidth
+        height: panelHeight + 50  // Increased height for 3 rows
         
         anchors.verticalCenter: parent.verticalCenter
         anchors.right: parent.right
-        anchors.rightMargin: style.controlPanelSideMargin  // Align with rightControlPanel
+        anchors.rightMargin: controlPanelSideMargin  // Align with rightControlPanel
         
         color: "#AA000000" // Semi-transparent dark background for readability
         radius: 6
@@ -220,9 +256,9 @@ Rectangle {
         
         Column {
             anchors.fill: parent
-            anchors.margins: style.panelMargins
+            anchors.margins: panelMargins
             anchors.topMargin: 0 // Reduced margin
-            spacing: style.contentSpacing * 0.8 // Spacing between data rows
+            spacing: contentSpacing * 0.8 // Spacing between data rows
             
             // Connection Status Indicators Row
             Row {
@@ -245,7 +281,7 @@ Rectangle {
                     
                     Text {
                         text: "VALVE"
-                        color: style.labelColor
+                        color: labelColor
                         font.pixelSize: 8
                         font.bold: false
                         anchors.verticalCenter: parent.verticalCenter
@@ -267,7 +303,7 @@ Rectangle {
                     
                     Text {
                         text: "FLOW"
-                        color: style.labelColor
+                        color: labelColor
                         font.pixelSize: 8
                         font.bold: false
                         anchors.verticalCenter: parent.verticalCenter
@@ -276,81 +312,81 @@ Rectangle {
             }
             
             // Valve Position Row
-            Row {
+            Item {
                 width: parent.width
                 height: 30
                 
                 Text {
                     text: "POSITION"
-                    color: style.labelColor
-                    font.pixelSize: style.labelFontSize
+                    color: labelColor
+                    font.pixelSize: labelFontSize
                     font.bold: false
-                    font.letterSpacing: style.labelLetterSpacing
+                    font.letterSpacing: labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 
                 Text {
-                    text: esp32ValveController.valve_position.toFixed(1)
-                    color: style.valueColor
-                    font.pixelSize: style.valueFontSize
+                    text: formatFixed(controllerValue(esp32ValveController, "valve_position", 0.0), 1, "")
+                    color: valueColor
+                    font.pixelSize: valueFontSize
                     font.bold: true
                     font.family: "Courier New"
-                    font.letterSpacing: style.valueLetterSpacing
+                    font.letterSpacing: valueLetterSpacing
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
             
             // Flow Rate Row
-            Row {
+            Item {
                 width: parent.width
                 height: 30
                 
                 Text {
                     text: "FLOW RATE"
-                    color: style.labelColor
-                    font.pixelSize: style.labelFontSize
+                    color: labelColor
+                    font.pixelSize: labelFontSize
                     font.bold: false
-                    font.letterSpacing: style.labelLetterSpacing
+                    font.letterSpacing: labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 
                 Text {
-                    text: esp32ValveController.valve_rate.toFixed(2)
-                    color: style.valueColor
-                    font.pixelSize: style.valueFontSize
+                    text: formatFixed(controllerValue(esp32ValveController, "valve_rate", 0.0), 2, "")
+                    color: valueColor
+                    font.pixelSize: valueFontSize
                     font.bold: true
                     font.family: "Courier New"
-                    font.letterSpacing: style.valueLetterSpacing
+                    font.letterSpacing: valueLetterSpacing
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
             
             // Total Volume Row
-            Row {
+            Item {
                 width: parent.width
                 height: 30
                 
                 Text {
                     text: "VOLUME"
-                    color: style.labelColor
-                    font.pixelSize: style.labelFontSize
+                    color: labelColor
+                    font.pixelSize: labelFontSize
                     font.bold: false
-                    font.letterSpacing: style.labelLetterSpacing
+                    font.letterSpacing: labelLetterSpacing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 
                 Text {
-                    text: esp32ValveController.total_volume.toFixed(2)
-                    color: style.valueColor
-                    font.pixelSize: style.valueFontSize
+                    text: formatFixed(controllerValue(esp32ValveController, "total_volume", 0.0), 2, "")
+                    color: valueColor
+                    font.pixelSize: valueFontSize
                     font.bold: true
                     font.family: "Courier New"
-                    font.letterSpacing: style.valueLetterSpacing
+                    font.letterSpacing: valueLetterSpacing
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                 }

@@ -33,6 +33,8 @@ ApplicationWindow {
     property bool showJoystickOverlayOnMainSurface: overlayHost ? overlayHost.joystick_overlay_on_main_surface : true
     property bool showEmergencyOverlayOnMainSurface: overlayHost ? overlayHost.emergency_overlay_on_main_surface : true
     property bool videoFullscreenOnMainSurface: overlayHost ? overlayHost.video_fullscreen_on_main_surface : (shellState ? shellState.video_fullscreen_on_main_surface : true)
+    property var systemControlServicesModel: systemControlServices
+    property var videoRuntimeModel: videoRuntime
     property var winchStatusModel: winchStatus
     property var teensyStatusModel: teensyStatus
     
@@ -308,7 +310,7 @@ ApplicationWindow {
         z: overlayHost ? overlayHost.system_control_layer : 1001
         showOverlay: overlayController.show_overlay
         activeMenu: overlayController.active_menu
-        systemControlServices: systemControlServices
+        systemControlServices: mainWindow.systemControlServicesModel
         winchStatus: mainWindow.winchStatusModel
         teensyStatus: mainWindow.teensyStatusModel
         visible: showSystemControlOnMainSurface
@@ -348,8 +350,8 @@ ApplicationWindow {
         z: overlayHost ? overlayHost.video_fullscreen_layer : 500
         active: overlayHost ? (overlayHost.video_fullscreen_active && overlayHost.video_fullscreen_on_main_surface) : false
         videoSource: overlayHost ? overlayHost.video_fullscreen_source : ""
-        workflowServices: systemControlServices
-        videoRuntime: videoRuntime
+        workflowServices: mainWindow.systemControlServicesModel
+        videoRuntime: mainWindow.videoRuntimeModel
     }
 
     // LiDAR 3D View

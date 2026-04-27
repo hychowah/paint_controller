@@ -19,11 +19,14 @@ Rectangle {
     property var lastLidarUpdateTime: new Date()
     property real messageTimeoutMs: 1000  // 1 second timeout
     property bool isLidarActive: false
+    readonly property real lidarDistance: (lidarController && typeof lidarController.distance === "number") ? lidarController.distance : 0.0
+    readonly property real lidarAngle: (lidarController && typeof lidarController.angle === "number") ? lidarController.angle : 0.0
     
     // Update timestamp when distance changes
     Connections {
         target: lidarController
-        onDistanceChanged: {
+
+        function onDistanceChanged() {
             overlay.lastLidarUpdateTime = new Date()
             overlay.isLidarActive = true
         }
@@ -85,8 +88,8 @@ Rectangle {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 
-                property real distance: Math.min(lidarController.distance, 2.0)
-                property real angle: lidarController.angle
+                property real distance: Math.min(overlay.lidarDistance, 2.0)
+                property real angle: overlay.lidarAngle
                 
                 onDistanceChanged: requestPaint()
                 onAngleChanged: requestPaint()
@@ -200,7 +203,7 @@ Rectangle {
                     
                     Text {
                         anchors.centerIn: parent
-                        text: lidarController.distance.toFixed(2) + " m"
+                        text: overlay.lidarDistance.toFixed(2) + " m"
                         color: "#00FF00"
                         font.pixelSize: 20 * scaleFactor // Scaled
                         font.bold: true
@@ -228,12 +231,12 @@ Rectangle {
                     color: "#1A1A1A"
                     radius: 4 * scaleFactor // Scaled
                     border.width: 1
-                    border.color: Math.abs(lidarController.angle) > 5 ? "#FF6600" : "#FFAA00"
+                    border.color: Math.abs(overlay.lidarAngle) > 5 ? "#FF6600" : "#FFAA00"
                     
                     Text {
                         anchors.centerIn: parent
-                        text: (lidarController.angle > 0 ? "+" : "") + lidarController.angle.toFixed(1) + "°"
-                        color: Math.abs(lidarController.angle) > 5 ? "#FF6600" : "#FFAA00"
+                        text: (overlay.lidarAngle > 0 ? "+" : "") + overlay.lidarAngle.toFixed(1) + "°"
+                        color: Math.abs(overlay.lidarAngle) > 5 ? "#FF6600" : "#FFAA00"
                         font.pixelSize: 20 * scaleFactor // Scaled
                         font.bold: true
                         font.family: "Courier New"

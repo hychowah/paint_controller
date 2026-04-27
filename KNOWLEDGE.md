@@ -39,6 +39,9 @@ Qt Buttons respond to Space/Enter keys when focused, even in secondary windows. 
 ### pytest qt_core_app Must Be an Alias of qt_app
 Creating a second Qt application instance (e.g. a session-scoped `QCoreApplication` alongside a session-scoped `QApplication`) causes a fatal Qt assertion abort. In a pytest session, `QApplication` is a superset of `QCoreApplication`. **Fix**: `def qt_core_app(qt_app): return qt_app` — the alias satisfies any fixture requesting a core app without creating a second instance.
 
+### QObject Cleanup Must Quiesce Timers And Worker Pools
+When a Qt-facing controller owns `QTimer` polling and async worker callbacks, cleanup must stop and disconnect timers, prevent callbacks from holding the controller strongly, and wait for worker completion before QObject destruction. Prefer a dedicated `QThreadPool` per controller when teardown order matters, make cleanup idempotent, and call `cleanup()` explicitly in direct tests to avoid late callbacks into deleted Qt objects.
+
 ---
 
 ## ROS2 Tips

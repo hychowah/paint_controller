@@ -51,6 +51,92 @@ class FakeScreenManager(DynamicObject):
         return 1
 
 
+class FakeBaseTopViewController(QObject):
+    frameReady = Signal()
+    changed = Signal()
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._enabled = False
+        self._edit_mode = False
+        self._zoom = 1.0
+        self._offset_x = 0.0
+        self._offset_y = 0.0
+        self._crop_enabled = False
+        self._crop_width_ratio = 0.5
+        self._crop_center_x = 0.5
+        self._k1 = 0.0
+        self._k2 = 0.0
+        self._k3 = 0.0
+        self._k4 = 0.0
+
+    @Property(bool, notify=changed)
+    def enabled(self) -> bool:
+        return self._enabled
+
+    @Property(bool, notify=changed)
+    def editMode(self) -> bool:
+        return self._edit_mode
+
+    @Property(float, notify=changed)
+    def zoom(self) -> float:
+        return self._zoom
+
+    @Property(float, notify=changed)
+    def offsetX(self) -> float:
+        return self._offset_x
+
+    @Property(float, notify=changed)
+    def offsetY(self) -> float:
+        return self._offset_y
+
+    @Property(bool, notify=changed)
+    def cropEnabled(self) -> bool:
+        return self._crop_enabled
+
+    @Property(float, notify=changed)
+    def cropWidthRatio(self) -> float:
+        return self._crop_width_ratio
+
+    @Property(float, notify=changed)
+    def cropCenterX(self) -> float:
+        return self._crop_center_x
+
+    @Property(float, notify=changed)
+    def k1(self) -> float:
+        return self._k1
+
+    @Property(float, notify=changed)
+    def k2(self) -> float:
+        return self._k2
+
+    @Property(float, notify=changed)
+    def k3(self) -> float:
+        return self._k3
+
+    @Property(float, notify=changed)
+    def k4(self) -> float:
+        return self._k4
+
+
+class FakeLidarController(QObject):
+    distanceChanged = Signal()
+    angleChanged = Signal()
+
+    def __init__(self, distance: float = 0.0, angle: float = 0.0) -> None:
+        super().__init__()
+        self._distance = distance
+        self._angle = angle
+
+    @Property(float, notify=distanceChanged)
+    def distance(self) -> float:
+        return self._distance
+
+    @Property(float, notify=angleChanged)
+    def angle(self) -> float:
+        return self._angle
+
+
 class FakeManualCommandHandler(QObject):
     @Slot(str, result=bool)
     def isCommandSupported(self, command_name: str) -> bool:
@@ -59,6 +145,121 @@ class FakeManualCommandHandler(QObject):
     @Slot(str, "QVariantMap", result=bool)
     def executeCommand(self, _command_name: str, _parameter_values) -> bool:
         return True
+
+
+class FakeSystemControlServices(QObject):
+    def __init__(self, workflow_runner: QObject, workflow_editor: QObject, manual_command_handler: QObject) -> None:
+        super().__init__()
+        self._workflow_runner = workflow_runner
+        self._workflow_editor = workflow_editor
+        self._manual_command_handler = manual_command_handler
+
+    @Property(QObject, constant=True)
+    def workflowRunner(self) -> QObject:
+        return self._workflow_runner
+
+    @Property(QObject, constant=True)
+    def workflowEditor(self) -> QObject:
+        return self._workflow_editor
+
+    @Property(QObject, constant=True)
+    def manualCommandHandler(self) -> QObject:
+        return self._manual_command_handler
+
+
+class FakeVideoRuntimeControls(QObject):
+    def __init__(self) -> None:
+        super().__init__()
+        self._left_mode = "None"
+        self._left_value = ""
+        self._right_mode = "None"
+        self._right_value = ""
+
+    @Property(str, constant=True)
+    def leftMode(self) -> str:
+        return self._left_mode
+
+    @Property(str, constant=True)
+    def leftValue(self) -> str:
+        return self._left_value
+
+    @Property(str, constant=True)
+    def rightMode(self) -> str:
+        return self._right_mode
+
+    @Property(str, constant=True)
+    def rightValue(self) -> str:
+        return self._right_value
+
+
+class FakeVideoRuntimeTopBar(QObject):
+    def __init__(self) -> None:
+        super().__init__()
+        self._end_effector_ping_ms = 38.0
+        self._base_ping_ms = 42.0
+        self._end_effector_battery_voltage = 24.0
+        self._base_battery_voltage = 24.0
+        self._is_recording = False
+        self._recording_duration = 0
+        self._system_battery_percent = 100
+        self._cpu_temperature = 0.0
+        self._battery_remaining_time = "--"
+
+    @Property(float, constant=True)
+    def endEffectorPingMs(self) -> float:
+        return self._end_effector_ping_ms
+
+    @Property(float, constant=True)
+    def basePingMs(self) -> float:
+        return self._base_ping_ms
+
+    @Property(float, constant=True)
+    def endEffectorBatteryVoltage(self) -> float:
+        return self._end_effector_battery_voltage
+
+    @Property(float, constant=True)
+    def baseBatteryVoltage(self) -> float:
+        return self._base_battery_voltage
+
+    @Property(bool, constant=True)
+    def isRecording(self) -> bool:
+        return self._is_recording
+
+    @Property(int, constant=True)
+    def recordingDuration(self) -> int:
+        return self._recording_duration
+
+    @Property(int, constant=True)
+    def systemBatteryPercent(self) -> int:
+        return self._system_battery_percent
+
+    @Property(float, constant=True)
+    def cpuTemperature(self) -> float:
+        return self._cpu_temperature
+
+    @Property(str, constant=True)
+    def batteryRemainingTime(self) -> str:
+        return self._battery_remaining_time
+
+
+class FakeVideoRuntime(QObject):
+    def __init__(self) -> None:
+        super().__init__()
+        self._controls = FakeVideoRuntimeControls()
+        self._feeds = FakeStreamHandler()
+        self._top_bar = FakeVideoRuntimeTopBar()
+
+    @Property(QObject, constant=True)
+    def controls(self) -> QObject:
+        return self._controls
+
+    @Property(QObject, constant=True)
+    def feeds(self) -> QObject:
+        return self._feeds
+
+    @Property(QObject, constant=True)
+    def topBar(self) -> QObject:
+        return self._top_bar
 
 
 class FakeDeviceActionHandler(QObject):
@@ -413,26 +614,7 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
     workflow_runner = FakeWorkFlowRunner()
     workflow_editor = FakeWorkflowEditor()
     manual_command_handler = FakeManualCommandHandler()
-    video_runtime = DynamicObject(
-        controls=DynamicObject(
-            leftMode="None",
-            leftValue="",
-            rightMode="None",
-            rightValue="",
-        ),
-        feeds=FakeStreamHandler(),
-        topBar=DynamicObject(
-            endEffectorPingMs=38.0,
-            basePingMs=42.0,
-            endEffectorBatteryVoltage=24.0,
-            baseBatteryVoltage=24.0,
-            isRecording=False,
-            recordingDuration=0,
-            systemBatteryPercent=100,
-            cpuTemperature=0.0,
-            batteryRemainingTime="--",
-        ),
-    )
+    video_runtime = FakeVideoRuntime()
     winch_status = DynamicObject(
         available=True,
         enabled=True,
@@ -493,10 +675,10 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             control_options=[],
         ),
         "actionLegality": FakeActionLegality(),
-        "systemControlServices": DynamicObject(
-            workflowRunner=workflow_runner,
-            workflowEditor=workflow_editor,
-            manualCommandHandler=manual_command_handler,
+        "systemControlServices": FakeSystemControlServices(
+            workflow_runner=workflow_runner,
+            workflow_editor=workflow_editor,
+            manual_command_handler=manual_command_handler,
         ),
         "videoRuntime": video_runtime,
         "winchStatus": winch_status,
@@ -541,7 +723,7 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             valve_motor_current=0.0,
             total_volume=0.0,
         ),
-        "lidarController": DynamicObject(distance=0.0, angle=0.0),
+        "lidarController": FakeLidarController(distance=0.0, angle=0.0),
         "heartbeatHandler": DynamicObject(
             controller_online=True,
             controller_status=0x01,
@@ -583,19 +765,7 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
         "settingsManager": settings_manager,
         "baseTopViewAdminHandler": FakeBaseTopViewAdminHandler(),
         "screenManager": FakeScreenManager(),
-        "baseTopViewController": DynamicObject(
-            enabled=False,
-            zoom=1.0,
-            offsetX=0.0,
-            offsetY=0.0,
-            cropEnabled=False,
-            cropWidthRatio=0.5,
-            cropCenterX=0.5,
-            k1=0.0,
-            k2=0.0,
-            k3=0.0,
-            k4=0.0,
-        ),
+        "baseTopViewController": FakeBaseTopViewController(),
     }
 
 
@@ -630,6 +800,16 @@ def test_main_window_loads_offscreen_with_context_properties(monkeypatch, tmp_pa
         "failed to load component",
         "no such file or directory",
         "is not a type",
+        "manualcommandhandler' of undefined",
+        "workflowrunner' of undefined",
+        "workfloweditor' of undefined",
+        "cannot read property 'controls' of undefined",
+        "cannot read property 'feeds' of undefined",
+        "cannot read property 'topbar' of undefined",
+        "referenceerror: workflowrunner is not defined",
+        "detected function \"onendeffectorframeready\"",
+        "detected function \"onbasefrontframeready\"",
+        "detected function \"onbaserearframeready\"",
     )
     assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
 
@@ -989,6 +1169,7 @@ def test_video_fullscreen_workspace_loads_with_stream_context(monkeypatch, tmp_p
     engine.addImageProvider("ef_live", BlankImageProvider())
     engine.addImageProvider("base_front_live", BlankImageProvider())
     engine.addImageProvider("base_rear_live", BlankImageProvider())
+    engine.addImageProvider("base_top_view", BlankImageProvider())
 
     warnings = []
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
@@ -1007,13 +1188,14 @@ import "{video_import_url}"
 Item {{
     width: 1280
     height: 800
+    property var videoRuntimeModel: videoRuntime
 
     VideoFullscreenWorkspace {{
         anchors.fill: parent
         active: true
         videoSource: "{video_source}"
         workflowServices: systemControlServices
-        videoRuntime: videoRuntime
+        videoRuntime: videoRuntimeModel
     }}
 }}
 '''.encode(),
@@ -1033,6 +1215,22 @@ Item {{
             "is not a type",
             "required property",
         )
+        if video_source == "image://ef_live/frame":
+            fatal_warning_fragments += (
+                "endeffectoroverlay.qml: qml row: cannot specify",
+                "videooverlaytopbar.qml: qml row: cannot specify",
+                "walldetectionoverlay.qml: qml connections",
+                "cannot read property 'imu_pitch' of undefined",
+                "cannot call method 'tofixed' of undefined",
+            )
+        if video_source == "image://base_front_live/frame":
+            fatal_warning_fragments += (
+                "basefrontoverlay.qml: qml row: cannot specify",
+                "basefrontoverlay.qml: qml connections",
+                "basetopviewsettingspopup.qml: unable to assign [undefined]",
+                "cannot call method 'tofixed' of undefined",
+                "invalid image provider: image://base_top_view/frame",
+            )
         assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
     finally:
         if root is not None:
