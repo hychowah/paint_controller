@@ -7,12 +7,12 @@ ROS2 node with PySide6/QML UI for robotic paint control on a Steam Deck. The liv
 - This branch is **refactor-first**. Runtime/workflow/service hardening, the QML flattening pass, the feature-root pass, and the completed ownership work through Workstream D are historical record now.
 - The current architecture control plane is intentionally split in two: **`docs/plan/00_ARCHITECTURE_PROGRESS.md`** is the only live execution board, and **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** is the durable architecture guide.
 - The unfinished tail is no longer a generic structural cleanup. It is a family-by-family boundary retirement program focused on shrinking the permanent QML runtime surface.
-- The current live next direction is the remaining `PageHome.qml` preview/frame-refresh cleanup after the fullscreen overlay telemetry remainder was retired behind existing `wheelStatus` and `winchStatus`.
+- The current live next direction is settings cleanup, followed by bounded `app_runtime.py` and handler decomposition only where they preserve the current contracts and materially reduce ambient reads.
 - Shell and launcher boundary work is treated as frozen unless a future slice proves a real retirement win that cannot be achieved inside the current contract.
-- `PageHome.qml` preview remains explicit quarantined remainder until its family becomes active.
+- The former `PageHome.qml` preview remainder is retired behind explicit `videoRuntime` ownership, while `PageWheel.qml` base preview remains explicit quarantine.
 - **Net-new feature work is intentionally deferred** until medium/high-priority debt is closed and the validation gates stay green (pytest, pyright for covered scope, ROS build, and offscreen startup/shutdown smoke).
 - Low-priority design-system backlog may remain backlog. By default it is **not** the feature-blocking path unless the user explicitly reprioritizes.
-- Latest verified local full-suite validation is `260 passed` on 2026-04-28 for `python/paint_controller/venv/bin/python -m pytest tests -q`. Most recent focused validation is green for the fullscreen overlay startup-smoke + import band across `tests/test_startup_smoke.py` and `tests/test_qml_imports.py`.
+- Latest verified local full-suite validation is `260 passed` on 2026-04-28 for `python/paint_controller/venv/bin/python -m pytest tests -q`. Most recent focused validation is green at `10 passed` for `tests/test_startup_smoke_home.py`, `tests/test_startup_smoke_shell.py`, and `tests/test_qml_imports.py`, with the follow-on workflow-editor import band green at `2 passed`.
 
 ---
 

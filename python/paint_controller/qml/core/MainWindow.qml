@@ -227,6 +227,7 @@ ApplicationWindow {
         id: homeComponent
         PageHome {
             shellConnectivityStatus: mainWindow.shellConnectivityStatusModel
+            videoRuntime: mainWindow.videoRuntimeModel
         }
     }
 

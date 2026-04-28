@@ -9,14 +9,27 @@ Rectangle {
     height: parent.height
     color: "#1E1E1E"
     required property var shellConnectivityStatus
+    required property var videoRuntime
 
     property color availableColor: "#7ED957"
     property color unavailableColor: "#FF5E3A"
     property real ledSize: 24
+    property int baseFrontFrameRevision: 0
+    property int endEffectorFrameRevision: 0
+    readonly property bool baseFrontVideoActive: baseFrontFrameRevision > 0
+    readonly property bool endEffectorVideoActive: endEffectorFrameRevision > 0
 
-    // Track video stream availability (persists across source changes)
-    property bool baseFrontVideoActive: false
-    property bool endEffectorVideoActive: false
+    Connections {
+        target: videoRuntime ? videoRuntime.feeds : null
+
+        function onBaseFrontFrameReady() {
+            baseFrontFrameRevision += 1
+        }
+
+        function onEndEffectorFrameReady() {
+            endEffectorFrameRevision += 1
+        }
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -64,476 +77,40 @@ Rectangle {
                 anchors.margins: 24
                 spacing: 24
 
-                // Left Panel - BASE FRONT Camera
-                Rectangle {
+                HomeVideoPanel {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    color: "#252526"
-                    radius: 12
-                    border.color: "#3E3E42"
-                    border.width: 2
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 16
-                        spacing: 16
-
-                        // Header with Status LED
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 60
-                            color: "#2D2D30"
-                            radius: 8
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.margins: 16
-                                spacing: 16
-
-                                // Device Icon/Label
-                                Rectangle {
-                                    Layout.preferredWidth: 50
-                                    Layout.preferredHeight: 50
-                                    radius: 25
-                                    color: "#3E3E42"
-                                    border.color: shellConnectivityStatus.baseReachable ? availableColor : unavailableColor
-                                    border.width: 3
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "B"
-                                        font.pixelSize: 24
-                                        font.weight: Font.Bold
-                                        color: "#FFFFFF"
-                                    }
-                                }
-
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 4
-
-                                    Text {
-                                        text: "BASE STATION"
-                                        font.pixelSize: 20
-                                        font.weight: Font.Medium
-                                        color: "#FFFFFF"
-                                    }
-
-                                    RowLayout {
-                                        spacing: 8
-
-                                        Rectangle {
-                                            width: ledSize
-                                            height: ledSize
-                                            radius: ledSize / 2
-                                            color: shellConnectivityStatus.baseReachable ? availableColor : unavailableColor
-                                            border.color: "#FFFFFF"
-                                            border.width: 2
-
-                                            // Pulsing animation when available
-                                            SequentialAnimation on opacity {
-                                                running: shellConnectivityStatus.baseReachable
-                                                loops: Animation.Infinite
-                                                NumberAnimation { from: 1.0; to: 0.5; duration: 1000; easing.type: Easing.InOutQuad }
-                                                NumberAnimation { from: 0.5; to: 1.0; duration: 1000; easing.type: Easing.InOutQuad }
-                                            }
-                                        }
-
-                                        Text {
-                                            text: shellConnectivityStatus.baseReachable ? "ONLINE" : "OFFLINE"
-                                            font.pixelSize: 14
-                                            font.weight: Font.Medium
-                                            color: shellConnectivityStatus.baseReachable ? availableColor : unavailableColor
-                                        }
-                                    }
-                                }
-
-                                // Heartbeat indicator
-                                Rectangle {
-                                    Layout.preferredWidth: 16
-                                    Layout.preferredHeight: 16
-                                    radius: 8
-                                    color: shellConnectivityStatus.baseOnline ? "#4CD964" : "#8E8E93"
-                                    
-                                    // Heartbeat pulse
-                                    SequentialAnimation on scale {
-                                        running: shellConnectivityStatus.baseOnline
-                                        loops: Animation.Infinite
-                                        NumberAnimation { from: 1.0; to: 1.3; duration: 300; easing.type: Easing.InOutQuad }
-                                        NumberAnimation { from: 1.3; to: 1.0; duration: 300; easing.type: Easing.InOutQuad }
-                                        PauseAnimation { duration: 800 }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Video Display
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            color: "#1E1E1E"
-                            radius: 8
-                            border.color: "#3E3E42"
-                            border.width: 1
-                            clip: true
-
-                            Image {
-                                id: baseFrontVideo
-                                anchors.fill: parent
-                                anchors.margins: 2
-                                source: "image://base_front_live/latest"
-                                fillMode: Image.PreserveAspectFit
-                                cache: false
-                                asynchronous: false
-
-                                // Status overlay when no video
-                                Rectangle {
-                                    anchors.fill: parent
-                                    color: "#2D2D30"
-                                    visible: !baseFrontVideoActive
-
-                                    ColumnLayout {
-                                        anchors.centerIn: parent
-                                        spacing: 16
-
-                                        Text {
-                                            text: "📹"
-                                            font.pixelSize: 64
-                                            color: "#666666"
-                                            Layout.alignment: Qt.AlignHCenter
-                                        }
-
-                                        Text {
-                                            text: "NO VIDEO SIGNAL"
-                                            font.pixelSize: 18
-                                            font.weight: Font.Medium
-                                            color: "#999999"
-                                            Layout.alignment: Qt.AlignHCenter
-                                        }
-
-                                        Text {
-                                            text: "Waiting for BASE FRONT stream..."
-                                            font.pixelSize: 12
-                                            color: "#666666"
-                                            Layout.alignment: Qt.AlignHCenter
-                                        }
-                                    }
-                                }
-
-                                // Video active indicator overlay (top-right corner)
-                                Rectangle {
-                                    anchors.top: parent.top
-                                    anchors.right: parent.right
-                                    anchors.margins: 12
-                                    width: 80
-                                    height: 30
-                                    radius: 15
-                                    color: "#000000"
-                                    opacity: 0.7
-                                    visible: baseFrontVideoActive
-
-                                    RowLayout {
-                                        anchors.centerIn: parent
-                                        spacing: 6
-
-                                        Rectangle {
-                                            width: 10
-                                            height: 10
-                                            radius: 5
-                                            color: "#FF4444"
-
-                                            SequentialAnimation on opacity {
-                                                loops: Animation.Infinite
-                                                NumberAnimation { from: 1.0; to: 0.3; duration: 800 }
-                                                NumberAnimation { from: 0.3; to: 1.0; duration: 800 }
-                                            }
-                                        }
-
-                                        Text {
-                                            text: "LIVE"
-                                            font.pixelSize: 12
-                                            font.weight: Font.Bold
-                                            color: "#FFFFFF"
-                                        }
-                                    }
-                                }
-                            }
-
-                            Connections {
-                                target: baseStreamHandler
-                                function onBaseFrontFrameReady() {
-                                    baseFrontVideoActive = true
-                                    baseFrontVideo.source = ""
-                                    baseFrontVideo.source = "image://base_front_live/latest"
-                                }
-                            }
-                        }
-
-                        // Camera Info Footer
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 40
-                            color: "#2D2D30"
-                            radius: 8
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.margins: 12
-                                spacing: 16
-
-                                Text {
-                                    text: "📍 Front Camera"
-                                    font.pixelSize: 12
-                                    color: "#CCCCCC"
-                                }
-
-                                Item { Layout.fillWidth: true }
-
-                                Text {
-                                    text: "Port: 5002"
-                                    font.pixelSize: 10
-                                    font.family: "monospace"
-                                    color: "#888888"
-                                }
-                            }
-                        }
-                    }
+                    badgeText: "B"
+                    titleText: "BASE STATION"
+                    reachable: shellConnectivityStatus.baseReachable
+                    online: shellConnectivityStatus.baseOnline
+                    videoActive: pageHomeRect.baseFrontVideoActive
+                    waitingText: "Waiting for BASE FRONT stream..."
+                    locationText: "📍 Front Camera"
+                    portText: "Port: 5002"
+                    imageSource: "image://base_front_live/latest"
+                    frameRevision: pageHomeRect.baseFrontFrameRevision
+                    availableColor: pageHomeRect.availableColor
+                    unavailableColor: pageHomeRect.unavailableColor
+                    ledSize: pageHomeRect.ledSize
                 }
 
-                // Right Panel - END EFFECTOR Camera
-                Rectangle {
+                HomeVideoPanel {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    color: "#252526"
-                    radius: 12
-                    border.color: "#3E3E42"
-                    border.width: 2
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 16
-                        spacing: 16
-
-                        // Header with Status LED
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 60
-                            color: "#2D2D30"
-                            radius: 8
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.margins: 16
-                                spacing: 16
-
-                                // Device Icon/Label
-                                Rectangle {
-                                    Layout.preferredWidth: 50
-                                    Layout.preferredHeight: 50
-                                    radius: 25
-                                    color: "#3E3E42"
-                                    border.color: shellConnectivityStatus.endEffectorReachable ? availableColor : unavailableColor
-                                    border.width: 3
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "E"
-                                        font.pixelSize: 24
-                                        font.weight: Font.Bold
-                                        color: "#FFFFFF"
-                                    }
-                                }
-
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 4
-
-                                    Text {
-                                        text: "END EFFECTOR"
-                                        font.pixelSize: 20
-                                        font.weight: Font.Medium
-                                        color: "#FFFFFF"
-                                    }
-
-                                    RowLayout {
-                                        spacing: 8
-
-                                        Rectangle {
-                                            width: ledSize
-                                            height: ledSize
-                                            radius: ledSize / 2
-                                            color: shellConnectivityStatus.endEffectorReachable ? availableColor : unavailableColor
-                                            border.color: "#FFFFFF"
-                                            border.width: 2
-
-                                            // Pulsing animation when available
-                                            SequentialAnimation on opacity {
-                                                running: shellConnectivityStatus.endEffectorReachable
-                                                loops: Animation.Infinite
-                                                NumberAnimation { from: 1.0; to: 0.5; duration: 1000; easing.type: Easing.InOutQuad }
-                                                NumberAnimation { from: 0.5; to: 1.0; duration: 1000; easing.type: Easing.InOutQuad }
-                                            }
-                                        }
-
-                                        Text {
-                                            text: shellConnectivityStatus.endEffectorReachable ? "ONLINE" : "OFFLINE"
-                                            font.pixelSize: 14
-                                            font.weight: Font.Medium
-                                            color: shellConnectivityStatus.endEffectorReachable ? availableColor : unavailableColor
-                                        }
-                                    }
-                                }
-
-                                // Heartbeat indicator
-                                Rectangle {
-                                    Layout.preferredWidth: 16
-                                    Layout.preferredHeight: 16
-                                    radius: 8
-                                    color: shellConnectivityStatus.endEffectorOnline ? "#4CD964" : "#8E8E93"
-                                    
-                                    // Heartbeat pulse
-                                    SequentialAnimation on scale {
-                                        running: shellConnectivityStatus.endEffectorOnline
-                                        loops: Animation.Infinite
-                                        NumberAnimation { from: 1.0; to: 1.3; duration: 300; easing.type: Easing.InOutQuad }
-                                        NumberAnimation { from: 1.3; to: 1.0; duration: 300; easing.type: Easing.InOutQuad }
-                                        PauseAnimation { duration: 800 }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Video Display
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            color: "#1E1E1E"
-                            radius: 8
-                            border.color: "#3E3E42"
-                            border.width: 1
-                            clip: true
-
-                            Image {
-                                id: endEffectorVideo
-                                anchors.fill: parent
-                                anchors.margins: 2
-                                source: "image://ef_live/latest"
-                                fillMode: Image.PreserveAspectFit
-                                cache: false
-                                asynchronous: false
-
-                                // Status overlay when no video
-                                Rectangle {
-                                    anchors.fill: parent
-                                    color: "#2D2D30"
-                                    visible: !endEffectorVideoActive
-
-                                    ColumnLayout {
-                                        anchors.centerIn: parent
-                                        spacing: 16
-
-                                        Text {
-                                            text: "📹"
-                                            font.pixelSize: 64
-                                            color: "#666666"
-                                            Layout.alignment: Qt.AlignHCenter
-                                        }
-
-                                        Text {
-                                            text: "NO VIDEO SIGNAL"
-                                            font.pixelSize: 18
-                                            font.weight: Font.Medium
-                                            color: "#999999"
-                                            Layout.alignment: Qt.AlignHCenter
-                                        }
-
-                                        Text {
-                                            text: "Waiting for END EFFECTOR stream..."
-                                            font.pixelSize: 12
-                                            color: "#666666"
-                                            Layout.alignment: Qt.AlignHCenter
-                                        }
-                                    }
-                                }
-
-                                // Video active indicator overlay (top-right corner)
-                                Rectangle {
-                                    anchors.top: parent.top
-                                    anchors.right: parent.right
-                                    anchors.margins: 12
-                                    width: 80
-                                    height: 30
-                                    radius: 15
-                                    color: "#000000"
-                                    opacity: 0.7
-                                    visible: endEffectorVideoActive
-
-                                    RowLayout {
-                                        anchors.centerIn: parent
-                                        spacing: 6
-
-                                        Rectangle {
-                                            width: 10
-                                            height: 10
-                                            radius: 5
-                                            color: "#FF4444"
-
-                                            SequentialAnimation on opacity {
-                                                loops: Animation.Infinite
-                                                NumberAnimation { from: 1.0; to: 0.3; duration: 800 }
-                                                NumberAnimation { from: 0.3; to: 1.0; duration: 800 }
-                                            }
-                                        }
-
-                                        Text {
-                                            text: "LIVE"
-                                            font.pixelSize: 12
-                                            font.weight: Font.Bold
-                                            color: "#FFFFFF"
-                                        }
-                                    }
-                                }
-                            }
-
-                            Connections {
-                                target: baseStreamHandler
-                                function onEndEffectorFrameReady() {
-                                    endEffectorVideoActive = true
-                                    endEffectorVideo.source = ""
-                                    endEffectorVideo.source = "image://ef_live/latest"
-                                }
-                            }
-                        }
-
-                        // Camera Info Footer
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 40
-                            color: "#2D2D30"
-                            radius: 8
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.margins: 12
-                                spacing: 16
-
-                                Text {
-                                    text: "📍 End Effector Camera"
-                                    font.pixelSize: 12
-                                    color: "#CCCCCC"
-                                }
-
-                                Item { Layout.fillWidth: true }
-
-                                Text {
-                                    text: "Port: 5001"
-                                    font.pixelSize: 10
-                                    font.family: "monospace"
-                                    color: "#888888"
-                                }
-                            }
-                        }
-                    }
+                    badgeText: "E"
+                    titleText: "END EFFECTOR"
+                    reachable: shellConnectivityStatus.endEffectorReachable
+                    online: shellConnectivityStatus.endEffectorOnline
+                    videoActive: pageHomeRect.endEffectorVideoActive
+                    waitingText: "Waiting for END EFFECTOR stream..."
+                    locationText: "📍 End Effector Camera"
+                    portText: "Port: 5001"
+                    imageSource: "image://ef_live/latest"
+                    frameRevision: pageHomeRect.endEffectorFrameRevision
+                    availableColor: pageHomeRect.availableColor
+                    unavailableColor: pageHomeRect.unavailableColor
+                    ledSize: pageHomeRect.ledSize
                 }
             }
         }

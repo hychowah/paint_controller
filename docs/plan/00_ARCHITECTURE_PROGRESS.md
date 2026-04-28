@@ -10,28 +10,27 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 
 - Overall status: in progress
 - Active architecture program: Workstream E boundary retirement and contract reduction
-- Most recent completed slice: Fullscreen overlay telemetry retirement on 2026-04-28
+- Most recent completed slice: PageHome preview and frame-refresh cleanup on 2026-04-28
 - Core purpose: reduce global coupling, clarify ownership, shrink the app-scope QML contract, and make operator-visible behavior easier to trace
 - First-principles rule: success means fewer permanent app-scope QML reads and fewer equal-owner concepts, not wrapper proliferation
-- Last focused validation: `8 passed` for the fullscreen overlay startup-smoke + import band across `tests/test_startup_smoke.py` and `tests/test_qml_imports.py`
+- Last focused validation: `10 passed` for `tests/test_startup_smoke_home.py`, `tests/test_startup_smoke_shell.py`, and `tests/test_qml_imports.py`
 - Last full-suite baseline: `260 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q` on 2026-04-28
 
 ## Live Board
 
 ### Now
 
-#### PageHome preview and frame-refresh cleanup
+#### Settings cleanup
 
-- Goal: retire the remaining preview/frame-refresh remainder in `PageHome.qml` without widening the slice back into shell telemetry, fullscreen overlays, or a generic feed bag.
-- Lead surfaces: `python/paint_controller/qml/pages/home/PageHome.qml`
-- Why this is next: the fullscreen overlay telemetry remainder in `BaseFrontOverlay.qml` and `EndEffectorOverlay.qml` is now retired behind existing `wheelStatus` and `winchStatus`, leaving `PageHome.qml` as the last named video/runtime quarantine file.
-- Retirement requirement: the slice must remove at least one real preview/frame-refresh raw-read path in the same change and keep unrelated shell or overlay work explicit.
+- Keep residual settings cleanup behind the now-landed PageHome video/runtime slice unless a touched surface proves a larger real reduction in ambient reads.
+- Retirement requirement: the slice must remove at least one real settings-family raw-read or write-through path in the same change and avoid reopening shell, launcher, or fullscreen-video ownership.
 
 ### Next
 
-#### Settings cleanup
+#### AppRuntime and handler decomposition
 
-- Keep residual settings cleanup behind the video/runtime review unless a touched slice proves a larger real reduction in ambient reads.
+- Treat large Python-file cleanup as maintainability follow-on, not a license to widen architecture scope.
+- Prefer bounded extractions that preserve the current contracts and keep `app_runtime.py` plus `control_processor.py` moving toward narrower ownership.
 
 ### Later
 
@@ -55,7 +54,6 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 These files are allowed to keep temporary raw-global reads until their named family is active. They are explicit remainder, not architectural truth.
 
 - `python/paint_controller/qml/pages/wheel/PageWheel.qml` — base preview seam remainder after wheel detail telemetry retirement
-- `python/paint_controller/qml/pages/home/PageHome.qml` — preview seam remainder
 
 ## Validation Gates
 
@@ -69,8 +67,8 @@ These files are allowed to keep temporary raw-global reads until their named fam
 
 ## Focused Validation Order
 
-1. `tests/test_controller_factory_runtime.py` for AppRuntime and retirement assertions
-2. `tests/test_startup_smoke.py` for touched page and feature-root contract parity
+1. `tests/test_app_runtime_runtime.py` and `tests/test_controller_factory_runtime.py` for AppRuntime, shutdown, controller-factory, and retirement assertions
+2. The touched startup-smoke surface files for page and feature-root contract parity, including `tests/test_startup_smoke.py`, `tests/test_startup_smoke_shell.py`, `tests/test_startup_smoke_home.py`, and `tests/test_startup_smoke_workflow_editor.py` as applicable
 3. `tests/test_qml_imports.py` when the slice changes QML contract shape or feature-root composition
 4. Focused handler or model tests for the touched family
 5. `tests/test_ssh.py` or another teardown-specific band whenever the slice touches QObject lifetime or background workers
@@ -85,6 +83,7 @@ These files are allowed to keep temporary raw-global reads until their named fam
 - Stage 0 through Stage 4.5 are complete for the targeted families.
 - Workstream A through Workstream D are complete for the targeted families.
 - Workstream E landed the workflow/editor and command contract reduction, bounded video runtime slice, shared winch, teensy, wheel, and recording status slices, the shell/connectivity family through `shellConnectivityStatus` plus `launcherAdmin`, the page-level wheel detail retirement in `PageWheel.qml`, the page/shared-card winch detail retirement through `winchStatus`, the teensy/end-effector detail retirement through extended `teensyStatus` plus bounded `valveStatus`, the lidar/monitor telemetry retirement through bounded `lidarStatus`, and the fullscreen overlay telemetry retirement through existing `wheelStatus` plus `winchStatus`.
+- The remaining PageHome preview/frame-refresh remainder is retired behind explicit `videoRuntime` ownership, and the supporting startup-smoke/runtime cleanup wave is in place to keep further large-file work bounded.
 
 ## Active Risks
 
@@ -96,7 +95,7 @@ These files are allowed to keep temporary raw-global reads until their named fam
 ## Next Session Checklist
 
 1. Keep the live board in this file as the only source of truth for unfinished architecture work.
-2. Start with the remaining `PageHome.qml` preview/frame-refresh cleanup unless a touched caller proves a higher-leverage raw-read removal.
+2. Start with settings cleanup unless a touched caller proves a higher-leverage raw-read removal.
 3. Preserve frozen shell and launcher contracts.
 4. Keep the quarantined remainder explicit by file.
 5. Do not open automation follow-on work until the root QML contract is materially smaller.

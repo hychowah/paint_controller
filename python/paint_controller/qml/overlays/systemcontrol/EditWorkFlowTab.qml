@@ -474,132 +474,20 @@ Item {
         }
     }
 
-    // Workflow selector popup
-    Popup {
+    WorkflowSelectorPopup {
         id: workflowSelector
-        width: 400
-        height: 300
-        x: (parent.width - width) / 2
-        y: (parent.height - height) / 2
-        modal: true
-        focus: true
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        background: Rectangle {
-            color: "#2A2A2A"
-            radius: 8
-            border.color: "#404040"
-            border.width: 1
-        }
-
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 15
-            spacing: 10
-
-            Text {
-                text: "Select WorkFlow to Load"
-                color: "#FFFFFF"
-                font.pixelSize: 16
-                font.bold: true
-            }
-
-            ListView {
-                id: workflowList
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                clip: true
-                model: workflowEditor ? workflowEditor.workflow_list : []
-
-                delegate: Rectangle {
-                    width: workflowList.width
-                    height: 40
-                    color: delegateMouseArea.containsMouse ? "#3A5A8C" : "#333333"
-                    radius: 4
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: modelData
-                        color: "#FFFFFF"
-                        font.pixelSize: 14
-                    }
-
-                    MouseArea {
-                        id: delegateMouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onClicked: {
-                            loadWorkflowFile(modelData)
-                            workflowSelector.close()
-                        }
-                    }
-                }
-            }
-
-            WorkflowCustomButton {
-                text: "Cancel"
-                Layout.alignment: Qt.AlignRight
-                onClicked: workflowSelector.close()
-            }
+        workflowNames: workflowEditor ? workflowEditor.workflow_list : []
+        onWorkflowSelected: function(selectedWorkflowName) {
+            loadWorkflowFile(selectedWorkflowName)
         }
     }
 
-    // Save As dialog
-    Popup {
+    WorkflowSaveAsPopup {
         id: saveAsDialog
-        width: 400
-        height: 150
-        x: (parent.width - width) / 2
-        y: (parent.height - height) / 2
-        modal: true
-        focus: true
-
-        background: Rectangle {
-            color: "#2A2A2A"
-            radius: 8
-            border.color: "#404040"
-            border.width: 1
-        }
-
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 15
-            spacing: 10
-
-            Text {
-                text: "Save WorkFlow As"
-                color: "#FFFFFF"
-                font.pixelSize: 16
-                font.bold: true
-            }
-
-            TextField {
-                id: saveAsNameField
-                Layout.fillWidth: true
-                placeholderText: "Enter workflow name"
-                text: workflowName
-            }
-
-            RowLayout {
-                Layout.alignment: Qt.AlignRight
-                spacing: 10
-
-                WorkflowCustomButton {
-                    text: "Cancel"
-                    onClicked: saveAsDialog.close()
-                }
-
-                WorkflowCustomButton {
-                    text: "Save"
-                    onClicked: {
-                        if (saveAsNameField.text.trim() !== "") {
-                            workflowName = saveAsNameField.text.trim()
-                            saveWorkflow()
-                            saveAsDialog.close()
-                        }
-                    }
-                }
-            }
+        workflowName: editWorkFlowTab.workflowName
+        onSaveRequested: function(savedWorkflowName) {
+            workflowName = savedWorkflowName
+            saveWorkflow()
         }
     }
 

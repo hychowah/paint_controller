@@ -8,13 +8,13 @@ ROS 2 + PySide6/QML control application for the paint robot.
 - `TD-001` Stage 1 is complete: verified-dead QML was removed, false shared-component folders were flattened, constructor-driven QML surfaces were hardened with `required` / `readonly`, offscreen startup/import smoke coverage was expanded, and warn-only `qmllint` CI is in place.
 - `TD-031` is complete: the shell now uses an explicit page registry, `systemcontrol` and fullscreen video have dedicated feature roots under `qml/features/`, and canonical theme ownership lives under `qml/theme/CommonStyle.qml` with compatibility shims left at the old paths.
 - The architecture control plane is intentionally split: `docs/plan/00_ARCHITECTURE_PROGRESS.md` is the only live execution board, and `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` is durable architecture rationale plus historical context.
-- Stage 1A through Stage 1E, Stage 2, Stage 3A, Stage 3B1, Stage 4, Stage 4.5, Workstream A, Workstream B, Workstream C, and Workstream D are complete for the targeted families. Workstream E then landed bounded system-control services, bounded video runtime, shared status models, shell/connectivity contracts, page-level wheel and winch detail retirement, teensy/valve detail retirement, lidar/monitor telemetry retirement, and fullscreen overlay telemetry retirement.
+- Stage 1A through Stage 1E, Stage 2, Stage 3A, Stage 3B1, Stage 4, Stage 4.5, Workstream A, Workstream B, Workstream C, and Workstream D are complete for the targeted families. Workstream E then landed bounded system-control services, bounded video runtime, shared status models, shell/connectivity contracts, page-level wheel and winch detail retirement, teensy/valve detail retirement, lidar/monitor telemetry retirement, fullscreen overlay telemetry retirement, and the remaining PageHome preview/frame-refresh retirement behind explicit `videoRuntime` ownership.
 - Recent runtime hardening also repaired the tracked fullscreen overlay warning classes and restored clean full-suite teardown after the SSH-controller cleanup fix.
-- The current next recommended implementation path is the remaining `PageHome.qml` preview and frame-refresh cleanup, with shell and launcher contracts treated as frozen and settings cleanup staying downstream only where it still materially reduces ambient reads.
+- The current next recommended implementation path is settings cleanup, followed by bounded `app_runtime.py` and handler decomposition only where those slices preserve the current ownership boundaries and still materially reduce ambient reads.
 - Python runtime is the only live application path in this repository; the old C++ UI path has been removed from the tree.
 - Runtime objects are exposed to QML through `setContextProperty()`. Do not use `qmlRegisterSingletonInstance()` in this repo.
 - Latest verified local validation on 2026-04-28 is green at `260 passed` via `python/paint_controller/venv/bin/python -m pytest tests -q`.
-- Most recent focused validation is green for the fullscreen overlay startup-smoke and import band across `tests/test_startup_smoke.py` and `tests/test_qml_imports.py`.
+- Most recent focused validation is green at `10 passed` for `tests/test_startup_smoke_home.py`, `tests/test_startup_smoke_shell.py`, and `tests/test_qml_imports.py`, with the workflow-editor import follow-up green at `2 passed` for `tests/test_startup_smoke_workflow_editor.py` and `tests/test_qml_imports.py`.
 - For authority and session-start order: use `INDEX.md` first, prefer `DEVNOTES.md` for the latest verified runtime state, use `docs/plan/00_ARCHITECTURE_PROGRESS.md` for live next-step guidance, and use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable rationale.
 
 ## Prerequisites
@@ -135,7 +135,8 @@ Use the project-local interpreter, not an arbitrary workspace `.venv`.
 /home/$USER/ros2_ws/src/paint_controller_ros2/python/paint_controller/venv/bin/python -m ruff format --check .
 /home/$USER/ros2_ws/src/paint_controller_ros2/python/paint_controller/venv/bin/python -m pyright
 /home/$USER/ros2_ws/src/paint_controller_ros2/python/paint_controller/venv/bin/python -m pytest tests -q
-/home/$USER/ros2_ws/src/paint_controller_ros2/python/paint_controller/venv/bin/python -m pytest tests/test_startup_smoke.py -q
+/home/$USER/ros2_ws/src/paint_controller_ros2/python/paint_controller/venv/bin/python -m pytest tests/test_startup_smoke_shell.py tests/test_startup_smoke_home.py tests/test_qml_imports.py -q
+/home/$USER/ros2_ws/src/paint_controller_ros2/python/paint_controller/venv/bin/python -m pytest tests/test_app_runtime_runtime.py tests/test_controller_factory_runtime.py -q
 cd ~/ros2_ws && colcon build --packages-select paint_interfaces paint_controller_ros2
 ```
 
@@ -153,11 +154,22 @@ Note: If `QT_QPA_PLATFORM` is set to `xcb` in your shell environment, `conftest.
 /home/$USER/ros2_ws/src/paint_controller_ros2/python/paint_controller/venv/bin/python -m pytest tests/test_winch.py -q
 ```
 
+Useful focused handoff bands:
+
+```bash
+/home/$USER/ros2_ws/src/paint_controller_ros2/python/paint_controller/venv/bin/python -m pytest tests/test_startup_smoke_shell.py tests/test_startup_smoke_home.py tests/test_qml_imports.py -q
+/home/$USER/ros2_ws/src/paint_controller_ros2/python/paint_controller/venv/bin/python -m pytest tests/test_startup_smoke_workflow_editor.py tests/test_qml_imports.py -q
+/home/$USER/ros2_ws/src/paint_controller_ros2/python/paint_controller/venv/bin/python -m pytest tests/test_app_runtime_runtime.py tests/test_controller_factory_runtime.py -q
+```
+
 ### Current Test Layers
 
 - Pure logic and schema: `tests/test_crc.py`, `tests/test_input_utils.py`, `tests/test_settings_schema.py`
 - Harness validation: `tests/test_test_infrastructure.py`
 - Core runtime state and persistence: `tests/test_state_store.py`, `tests/test_settings_runtime.py`
+- Direct AppRuntime seams and shutdown behavior: `tests/test_app_runtime_runtime.py`
+- Controller-factory wiring and admin gate behavior: `tests/test_controller_factory_runtime.py`
+- Startup smoke by surface: `tests/test_startup_smoke.py`, `tests/test_startup_smoke_shell.py`, `tests/test_startup_smoke_home.py`, `tests/test_startup_smoke_workflow_editor.py`
 - Manual command boundary: `tests/test_manual_command_handler.py`
 - Safety-critical command dispatch: `tests/test_control_processor.py`
 - Qt signal bridge: `tests/test_qt_bridge.py`

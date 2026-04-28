@@ -168,6 +168,7 @@ Completed stages and workstreams remain useful historical record, but live imple
 - Retired the shared teensy/end-effector detail telemetry seam behind extended `teensyStatus` plus bounded `valveStatus`.
 - Retired the monitor and wall-detection lidar seam behind bounded `lidarStatus`.
 - Retired the remaining fullscreen overlay wheel and winch telemetry reads behind existing `wheelStatus` and `winchStatus`.
+- Retired the remaining `PageHome.qml` preview and frame-refresh remainder behind explicit `videoRuntime` ownership while the cleanup wave split the supporting startup-smoke and runtime guard surfaces into smaller, local files.
 
 ## Guidance For Future Sessions
 
