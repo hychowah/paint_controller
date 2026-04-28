@@ -9,6 +9,7 @@ Rectangle {
     color: "transparent"
     required property var workflowRunner
     required property var videoRuntime
+    required property var wheelStatus
 
     readonly property int panelWidth: CommonStyle.panelWidth
     readonly property int panelHeight: CommonStyle.panelHeight
@@ -92,7 +93,7 @@ Rectangle {
                 }
                 
                 Text {
-                    text: formatFixed(controllerValue(wheelController, "left_wheel_speed", 0.0), 0, "")
+                    text: formatFixed(overlay.wheelStatus.leftWheelSpeed, 0, "")
                     color: valueColor
                     font.pixelSize: valueFontSize
                     font.bold: true
@@ -119,7 +120,7 @@ Rectangle {
                 }
                 
                 Text {
-                    text: formatFixed(controllerValue(wheelController, "left_wheel_current", 0.0), 1, " A")
+                    text: formatFixed(overlay.wheelStatus.leftWheelCurrent, 1, " A")
                     color: valueColor
                     font.pixelSize: valueFontSize
                     font.bold: true
@@ -146,7 +147,7 @@ Rectangle {
                 }
                 
                 Text {
-                    text: formatFixed(controllerValue(wheelController, "left_wheel_position", 0.0), 0, " mm")
+                    text: formatFixed(overlay.wheelStatus.leftWheelPosition, 0, " mm")
                     color: valueColor
                     font.pixelSize: valueFontSize
                     font.bold: true
@@ -195,7 +196,7 @@ Rectangle {
                 }
                 
                 Text {
-                    text: formatFixed(controllerValue(wheelController, "right_wheel_speed", 0.0), 0, "")
+                    text: formatFixed(overlay.wheelStatus.rightWheelSpeed, 0, "")
                     color: valueColor
                     font.pixelSize: valueFontSize
                     font.bold: true
@@ -222,7 +223,7 @@ Rectangle {
                 }
                 
                 Text {
-                    text: formatFixed(controllerValue(wheelController, "right_wheel_current", 0.0), 1, " A")
+                    text: formatFixed(overlay.wheelStatus.rightWheelCurrent, 1, " A")
                     color: valueColor
                     font.pixelSize: valueFontSize
                     font.bold: true
@@ -249,7 +250,7 @@ Rectangle {
                 }
                 
                 Text {
-                    text: formatFixed(controllerValue(wheelController, "right_wheel_position", 0.0), 0, " mm")
+                    text: formatFixed(overlay.wheelStatus.rightWheelPosition, 0, " mm")
                     color: valueColor
                     font.pixelSize: valueFontSize
                     font.bold: true

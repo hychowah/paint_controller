@@ -8,6 +8,7 @@ import "../../components/displays"
 Rectangle {
     id: page1Rect
     objectName: "page1Rect"
+    required property var wheelStatus
     Layout.fillWidth: true
     Layout.fillHeight: true
     property int timeStep: 0
@@ -182,10 +183,10 @@ Rectangle {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 56
-                        color: wheelController.enabled ? "#E3F2FD" : "#F5F5F5"
+                        color: page1Rect.wheelStatus.enabled ? "#E3F2FD" : "#F5F5F5"
                         radius: 12
                         border.width: 1
-                        border.color: wheelController.enabled ? "#90CAF9" : "#E0E0E0"
+                        border.color: page1Rect.wheelStatus.enabled ? "#90CAF9" : "#E0E0E0"
                         
                         // Subtle transition animations
                         Behavior on color {
@@ -199,7 +200,7 @@ Rectangle {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                deviceActionHandler.requestWheelEnabled(!wheelController.enabled)
+                                deviceActionHandler.requestWheelEnabled(!page1Rect.wheelStatus.enabled)
                             }
                         }
                         
@@ -213,7 +214,7 @@ Rectangle {
                                 width: 32
                                 height: 32
                                 radius: 16
-                                color: wheelController.enabled ? "#2196F3" : "#9E9E9E"
+                                color: page1Rect.wheelStatus.enabled ? "#2196F3" : "#9E9E9E"
                                 
                                 // Simple wheel icon using rectangles
                                 Rectangle {
@@ -253,9 +254,9 @@ Rectangle {
                                 }
                                 
                                 Label {
-                                    text: wheelController.enabled ? "Enabled - Motors active" : "Disabled - Motors inactive"
+                                    text: page1Rect.wheelStatus.enabled ? "Enabled - Motors active" : "Disabled - Motors inactive"
                                     font.pixelSize: 13
-                                    color: wheelController.enabled ? "#2196F3" : "#757575"
+                                    color: page1Rect.wheelStatus.enabled ? "#2196F3" : "#757575"
                                     
                                     // Color transition
                                     Behavior on color {
@@ -269,7 +270,7 @@ Rectangle {
                                 width: 48
                                 height: 24
                                 radius: 12
-                                color: wheelController.enabled ? "#2196F3" : "#9E9E9E"
+                                color: page1Rect.wheelStatus.enabled ? "#2196F3" : "#9E9E9E"
                                 
                                 Rectangle {
                                     id: toggleHandle
@@ -278,7 +279,7 @@ Rectangle {
                                     radius: 10
                                     color: "white"
                                     anchors.verticalCenter: parent.verticalCenter
-                                    x: wheelController.enabled ? parent.width - width - 2 : 2
+                                    x: page1Rect.wheelStatus.enabled ? parent.width - width - 2 : 2
                                     
                                     // Add subtle drop shadow
                                     layer.enabled: true
@@ -453,7 +454,7 @@ Rectangle {
                     // Metrics cards using the MetricPanel component
                     MetricPanel {
                         title: "LEFT SPEED"
-                        value: wheelController.left_wheel_speed || 0
+                        value: page1Rect.wheelStatus.leftWheelSpeed || 0
                         unit: "RPM" 
                         maxValue: 5
                         barColor: "#2196F3"
@@ -461,7 +462,7 @@ Rectangle {
                     
                     MetricPanel {
                         title: "RIGHT SPEED"
-                        value: wheelController.right_wheel_speed || 0
+                        value: page1Rect.wheelStatus.rightWheelSpeed || 0
                         unit: "RPM"
                         maxValue: 5
                         barColor: "#2196F3"
@@ -469,7 +470,7 @@ Rectangle {
                     
                     MetricPanel {
                         title: "LEFT CURRENT"
-                        value: wheelController.left_wheel_current || 0
+                        value: page1Rect.wheelStatus.leftWheelCurrent || 0
                         unit: "A"
                         maxValue: 8
                         barColor: "#FF5722"
@@ -477,7 +478,7 @@ Rectangle {
                     
                     MetricPanel {
                         title: "RIGHT CURRENT"
-                        value: wheelController.right_wheel_current || 0
+                        value: page1Rect.wheelStatus.rightWheelCurrent || 0
                         unit: "A"
                         maxValue: 8
                         barColor: "#FF5722"
@@ -485,7 +486,7 @@ Rectangle {
                     
                     MetricPanel {
                         title: "LEFT WHEEL TRAVEL"
-                        value: wheelController.left_wheel_position.toFixed(0) || 0
+                        value: page1Rect.wheelStatus.leftWheelPosition.toFixed(0) || 0
                         unit: "mm"
                         maxValue: 100
                         barColor: "#4CAF50"
@@ -494,7 +495,7 @@ Rectangle {
                     
                     MetricPanel {
                         title: "RIGHT WHEEL TRAVEL"
-                        value: wheelController.right_wheel_position.toFixed(0) || 0
+                        value: page1Rect.wheelStatus.rightWheelPosition.toFixed(0) || 0
                         unit: "mm"
                         maxValue: 100
                         barColor: "#4CAF50"

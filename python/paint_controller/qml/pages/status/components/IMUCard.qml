@@ -8,6 +8,7 @@ import "../../../core"
 IndustrialCard {
     id: imuCard
     title: "IMU"
+    required property var teensyStatus
     
     // === CONFIGURABLE SIZES (adjust these for different displays) ===
     readonly property int labelFontSize: CommonStyle.fontBody      // Header and row labels
@@ -82,7 +83,7 @@ IndustrialCard {
             
             Text {
                 Layout.preferredWidth: imuCard.valueWidth
-                text: (teensyController.all_status.imu_pitch || 0).toFixed(1)
+                text: imuCard.teensyStatus.imuPitch.toFixed(1)
                 font.pixelSize: imuCard.valueFontSize
                 font.family: CommonStyle.fontMono
                 color: CommonStyle.accentPrimary
@@ -91,7 +92,7 @@ IndustrialCard {
             
             Text {
                 Layout.preferredWidth: imuCard.valueWidth
-                text: (teensyController.all_status.imu_roll || 0).toFixed(1)
+                text: imuCard.teensyStatus.imuRoll.toFixed(1)
                 font.pixelSize: imuCard.valueFontSize
                 font.family: CommonStyle.fontMono
                 color: CommonStyle.accentPrimary
@@ -100,7 +101,7 @@ IndustrialCard {
             
             Text {
                 Layout.preferredWidth: imuCard.valueWidth
-                text: (teensyController.all_status.imu_yaw || 0).toFixed(1)
+                text: imuCard.teensyStatus.imuYaw.toFixed(1)
                 font.pixelSize: imuCard.valueFontSize
                 font.family: CommonStyle.fontMono
                 color: CommonStyle.accentPrimary
@@ -125,7 +126,7 @@ IndustrialCard {
             
             Text {
                 Layout.preferredWidth: imuCard.valueWidth
-                text: (teensyController.all_status.imu_acc_x || 0).toFixed(2)
+                text: imuCard.teensyStatus.imuAccX.toFixed(2)
                 font.pixelSize: imuCard.valueFontSize
                 font.family: CommonStyle.fontMono
                 color: CommonStyle.accentPrimary
@@ -134,7 +135,7 @@ IndustrialCard {
             
             Text {
                 Layout.preferredWidth: imuCard.valueWidth
-                text: (teensyController.all_status.imu_acc_y || 0).toFixed(2)
+                text: imuCard.teensyStatus.imuAccY.toFixed(2)
                 font.pixelSize: imuCard.valueFontSize
                 font.family: CommonStyle.fontMono
                 color: CommonStyle.accentPrimary
@@ -143,7 +144,7 @@ IndustrialCard {
             
             Text {
                 Layout.preferredWidth: imuCard.valueWidth
-                text: (teensyController.all_status.imu_acc_z || 0).toFixed(2)
+                text: imuCard.teensyStatus.imuAccZ.toFixed(2)
                 font.pixelSize: imuCard.valueFontSize
                 font.family: CommonStyle.fontMono
                 color: CommonStyle.accentPrimary
@@ -168,7 +169,7 @@ IndustrialCard {
             
             Text {
                 Layout.preferredWidth: imuCard.valueWidth
-                text: (teensyController.all_status.imu_angular_acc_x || 0).toFixed(2)
+                text: imuCard.teensyStatus.imuAngularAccX.toFixed(2)
                 font.pixelSize: imuCard.valueFontSize
                 font.family: CommonStyle.fontMono
                 color: CommonStyle.accentPrimary
@@ -177,7 +178,7 @@ IndustrialCard {
             
             Text {
                 Layout.preferredWidth: imuCard.valueWidth
-                text: (teensyController.all_status.imu_angular_acc_y || 0).toFixed(2)
+                text: imuCard.teensyStatus.imuAngularAccY.toFixed(2)
                 font.pixelSize: imuCard.valueFontSize
                 font.family: CommonStyle.fontMono
                 color: CommonStyle.accentPrimary
@@ -186,7 +187,7 @@ IndustrialCard {
             
             Text {
                 Layout.preferredWidth: imuCard.valueWidth
-                text: (teensyController.all_status.imu_angular_acc_z || 0).toFixed(2)
+                text: imuCard.teensyStatus.imuAngularAccZ.toFixed(2)
                 font.pixelSize: imuCard.valueFontSize
                 font.family: CommonStyle.fontMono
                 color: CommonStyle.accentPrimary

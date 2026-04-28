@@ -7,15 +7,15 @@ ROS 2 + PySide6/QML control application for the paint robot.
 - This repository is currently in a **refactor-first** phase. The intent is to improve architecture, safety, shutdown/threading behavior, tests, and typing gates before resuming net-new feature development.
 - `TD-001` Stage 1 is complete: verified-dead QML was removed, false shared-component folders were flattened, constructor-driven QML surfaces were hardened with `required` / `readonly`, offscreen startup/import smoke coverage was expanded, and warn-only `qmllint` CI is in place.
 - `TD-031` is complete: the shell now uses an explicit page registry, `systemcontrol` and fullscreen video have dedicated feature roots under `qml/features/`, and canonical theme ownership lives under `qml/theme/CommonStyle.qml` with compatibility shims left at the old paths.
-- The current architecture roadmap is in `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`. Stage 1A through Stage 1E, Stage 2, Stage 3A, Stage 3B1, Stage 4, Stage 4.5, Workstream A, Workstream B, Workstream C, and Workstream D are complete for the targeted families, and Workstream E is now underway: command/device/workflow boundaries are frozen, shell and route ownership are explicit, top-level route identity is now key-first in the shell, the Settings route is truthful where schema-backed settings exist, the remaining tracked direct-admin QML mutators are behind Python-owned boundaries, the workflow runtime/editor contract is stabilized behind Python-owned read/write seams, the touched overlay host plus operator-legality seams are explicit, the settings family now consumes typed owner helpers instead of raw property-bag semantics, unused `capabilityCatalog`, `steamDeckHandler`, and `windMonitor` QML context exposure is retired, E1 slices 1-2 reduced the app-scope contract for the system-control workflow/editor/command family, the shared video slice moved the touched fullscreen seams behind `videoRuntime`, later device/status sub-slices moved shared reads behind `winchStatus`, `wheelStatus`, `recordingStatus`, and bounded `teensyStatus`, and the first shell/connectivity slice moved the shared shell panel behind `shellConnectivityStatus`.
-- Current slice status is tracked in `docs/plan/00_ARCHITECTURE_PROGRESS.md`.
+- The architecture control plane is intentionally split: `docs/plan/00_ARCHITECTURE_PROGRESS.md` is the only live execution board, and `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` is durable architecture rationale plus historical context.
+- Stage 1A through Stage 1E, Stage 2, Stage 3A, Stage 3B1, Stage 4, Stage 4.5, Workstream A, Workstream B, Workstream C, and Workstream D are complete for the targeted families. Workstream E then landed bounded system-control services, bounded video runtime, shared status models, shell/connectivity contracts, page-level wheel and winch detail retirement, teensy/valve detail retirement, lidar/monitor telemetry retirement, and fullscreen overlay telemetry retirement.
 - Recent runtime hardening also repaired the tracked fullscreen overlay warning classes and restored clean full-suite teardown after the SSH-controller cleanup fix.
-- The next recommended implementation path is to continue Workstream E1 with the bounded `PageHome.qml` shell/connectivity status-header follow-up, with launcher commands/config editing and home video preview staying explicit remainder and narrower settings cleanup remaining downstream only where it still materially reduces ambient reads before any E2 automation-contract work.
+- The current next recommended implementation path is the remaining `PageHome.qml` preview and frame-refresh cleanup, with shell and launcher contracts treated as frozen and settings cleanup staying downstream only where it still materially reduces ambient reads.
 - Python runtime is the only live application path in this repository; the old C++ UI path has been removed from the tree.
 - Runtime objects are exposed to QML through `setContextProperty()`. Do not use `qmlRegisterSingletonInstance()` in this repo.
-- Latest verified local validation on 2026-04-27 is green at `252 passed` via `python/paint_controller/venv/bin/python -m pytest tests -q`.
-- Active architecture planning status is tracked in `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`.
-- For authority and session-start order: use `INDEX.md` first, prefer `DEVNOTES.md` for the latest verified runtime state, and use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for the active roadmap.
+- Latest verified local validation on 2026-04-28 is green at `260 passed` via `python/paint_controller/venv/bin/python -m pytest tests -q`.
+- Most recent focused validation is green for the fullscreen overlay startup-smoke and import band across `tests/test_startup_smoke.py` and `tests/test_qml_imports.py`.
+- For authority and session-start order: use `INDEX.md` first, prefer `DEVNOTES.md` for the latest verified runtime state, use `docs/plan/00_ARCHITECTURE_PROGRESS.md` for live next-step guidance, and use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable rationale.
 
 ## Prerequisites
 
@@ -112,6 +112,8 @@ source ~/.bashrc
 paint_controller
 ```
 
+`paint_controller` is installed by `pip install -e .`. The launcher script below is only an optional convenience wrapper when you do not want to activate the project venv manually.
+
 ### Manual Run
 
 ```bash
@@ -125,6 +127,17 @@ python -m paint_controller
 ## Testing
 
 Use the project-local interpreter, not an arbitrary workspace `.venv`.
+
+### Common Validation Commands
+
+```bash
+/home/$USER/ros2_ws/src/paint_controller_ros2/python/paint_controller/venv/bin/python -m ruff check .
+/home/$USER/ros2_ws/src/paint_controller_ros2/python/paint_controller/venv/bin/python -m ruff format --check .
+/home/$USER/ros2_ws/src/paint_controller_ros2/python/paint_controller/venv/bin/python -m pyright
+/home/$USER/ros2_ws/src/paint_controller_ros2/python/paint_controller/venv/bin/python -m pytest tests -q
+/home/$USER/ros2_ws/src/paint_controller_ros2/python/paint_controller/venv/bin/python -m pytest tests/test_startup_smoke.py -q
+cd ~/ros2_ws && colcon build --packages-select paint_interfaces paint_controller_ros2
+```
 
 ### Run the Full Suite
 
@@ -158,20 +171,20 @@ Note: If `QT_QPA_PLATFORM` is set to `xcb` in your shell environment, `conftest.
 - `python/paint_controller/qml/` — QML UI
 - `python/config/` — runtime configuration JSON
 - `tests/` — pytest suite
-- `docs/plan/` — active architecture roadmap
+- `docs/plan/` — live architecture board plus durable architecture guide
 - Historical C++ sources have been removed from the live repo; no `src/` runtime path remains
 
 ## Documentation Map
 
 - `INDEX.md` — start here in a fresh LLM or handoff session; repo authority order and doc navigation
 - `docs/plan/00_ARCHITECTURE_PROGRESS.md` — current roadmap status, completed slices, next recommended slice
-- `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` — active architecture roadmap and staged direction
+- `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` — durable architecture rationale, anti-goals, and historical completion context
 - `DEVNOTES.md` — chronological development notes
 - `KNOWLEDGE.md` — reusable Qt/Python/ROS gotchas
 
 ## Operational Notes
 
-- Multi-screen behavior is managed by `ScreenManager` and the QML shell; the current architecture direction is documented in `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`.
+- Multi-screen behavior is managed by `ScreenManager` and the QML shell; use `docs/plan/00_ARCHITECTURE_PROGRESS.md` for the live next slice and `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture rationale.
 - The build system is now a pure `ament_cmake` wrapper around the Python package; no live C++ UI/runtime path remains in the repo.
 
 ## Troubleshooting

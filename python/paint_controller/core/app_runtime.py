@@ -39,6 +39,8 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "wheelStatus",
     "winchStatus",
     "teensyStatus",
+    "valveStatus",
+    "lidarStatus",
     "shellConnectivityStatus",
     "launcherAdmin",
     "overlayController",
@@ -715,6 +717,13 @@ class _TeensyStatus(QObject):
         all_status = _read_object_value(self._teensy_controller, "all_status", default={})
         return _read_mapping_value(all_status, key)
 
+    def _status_float(self, key: str) -> float:
+        value = self._status_value(key)
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
     @Property(bool, notify=changed)
     def enabled(self) -> bool:
         return bool(self._status_value("enabled"))
@@ -725,51 +734,79 @@ class _TeensyStatus(QObject):
 
     @Property(float, notify=changed)
     def voltage(self) -> float:
-        value = self._status_value("voltage")
-        try:
-            return float(value or 0.0)
-        except (TypeError, ValueError):
-            return 0.0
+        return self._status_float("voltage")
 
     @Property(float, notify=changed)
     def current(self) -> float:
-        value = self._status_value("current")
-        try:
-            return float(value or 0.0)
-        except (TypeError, ValueError):
-            return 0.0
+        return self._status_float("current")
 
     @Property(float, notify=changed)
     def temperature(self) -> float:
-        value = self._status_value("temperature")
-        try:
-            return float(value or 0.0)
-        except (TypeError, ValueError):
-            return 0.0
+        return self._status_float("temperature")
 
     @Property(float, notify=changed)
     def runTime(self) -> float:
-        value = self._status_value("run_time")
-        try:
-            return float(value or 0.0)
-        except (TypeError, ValueError):
-            return 0.0
+        return self._status_float("run_time")
 
     @Property(float, notify=changed)
     def loopTime(self) -> float:
-        value = self._status_value("loop_time")
-        try:
-            return float(value or 0.0)
-        except (TypeError, ValueError):
-            return 0.0
+        return self._status_float("loop_time")
 
     @Property(float, notify=changed)
     def loopTimeCounter(self) -> float:
-        value = self._status_value("loop_time_counter")
-        try:
-            return float(value or 0.0)
-        except (TypeError, ValueError):
-            return 0.0
+        return self._status_float("loop_time_counter")
+
+    @Property(float, notify=changed)
+    def imuPitch(self) -> float:
+        return self._status_float("imu_pitch")
+
+    @Property(float, notify=changed)
+    def imuRoll(self) -> float:
+        return self._status_float("imu_roll")
+
+    @Property(float, notify=changed)
+    def imuYaw(self) -> float:
+        return self._status_float("imu_yaw")
+
+    @Property(float, notify=changed)
+    def imuAccX(self) -> float:
+        return self._status_float("imu_acc_x")
+
+    @Property(float, notify=changed)
+    def imuAccY(self) -> float:
+        return self._status_float("imu_acc_y")
+
+    @Property(float, notify=changed)
+    def imuAccZ(self) -> float:
+        return self._status_float("imu_acc_z")
+
+    @Property(float, notify=changed)
+    def imuAngularAccX(self) -> float:
+        return self._status_float("imu_angular_acc_x")
+
+    @Property(float, notify=changed)
+    def imuAngularAccY(self) -> float:
+        return self._status_float("imu_angular_acc_y")
+
+    @Property(float, notify=changed)
+    def imuAngularAccZ(self) -> float:
+        return self._status_float("imu_angular_acc_z")
+
+    @Property(float, notify=changed)
+    def armExtensionDist(self) -> float:
+        return self._status_float("arm_extension_dist")
+
+    @Property(float, notify=changed)
+    def armRailCurrent(self) -> float:
+        return self._status_float("arm_rail_current")
+
+    @Property(float, notify=changed)
+    def gimbalPitchMotorCurrent(self) -> float:
+        return self._status_float("gimbal_pitch_motor_current")
+
+    @Property(float, notify=changed)
+    def gimbalPitchMotorAngle(self) -> float:
+        return self._status_float("gimbal_pitch_motor_angle")
 
     @Property(bool, notify=changed)
     def stabilityEnabled(self) -> bool:
@@ -798,6 +835,84 @@ class _TeensyStatus(QObject):
     @Property(bool, notify=changed)
     def sprayGunLedOn(self) -> bool:
         return bool(_read_object_value(self._teensy_controller, "spray_gun_led_on", default=False))
+
+
+class _ValveStatus(QObject):
+    changed = Signal()
+
+    def __init__(self, valve_controller: object) -> None:
+        super().__init__()
+        self._valve_controller = valve_controller
+        for signal_name in (
+            "valve_position_changed",
+            "valve_rate_changed",
+            "total_volume_changed",
+            "valve_motor_current_changed",
+            "valve_motor_connected_changed",
+            "flow_meter_connected_changed",
+            "esp32_connected_changed",
+        ):
+            _connect_if_signal(valve_controller, signal_name, self.changed.emit)
+
+    def _float_value(self, key: str) -> float:
+        value = _read_object_value(self._valve_controller, key, default=0.0)
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(float, notify=changed)
+    def valvePosition(self) -> float:
+        return self._float_value("valve_position")
+
+    @Property(float, notify=changed)
+    def valveRate(self) -> float:
+        return self._float_value("valve_rate")
+
+    @Property(float, notify=changed)
+    def totalVolume(self) -> float:
+        return self._float_value("total_volume")
+
+    @Property(float, notify=changed)
+    def valveMotorCurrent(self) -> float:
+        return self._float_value("valve_motor_current")
+
+    @Property(bool, notify=changed)
+    def valveMotorConnected(self) -> bool:
+        return bool(_read_object_value(self._valve_controller, "valve_motor_connected", default=False))
+
+    @Property(bool, notify=changed)
+    def flowMeterConnected(self) -> bool:
+        return bool(_read_object_value(self._valve_controller, "flow_meter_connected", default=False))
+
+    @Property(bool, notify=changed)
+    def connected(self) -> bool:
+        return bool(_read_object_value(self._valve_controller, "esp32_connected", default=False))
+
+
+class _LidarStatus(QObject):
+    changed = Signal()
+
+    def __init__(self, lidar_controller: object) -> None:
+        super().__init__()
+        self._lidar_controller = lidar_controller
+        for signal_name in ("distance_changed", "angle_changed"):
+            _connect_if_signal(lidar_controller, signal_name, self.changed.emit)
+
+    def _float_value(self, key: str) -> float:
+        value = _read_object_value(self._lidar_controller, key, default=0.0)
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(float, notify=changed)
+    def distance(self) -> float:
+        return self._float_value("distance")
+
+    @Property(float, notify=changed)
+    def angle(self) -> float:
+        return self._float_value("angle")
 
 
 def teardown_qml_runtime(
@@ -866,6 +981,8 @@ class AppRuntime:
         self.wheel_status: _WheelStatus | None = None
         self.winch_status: _WinchStatus | None = None
         self.teensy_status: _TeensyStatus | None = None
+        self.valve_status: _ValveStatus | None = None
+        self.lidar_status: _LidarStatus | None = None
         self.shell_connectivity_status: _ShellConnectivityStatus | None = None
         self.launcher_admin: _LauncherAdmin | None = None
         self.shell_state = None
@@ -1017,6 +1134,8 @@ class AppRuntime:
         self.wheel_status = _WheelStatus(self.bundle.wheel_controller)
         self.winch_status = _WinchStatus(self.bundle.winch_controller)
         self.teensy_status = _TeensyStatus(self.bundle.teensy_controller)
+        self.valve_status = _ValveStatus(self.bundle.esp32_valve_controller)
+        self.lidar_status = _LidarStatus(self.bundle.lidar_controller)
         self.shell_connectivity_status = _ShellConnectivityStatus(
             ssh_controller=self.bundle.ssh_controller,
             heartbeat_handler=self.bundle.heartbeat_handler,
@@ -1104,6 +1223,8 @@ class AppRuntime:
         assert self.wheel_status is not None
         assert self.winch_status is not None
         assert self.teensy_status is not None
+        assert self.valve_status is not None
+        assert self.lidar_status is not None
         assert self.shell_connectivity_status is not None
         assert self.launcher_admin is not None
         assert self.video_stream_handler is not None
@@ -1124,6 +1245,8 @@ class AppRuntime:
             "wheelStatus": self.wheel_status,
             "winchStatus": self.winch_status,
             "teensyStatus": self.teensy_status,
+            "valveStatus": self.valve_status,
+            "lidarStatus": self.lidar_status,
             "shellConnectivityStatus": self.shell_connectivity_status,
             "launcherAdmin": self.launcher_admin,
             "overlayController": self.bundle.overlay_controller,

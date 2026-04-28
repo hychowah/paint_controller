@@ -4,13 +4,15 @@ ROS2 node with PySide6/QML UI for robotic paint control on a Steam Deck. The liv
 
 ## Current Strategy
 
-- This branch is **refactor-first**. Runtime/workflow/service validation hardening is complete, and **`TD-001` Stage 1 is complete**: verified-dead QML was removed, false shared-component folders were flattened, constructor-driven QML surfaces were hardened with `required` / `readonly`, startup/import smoke coverage was expanded, and warn-only `qmllint` CI is now in place.
-- **`TD-031` is complete**: the page registry is explicit, `systemcontrol` and fullscreen video now have dedicated feature roots, and canonical theme ownership lives under `qml/theme/CommonStyle.qml`. Focused smoke coverage was expanded to the new feature roots; compatibility wrappers remain intentionally to keep import churn out of the blocking stage.
-- The QML cleanup is intentionally split into **two stages**. Stage 1 was the safe flatten + hardening batch; Stage 2 is the narrowed `TD-031` structural pass. URI-module migration, broad lidar/pointcloud restructuring, and any optional root-file rename are explicitly out of scope for this stage.
-- The current architecture direction is tracked in **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** and the current checkpoint status is tracked in **`docs/plan/00_ARCHITECTURE_PROGRESS.md`**. The core purpose of this refactor is explicit: make the app a more professional Qt program by reducing global coupling, clarifying ownership, shrinking the app-scope QML contract, and making the codebase easier to maintain, scale, and understand. **Stage 1A through Stage 1E, Stage 2, Stage 3A, Stage 3B1, Stage 4, Stage 4.5, Workstream A, Workstream B, Workstream C, and Workstream D are complete for the targeted families**, and **Workstream E is now active in progress**: the live `OverlayController` / `ControlProcessor` cycle is gone, joystick selection ownership lives in `JoystickSelectionModel`, shell policy now lives in a narrow `ShellState`, top-level route identity is now key-first and canonical in `MainWindow.qml`, the Settings route is now truthful where schema-backed settings exist, the remaining tracked direct-admin QML mutators are behind Python-owned boundaries, the workflow runtime/editor contract is now stabilized behind Python-owned read/write boundaries, the touched overlay host plus legality seams are explicit and declarative, the settings family now consumes typed owner helpers instead of raw property-bag semantics, unused `capabilityCatalog`, `steamDeckHandler`, and `windMonitor` QML context exposure is retired, Workstream E1 slices 1-2 already moved the workflow/editor and system-control command globals behind `systemControlServices`, the shared video slice moved the touched fullscreen video controls, frame-refresh, and top-bar summary seams behind `videoRuntime`, later device/status sub-slices moved the shared winch seam behind `winchStatus`, the shared wheel summary/control seam behind `wheelStatus`, the shared recording seam behind `recordingStatus`, the shared teensy power/header plus feature-toggle seams behind bounded `teensyStatus` fields, the first shell/connectivity slice moved the shared `ConnectionStatusPanel.qml` shell chrome behind `shellConnectivityStatus`, the next bounded shell slice moved the touched `PageHome.qml` header/footer telemetry behind that same contract while removing `heartbeatHandler` from the root QML context surface, the following bounded shell slice moved the touched `PageLauncher.qml` LED status behind that same contract, and the latest bounded shell slice moved the remaining Launcher SSH-admin calls behind `launcherAdmin` while removing `sshHandler` from the root QML context surface. Follow-up runtime hardening on 2026-04-27 then repaired the tracked fullscreen overlay warning classes, aligned the smoke harness with the real runtime contracts, and fixed the late SSH-controller teardown crash without changing the Workstream E family order. The unfinished tail now executes as a family-by-family boundary retirement program with one explicit north star: each operator-visible behavior should have one canonical Python owner and one declarative QML consumer, and each touched slice should reduce the permanent QML runtime surface rather than only rename access. The next recommended implementation path is **to resume the explicit domain telemetry remainder wave, starting with wheel detail telemetry unless a touched slice proves a higher-leverage caller, while keeping PageHome video preview and fullscreen telemetry explicit remainder, before opportunistic settings cleanup and before any E2 automation-contract work**.
+- This branch is **refactor-first**. Runtime/workflow/service hardening, the QML flattening pass, the feature-root pass, and the completed ownership work through Workstream D are historical record now.
+- The current architecture control plane is intentionally split in two: **`docs/plan/00_ARCHITECTURE_PROGRESS.md`** is the only live execution board, and **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** is the durable architecture guide.
+- The unfinished tail is no longer a generic structural cleanup. It is a family-by-family boundary retirement program focused on shrinking the permanent QML runtime surface.
+- The current live next direction is the remaining `PageHome.qml` preview/frame-refresh cleanup after the fullscreen overlay telemetry remainder was retired behind existing `wheelStatus` and `winchStatus`.
+- Shell and launcher boundary work is treated as frozen unless a future slice proves a real retirement win that cannot be achieved inside the current contract.
+- `PageHome.qml` preview remains explicit quarantined remainder until its family becomes active.
 - **Net-new feature work is intentionally deferred** until medium/high-priority debt is closed and the validation gates stay green (pytest, pyright for covered scope, ROS build, and offscreen startup/shutdown smoke).
 - Low-priority design-system backlog may remain backlog. By default it is **not** the feature-blocking path unless the user explicitly reprioritizes.
-- Latest verified local full-suite validation on 2026-04-27 is `252 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q` **but that baseline predates 6 subsequent implementation slices**. Most recent post-slice focused validation is `28 passed` for `tests/test_controller_factory_runtime.py`, `tests/test_startup_smoke.py`, and `tests/test_qml_imports.py` (Launcher SSH-admin contract reduction, 2026-04-27 22:58). **Rerun the full suite before treating `252 passed` as the current baseline.**
+- Latest verified local full-suite validation is `260 passed` on 2026-04-28 for `python/paint_controller/venv/bin/python -m pytest tests -q`. Most recent focused validation is green for the fullscreen overlay startup-smoke + import band across `tests/test_startup_smoke.py` and `tests/test_qml_imports.py`.
 
 ---
 
@@ -23,7 +25,7 @@ Read in this order at the start of any session:
 3. **`KNOWLEDGE.md`** — gotchas, patterns, anti-patterns. Check before debugging.
 4. **`DEVNOTES.md`** — last 90 days of session notes and validation results
 5. **`docs/plan/00_ARCHITECTURE_PROGRESS.md`** — current roadmap status, completed slices, next recommended slice
-6. **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** — active architecture roadmap and workstream rules
+6. **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** — durable architecture rationale, invariants, anti-goals, and historical completion context
 7. **`docs/tech-debt.md`** — known debt items with priority and effort (check before starting new work)
 
 ---
@@ -35,8 +37,8 @@ When two files disagree, prefer the file higher in this list:
 | Priority | File | What it governs |
 |---|---|---|
 | 1 | `DEVNOTES.md` | Most recent verified runtime state |
-| 2 | `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` | Active architecture roadmap and workstream rules |
-| 3 | `docs/plan/00_ARCHITECTURE_PROGRESS.md` | Current checkpoint board and next recommended slice |
+| 2 | `docs/plan/00_ARCHITECTURE_PROGRESS.md` | Current live architecture board and execution order |
+| 3 | `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` | Durable architecture rationale and historical context |
 | 4 | `docs/tech-debt.md` | Known debt items, priorities, effort |
 | 5 | `KNOWLEDGE.md` | Reusable patterns and gotchas |
 | 6 | `README.md` | Operator/developer entry point |
@@ -79,7 +81,7 @@ paint_controller_ros2/
 ├── docs/
 │   ├── plan/                      # Modernization plan tracker docs
 │   │   ├── 00_ARCHITECTURE_PROGRESS.md          # Current roadmap status and next-slice tracker
-│   │   └── 01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md  # Active architecture roadmap
+│   │   └── 01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md  # Durable architecture rationale and historical context
 │   ├── tech-debt.md               # Active tech debt tracker (living document)
 │   └── devnotes/                  # Quarterly DEVNOTES cold-storage archives
 │       └── 2026-Q1.md             # Jan–Mar 2026 session notes (archived)
@@ -126,5 +128,5 @@ Older notes may still mention `REFACTOR_TRACKER.md`; that historical tracker is 
 
 - **VS Code interpreter**: use `python/paint_controller/venv/bin/python` for editor tooling and tests
 - **`QT_QPA_PLATFORM`**: force-assigned `"offscreen"` in `tests/conftest.py` — overrides any shell-level `xcb`
-- **Test suite**: full-suite baseline is `252 passed` on 2026-04-27 **but predates 6 subsequent slices** — treat as unvalidated until re-run; most recent post-slice focused result is `28 passed` for `tests/test_controller_factory_runtime.py`, `tests/test_startup_smoke.py`, `tests/test_qml_imports.py` (Launcher SSH-admin slice, 2026-04-27 22:58); rerun the full suite before commit
+- **Test suite**: full-suite baseline is `260 passed` on 2026-04-28 for `python/paint_controller/venv/bin/python -m pytest tests -q`; most recent focused result is also green for the fullscreen overlay startup-smoke + import band
 - If PySide6 or pytest appear missing in-editor, check the selected interpreter first

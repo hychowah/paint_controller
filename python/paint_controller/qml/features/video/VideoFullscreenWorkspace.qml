@@ -11,6 +11,11 @@ Rectangle {
     property bool active: false
     required property var workflowServices
     required property var videoRuntime
+    required property var wheelStatus
+    required property var winchStatus
+    required property var teensyStatus
+    required property var valveStatus
+    required property var lidarStatus
 
     readonly property int panelWidth: CommonStyle.videoControlPanelWidth
     readonly property int panelHeight: CommonStyle.videoControlPanelHeight
@@ -103,6 +108,10 @@ Rectangle {
         EndEffectorOverlay {
             workflowRunner: root.workflowServices.workflowRunner
             videoRuntime: root.videoRuntime
+            winchStatus: root.winchStatus
+            teensyStatus: root.teensyStatus
+            valveStatus: root.valveStatus
+            lidarStatus: root.lidarStatus
         }
     }
 
@@ -111,6 +120,7 @@ Rectangle {
         BaseFrontOverlay {
             workflowRunner: root.workflowServices.workflowRunner
             videoRuntime: root.videoRuntime
+            wheelStatus: root.wheelStatus
         }
     }
 

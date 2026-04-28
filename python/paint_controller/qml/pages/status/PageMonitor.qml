@@ -10,7 +10,10 @@ Rectangle {
     id: monitorPage
     anchors.fill: parent
     required property var wheelStatus
+    required property var winchStatus
     required property var teensyStatus
+    required property var valveStatus
+    required property var lidarStatus
     color: "#1e222b"  // Industrial dark background
     
     // Lidar angle chart timing
@@ -60,6 +63,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.preferredHeight: 1  // Equal weight with WheelsCard
+                    valveStatus: monitorPage.valveStatus
                 }
             }
             
@@ -75,6 +79,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.preferredHeight: 1  // Equal weight
+                    teensyStatus: monitorPage.teensyStatus
                     maxArmCurrent: monitorPage.maxArmCurrent
                     maxArmExtension: monitorPage.maxArmExtension
                 }
@@ -83,6 +88,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.preferredHeight: 1  // Equal weight
+                    winchStatus: monitorPage.winchStatus
                     maxWinchCurrent: monitorPage.maxWinchCurrent
                 }
             }
@@ -99,6 +105,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.preferredHeight: 1  // Equal weight with LidarAngleCard
+                    teensyStatus: monitorPage.teensyStatus
                 }
                 
                 // Lidar Angle Chart Card
@@ -131,7 +138,7 @@ Rectangle {
                             Item { Layout.fillWidth: true }
                             
                             Text {
-                                text: lidarController.angle.toFixed(1) + "°"
+                                text: monitorPage.lidarStatus.angle.toFixed(1) + "°"
                                 font.pixelSize: 18
                                 font.family: "Monospace"
                                 color: "#3498db"
@@ -188,12 +195,12 @@ Rectangle {
                     
                     // Update chart on lidar angle change
                     Connections {
-                        target: lidarController
-                        function onAngle_changed() {
+                        target: monitorPage.lidarStatus
+                        function onChanged() {
                             var currentTime = new Date().getTime()
                             var elapsed = currentTime - monitorPage.lidarStartTime
                             
-                            lidarAngleSeries.append(elapsed, lidarController.angle)
+                            lidarAngleSeries.append(elapsed, monitorPage.lidarStatus.angle)
                             
                             // Remove old points outside time window
                             while (lidarAngleSeries.count > 0 && 

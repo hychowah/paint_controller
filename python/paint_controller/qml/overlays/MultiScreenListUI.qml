@@ -26,6 +26,8 @@ Window {
     property var wheelStatusModel: wheelStatus
     property var winchStatusModel: winchStatus
     property var teensyStatusModel: teensyStatus
+    property var valveStatusModel: valveStatus
+    property var lidarStatusModel: lidarStatus
     property var videoRuntimeModel: videoRuntime
     
     // Properties to control which screen this window appears on
@@ -52,7 +54,10 @@ Window {
     PageMonitor {
         anchors.fill: parent
         wheelStatus: multiScreenWindow.wheelStatusModel
+        winchStatus: multiScreenWindow.winchStatusModel
         teensyStatus: multiScreenWindow.teensyStatusModel
+        valveStatus: multiScreenWindow.valveStatusModel
+        lidarStatus: multiScreenWindow.lidarStatusModel
     }
     
     // SystemControlMenu appears on this screen when in dual-monitor mode
@@ -93,6 +98,11 @@ Window {
         videoSource: overlayHost ? overlayHost.video_fullscreen_source : ""
         workflowServices: multiScreenWindow.systemControlServicesModel
         videoRuntime: multiScreenWindow.videoRuntimeModel
+        wheelStatus: multiScreenWindow.wheelStatusModel
+        winchStatus: multiScreenWindow.winchStatusModel
+        teensyStatus: multiScreenWindow.teensyStatusModel
+        valveStatus: multiScreenWindow.valveStatusModel
+        lidarStatus: multiScreenWindow.lidarStatusModel
     }
 
     EmergencyOverlay {

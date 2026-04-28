@@ -8,6 +8,7 @@ import "../../../core"
 IndustrialCard {
     id: valvesCard
     title: "Valves"
+    required property var valveStatus
     
     // Consistent sizing for all metrics
     readonly property int metricValueSize: CommonStyle.fontDisplay + CommonStyle.spacingXs
@@ -28,7 +29,7 @@ IndustrialCard {
             // Flow Rate
             MetricValue {
                 label: "Flow Rate"
-                value: (esp32ValveController.valve_rate || 0).toFixed(1)
+                value: valvesCard.valveStatus.valveRate.toFixed(1)
                 unit: "L/min"
                 valueColor: CommonStyle.accentPrimary
                 valueFontSize: valvesCard.metricValueSize
@@ -41,7 +42,7 @@ IndustrialCard {
             // Motor Current
             MetricValue {
                 label: "Motor Current"
-                value: (esp32ValveController.valve_motor_current || 0).toFixed(1)
+                value: valvesCard.valveStatus.valveMotorCurrent.toFixed(1)
                 unit: "A"
                 valueColor: CommonStyle.accentPrimary
                 valueFontSize: valvesCard.metricValueSize
@@ -54,7 +55,7 @@ IndustrialCard {
             // Total Volume
             MetricValue {
                 label: "Total Volume"
-                value: (esp32ValveController.total_volume || 0).toFixed(1)
+                value: valvesCard.valveStatus.totalVolume.toFixed(1)
                 unit: "L"
                 valueColor: CommonStyle.accentPrimary
                 valueFontSize: valvesCard.metricValueSize
@@ -72,7 +73,7 @@ IndustrialCard {
             Layout.fillWidth: true
             spacing: CommonStyle.spacingXs + 2
             
-            property real valvePositionPercent: (esp32ValveController.valve_position || 0)
+            property real valvePositionPercent: valvesCard.valveStatus.valvePosition
             
             Text {
                 text: "Position: " + parent.valvePositionPercent.toFixed(0) + "%"

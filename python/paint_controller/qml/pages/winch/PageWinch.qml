@@ -372,7 +372,7 @@ Item {
                         height: 80
                         color: "#F5F5F5"
                         radius: 12
-                        visible: winchController.enabled
+                        visible: winchPageRoot.winchStatus.enabled
                         
                         ColumnLayout {
                             anchors.fill: parent
@@ -454,7 +454,7 @@ Item {
                                             Layout.fillWidth: true
                                             selectByMouse: true
                                             placeholderText: "Enter length"
-                                            enabled: winchController.enabled
+                                            enabled: winchPageRoot.winchStatus.enabled
                                             validator: IntValidator { bottom: -10000; top: 10000 }
                                             
                                             background: Rectangle {
@@ -506,7 +506,7 @@ Item {
                                             Layout.fillWidth: true
                                             selectByMouse: true
                                             text: "500"
-                                            enabled: winchController.enabled
+                                            enabled: winchPageRoot.winchStatus.enabled
                                             validator: IntValidator { bottom: 1; top: 1000 }
                                             
                                             background: Rectangle {
@@ -529,7 +529,7 @@ Item {
                                             to: 1000
                                             stepSize: 10
                                             value: 500
-                                            enabled: winchController.enabled
+                                            enabled: winchPageRoot.winchStatus.enabled
                                             
                                             onValueChanged: {
                                                 incrementSpeedField.text = Math.round(value).toString()
@@ -545,7 +545,7 @@ Item {
                                     
                                     Button {
                                         text: "10mm"
-                                        enabled: winchController.enabled
+                                        enabled: winchPageRoot.winchStatus.enabled
                                         onClicked: incrementLengthField.text = "10"
                                         
                                         contentItem: Text {
@@ -566,7 +566,7 @@ Item {
                                     
                                     Button {
                                         text: "100mm"
-                                        enabled: winchController.enabled
+                                        enabled: winchPageRoot.winchStatus.enabled
                                         onClicked: incrementLengthField.text = "100"
                                         
                                         contentItem: Text {
@@ -587,7 +587,7 @@ Item {
                                     
                                     Button {
                                         text: "500mm"
-                                        enabled: winchController.enabled
+                                        enabled: winchPageRoot.winchStatus.enabled
                                         onClicked: incrementLengthField.text = "500"
                                         
                                         contentItem: Text {
@@ -612,7 +612,7 @@ Item {
                                 Button {
                                     Layout.fillWidth: true
                                     text: "MOVE INCREMENT"
-                                    enabled: winchController.enabled && incrementLengthField.text.length > 0 && incrementSpeedField.text.length > 0 && incrementLengthField.acceptableInput && incrementSpeedField.acceptableInput
+                                    enabled: winchPageRoot.winchStatus.enabled && incrementLengthField.text.length > 0 && incrementSpeedField.text.length > 0 && incrementLengthField.acceptableInput && incrementSpeedField.acceptableInput
                                     onClicked: {
                                         if (winchMotionHandler.requestMoveIncrement(
                                                 parseInt(incrementLengthField.text),
@@ -683,7 +683,7 @@ Item {
                                             Layout.fillWidth: true
                                             selectByMouse: true
                                             placeholderText: "Enter position"
-                                            enabled: winchController.enabled
+                                            enabled: winchPageRoot.winchStatus.enabled
                                             validator: IntValidator { bottom: 0; top: 10000 }
                                             
                                             background: Rectangle {
@@ -709,7 +709,7 @@ Item {
                                             Layout.fillWidth: true
                                             selectByMouse: true
                                             text: "500"
-                                            enabled: winchController.enabled
+                                            enabled: winchPageRoot.winchStatus.enabled
                                             validator: IntValidator { bottom: 1; top: 1000 }
                                             
                                             background: Rectangle {
@@ -732,7 +732,7 @@ Item {
                                             to: 1000
                                             stepSize: 10
                                             value: 500
-                                            enabled: winchController.enabled
+                                            enabled: winchPageRoot.winchStatus.enabled
                                             
                                             onValueChanged: {
                                                 absoluteSpeedField.text = Math.round(value).toString()
@@ -748,7 +748,7 @@ Item {
                                     
                                     Button {
                                         text: "Home"
-                                        enabled: winchController.enabled
+                                        enabled: winchPageRoot.winchStatus.enabled
                                         onClicked: absoluteLengthField.text = "0"
                                         
                                         contentItem: Text {
@@ -769,7 +769,7 @@ Item {
                                     
                                     Button {
                                         text: "Mid"
-                                        enabled: winchController.enabled
+                                        enabled: winchPageRoot.winchStatus.enabled
                                         onClicked: absoluteLengthField.text = "5000"
                                         
                                         contentItem: Text {
@@ -790,7 +790,7 @@ Item {
                                     
                                     Button {
                                         text: "Max"
-                                        enabled: winchController.enabled
+                                        enabled: winchPageRoot.winchStatus.enabled
                                         onClicked: absoluteLengthField.text = "10000"
                                         
                                         contentItem: Text {
@@ -815,7 +815,7 @@ Item {
                                 Button {
                                     Layout.fillWidth: true
                                     text: "GO TO POSITION"
-                                    enabled: winchController.enabled && absoluteLengthField.text.length > 0 && absoluteSpeedField.text.length > 0 // && absoluteLengthField.acceptableInput && absoluteSpeedField.acceptableInput
+                                    enabled: winchPageRoot.winchStatus.enabled && absoluteLengthField.text.length > 0 && absoluteSpeedField.text.length > 0 // && absoluteLengthField.acceptableInput && absoluteSpeedField.acceptableInput
                                     onClicked: {
                                         if (winchMotionHandler.requestMoveAbsolute(
                                                 parseInt(absoluteLengthField.text),
@@ -862,7 +862,7 @@ Item {
                             Button {
                                 Layout.fillWidth: true
                                 text: "Retract Full"
-                                enabled: winchController.enabled
+                                enabled: winchPageRoot.winchStatus.enabled
                                 onClicked: {
                                     if (winchMotionHandler.requestRetractFull()) {
                                         notificationPopup.show("Retracting cable fully", 2000);
@@ -895,7 +895,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: parent.width * 1.2
                                 text: "EMERGENCY STOP"
-                                enabled: winchController.enabled
+                                enabled: winchPageRoot.winchStatus.enabled
                                 onClicked: {
                                     if (winchMotionHandler.requestEmergencyStop()) {
                                         notificationPopup.show("EMERGENCY STOP ACTIVATED", 3000);
@@ -914,7 +914,7 @@ Item {
                                     
                                     // Added: Pulsing animation for emergency button
                                     SequentialAnimation on opacity {
-                                        running: winchController.enabled
+                                        running: winchPageRoot.winchStatus.enabled
                                         loops: Animation.Infinite
                                         PropertyAnimation { to: 0.8; duration: 800 }
                                         PropertyAnimation { to: 1.0; duration: 800 }
@@ -934,7 +934,7 @@ Item {
                             Button {
                                 Layout.fillWidth: true
                                 text: "Extend 1m"
-                                enabled: winchController.enabled
+                                enabled: winchPageRoot.winchStatus.enabled
                                 onClicked: {
                                     if (winchMotionHandler.requestExtendOneMeter()) {
                                         notificationPopup.show("Extending cable by 1m", 2000);
@@ -985,13 +985,13 @@ Item {
                     Rectangle {
                         Layout.fillWidth: true
                         height: 60
-                        visible: winchController.load_detection_enabled && winchController.unusual_load_detected
+                        visible: winchPageRoot.winchStatus.loadDetectionEnabled && winchPageRoot.winchStatus.unusualLoadDetected
                         color: "#FFEBEE"
                         radius: 12
                         
                         // Added: Pulsing animation for warning
                         SequentialAnimation on opacity {
-                            running: winchController.load_detection_enabled && winchController.unusual_load_detected
+                            running: winchPageRoot.winchStatus.loadDetectionEnabled && winchPageRoot.winchStatus.unusualLoadDetected
                             loops: Animation.Infinite
                             PropertyAnimation { to: 0.7; duration: 500 }
                             PropertyAnimation { to: 1.0; duration: 500 }
@@ -1106,7 +1106,7 @@ Item {
                                         }
                                         
                                         Text { 
-                                            text: Math.round(winchController.cable_length)
+                                            text: Math.round(winchPageRoot.winchStatus.cableLength)
                                             font.pixelSize: 36
                                             font.bold: true
                                             color: "#2196F3"
@@ -1126,11 +1126,11 @@ Item {
                                             radius: 2
                                             
                                             Rectangle {
-                                                width: Math.min(parent.width * (winchController.cable_length / 10000), parent.width)
+                                                width: Math.min(parent.width * (winchPageRoot.winchStatus.cableLength / 10000), parent.width)
                                                 height: parent.height
                                                 radius: 2
                                                 color: {
-                                                    const percent = winchController.cable_length / 100;
+                                                    const percent = winchPageRoot.winchStatus.cableLength / 100;
                                                     if (percent < 70) return "#2196F3";
                                                     else if (percent < 90) return "#FF9800";
                                                     else return "#F44336";
@@ -1164,16 +1164,16 @@ Item {
                                             spacing: 4
                                             
                                             Text { 
-                                                text: winchController.cable_speed.toFixed(1)
+                                                text: winchPageRoot.winchStatus.cableSpeed.toFixed(1)
                                                 font.pixelSize: 36
                                                 font.bold: true
-                                                color: Math.abs(winchController.cable_speed) > 0.5 ? "#FF9800" : "#2196F3"
+                                                color: Math.abs(winchPageRoot.winchStatus.cableSpeed) > 0.5 ? "#FF9800" : "#2196F3"
                                             }
                                             
                                             // Direction indicators
                                             Text {
-                                                visible: Math.abs(winchController.cable_speed) > 0.05
-                                                text: winchController.cable_speed > 0 ? "▶" : "◀"
+                                                visible: Math.abs(winchPageRoot.winchStatus.cableSpeed) > 0.05
+                                                text: winchPageRoot.winchStatus.cableSpeed > 0 ? "▶" : "◀"
                                                 font.pixelSize: 24
                                                 color: "#FF9800"
                                                 Layout.alignment: Qt.AlignBottom
@@ -1193,14 +1193,14 @@ Item {
                                             height: 4
                                             color: "#E0E0E0"
                                             radius: 2
-                                            visible: Math.abs(winchController.cable_speed) > 0
+                                            visible: Math.abs(winchPageRoot.winchStatus.cableSpeed) > 0
                                             
                                             Rectangle {
                                                 property real maxSpeed: 500 // Maximum expected speed in m/s
-                                                width: Math.min(parent.width * (Math.abs(winchController.cable_speed) / maxSpeed), parent.width)
+                                                width: Math.min(parent.width * (Math.abs(winchPageRoot.winchStatus.cableSpeed) / maxSpeed), parent.width)
                                                 height: parent.height
                                                 radius: 2
-                                                color: Math.abs(winchController.cable_speed) > 1.5 ? "#FF9800" : "#2196F3"
+                                                color: Math.abs(winchPageRoot.winchStatus.cableSpeed) > 1.5 ? "#FF9800" : "#2196F3"
                                             }
                                         }
                                     }
@@ -1233,11 +1233,11 @@ Item {
                                         Item { Layout.fillWidth: true }
                                         
                                         Text {
-                                            text: Math.round(winchController.cable_length / 100) + "%"
+                                            text: Math.round(winchPageRoot.winchStatus.cableLength / 100) + "%"
                                             font.pixelSize: 16
                                             font.bold: true
                                             color: {
-                                                const percent = winchController.cable_length / 100;
+                                                const percent = winchPageRoot.winchStatus.cableLength / 100;
                                                 if (percent < 70) return "#2196F3";
                                                 else if (percent < 90) return "#FF9800";
                                                 else return "#F44336";
@@ -1253,11 +1253,11 @@ Item {
                                         
                                         Rectangle {
                                             id: extensionBar
-                                            width: Math.min(parent.width * (winchController.cable_length / 10000), parent.width)
+                                            width: Math.min(parent.width * (winchPageRoot.winchStatus.cableLength / 10000), parent.width)
                                             height: parent.height
                                             radius: 4
                                             color: {
-                                                const percent = winchController.cable_length / 100;
+                                                const percent = winchPageRoot.winchStatus.cableLength / 100;
                                                 if (percent < 70) return "#2196F3";
                                                 else if (percent < 90) return "#FF9800";
                                                 else return "#F44336";
@@ -1318,7 +1318,7 @@ Item {
                                     color: "#FFFFFF"
                                     radius: 8
                                     border.width: 1
-                                    border.color: winchController.winch_torque > 50 ? "#F44336" : "#E0E0E0"
+                                    border.color: winchPageRoot.winchStatus.winchTorque > 50 ? "#F44336" : "#E0E0E0"
                                     
                                     ColumnLayout {
                                         anchors.fill: parent
@@ -1337,7 +1337,7 @@ Item {
                                             Item { Layout.fillWidth: true }
                                             
                                             Rectangle {
-                                                visible: winchController.winch_torque > 50
+                                                visible: winchPageRoot.winchStatus.winchTorque > 50
                                                 width: 16
                                                 height: 16
                                                 radius: 8
@@ -1354,11 +1354,11 @@ Item {
                                         }
                                         
                                         Text { 
-                                            text: winchController.winch_torque.toFixed(1)
+                                            text: winchPageRoot.winchStatus.winchTorque.toFixed(1)
                                             font.pixelSize: 32
                                             font.bold: true
                                             color: {
-                                                const torque = winchController.winch_torque;
+                                                const torque = winchPageRoot.winchStatus.winchTorque;
                                                 if (torque < 30) return "#2196F3"; 
                                                 else if (torque < 50) return "#FF9800";
                                                 else return "#F44336";
@@ -1380,7 +1380,7 @@ Item {
                                     color: "#FFFFFF"
                                     radius: 8
                                     border.width: 1
-                                    border.color: winchController.motor_temperature > 60 ? "#F44336" : "#E0E0E0"
+                                    border.color: winchPageRoot.winchStatus.motorTemperature > 60 ? "#F44336" : "#E0E0E0"
                                     
                                     ColumnLayout {
                                         anchors.fill: parent
@@ -1399,11 +1399,11 @@ Item {
                                             Item { Layout.fillWidth: true }
                                             
                                             Rectangle {
-                                                visible: winchController.motor_temperature > 50
+                                                visible: winchPageRoot.winchStatus.motorTemperature > 50
                                                 width: 16
                                                 height: 16
                                                 radius: 8
-                                                color: winchController.motor_temperature > 60 ? "#F44336" : "#FF9800"
+                                                color: winchPageRoot.winchStatus.motorTemperature > 60 ? "#F44336" : "#FF9800"
                                                 
                                                 Text {
                                                     anchors.centerIn: parent
@@ -1416,11 +1416,11 @@ Item {
                                         }
                                         
                                         Text { 
-                                            text: winchController.motor_temperature.toFixed(1)
+                                            text: winchPageRoot.winchStatus.motorTemperature.toFixed(1)
                                             font.pixelSize: 32
                                             font.bold: true
                                             color: {
-                                                const temp = winchController.motor_temperature;
+                                                const temp = winchPageRoot.winchStatus.motorTemperature;
                                                 if (temp < 40) return "#2196F3";
                                                 else if (temp < 60) return "#FF9800";
                                                 else return "#F44336";
@@ -1442,7 +1442,7 @@ Item {
                                     color: "#FFFFFF"
                                     radius: 8
                                     border.width: 1
-                                    border.color: (winchController.motor_voltage < 22 || winchController.motor_voltage > 25) ? "#F44336" : "#E0E0E0"
+                                    border.color: (winchPageRoot.winchStatus.motorVoltage < 22 || winchPageRoot.winchStatus.motorVoltage > 25) ? "#F44336" : "#E0E0E0"
                                     
                                     ColumnLayout {
                                         anchors.fill: parent
@@ -1461,7 +1461,7 @@ Item {
                                             Item { Layout.fillWidth: true }
                                             
                                             Rectangle {
-                                                visible: winchController.motor_voltage < 22 || winchController.motor_voltage > 25
+                                                visible: winchPageRoot.winchStatus.motorVoltage < 22 || winchPageRoot.winchStatus.motorVoltage > 25
                                                 width: 16
                                                 height: 16
                                                 radius: 8
@@ -1478,11 +1478,11 @@ Item {
                                         }
                                         
                                         Text { 
-                                            text: winchController.motor_voltage.toFixed(1)
+                                            text: winchPageRoot.winchStatus.motorVoltage.toFixed(1)
                                             font.pixelSize: 32
                                             font.bold: true
                                             color: {
-                                                const voltage = winchController.motor_voltage;
+                                                const voltage = winchPageRoot.winchStatus.motorVoltage;
                                                 if (voltage > 22 && voltage < 25) return "#2196F3";
                                                 else return "#F44336";
                                             }
@@ -1503,7 +1503,7 @@ Item {
                                     color: "#FFFFFF"
                                     radius: 8
                                     border.width: 1
-                                    border.color: winchController.motor_brake ? "#F44336" : "#4CAF50"
+                                    border.color: winchPageRoot.winchStatus.motorBrake ? "#F44336" : "#4CAF50"
                                     
                                     ColumnLayout {
                                         anchors.fill: parent
@@ -1524,14 +1524,14 @@ Item {
                                                 width: 16
                                                 height: 16
                                                 radius: 8
-                                                color: winchController.motor_brake ? "#F44336" : "#4CAF50"
+                                                color: winchPageRoot.winchStatus.motorBrake ? "#F44336" : "#4CAF50"
                                             }
                                             
                                             Text { 
-                                                text: winchController.motor_brake ? "ENGAGED" : "RELEASED"
+                                                text: winchPageRoot.winchStatus.motorBrake ? "ENGAGED" : "RELEASED"
                                                 font.pixelSize: 24
                                                 font.bold: true
-                                                color: winchController.motor_brake ? "#F44336" : "#4CAF50"
+                                                color: winchPageRoot.winchStatus.motorBrake ? "#F44336" : "#4CAF50"
                                             }
                                         }
                                     }
@@ -1544,7 +1544,7 @@ Item {
                                     color: "#FFFFFF"
                                     radius: 8
                                     border.width: 1
-                                    border.color: winchController.unusual_load_detected ? "#F44336" : "#4CAF50"
+                                    border.color: winchPageRoot.winchStatus.unusualLoadDetected ? "#F44336" : "#4CAF50"
                                     
                                     RowLayout {
                                         anchors.fill: parent
@@ -1561,22 +1561,22 @@ Item {
                                             width: 16
                                             height: 16
                                             radius: 8
-                                            color: winchController.unusual_load_detected ? "#F44336" : "#4CAF50"
+                                            color: winchPageRoot.winchStatus.unusualLoadDetected ? "#F44336" : "#4CAF50"
                                         }
                                         
                                         Text { 
-                                            text: winchController.unusual_load_detected ? "ABNORMAL" : "NORMAL"
+                                            text: winchPageRoot.winchStatus.unusualLoadDetected ? "ABNORMAL" : "NORMAL"
                                             font.pixelSize: 24
                                             font.bold: true
-                                            color: winchController.unusual_load_detected ? "#F44336" : "#4CAF50"
+                                            color: winchPageRoot.winchStatus.unusualLoadDetected ? "#F44336" : "#4CAF50"
                                         }
                                         
                                         Item { Layout.fillWidth: true }
                                         
                                         Button {
-                                            visible: winchController.unusual_load_detected
+                                            visible: winchPageRoot.winchStatus.unusualLoadDetected
                                             text: "RESET"
-                                            enabled: winchController.unusual_load_detected
+                                            enabled: winchPageRoot.winchStatus.unusualLoadDetected
                                             
                                             contentItem: Text {
                                                 text: parent.text

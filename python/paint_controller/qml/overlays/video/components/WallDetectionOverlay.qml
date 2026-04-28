@@ -4,6 +4,7 @@ import QtQuick.Layouts
 
 Rectangle {
     id: overlay
+    required property var lidarStatus
     
     // *** You can now change width and height here to scale the whole UI ***
     width: 250
@@ -19,14 +20,14 @@ Rectangle {
     property var lastLidarUpdateTime: new Date()
     property real messageTimeoutMs: 1000  // 1 second timeout
     property bool isLidarActive: false
-    readonly property real lidarDistance: (lidarController && typeof lidarController.distance === "number") ? lidarController.distance : 0.0
-    readonly property real lidarAngle: (lidarController && typeof lidarController.angle === "number") ? lidarController.angle : 0.0
+    readonly property real lidarDistance: (lidarStatus && typeof lidarStatus.distance === "number") ? lidarStatus.distance : 0.0
+    readonly property real lidarAngle: (lidarStatus && typeof lidarStatus.angle === "number") ? lidarStatus.angle : 0.0
     
     // Update timestamp when distance changes
     Connections {
-        target: lidarController
+        target: overlay.lidarStatus
 
-        function onDistanceChanged() {
+        function onChanged() {
             overlay.lastLidarUpdateTime = new Date()
             overlay.isLidarActive = true
         }

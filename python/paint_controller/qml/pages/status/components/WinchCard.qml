@@ -9,6 +9,7 @@ IndustrialCard {
     id: winchCard
     title: "Winch Data"
 
+    required property var winchStatus
     required property real maxWinchCurrent
     
     // Consistent sizing for all metrics
@@ -27,7 +28,7 @@ IndustrialCard {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
             label: "Cable Length"
-            value: ((winchController.cable_length || 0) / 1000).toFixed(2)
+            value: (winchCard.winchStatus.cableLength / 1000).toFixed(2)
             unit: "m"
             valueColor: CommonStyle.accentPrimary
             valueFontSize: winchCard.metricValueSize
@@ -39,8 +40,8 @@ IndustrialCard {
         MetricValue {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
-            label: ((winchController.cable_speed || 0) >= 0 ? "↑" : "↓") + " Cable Speed"
-            value: Math.abs(winchController.cable_speed || 0).toFixed(1)
+            label: (winchCard.winchStatus.cableSpeed >= 0 ? "↑" : "↓") + " Cable Speed"
+            value: Math.abs(winchCard.winchStatus.cableSpeed).toFixed(1)
             unit: "m/s"
             valueColor: CommonStyle.accentPrimary
             valueFontSize: winchCard.metricValueSize
@@ -53,7 +54,7 @@ IndustrialCard {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
             label: "Voltage"
-            value: (winchController.motor_voltage || 0).toFixed(1)
+            value: winchCard.winchStatus.motorVoltage.toFixed(1)
             unit: "V"
             valueColor: CommonStyle.accentPrimary
             valueFontSize: winchCard.metricValueSize
@@ -66,7 +67,7 @@ IndustrialCard {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
             label: "Temperature"
-            value: (winchController.motor_temperature || 0).toFixed(1)
+            value: winchCard.winchStatus.motorTemperature.toFixed(1)
             unit: "°C"
             valueColor: CommonStyle.accentPrimary
             valueFontSize: winchCard.metricValueSize
@@ -80,7 +81,7 @@ IndustrialCard {
             Layout.columnSpan: 2
             spacing: CommonStyle.spacingXs + 2
             
-            property real currentValue: (winchController.winch_torque || 0) / 100
+            property real currentValue: winchCard.winchStatus.winchTorque / 100
             property real currentPercent: winchCard.maxWinchCurrent > 0 ? currentValue / winchCard.maxWinchCurrent * 100 : 0
             
             Text {

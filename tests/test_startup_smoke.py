@@ -165,6 +165,23 @@ class FakeLidarController(QObject):
         return self._angle
 
 
+class FakeLidarStatus(QObject):
+    changed = Signal()
+
+    def __init__(self, distance: float = 0.0, angle: float = 0.0) -> None:
+        super().__init__()
+        self._distance = distance
+        self._angle = angle
+
+    @Property(float, notify=changed)
+    def distance(self) -> float:
+        return self._distance
+
+    @Property(float, notify=changed)
+    def angle(self) -> float:
+        return self._angle
+
+
 class FakeManualCommandHandler(QObject):
     @Slot(str, result=bool)
     def isCommandSupported(self, command_name: str) -> bool:
@@ -687,6 +704,19 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
         runTime=120.0,
         loopTime=450.0,
         loopTimeCounter=900.0,
+        imuPitch=0.0,
+        imuRoll=0.0,
+        imuYaw=0.0,
+        imuAccX=0.0,
+        imuAccY=0.0,
+        imuAccZ=0.0,
+        imuAngularAccX=0.0,
+        imuAngularAccY=0.0,
+        imuAngularAccZ=0.0,
+        armExtensionDist=0.0,
+        armRailCurrent=0.0,
+        gimbalPitchMotorCurrent=0.0,
+        gimbalPitchMotorAngle=0.0,
         stabilityEnabled=True,
         yawEnabled=False,
         autoCorrectionEnabled=False,
@@ -695,6 +725,16 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
         swingDampingEnabled=True,
         sprayGunLedOn=False,
     )
+    valve_status = DynamicObject(
+        valvePosition=0.0,
+        valveRate=0.0,
+        totalVolume=0.0,
+        valveMotorCurrent=0.0,
+        valveMotorConnected=False,
+        flowMeterConnected=False,
+        connected=False,
+    )
+    lidar_status = FakeLidarStatus(distance=0.0, angle=0.0)
     shell_connectivity_status = DynamicObject(
         winchAvailable=True,
         wheelAvailable=True,
@@ -754,6 +794,8 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
         "wheelStatus": wheel_status,
         "winchStatus": winch_status,
         "teensyStatus": teensy_status,
+        "valveStatus": valve_status,
+        "lidarStatus": lidar_status,
         "shellConnectivityStatus": shell_connectivity_status,
         "warningHandler": DynamicObject(active_warning=""),
         "baseStreamHandler": FakeStreamHandler(),
@@ -794,6 +836,8 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             valve_rate=0.0,
             valve_motor_current=0.0,
             total_volume=0.0,
+            valve_motor_connected=False,
+            flow_meter_connected=False,
         ),
         "lidarController": FakeLidarController(distance=0.0, angle=0.0),
         "heartbeatHandler": DynamicObject(
@@ -1076,6 +1120,7 @@ def test_multi_screen_monitor_window_loads_offscreen(monkeypatch, tmp_path, qt_a
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
+    context_objects["lidarController"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
         ctx.setContextProperty(name, obj)
@@ -1089,6 +1134,8 @@ def test_multi_screen_monitor_window_loads_offscreen(monkeypatch, tmp_path, qt_a
         "failed to load component",
         "no such file or directory",
         "is not a type",
+        "cannot read property 'distance'",
+        "cannot read property 'angle'",
     )
     assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
 
@@ -1105,6 +1152,7 @@ def test_multi_screen_monitor_window_consumes_overlay_host_matrix(monkeypatch, t
     engine.addImageProvider("base_rear_live", BlankImageProvider())
 
     context_objects = _context_objects(monkeypatch, tmp_path)
+    context_objects["lidarController"] = None
     context_objects["overlayHost"] = DynamicObject(
         system_control_on_main_surface=False,
         system_control_on_secondary_surface=True,
@@ -1251,6 +1299,9 @@ def test_video_fullscreen_workspace_loads_with_stream_context(monkeypatch, tmp_p
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
+    context_objects["lidarController"] = None
+    context_objects["wheelController"] = None
+    context_objects["winchController"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
         ctx.setContextProperty(name, obj)
@@ -1272,6 +1323,11 @@ Item {{
         videoSource: "{video_source}"
         workflowServices: systemControlServices
         videoRuntime: videoRuntimeModel
+        wheelStatus: wheelStatus
+        winchStatus: winchStatus
+        teensyStatus: teensyStatus
+        valveStatus: valveStatus
+        lidarStatus: lidarStatus
     }}
 }}
 '''.encode(),
@@ -1295,9 +1351,12 @@ Item {{
             fatal_warning_fragments += (
                 "endeffectoroverlay.qml: qml row: cannot specify",
                 "videooverlaytopbar.qml: qml row: cannot specify",
-                "walldetectionoverlay.qml: qml connections",
                 "cannot read property 'imu_pitch' of undefined",
                 "cannot call method 'tofixed' of undefined",
+                "cannot read property 'winch_torque'",
+                "cannot read property 'cable_length'",
+                "cannot read property 'distance'",
+                "cannot read property 'angle'",
             )
         if video_source == "image://base_front_live/frame":
             fatal_warning_fragments += (
@@ -1305,6 +1364,8 @@ Item {{
                 "basefrontoverlay.qml: qml connections",
                 "basetopviewsettingspopup.qml: unable to assign [undefined]",
                 "cannot call method 'tofixed' of undefined",
+                "cannot read property 'left_wheel_speed'",
+                "cannot read property 'right_wheel_speed'",
                 "invalid image provider: image://base_top_view/frame",
             )
         assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
@@ -1326,6 +1387,7 @@ def test_page_winch_loads_with_explicit_winch_status(monkeypatch, tmp_path, qt_a
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
+    context_objects["winchController"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
         ctx.setContextProperty(name, obj)
@@ -1339,7 +1401,18 @@ import "{winch_import_url}"
 Item {{
     width: 1280
     height: 800
-    property var winchStatusModel: winchStatus
+    property var winchStatusModel: ({{
+        available: true,
+        enabled: true,
+        loadDetectionEnabled: false,
+        cableLength: 0,
+        cableSpeed: 0,
+        winchTorque: 0,
+        motorTemperature: 25,
+        motorVoltage: 24,
+        motorBrake: true,
+        unusualLoadDetected: false
+    }})
 
     PageWinch {{
         anchors.fill: parent
@@ -1362,6 +1435,79 @@ Item {{
             "no such file or directory",
             "is not a type",
             "required property",
+            "typeerror",
+            "referenceerror",
+        )
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
+def test_page_wheel_loads_with_explicit_wheel_status(monkeypatch, tmp_path, qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    wheel_import_url = _qml_import_url(qml_dir / "pages" / "wheel")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+    engine.addImageProvider("base_front_live", BlankImageProvider())
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    context_objects["wheelController"] = None
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{wheel_import_url}"
+
+Item {{
+    width: 1280
+    height: 800
+    property var wheelStatusModel: ({{
+        available: true,
+        enabled: true,
+        leftMotorAvailable: true,
+        rightMotorAvailable: true,
+        leftWheelSpeed: 0,
+        rightWheelSpeed: 0,
+        leftWheelCurrent: 0,
+        rightWheelCurrent: 0,
+        leftWheelPosition: 0,
+        rightWheelPosition: 0
+    }})
+
+    PageWheel {{
+        anchors.fill: parent
+        wheelStatus: wheelStatusModel
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:PageWheelHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+        qt_app.processEvents()
+
+        fatal_warning_fragments = (
+            "failed to load component",
+            "no such file or directory",
+            "is not a type",
+            "required property",
+            "typeerror",
+            "referenceerror",
         )
         assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
     finally:
@@ -1430,6 +1576,277 @@ Item {{
             qt_app.processEvents()
 
 
+def test_winch_card_loads_with_explicit_winch_status(monkeypatch, tmp_path, qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    status_components_import_url = _qml_import_url(qml_dir / "pages" / "status" / "components")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    context_objects["winchController"] = None
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{status_components_import_url}"
+
+Item {{
+    width: 1280
+    height: 800
+    property var winchStatusModel: ({{
+        available: true,
+        enabled: true,
+        loadDetectionEnabled: false,
+        cableLength: 0,
+        cableSpeed: 0,
+        winchTorque: 0,
+        motorTemperature: 25,
+        motorVoltage: 24,
+        motorBrake: true,
+        unusualLoadDetected: false
+    }})
+
+    WinchCard {{
+        anchors.fill: parent
+        winchStatus: winchStatusModel
+        maxWinchCurrent: 10
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:WinchCardHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+        qt_app.processEvents()
+
+        fatal_warning_fragments = (
+            "failed to load component",
+            "no such file or directory",
+            "is not a type",
+            "required property",
+            "typeerror",
+            "referenceerror",
+        )
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
+def test_imu_card_loads_with_explicit_teensy_status(monkeypatch, tmp_path, qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    status_components_import_url = _qml_import_url(qml_dir / "pages" / "status" / "components")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    context_objects["teensyController"] = None
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{status_components_import_url}"
+
+Item {{
+    width: 1280
+    height: 800
+    property var teensyStatusModel: ({{
+        imuPitch: 1.5,
+        imuRoll: -0.5,
+        imuYaw: 2.0,
+        imuAccX: 0.01,
+        imuAccY: 0.02,
+        imuAccZ: 0.03,
+        imuAngularAccX: 0.11,
+        imuAngularAccY: 0.12,
+        imuAngularAccZ: 0.13
+    }})
+
+    IMUCard {{
+        anchors.fill: parent
+        teensyStatus: teensyStatusModel
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:IMUCardHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+        qt_app.processEvents()
+
+        fatal_warning_fragments = (
+            "failed to load component",
+            "no such file or directory",
+            "is not a type",
+            "required property",
+            "typeerror",
+            "referenceerror",
+        )
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
+def test_teensy_arm_card_loads_with_explicit_teensy_status(monkeypatch, tmp_path, qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    status_components_import_url = _qml_import_url(qml_dir / "pages" / "status" / "components")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    context_objects["teensyController"] = None
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{status_components_import_url}"
+
+Item {{
+    width: 1280
+    height: 800
+    property var teensyStatusModel: ({{
+        armExtensionDist: 320,
+        armRailCurrent: 90,
+        gimbalPitchMotorCurrent: 50
+    }})
+
+    TeensyArmCard {{
+        anchors.fill: parent
+        teensyStatus: teensyStatusModel
+        maxArmCurrent: 200
+        maxArmExtension: 1500
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:TeensyArmCardHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+        qt_app.processEvents()
+
+        fatal_warning_fragments = (
+            "failed to load component",
+            "no such file or directory",
+            "is not a type",
+            "required property",
+            "typeerror",
+            "referenceerror",
+        )
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
+def test_valves_card_loads_with_explicit_valve_status(monkeypatch, tmp_path, qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    status_components_import_url = _qml_import_url(qml_dir / "pages" / "status" / "components")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    context_objects["esp32ValveController"] = None
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{status_components_import_url}"
+
+Item {{
+    width: 1280
+    height: 800
+    property var valveStatusModel: ({{
+        valvePosition: 42,
+        valveRate: 1.5,
+        totalVolume: 8.0,
+        valveMotorCurrent: 0.7,
+        valveMotorConnected: true,
+        flowMeterConnected: true
+    }})
+
+    ValvesCard {{
+        anchors.fill: parent
+        valveStatus: valveStatusModel
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:ValvesCardHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+        qt_app.processEvents()
+
+        fatal_warning_fragments = (
+            "failed to load component",
+            "no such file or directory",
+            "is not a type",
+            "required property",
+            "typeerror",
+            "referenceerror",
+        )
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
 def test_video_fullscreen_overlay_wrapper_loads_with_stream_context(monkeypatch, tmp_path, qt_app, qtbot):
     repo_root = Path(__file__).resolve().parent.parent
     qml_dir = repo_root / "python" / "paint_controller" / "qml"
@@ -1445,6 +1862,9 @@ def test_video_fullscreen_overlay_wrapper_loads_with_stream_context(monkeypatch,
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
+    context_objects["lidarController"] = None
+    context_objects["wheelController"] = None
+    context_objects["winchController"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
         ctx.setContextProperty(name, obj)
@@ -1465,6 +1885,11 @@ Item {{
         videoSource: "image://base_front_live/frame"
         workflowServices: systemControlServices
         videoRuntime: videoRuntime
+        wheelStatus: wheelStatus
+        winchStatus: winchStatus
+        teensyStatus: teensyStatus
+        valveStatus: valveStatus
+        lidarStatus: lidarStatus
     }}
 }}
 '''.encode(),
@@ -1483,6 +1908,172 @@ Item {{
             "no such file or directory",
             "is not a type",
             "required property",
+        )
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
+def test_base_front_overlay_loads_with_explicit_wheel_status(monkeypatch, tmp_path, qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    overlay_components_import_url = _qml_import_url(qml_dir / "overlays" / "video" / "components")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+    engine.addImageProvider("base_top_view", BlankImageProvider())
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    context_objects["wheelController"] = None
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{overlay_components_import_url}"
+
+Item {{
+    width: 1280
+    height: 800
+    property var workflowRunnerModel: systemControlServices.workflowRunner
+    property var videoRuntimeModel: videoRuntime
+    property var wheelStatusModel: ({{
+        leftWheelSpeed: 1.5,
+        rightWheelSpeed: -1.0,
+        leftWheelCurrent: 0.7,
+        rightWheelCurrent: 0.8,
+        leftWheelPosition: 120,
+        rightWheelPosition: 118
+    }})
+
+    BaseFrontOverlay {{
+        anchors.fill: parent
+        workflowRunner: workflowRunnerModel
+        videoRuntime: videoRuntimeModel
+        wheelStatus: wheelStatusModel
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:BaseFrontOverlayHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+        qt_app.processEvents()
+
+        fatal_warning_fragments = (
+            "failed to load component",
+            "no such file or directory",
+            "is not a type",
+            "required property",
+            "cannot read property 'left_wheel_speed'",
+            "cannot read property 'left_wheel_current'",
+            "cannot read property 'left_wheel_position'",
+            "cannot read property 'right_wheel_speed'",
+            "cannot read property 'right_wheel_current'",
+            "cannot read property 'right_wheel_position'",
+            "cannot call method 'tofixed' of undefined",
+        )
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
+def test_end_effector_overlay_loads_with_explicit_status_models(monkeypatch, tmp_path, qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    overlay_components_import_url = _qml_import_url(qml_dir / "overlays" / "video" / "components")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    context_objects["teensyController"] = None
+    context_objects["esp32ValveController"] = None
+    context_objects["lidarController"] = None
+    context_objects["winchController"] = None
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{overlay_components_import_url}"
+
+Item {{
+    width: 1280
+    height: 800
+    property var workflowRunnerModel: systemControlServices.workflowRunner
+    property var videoRuntimeModel: videoRuntime
+    property var winchStatusModel: ({{
+        winchTorque: 125,
+        cableLength: 2400
+    }})
+    property var lidarStatusModel: lidarStatus
+    property var teensyStatusModel: ({{
+        imuPitch: 1.2,
+        armExtensionDist: 280,
+        gimbalPitchMotorAngle: -4.5
+    }})
+    property var valveStatusModel: ({{
+        valvePosition: 23,
+        valveRate: 1.1,
+        totalVolume: 5.5,
+        valveMotorConnected: true,
+        flowMeterConnected: false
+    }})
+
+    EndEffectorOverlay {{
+        anchors.fill: parent
+        workflowRunner: workflowRunnerModel
+        videoRuntime: videoRuntimeModel
+        winchStatus: winchStatusModel
+        teensyStatus: teensyStatusModel
+        valveStatus: valveStatusModel
+        lidarStatus: lidarStatusModel
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:EndEffectorOverlayHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+        qt_app.processEvents()
+
+        fatal_warning_fragments = (
+            "failed to load component",
+            "no such file or directory",
+            "is not a type",
+            "required property",
+            "cannot read property 'imu_pitch' of undefined",
+            "cannot read property 'valve_position' of undefined",
+            "cannot read property 'winch_torque' of undefined",
+            "cannot read property 'cable_length' of undefined",
+            "cannot read property 'distance'",
+            "cannot read property 'angle'",
+            "cannot call method 'tofixed' of undefined",
         )
         assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
     finally:

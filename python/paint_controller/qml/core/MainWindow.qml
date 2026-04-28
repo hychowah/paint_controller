@@ -39,6 +39,8 @@ ApplicationWindow {
     property var wheelStatusModel: wheelStatus
     property var winchStatusModel: winchStatus
     property var teensyStatusModel: teensyStatus
+    property var valveStatusModel: valveStatus
+    property var lidarStatusModel: lidarStatus
     property var shellConnectivityStatusModel: shellConnectivityStatus
     property var launcherAdminModel: launcherAdmin
     
@@ -230,7 +232,9 @@ ApplicationWindow {
 
     Component {
         id: wheelPageComponent
-        PageWheel {}
+        PageWheel {
+            wheelStatus: mainWindow.wheelStatusModel
+        }
     }
     
     Component {
@@ -365,6 +369,11 @@ ApplicationWindow {
         videoSource: overlayHost ? overlayHost.video_fullscreen_source : ""
         workflowServices: mainWindow.systemControlServicesModel
         videoRuntime: mainWindow.videoRuntimeModel
+        wheelStatus: mainWindow.wheelStatusModel
+        winchStatus: mainWindow.winchStatusModel
+        teensyStatus: mainWindow.teensyStatusModel
+        valveStatus: mainWindow.valveStatusModel
+        lidarStatus: mainWindow.lidarStatusModel
     }
 
     // LiDAR 3D View

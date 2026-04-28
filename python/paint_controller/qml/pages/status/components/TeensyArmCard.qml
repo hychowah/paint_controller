@@ -6,8 +6,10 @@ import "."
 import "../../../core"
 
 IndustrialCard {
+    id: teensyArmCard
     title: "Teensy Arm"
 
+    required property var teensyStatus
     required property real maxArmCurrent
     required property real maxArmExtension
     
@@ -28,7 +30,7 @@ IndustrialCard {
             }
             
             Text {
-                text: ((teensyController.all_status.arm_extension_dist || 0)).toFixed(0) + " mm"
+                text: teensyArmCard.teensyStatus.armExtensionDist.toFixed(0) + " mm"
                 font.pixelSize: CommonStyle.fontDisplay + CommonStyle.spacingXs
                 font.family: CommonStyle.fontMono
                 font.bold: true
@@ -37,7 +39,7 @@ IndustrialCard {
             
             ProgressBarIndicator {
                 Layout.fillWidth: true
-                value: teensyController.all_status.arm_extension_dist || 0
+                value: teensyArmCard.teensyStatus.armExtensionDist
                 maxValue: maxArmExtension
                 barColor: CommonStyle.statusSuccess
                 barHeight: CommonStyle.spacingSm + 2
@@ -70,7 +72,7 @@ IndustrialCard {
                     Layout.preferredHeight: 80
                     Layout.alignment: Qt.AlignHCenter
                     
-                    property real heightRatio: maxArmCurrent > 0 ? Math.abs(teensyController.all_status.arm_rail_current || 0) / maxArmCurrent : 0
+                    property real heightRatio: maxArmCurrent > 0 ? Math.abs(teensyArmCard.teensyStatus.armRailCurrent) / maxArmCurrent : 0
                     
                     Rectangle {
                         anchors.bottom: parent.bottom
@@ -86,7 +88,7 @@ IndustrialCard {
                 }
                 
                 Text {
-                    text: (Math.abs(teensyController.all_status.arm_rail_current || 0) / 10).toFixed(0) + " A"
+                    text: (Math.abs(teensyArmCard.teensyStatus.armRailCurrent) / 10).toFixed(0) + " A"
                     font.pixelSize: CommonStyle.fontBody
                     font.family: CommonStyle.fontMono
                     color: CommonStyle.accentPrimary
@@ -114,7 +116,7 @@ IndustrialCard {
                     Layout.preferredHeight: 80
                     Layout.alignment: Qt.AlignHCenter
                     
-                    property real heightRatio: maxArmCurrent > 0 ? Math.abs(teensyController.all_status.gimbal_pitch_motor_current || 0) / maxArmCurrent : 0
+                    property real heightRatio: maxArmCurrent > 0 ? Math.abs(teensyArmCard.teensyStatus.gimbalPitchMotorCurrent) / maxArmCurrent : 0
                     
                     Rectangle {
                         anchors.bottom: parent.bottom
@@ -130,7 +132,7 @@ IndustrialCard {
                 }
                 
                 Text {
-                    text: (Math.abs(teensyController.all_status.gimbal_pitch_motor_current || 0) / 10).toFixed(0) + " A"
+                    text: (Math.abs(teensyArmCard.teensyStatus.gimbalPitchMotorCurrent) / 10).toFixed(0) + " A"
                     font.pixelSize: CommonStyle.fontBody
                     font.family: CommonStyle.fontMono
                     color: CommonStyle.accentPrimary

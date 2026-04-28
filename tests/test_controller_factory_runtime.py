@@ -444,8 +444,47 @@ class _TeensyControllerRecorder:
             "run_time": 120.0,
             "loop_time": 450.0,
             "loop_time_counter": 900.0,
+            "imu_pitch": 1.5,
+            "imu_roll": -0.5,
+            "imu_yaw": 3.0,
+            "imu_acc_x": 0.1,
+            "imu_acc_y": 0.2,
+            "imu_acc_z": 0.3,
+            "imu_angular_acc_x": 0.4,
+            "imu_angular_acc_y": 0.5,
+            "imu_angular_acc_z": 0.6,
+            "arm_extension_dist": 320.0,
+            "arm_rail_current": 40.0,
+            "gimbal_pitch_motor_current": 20.0,
+            "gimbal_pitch_motor_angle": -4.5,
             "yaw_enabled": True,
         }
+
+
+class _ValveStatusRecorder:
+    def __init__(self) -> None:
+        self.valve_position_changed = _SignalRecorder()
+        self.valve_rate_changed = _SignalRecorder()
+        self.total_volume_changed = _SignalRecorder()
+        self.valve_motor_current_changed = _SignalRecorder()
+        self.valve_motor_connected_changed = _SignalRecorder()
+        self.flow_meter_connected_changed = _SignalRecorder()
+        self.esp32_connected_changed = _SignalRecorder()
+        self.valve_position = 42.0
+        self.valve_rate = 1.5
+        self.total_volume = 8.0
+        self.valve_motor_current = 0.7
+        self.valve_motor_connected = True
+        self.flow_meter_connected = False
+        self.esp32_connected = True
+
+
+class _LidarStatusRecorder:
+    def __init__(self) -> None:
+        self.distance_changed = _SignalRecorder()
+        self.angle_changed = _SignalRecorder()
+        self.distance = 1.25
+        self.angle = -3.5
 
 
 class _WinchStatusRecorder:
@@ -552,8 +591,8 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
             "winch_controller": object(),
             "wind_monitor": object(),
             "teensy_controller": object(),
-            "esp32_valve_controller": object(),
-            "lidar_controller": object(),
+            "esp32_valve_controller": _ValveStatusRecorder(),
+            "lidar_controller": _LidarStatusRecorder(),
             "heartbeat_handler": _HeartbeatHandlerRecorder(),
             "control_processor": _ControlProcessorRecorder(),
             "admin_action_gate": object(),
@@ -605,6 +644,8 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.wheel_status is not None
     assert runtime.winch_status is not None
     assert runtime.teensy_status is not None
+    assert runtime.valve_status is not None
+    assert runtime.lidar_status is not None
     assert runtime.shell_connectivity_status is not None
     assert runtime.launcher_admin is not None
     assert runtime.engine.context.properties["actionLegality"] is runtime.action_legality
@@ -614,6 +655,8 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.engine.context.properties["wheelStatus"] is runtime.wheel_status
     assert runtime.engine.context.properties["winchStatus"] is runtime.winch_status
     assert runtime.engine.context.properties["teensyStatus"] is runtime.teensy_status
+    assert runtime.engine.context.properties["valveStatus"] is runtime.valve_status
+    assert runtime.engine.context.properties["lidarStatus"] is runtime.lidar_status
     assert runtime.engine.context.properties["shellConnectivityStatus"] is runtime.shell_connectivity_status
     assert runtime.engine.context.properties["launcherAdmin"] is runtime.launcher_admin
     assert runtime.system_control_services.manualCommandHandler is runtime.bundle.manual_command_handler
@@ -638,6 +681,13 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.winch_status.available is True
     assert runtime.winch_status.loadDetectionEnabled is True
     assert runtime.winch_status.cableLength == 1200.0
+    assert runtime.teensy_status.imuPitch == 1.5
+    assert runtime.teensy_status.armExtensionDist == 320.0
+    assert runtime.teensy_status.gimbalPitchMotorAngle == -4.5
+    assert runtime.valve_status.valvePosition == 42.0
+    assert runtime.valve_status.valveMotorConnected is True
+    assert runtime.lidar_status.distance == 1.25
+    assert runtime.lidar_status.angle == -3.5
     assert runtime.teensy_status.enabled is True
     assert runtime.teensy_status.relayOn is False
     assert runtime.teensy_status.loopTime == 450.0
