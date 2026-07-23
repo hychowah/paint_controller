@@ -21,7 +21,7 @@ ROS2 node with PySide6/QML UI for robotic paint control on a Steam Deck. The liv
 Read in this order at the start of any session:
 
 1. **`INDEX.md`** (this file) — repo map and orientation
-2. **`AGENTS.md`** — workflow rules, planning process, stop-and-ask triggers
+2. **`AGENTS.md`** — workflow rules, planning process, stop-and-ask triggers, and the Kimi CLI tool mapping (when to use plan mode, `TodoList`, subagents, etc.)
 3. **`KNOWLEDGE.md`** — gotchas, patterns, anti-patterns. Check before debugging.
 4. **`DEVNOTES.md`** — last 90 days of session notes and validation results
 5. **`docs/plan/00_ARCHITECTURE_PROGRESS.md`** — current roadmap status, completed slices, next recommended slice

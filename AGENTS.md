@@ -6,7 +6,7 @@
 
 ## Project Overview
 
-ROS2 node with PySide6/QML UI for robotic paint controller on Steam Deck. Python-first codebase; the historical C++ UI path has been removed from the live tree.
+ROS2 node with PySide6/QML UI for robotic paint controller on a Steam Deck. Python-first codebase; the historical C++ UI path has been removed from the live tree.
 
 **Stack**: ROS2 (Humble/Jazzy), Python 3.10+, PySide6, QML
 
@@ -30,24 +30,43 @@ python/paint_controller/venv/bin/python -m pytest tests -q
 
 ---
 
+## Kimi CLI Tool Mapping
+
+Use the current Kimi CLI tools to implement the workflow below with less friction and better accountability:
+
+| Tool | Use it when |
+|---|---|
+| `EnterPlanMode` / `ExitPlanMode` | Any non-trivial task (new feature, refactor, multi-file change, or anything rated Medium/High). Enter before exploring, write the plan to `PLANNING.md`, then exit for user approval. |
+| `TodoList` | The task has more than two discrete steps, spans multiple files, or requires tracking investigation → implementation → verification. |
+| `Agent` / `AgentSwarm` | You need more than three searches to understand a code path, or you can safely parallelize independent investigations (e.g. trace state flow in Python while another agent traces QML consumers). |
+| `AskUserQuestion` | A requirement is ambiguous, multiple valid approaches exist, or you hit a stop-and-ask trigger. Use structured options; do not use it for "is this OK?" — that is what `ExitPlanMode` is for. |
+| `CreateGoal` / `GetGoal` | The user explicitly asks you to work autonomously toward an outcome that spans multiple turns and has a clear, checkable finish line. |
+| `CronCreate` | The user asks for a recurring check or one-shot reminder tied to time. Not for normal implementation work. |
+
+Default to the simplest tool that fits. Do not spin up subagents for trivial one-file reads or single-line fixes.
+
+---
+
 ## Planning Before Implementation (REQUIRED)
 
 You MUST follow this workflow for ALL tasks. NEVER modify code before completing the Plan phase and receiving user confirmation.
 
 ### Phase 1: Understand
 
-1. **Restate the problem** in your own words
-2. **Check KNOWLEDGE.md** for related patterns or gotchas
+1. **Restate the problem** in your own words.
+2. **Check `KNOWLEDGE.md`** for related patterns or gotchas.
 3. **Classify the change type**:
    - UI/Display → extra caution for Qt timing, layout rules
    - State management → trace full state flow first
    - Hardware control → verify controller abstraction exists
-4. **Identify all affected files and components**
-5. **Trace dependencies** — list callers/callees for any modified function
+4. **Identify all affected files and components**.
+5. **Trace dependencies** — list callers/callees for any modified function.
+
+> For broad or unfamiliar code paths, use `Agent(subagent_type="explore")` (or `AgentSwarm` for independent questions) instead of running many sequential searches yourself. Keep the results focused: restatement, file list, caller/callee map, and any `KNOWLEDGE.md` matches.
 
 ### Phase 2: Plan
 
-Create or update `PLANNING.md` in the repository root with this template:
+For non-trivial tasks, call `EnterPlanMode` before writing the plan. The plan lives in `PLANNING.md` in the repository root, using this template:
 
 ```markdown
 ## Task: [Brief title]
@@ -75,17 +94,43 @@ Create or update `PLANNING.md` in the repository root with this template:
 
 ### Phase 3: Confirm
 
+Call `ExitPlanMode` to present the plan for approval. If any requirement is still ambiguous or multiple valid approaches remain, use `AskUserQuestion` first, then revise `PLANNING.md` before exiting.
+
 MUST ask user: **"Here is my plan in PLANNING.md. Ready to proceed?"**
 
 NEVER start implementation without explicit user approval.
 
 ### Phase 4: Implement
 
-Make changes one logical unit at a time. Update DEVNOTES.md if significant debugging or learning occurred.
+1. Mark the current step `in_progress` in `TodoList` and keep exactly one step in that state.
+2. Make changes one logical unit at a time.
+3. Update `DEVNOTES.md` if significant debugging or learning occurred.
+4. Verify each unit against the validation gates below before moving to the next step.
 
 ### Phase 5: Cleanup
 
 `PLANNING.md` is temporary local scratch state. Keep it current while working, but do not treat it as a branch/merge blocker because it is gitignored.
+
+---
+
+## Validation Gates
+
+Every implementation slice must pass the relevant gates before you mark the task done:
+
+1. **pytest** — run the focused band that covers the touched boundary, then the full suite if the change is broad.
+2. **pyright** — for covered Python scope, keep type checks green.
+3. **ROS build** — `colcon build --packages-select paint_interfaces paint_controller_ros2` when interfaces, `CMakeLists.txt`, or `package.xml` change.
+4. **Offscreen startup/shutdown smoke** — run the touched smoke tests when QML contracts, shell behavior, or controller lifetime change.
+
+### Test Harness Awareness
+
+The test suite relies on a deliberately lightweight harness. Do not break these contracts:
+
+- **Namespace-only stubs** — `tests/conftest.py` pre-registers `paint_controller` and several subpackages as empty `types.ModuleType` modules so tests can import submodules directly without triggering heavy `__init__.py` side effects. If you add new top-level re-exports in `__init__.py`, ensure they do not pull PySide6/ROS2 into pure-Python tests.
+- **Force-assigned offscreen platform** — `os.environ["QT_QPA_PLATFORM"] = "offscreen"` in `tests/conftest.py` overrides any shell-level `xcb`. Never change this to `setdefault`.
+- **`qt_core_app` is an alias of `qt_app`** — creating a second `QCoreApplication` aborts the suite. Tests needing only signal/QObject semantics should request `qt_core_app`, not create their own.
+- **Teardown-specific regression coverage** — if your slice touches `QTimer`, worker pools, `QThread`, or controller `cleanup()`, add or update a teardown test (e.g. `tests/test_ssh.py` is the model) before closing the slice.
+- **Startup-smoke contract parity** — if a slice changes a QML-facing contract, update the corresponding startup-smoke fixture in `tests/startup_smoke_support.py` so the smoke test exercises the new contract and does not silently fall back to a retired global.
 
 ---
 
@@ -98,6 +143,8 @@ You MUST pause and ask for explicit guidance before:
 - **Changing ROS2 message types** or service definitions
 - **Modifying CMakeLists.txt or package.xml**
 - **Any change rated High complexity**
+
+For ambiguous cases, use `AskUserQuestion` with concrete options. For stop-and-ask triggers that are clear-cut, state the blocker plainly and wait for direction.
 
 ---
 
@@ -169,7 +216,7 @@ Short title + 2-4 line explanation. Group by category.
 ## General Rules
 
 1. **No standalone documentation files** unless user explicitly requests
-2. **Check KNOWLEDGE.md** before debugging — solution may already exist
-3. **Update DEVNOTES.md** after significant debugging sessions or feature work
-4. **INDEX.md is the session-start map** — consult it in any fresh session before any other file
+2. **Check `KNOWLEDGE.md`** before debugging — solution may already exist
+3. **Update `DEVNOTES.md`** after significant debugging sessions or feature work
+4. **`INDEX.md` is the session-start map** — consult it in any fresh session before any other file
 5. **Update `docs/tech-debt.md`** when new debt is discovered or existing items are resolved — move resolved items to the Resolved table with date and one-line note

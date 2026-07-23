@@ -13,6 +13,11 @@ _LEGAL_STATE_ALLOWED_HEARTBEAT_STATES: dict[str, tuple[int, ...]] = {
     "tuning-calibration": (HeartbeatStatus.IDLE.value,),
     "maintenance-preset": (HeartbeatStatus.IDLE.value,),
     "status-admin": (HeartbeatStatus.IDLE.value, HeartbeatStatus.ONTASK.value),
+    "status-admin-warning-ok": (
+        HeartbeatStatus.IDLE.value,
+        HeartbeatStatus.ONTASK.value,
+        HeartbeatStatus.WARNING.value,
+    ),
     "live-operational-motion": (HeartbeatStatus.IDLE.value, HeartbeatStatus.ONTASK.value),
     "emergency-exception": (
         HeartbeatStatus.IDLE.value,
@@ -55,6 +60,10 @@ _ACTION_METADATA_OVERRIDES: dict[str, dict[str, Any]] = {
     "winch.emergency_stop": {
         "title": "Winch Emergency Stop",
         "legalStateClass": "emergency-exception",
+    },
+    "status.teensy_relay": {
+        "title": "Teensy Relay Toggle",
+        "legalStateClass": "status-admin-warning-ok",
     },
 }
 

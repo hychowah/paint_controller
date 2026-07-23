@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from paint_controller.handlers.device_actions import DeviceActionHandler
+from paint_controller.models.admin_action_gate import AdminActionGate
+from paint_controller.utils.constants import HeartbeatStatus
 from tests.fakes import FakeLogger
 
 
@@ -180,3 +182,30 @@ def test_gate_denial_blocks_wheel_reset_before_backend_call() -> None:
     assert wheel.reset_calls == 0
     assert results[-1] == (False, "Reset Wheel Position requires the system to be idle")
     assert logger.records[-1].message == "Reset Wheel Position requires the system to be idle"
+
+
+class _FakeStateStore:
+    def __init__(self, heartbeat_state: int) -> None:
+        self.controller_heartbeat_state = heartbeat_state
+
+
+def test_teensy_relay_toggle_is_allowed_in_warning_heartbeat() -> None:
+    teensy = FakeTeensy()
+    logger = FakeLogger()
+    state_store = _FakeStateStore(HeartbeatStatus.WARNING.value)
+    admin_action_gate = AdminActionGate(capability_catalog=None, state_store=state_store)
+    handler = DeviceActionHandler(
+        teensy=teensy,
+        winch=None,
+        wheel=None,
+        admin_action_gate=admin_action_gate,
+        logger=logger,
+    )
+    results: list[tuple[bool, str]] = []
+    handler.operation_result.connect(lambda success, message: results.append((success, message)))
+
+    assert handler.requestTeensyRelayEnabled(True) is True
+
+    assert teensy.relay_calls == [True]
+    assert results[-1] == (True, "Teensy relay requested")
+    assert logger.records[-1].message == "Teensy relay requested"
