@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-07-23 17:33 - VideoOverlayTopBar Connection State And Tap-To-Switch
+
+**Goal**: Give the fullscreen video top bar a clearer EF/Base connection indicator and let the operator tap the EF or Base side to switch overlays.
+**Issues**: The existing top bar only showed ping/"Net OK", which did not clearly communicate disconnection, and there was no way to switch between EF and Base overlays from inside fullscreen video.
+**Tried**: Added `endEffectorConnected`/`baseConnected` properties to `_VideoRuntimeTopBar` driven by `ssh_controller.deviceAvailability`, added `requestEndEffectorVideo()`/`requestBaseVideo()` slots that route through `AppRuntime._wire_signals` to `OverlayHostPolicy.set_video_fullscreen_source()`, rewired `VideoOverlayTopBar.qml` to show a colored connection dot, replace "Net OK" with "DISC" when ping is absent, highlight the selected side with a background tint + accent bottom border, and added `MouseArea` tap targets. Updated overlay components to pass `selectedOverlay` and extended the smoke-test fake top-bar model.
+**Result**: ✅ EF/Base connection state is now visible at a glance, the side panels are tappable, selection is visually indicated, and the full test suite is green at `263 passed`.
+**Files**: `python/paint_controller/core/app_runtime.py`, `python/paint_controller/qml/overlays/video/components/VideoOverlayTopBar.qml`, `python/paint_controller/qml/overlays/video/components/EndEffectorOverlay.qml`, `python/paint_controller/qml/overlays/video/components/BaseFrontOverlay.qml`, `tests/startup_smoke_support.py`, `tests/test_app_runtime_runtime.py`
+
 ### 2026-04-28 00:00 - Large File Cleanup Wave Guard Rails And PageHome Retirement
 
 **Goal**: Reduce oversized test and QML files without widening the current architecture program, starting with reusable guard/test support and the last named `PageHome.qml` preview remainder.

@@ -46,7 +46,11 @@ Rectangle {
     
     property real efPingMs: topBarModel.endEffectorPingMs
     property real basePingMs: topBarModel.basePingMs
-    
+
+    property string selectedOverlay: "ef"
+    readonly property bool isEfSelected: selectedOverlay === "ef"
+    readonly property bool isBaseSelected: selectedOverlay === "base"
+
     /**
      * Calculate battery percentage from voltage using Li-ion discharge curve
      * Uses a piecewise approximation of the actual Li-ion voltage curve
@@ -116,26 +120,41 @@ Rectangle {
         width: 300
         height: parent.height
         color: "transparent"
-        
+
         anchors.left: parent.left
         anchors.leftMargin: 10
         anchors.verticalCenter: parent.verticalCenter
-        
+
         Row {
             anchors.fill: parent
             spacing: 8
-            
-            // EF Label
-            Text {
-                text: "EF"
-                color: topBarTextColor
-                font.pixelSize: topBarLabelFontSize
-                font.bold: true
-                font.family: topBarFontFamily
+
+            // EF Label with selected pill background
+            Item {
+                width: 40
+                height: parent.height
                 anchors.verticalCenter: parent.verticalCenter
-                width: 25
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: efLabel.width + 16
+                    height: efLabel.height + 8
+                    radius: height / 2
+                    color: isEfSelected ? CommonStyle.statusSuccess : "transparent"
+                    visible: isEfSelected
+                }
+
+                Text {
+                    id: efLabel
+                    text: "EF"
+                    color: isEfSelected ? CommonStyle.textStrong : topBarTextColor
+                    font.pixelSize: topBarLabelFontSize
+                    font.bold: true
+                    font.family: topBarFontFamily
+                    anchors.centerIn: parent
+                }
             }
-            
+
             // EF Battery Info
             BatteryDisplay {
                 width: 100
@@ -143,7 +162,7 @@ Rectangle {
                 batteryPercent: calculateBatteryPercent(topBarModel.endEffectorBatteryVoltage, efBatteryMin, efBatteryMax)
                 borderColor: dividerColor
             }
-            
+
             // Divider
             Rectangle {
                 width: 1
@@ -151,21 +170,30 @@ Rectangle {
                 color: dividerColor
                 anchors.verticalCenter: parent.verticalCenter
             }
-            
+
             // EF Network Info
             Item {
                 width: 100
                 height: parent.height
-                
+
                 Row {
                     anchors.centerIn: parent
                     spacing: 8
-                    
+
+                    // Connection status dot
+                    Rectangle {
+                        width: 8
+                        height: 8
+                        radius: 4
+                        color: topBarModel.endEffectorConnected ? CommonStyle.statusSuccess : CommonStyle.statusError
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
                     // Network icon (signal bars simulation)
                     Column {
                         spacing: 2
                         anchors.verticalCenter: parent.verticalCenter
-                        
+
                         Rectangle {
                             width: 3
                             height: 3
@@ -188,10 +216,10 @@ Rectangle {
                             opacity: calculateSignalBars(efPingMs) >= 3 ? 1 : 0.3
                         }
                     }
-                    
+
                     // Network ping time
                     Text {
-                        text: efPingMs > 0 ? efPingMs.toFixed(0) + "ms" : "Net OK"
+                        text: efPingMs > 0 ? efPingMs.toFixed(0) + "ms" : "DISC"
                         color: getSignalColor(efPingMs)
                         font.pixelSize: topBarValueFontSize
                         font.bold: true
@@ -200,6 +228,11 @@ Rectangle {
                     }
                 }
             }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: topBarModel.requestEndEffectorVideo()
         }
     }
     
@@ -332,22 +365,24 @@ Rectangle {
                 }
             }
         }
-    }    // RIGHT SIDE - Base Info (Battery left, Network right)
+    }
+
+    // RIGHT SIDE - Base Info (Battery left, Network right)
     Rectangle {
         id: rightPanel
         width: 300
         height: parent.height
         color: "transparent"
-        
+
         anchors.right: parent.right
         anchors.rightMargin: 10
         anchors.verticalCenter: parent.verticalCenter
-        
+
         Item {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             anchors.fill: parent
-            
+
             // Base Battery Info
             BatteryDisplay {
                 width: 100
@@ -358,7 +393,7 @@ Rectangle {
                 batteryPercent: calculateBatteryPercent(topBarModel.baseBatteryVoltage, baseBatteryMin, baseBatteryMax)
                 borderColor: dividerColor
             }
-            
+
             // Divider
             Rectangle {
                 id: dividerRight
@@ -369,35 +404,44 @@ Rectangle {
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
             }
-            
+
             // Base Network Info
             Item {
                 id: networkInfoRight
                 width: 100
                 height: parent.height
-                anchors.right: baseLabel.left
+                anchors.right: baseLabelContainer.left
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
-                
+
                 Row {
                     anchors.centerIn: parent
                     spacing: 8
-                    
+
+                    // Connection status dot
+                    Rectangle {
+                        width: 8
+                        height: 8
+                        radius: 4
+                        color: topBarModel.baseConnected ? CommonStyle.statusSuccess : CommonStyle.statusError
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
                     // Network ping time
                     Text {
-                        text: basePingMs > 0 ? basePingMs.toFixed(0) + "ms" : "Net OK"
+                        text: basePingMs > 0 ? basePingMs.toFixed(0) + "ms" : "DISC"
                         color: getSignalColor(basePingMs)
                         font.pixelSize: topBarValueFontSize
                         font.bold: true
                         font.family: topBarFontFamily
                         anchors.verticalCenter: parent.verticalCenter
                     }
-                    
+
                     // Network icon (signal bars simulation)
                     Column {
                         spacing: 2
                         anchors.verticalCenter: parent.verticalCenter
-                        
+
                         Rectangle {
                             width: 3
                             height: 3
@@ -422,19 +466,37 @@ Rectangle {
                     }
                 }
             }
-            
-            // BASE Label
-            Text {
-                id: baseLabel
-                text: "BASE"
-                color: topBarTextColor
-                font.pixelSize: topBarLabelFontSize
-                font.bold: true
-                font.family: topBarFontFamily
+
+            // BASE Label with selected pill background
+            Item {
+                id: baseLabelContainer
+                width: baseLabelText.width + 16
+                height: baseLabelText.height + 8
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                width: 25
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: height / 2
+                    color: isBaseSelected ? CommonStyle.statusSuccess : "transparent"
+                    visible: isBaseSelected
+                }
+
+                Text {
+                    id: baseLabelText
+                    text: "BASE"
+                    color: isBaseSelected ? CommonStyle.textStrong : topBarTextColor
+                    font.pixelSize: topBarLabelFontSize
+                    font.bold: true
+                    font.family: topBarFontFamily
+                    anchors.centerIn: parent
+                }
             }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: topBarModel.requestBaseVideo()
         }
     }
 }

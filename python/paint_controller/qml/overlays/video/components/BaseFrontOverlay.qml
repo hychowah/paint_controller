@@ -54,6 +54,7 @@ Rectangle {
         id: topBar
         z: 200  // Highest z-index
         topBarModel: overlay.videoRuntime.topBar
+        selectedOverlay: "base"
     }
     
     // LEFT SIDE - Left Motor Data (RPM, Current, Travel)

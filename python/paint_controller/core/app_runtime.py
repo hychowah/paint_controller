@@ -159,6 +159,8 @@ class _VideoRuntimeFeeds(QObject):
 
 class _VideoRuntimeTopBar(QObject):
     changed = Signal()
+    endEffectorVideoRequested = Signal()
+    baseVideoRequested = Signal()
 
     def __init__(
         self,
@@ -212,6 +214,20 @@ class _VideoRuntimeTopBar(QObject):
     @Property(float, notify=changed)
     def basePingMs(self) -> float:
         return self._ping_ms("BASE")
+
+    def _device_available(self, device_name: str) -> bool:
+        device_availability = _read_object_value(self._ssh_controller, "deviceAvailability", default={})
+        if isinstance(device_availability, dict):
+            return bool(device_availability.get(device_name, False))
+        return False
+
+    @Property(bool, notify=changed)
+    def endEffectorConnected(self) -> bool:
+        return self._device_available("END_EFFECTOR")
+
+    @Property(bool, notify=changed)
+    def baseConnected(self) -> bool:
+        return self._device_available("BASE")
 
     @Property(float, notify=changed)
     def endEffectorBatteryVoltage(self) -> float:
@@ -267,6 +283,14 @@ class _VideoRuntimeTopBar(QObject):
             default="N/A",
         )
         return str(value if value is not None else "N/A")
+
+    @Slot()
+    def requestEndEffectorVideo(self) -> None:
+        self.endEffectorVideoRequested.emit()
+
+    @Slot()
+    def requestBaseVideo(self) -> None:
+        self.baseVideoRequested.emit()
 
 
 class _VideoRuntime(QObject):
@@ -1174,6 +1198,8 @@ class AppRuntime:
         assert self.state_store is not None
         assert self.video_stream_handler is not None
         assert self.steam_deck_handler is not None
+        assert self.overlay_host is not None
+        assert self.video_runtime is not None
 
         self._heartbeat_status_error = HeartbeatStatus.ERROR
         self.state_store.control_mode_changed.connect(self.qt_bridge.update_fullscreen_video_source)
@@ -1185,6 +1211,13 @@ class AppRuntime:
             Qt.QueuedConnection,
         )
         self.qt_bridge.status_updated.connect(self._on_status_tick)
+
+        self.video_runtime.topBar.endEffectorVideoRequested.connect(
+            lambda: self.overlay_host.set_video_fullscreen_source("image://ef_live/frame")
+        )
+        self.video_runtime.topBar.baseVideoRequested.connect(
+            lambda: self.overlay_host.set_video_fullscreen_source("image://base_front_live/frame")
+        )
 
     def _on_wheel_motor_error(self, has_error, error_message) -> None:
         if not has_error:

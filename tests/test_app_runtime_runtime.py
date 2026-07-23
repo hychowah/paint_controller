@@ -128,6 +128,8 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.system_control_services.manualCommandHandler is runtime.bundle.manual_command_handler
     assert runtime.video_runtime.controls.leftMode == "None"
     assert runtime.video_runtime.topBar.systemBatteryPercent == 100
+    assert runtime.video_runtime.topBar.endEffectorConnected is True
+    assert runtime.video_runtime.topBar.baseConnected is True
     assert runtime.recording_status.endEffectorRecording is True
     assert runtime.recording_status.baseRecording is False
     assert runtime.recording_status.screenRecording is False

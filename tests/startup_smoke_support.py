@@ -236,53 +236,75 @@ class FakeVideoRuntimeControls(QObject):
 
 
 class FakeVideoRuntimeTopBar(QObject):
+    changed = Signal()
+    endEffectorVideoRequested = Signal()
+    baseVideoRequested = Signal()
+
     def __init__(self) -> None:
         super().__init__()
         self._end_effector_ping_ms = 38.0
         self._base_ping_ms = 42.0
         self._end_effector_battery_voltage = 24.0
         self._base_battery_voltage = 24.0
+        self._end_effector_connected = True
+        self._base_connected = True
         self._is_recording = False
         self._recording_duration = 0
         self._system_battery_percent = 100
         self._cpu_temperature = 0.0
         self._battery_remaining_time = "--"
 
-    @Property(float, constant=True)
+    @Property(float, notify=changed)
     def endEffectorPingMs(self) -> float:
         return self._end_effector_ping_ms
 
-    @Property(float, constant=True)
+    @Property(float, notify=changed)
     def basePingMs(self) -> float:
         return self._base_ping_ms
 
-    @Property(float, constant=True)
+    @Property(bool, notify=changed)
+    def endEffectorConnected(self) -> bool:
+        return self._end_effector_connected
+
+    @Property(bool, notify=changed)
+    def baseConnected(self) -> bool:
+        return self._base_connected
+
+    @Property(float, notify=changed)
     def endEffectorBatteryVoltage(self) -> float:
         return self._end_effector_battery_voltage
 
-    @Property(float, constant=True)
+    @Property(float, notify=changed)
     def baseBatteryVoltage(self) -> float:
         return self._base_battery_voltage
 
-    @Property(bool, constant=True)
+    @Property(bool, notify=changed)
     def isRecording(self) -> bool:
         return self._is_recording
 
-    @Property(int, constant=True)
+    @Property(int, notify=changed)
     def recordingDuration(self) -> int:
         return self._recording_duration
 
-    @Property(int, constant=True)
+    @Property(int, notify=changed)
     def systemBatteryPercent(self) -> int:
         return self._system_battery_percent
 
-    @Property(float, constant=True)
+    @Property(float, notify=changed)
     def cpuTemperature(self) -> float:
         return self._cpu_temperature
 
-    @Property(str, constant=True)
+    @Property(str, notify=changed)
     def batteryRemainingTime(self) -> str:
         return self._battery_remaining_time
+
+    @Slot()
+    def requestEndEffectorVideo(self) -> None:
+        self.endEffectorVideoRequested.emit()
+
+    @Slot()
+    def requestBaseVideo(self) -> None:
+        self.baseVideoRequested.emit()
 
 
 class FakeVideoRuntime(QObject):

@@ -75,6 +75,7 @@ Rectangle {
         id: topBar
         z: 200  // Highest z-index
         topBarModel: overlay.videoRuntime.topBar
+        selectedOverlay: "ef"
     }
     
     // LEFT SIDE - Teensy Data (Extension & Gimbal Angle)
