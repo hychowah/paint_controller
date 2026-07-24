@@ -71,6 +71,9 @@ When `package/__init__.py` re-exports heavy dependencies (PySide6, rclpy, hid), 
 ### py_compile Guard for Bypassed __init__.py
 Conftest namespace stubs (`sys.modules["paint_controller"] = types.ModuleType(...)`) prevent pytest from ever executing `__init__.py`, so `SyntaxError` there is invisible to the test suite. Fix: Add a `py_compile.compile(path, doraise=True)` call in a dedicated test. This checks syntax without importing, bypasses no stubs, and fails immediately on any syntax error.
 
+### `str()` on `(str, Enum)` Returns the Member Name, Not the Value
+A class like `class JoystickControl(str, Enum)` still overrides `__str__` to return the member name (`JoystickControl.NONE`), not the string value (`"None"`). This bites any code that does `str(enum_member)` or passes the enum to a QML `str` property. **Fix**: use `.value` explicitly, or store the plain string when the value is what you need.
+
 ---
 
 ## Debugging Techniques

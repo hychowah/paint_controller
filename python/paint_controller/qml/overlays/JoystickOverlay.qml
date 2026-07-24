@@ -21,6 +21,13 @@ Item {
         radius: CommonStyle.radiusMd
         visible: menuVisible
 
+        // Block touches on the menu background from falling through to the scrim.
+        MouseArea {
+            anchors.fill: parent
+            onPressed: mouse => mouse.accepted = true
+            onClicked: mouse => mouse.accepted = true
+        }
+
         onSelectedIndexChanged: {
             if (selectedIndex >= 0) {
                 optionsList.positionViewAtIndex(selectedIndex, ListView.Contain)
@@ -49,8 +56,8 @@ Item {
             }
         }
 
-        ScrollView {
-            id: menuScrollView
+        ListView {
+            id: optionsList
             width: parent.width - CommonStyle.spacingXxl - CommonStyle.spacingSm
             anchors {
                 top: menuTitleLabel.bottom
@@ -60,40 +67,41 @@ Item {
                 bottomMargin: CommonStyle.spacingXl
             }
             clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            model: overlayLayer.controlOptions
 
-            ListView {
-                id: optionsList
-                width: menuScrollView.width
-                model: overlayLayer.controlOptions
+            delegate: Rectangle {
+                width: optionsList.width
+                height: CommonStyle.listRowHeight
+                color: "transparent"
 
-                delegate: Rectangle {
-                    width: optionsList.width
-                    height: CommonStyle.listRowHeight
-                    color: "transparent"
+                Rectangle {
+                    visible: index === menuOverlay.selectedIndex
+                    anchors.fill: parent
+                    color: CommonStyle.accentPrimary
+                    opacity: 0.5
+                    radius: CommonStyle.radiusSm
+                }
 
-                    Rectangle {
-                        visible: index === menuOverlay.selectedIndex
-                        anchors.fill: parent
-                        color: CommonStyle.accentPrimary
-                        opacity: 0.5
-                        radius: CommonStyle.radiusSm
+                Text {
+                    text: modelData
+                    color: {
+                        if (index === menuOverlay.otherSelectedIndex) return CommonStyle.statusError
+                        if (index === menuOverlay.selectedIndex) return CommonStyle.textPrimary
+                        return CommonStyle.textSecondary
                     }
-
-                    Text {
-                        text: modelData
-                        color: {
-                            if (index === menuOverlay.otherSelectedIndex) return CommonStyle.statusError
-                            if (index === menuOverlay.selectedIndex) return CommonStyle.textPrimary
-                            return CommonStyle.textSecondary
-                        }
-                        font.family: CommonStyle.fontSans
-                        font.pixelSize: CommonStyle.fontBody + 2
-                        anchors {
-                            left: parent.left
-                            leftMargin: CommonStyle.spacingXl
-                            verticalCenter: parent.verticalCenter
-                        }
+                    font.family: CommonStyle.fontSans
+                    font.pixelSize: CommonStyle.fontBody + 2
+                    anchors {
+                        left: parent.left
+                        leftMargin: CommonStyle.spacingXl
+                        verticalCenter: parent.verticalCenter
                     }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: overlayController.select_index(index)
                 }
             }
         }
@@ -117,7 +125,7 @@ Item {
             }
         }
     }
-    
+
     // Properties to be bound from parent
     required property bool showOverlay
     required property int leftSelectedIndex
@@ -136,11 +144,13 @@ Item {
         MouseArea {
             anchors.fill: parent
             enabled: parent.visible
+            onClicked: overlayController.hide_menu()
         }
     }
 
     JoystickMenuOverlay {
         id: leftMenuContainer
+        z: 1000
         menuVisible: showLeftMenu
         menuTitle: "Left Joystick Control"
         selectedIndex: leftSelectedIndex

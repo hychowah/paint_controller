@@ -67,3 +67,44 @@ def test_hiding_yaw_selection_resets_temporary_indices(qt_app) -> None:
     assert model.get_current_joystick_controls() == ["EF Yaw Angle", "None"]
     assert model.display_left_index(show_overlay=True) == 0
     assert model.display_right_index(show_overlay=True) == 0
+
+
+# Indices match JoystickSelectionModel._control_options order.
+_WINCH_SPEED = 1
+_TRACK_RIGHT = 3
+_EF_ARM = 6
+
+
+def test_open_menu_shows_specific_side(qt_app) -> None:
+    model, overlay = _build_overlay()
+    model.set_joystick_controls("Track Control Left", "Track Control Right")
+
+    overlay.open_menu("right")
+
+    assert overlay.show_overlay is True
+    assert overlay.active_menu == "right"
+    assert overlay.right_selected_index == _TRACK_RIGHT
+
+
+def test_select_index_commits_and_hides_overlay(qt_app) -> None:
+    model, overlay = _build_overlay()
+    model.set_joystick_controls("Winch Speed", "None")
+
+    overlay.open_menu("left")
+    selected = overlay.select_index(_WINCH_SPEED)
+
+    assert selected is True
+    assert overlay.show_overlay is False
+    assert model.get_left_selected_option() == "Winch Speed"
+
+
+def test_select_index_returns_false_for_blocked_duplicate(qt_app) -> None:
+    model, overlay = _build_overlay()
+    model.set_joystick_controls("Winch Speed", "EF arm")
+
+    overlay.open_menu("left")
+    selected = overlay.select_index(_EF_ARM)
+
+    assert selected is False
+    assert overlay.show_overlay is True
+    assert model.get_left_selected_option() == "Winch Speed"

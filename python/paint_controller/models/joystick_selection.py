@@ -58,13 +58,55 @@ class JoystickSelectionModel(QObject):
         self._set_temporary_left_index(left_index)
         self._set_temporary_right_index(right_index)
 
-    def _can_select_option(self, active_menu: str, index: int) -> bool:
+    def _can_select_option(
+        self, active_menu: str, index: int, *, other_index: int | None = None
+    ) -> bool:
         if index in (2, 3):
             return True
 
+        if other_index is None:
+            other_index = (
+                self._temp_right_index if active_menu == "left" else self._temp_left_index
+            )
+        return index == 0 or index != other_index
+
+    def select_left_control(self, index: int) -> bool:
+        """Commit a left control selection if it is allowed.
+
+        Validation is performed against the committed right selection so that
+        direct touch selection behaves correctly even when the overlay is not
+        using temporary preview.
+        """
+        if not self._can_select_option("left", index, other_index=self._right_selected_index):
+            return False
+        self._set_committed_left_index(index)
+        return True
+
+    def select_right_control(self, index: int) -> bool:
+        """Commit a right control selection if it is allowed.
+
+        Validation is performed against the committed left selection so that
+        direct touch selection behaves correctly even when the overlay is not
+        using temporary preview.
+        """
+        if not self._can_select_option("right", index, other_index=self._left_selected_index):
+            return False
+        self._set_committed_right_index(index)
+        return True
+
+    def set_temporary_index(self, active_menu: str, index: int) -> bool:
+        """Set the temporary selection index if it is allowed.
+
+        This is used by touch selection so that hide_menu() can commit the
+        temporary index through the same path as button navigation.
+        """
+        if not self._can_select_option(active_menu, index):
+            return False
         if active_menu == "left":
-            return index == 0 or index != self._temp_right_index
-        return index == 0 or index != self._temp_left_index
+            self._set_temporary_left_index(index)
+        else:
+            self._set_temporary_right_index(index)
+        return True
 
     def move_selection_up(self, active_menu: str) -> bool:
         current_index = self._temp_left_index if active_menu == "left" else self._temp_right_index

@@ -13,7 +13,7 @@ ROS 2 + PySide6/QML control application for the paint robot.
 - The current next recommended implementation path is settings cleanup, followed by bounded `app_runtime.py` and handler decomposition only where those slices preserve the current ownership boundaries and still materially reduce ambient reads.
 - Python runtime is the only live application path in this repository; the old C++ UI path has been removed from the tree.
 - Runtime objects are exposed to QML through `setContextProperty()`. Do not use `qmlRegisterSingletonInstance()` in this repo.
-- Latest verified local validation on 2026-04-28 is green at `260 passed` via `python/paint_controller/venv/bin/python -m pytest tests -q`.
+- Latest verified local validation on 2026-07-23 is green at `269 passed` via `python/paint_controller/venv/bin/python -m pytest tests -q`.
 - Most recent focused validation is green at `10 passed` for `tests/test_startup_smoke_home.py`, `tests/test_startup_smoke_shell.py`, and `tests/test_qml_imports.py`, with the workflow-editor import follow-up green at `2 passed` for `tests/test_startup_smoke_workflow_editor.py` and `tests/test_qml_imports.py`.
 - For authority and session-start order: use `INDEX.md` first, prefer `DEVNOTES.md` for the latest verified runtime state, use `docs/plan/00_ARCHITECTURE_PROGRESS.md` for live next-step guidance, and use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable rationale.
 
@@ -198,6 +198,7 @@ Useful focused handoff bands:
 
 - Multi-screen behavior is managed by `ScreenManager` and the QML shell; use `docs/plan/00_ARCHITECTURE_PROGRESS.md` for the live next slice and `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture rationale.
 - The build system is now a pure `ament_cmake` wrapper around the Python package; no live C++ UI/runtime path remains in the repo.
+- In fullscreen video, the left/right `ControlInfoPanel` tiles are touch targets: tapping one opens the joystick control menu, tapping a menu item selects and commits that mode, and tapping outside the menu dismisses it. Physical L4/R4 and D-pad navigation continue to work as before.
 
 ## Troubleshooting
 

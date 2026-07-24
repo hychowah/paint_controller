@@ -74,9 +74,9 @@ class ControlProcessor(QObject):
         self.last_message_time = 0.0
         
         # Initialize control info properties
-        self._left_control_mode = JoystickControl.NONE
+        self._left_control_mode = "None"
         self._left_control_value = ""
-        self._right_control_mode = JoystickControl.NONE
+        self._right_control_mode = "None"
         self._right_control_value = ""
         
         # Deadzone trackers for controls that need timed suppression

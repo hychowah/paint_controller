@@ -20,6 +20,8 @@ Rectangle {
     property int rightMargin: 20
     property int bottomMargin: 20
 
+    signal panelClicked(string position)
+
     // UI Design properties
     property color backgroundColor: CommonStyle.videoSurface
     property color borderColor: CommonStyle.videoDivider
@@ -105,6 +107,11 @@ Rectangle {
             maximumLineCount: 1
             elide: Text.ElideRight
         }
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        onClicked: panel.panelClicked(panel.position)
     }
 
     // Smooth animations

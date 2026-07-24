@@ -107,11 +107,47 @@ class OverlayController(QObject):
         """Toggle the right joystick menu"""
         self._toggle_menu("right")
 
+    @Slot(str)
+    def open_menu(self, menu: str) -> None:
+        """Open the overlay for a specific side ('left' or 'right').
+
+        Initializes the temporary selection to the current committed values so
+        that button navigation and touch selection start from the same state.
+        """
+        if menu not in ("left", "right"):
+            return
+
+        self._active_menu = menu
+        self.activeMenuChanged.emit(menu)
+        self._selection_model.initialize_temporary_selection()
+        self.show_menu()
+
+    @Slot(int, result=bool)
+    def select_index(self, index: int) -> bool:
+        """Select an option by index for the active menu and close the overlay.
+
+        The selection is written to the model's temporary index so that
+        hide_menu() commits it through the same path used by button
+        navigation. This prevents the temporary index from overwriting a
+        direct commit when the overlay closes.
+
+        Returns true if the selection was allowed and the overlay was closed.
+        """
+        if not self._show_overlay:
+            return False
+
+        selected = self._selection_model.set_temporary_index(self._active_menu, index)
+        if not selected:
+            return False
+
+        self.hide_menu()
+        return True
+
     @Slot(result=bool)
     def is_showing_menu(self):
         """Check if any menu is showing"""
         return self._show_overlay
-    
+
     @Slot()
     def show_menu(self):
         """Show the menu overlay"""

@@ -21,6 +21,38 @@ class DynamicObject(QObject):
             self.setProperty(key, value)
 
 
+class FakeOverlayController(QObject):
+    """Minimal stand-in for OverlayController in QML smoke tests."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setProperty("show_overlay", False)
+        self.setProperty("left_selected_index", 0)
+        self.setProperty("right_selected_index", 0)
+        self.setProperty("active_menu", "")
+        self.setProperty("control_options", [])
+
+    @Slot(str)
+    def open_menu(self, menu: str) -> None:
+        self.setProperty("active_menu", menu)
+        self.setProperty("show_overlay", True)
+
+    @Slot()
+    def hide_menu(self) -> None:
+        self.setProperty("show_overlay", False)
+
+    @Slot(int, result=bool)
+    def select_index(self, index: int) -> bool:
+        if index < 0:
+            return False
+        if self.property("active_menu") == "left":
+            self.setProperty("left_selected_index", index)
+        elif self.property("active_menu") == "right":
+            self.setProperty("right_selected_index", index)
+        self.setProperty("show_overlay", False)
+        return True
+
+
 class FakeLauncherAdmin(QObject):
     def __init__(self) -> None:
         super().__init__()
@@ -794,13 +826,7 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             video_fullscreen_active=False,
             video_fullscreen_source="",
         ),
-        "overlayController": DynamicObject(
-            show_overlay=False,
-            left_selected_index=0,
-            right_selected_index=0,
-            active_menu="",
-            control_options=[],
-        ),
+        "overlayController": FakeOverlayController(),
         "actionLegality": FakeActionLegality(),
         "systemControlServices": FakeSystemControlServices(
             workflow_runner=workflow_runner,

@@ -135,6 +135,7 @@ Rectangle {
         controlMode: root.videoRuntime.controls.leftMode
         controlValue: root.videoRuntime.controls.leftValue
         title: "LEFT CONTROL"
+        onPanelClicked: overlayController.open_menu("left")
     }
 
     ControlInfoPanel {
@@ -148,6 +149,7 @@ Rectangle {
         controlMode: root.videoRuntime.controls.rightMode
         controlValue: root.videoRuntime.controls.rightValue
         title: "RIGHT CONTROL"
+        onPanelClicked: overlayController.open_menu("right")
     }
 
     Rectangle {
