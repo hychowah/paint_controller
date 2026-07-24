@@ -227,7 +227,7 @@ Item {
                         actionKey: "wheel.enable"
                         legalityModel: actionLegality
                         
-                        onClicked: deviceActionHandler.toggleWheelEnable(deviceControlTab.wheelStatus.enabled)
+                        onClicked: wheelActions.setEnabled(!deviceControlTab.wheelStatus.enabled)
                     }
                     
                     // Wheel Reset Position Button
@@ -242,7 +242,7 @@ Item {
                         legalityModel: actionLegality
                         
                         onClicked: {
-                            if (deviceActionHandler.resetWheelPosition()) {
+                            if (wheelActions.resetPosition()) {
                                 showFeedback()
                             }
                         }

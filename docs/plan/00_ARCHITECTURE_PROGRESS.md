@@ -10,29 +10,27 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 
 - Overall status: in progress
 - Active architecture program: QML surface retirement per `docs/plan/MASTER_PLAN_QML_SURFACE_RETIREMENT.md`
-- Most recent completed slice: Phase 1 winch family (`winchActions`) on 2026-07-24
+- Most recent completed slice: Phase 2 wheel family (`wheelActions`) on 2026-07-24
 - Core purpose: reduce global coupling, clarify ownership, shrink the app-scope QML contract, and make operator-visible behavior easier to trace
 - First-principles rule: success means fewer permanent app-scope QML reads and fewer equal-owner concepts, not wrapper proliferation
-- Last focused validation: `35 passed` for `tests/test_winch_motion_handler.py tests/test_app_runtime_runtime.py tests/test_controller_factory_runtime.py tests/test_capability_catalog.py tests/test_startup_smoke.py tests/test_qml_imports.py` on 2026-07-24
-- Last full-suite baseline: `276 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q` on 2026-07-24
+- Last focused validation: `44 passed` for `tests/test_wheel_actions.py tests/test_device_actions.py tests/test_app_runtime_runtime.py tests/test_controller_factory_runtime.py tests/test_capability_catalog.py tests/test_action_legality_model.py tests/test_startup_smoke.py tests/test_qml_imports.py` on 2026-07-24
+- Last full-suite baseline: `282 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q` on 2026-07-24
 
 ## Live Board
 
 ### Now
 
-#### Phase 2: Wheel family (`wheelActions`)
-
-- Create `wheelActions` in `python/paint_controller/models/wheel_actions.py` and retire `wheelController` plus wheel-related `deviceActionHandler` calls from QML.
-- Move wheel enable/reset-position policy out of `DeviceActionHandler` into the new model.
-- Update `PageWheel.qml` to use `wheelActions` and `wheelStatus` only.
-- Follow the Phase 1 pattern: update `ControllerBundle`, AppRuntime context contract, `CapabilityCatalog` authorities, smoke fakes, and focused tests in the same slice.
-
-### Next
-
 #### Phase 3: Tuning family (`tuningActions`)
 
 - Create `tuningActions` and retire `tuningAdminHandler` from the QML context.
 - Stop direct `teensyController.all_status` reads in `PageTuning.qml` by extending `teensyStatus` coverage where needed.
+
+### Next
+
+#### Phase 4: Base top-view family (`baseTopViewActions`)
+
+- Create `baseTopViewActions` and retire `baseTopViewAdminHandler`.
+- Rationalize `baseTopViewController` and `baseStreamHandler` exposure.
 
 ### Later
 
@@ -88,6 +86,7 @@ These files are allowed to keep temporary raw-global reads until their named fam
 - The remaining PageHome preview/frame-refresh remainder is retired behind explicit `videoRuntime` ownership, and the supporting startup-smoke/runtime cleanup wave is in place to keep further large-file work bounded.
 - Phase 0 of the QML surface retirement program completed the contract-parity harness, removed the `MainWindow.qml` `visible`/`visibility` conflict, retired the duplicate `core/CommonStyle.qml` singleton, and added teardown regression coverage.
 - Phase 1 completed the winch family retirement: `winchActions` now owns winch motion policy; `winchMotionHandler` is removed from the QML context and the codebase.
+- Phase 2 completed the wheel family retirement: `wheelActions` now owns wheel enable/reset policy; `wheelController` is removed from the app-scope QML context; wheel-related methods are removed from `DeviceActionHandler`.
 
 ## Active Risks
 

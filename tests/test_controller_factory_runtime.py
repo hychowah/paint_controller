@@ -37,6 +37,7 @@ def test_controller_bundle_cleanup_runs_reverse_order_and_logs_errors() -> None:
         manual_command_handler=object(),
         device_action_handler=object(),
         device_operations_handler=object(),
+        wheel_actions=object(),
         winch_actions=object(),
         tuning_admin_handler=object(),
         base_top_view_admin_handler=object(),
@@ -114,6 +115,7 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     monkeypatch.setattr(module, "ManualCommandHandler", record("ManualCommandHandler"))
     monkeypatch.setattr(module, "DeviceActionHandler", record("DeviceActionHandler"))
     monkeypatch.setattr(module, "DeviceOperationsHandler", record("DeviceOperationsHandler"))
+    monkeypatch.setattr(module, "WheelActions", record("WheelActions"))
     monkeypatch.setattr(module, "WinchActions", record("WinchActions"))
     monkeypatch.setattr(module, "TuningAdminHandler", record("TuningAdminHandler"))
     monkeypatch.setattr(module, "BaseTopViewAdminHandler", record("BaseTopViewAdminHandler"))
@@ -169,7 +171,7 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     assert bundle.manual_command_handler.kwargs["logger"] is node.get_logger()
     assert bundle.device_action_handler.kwargs["teensy"] is bundle.teensy_controller
     assert bundle.device_action_handler.kwargs["winch"] is bundle.winch_controller
-    assert bundle.device_action_handler.kwargs["wheel"] is bundle.wheel_controller
+    assert "wheel" not in bundle.device_action_handler.kwargs
     assert bundle.device_action_handler.kwargs["admin_action_gate"] is bundle.admin_action_gate
     assert bundle.device_action_handler.kwargs["logger"] is node.get_logger()
     assert bundle.device_operations_handler.kwargs["teensy"] is bundle.teensy_controller
@@ -180,6 +182,9 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     assert bundle.device_operations_handler.kwargs["heartbeat_handler"] is bundle.heartbeat_handler
     assert bundle.device_operations_handler.kwargs["admin_action_gate"] is bundle.admin_action_gate
     assert bundle.device_operations_handler.kwargs["logger"] is node.get_logger()
+    assert bundle.wheel_actions.kwargs["wheel"] is bundle.wheel_controller
+    assert bundle.wheel_actions.kwargs["admin_action_gate"] is bundle.admin_action_gate
+    assert bundle.wheel_actions.kwargs["logger"] is node.get_logger()
     assert bundle.winch_actions.kwargs["winch"] is bundle.winch_controller
     assert bundle.winch_actions.kwargs["admin_action_gate"] is bundle.admin_action_gate
     assert bundle.winch_actions.kwargs["logger"] is node.get_logger()

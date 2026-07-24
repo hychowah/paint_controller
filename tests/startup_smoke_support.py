@@ -482,6 +482,20 @@ class FakeVideoRuntime(QObject):
         return self._top_bar
 
 
+class FakeWheelActions(QObject):
+    @Slot(bool, result=bool)
+    def setEnabled(self, _enabled: bool) -> bool:
+        return True
+
+    @Slot(bool, result=bool)
+    def toggleEnabled(self, _current_enabled: bool) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def resetPosition(self) -> bool:
+        return True
+
+
 class FakeDeviceActionHandler(QObject):
     @Slot(bool, result=bool)
     def toggleTeensyRelay(self, _current_enabled: bool) -> bool:
@@ -505,14 +519,6 @@ class FakeDeviceActionHandler(QObject):
 
     @Slot(bool, result=bool)
     def requestWinchEnabled(self, _enabled: bool) -> bool:
-        return True
-
-    @Slot(bool, result=bool)
-    def toggleWheelEnable(self, _current_enabled: bool) -> bool:
-        return True
-
-    @Slot(result=bool)
-    def resetWheelPosition(self) -> bool:
         return True
 
     @Slot(result=bool)
@@ -986,16 +992,7 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
         "shellConnectivityStatus": shell_connectivity_status,
         "warningHandler": DynamicObject(active_warning=""),
         "baseStreamHandler": FakeStreamHandler(),
-        "wheelController": DynamicObject(
-            available=True,
-            enabled=True,
-            left_motor_available=True,
-            right_motor_available=True,
-            left_wheel_speed=0.0,
-            right_wheel_speed=0.0,
-            left_wheel_current=0.0,
-            right_wheel_current=0.0,
-        ),
+        "wheelActions": FakeWheelActions(),
         "winchController": DynamicObject(
             available=True,
             enabled=True,

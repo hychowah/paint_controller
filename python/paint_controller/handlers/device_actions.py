@@ -16,7 +16,6 @@ class DeviceActionHandler(QObject):
         self,
         teensy: Any,
         winch: Any,
-        wheel: Any,
         admin_action_gate: Any,
         logger: Any,
         parent: QObject | None = None,
@@ -24,7 +23,6 @@ class DeviceActionHandler(QObject):
         super().__init__(parent)
         self._teensy = teensy
         self._winch = winch
-        self._wheel = wheel
         self._admin_action_gate = admin_action_gate
         self._logger = logger
 
@@ -68,29 +66,6 @@ class DeviceActionHandler(QObject):
             controller=self._winch,
             method_name="setEnabled",
             args=(enabled,),
-        )
-
-    @Slot(bool, result=bool)
-    def requestWheelEnabled(self, enabled: bool) -> bool:
-        return self._run_action(
-            action_key="wheel.enable",
-            name="Wheel enable",
-            controller=self._wheel,
-            method_name="setEnabled",
-            args=(enabled,),
-        )
-
-    @Slot(bool, result=bool)
-    def toggleWheelEnable(self, current_enabled: bool) -> bool:
-        return self.requestWheelEnabled(not current_enabled)
-
-    @Slot(result=bool)
-    def resetWheelPosition(self) -> bool:
-        return self._run_action(
-            action_key="wheel.reset_position",
-            name="Reset wheel position",
-            controller=self._wheel,
-            method_name="resetWheelPosition",
         )
 
     @Slot(result=bool)

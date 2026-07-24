@@ -21,6 +21,7 @@ from paint_controller.core.settings import SettingsManager
 from paint_controller.handlers.steam_deck import SteamDeckHandler
 from paint_controller.models.action_legality_model import ActionLegalityModel
 from paint_controller.models.capability_catalog import CapabilityCatalog
+from paint_controller.models.wheel_actions import WheelActions
 from paint_controller.services.base_top_view_service import BaseTopViewService
 from paint_controller.services.video_stream import VideoStreamHandler
 from paint_controller.utils.qt_env import ensure_pyside6_windows_dll_path
@@ -46,7 +47,7 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "overlayController",
     "warningHandler",
     "baseStreamHandler",
-    "wheelController",
+    "wheelActions",
     "winchController",
     "teensyController",
     "esp32ValveController",
@@ -1017,6 +1018,7 @@ class AppRuntime:
         self.video_runtime: _VideoRuntime | None = None
         self.recording_status: _RecordingStatus | None = None
         self.wheel_status: _WheelStatus | None = None
+        self.wheel_actions: WheelActions | None = None
         self.winch_status: _WinchStatus | None = None
         self.teensy_status: _TeensyStatus | None = None
         self.valve_status: _ValveStatus | None = None
@@ -1171,6 +1173,7 @@ class AppRuntime:
             ros_bag_recorder=self.bundle.ros_bag_recorder,
         )
         self.wheel_status = _WheelStatus(self.bundle.wheel_controller)
+        self.wheel_actions = self.bundle.wheel_actions
         self.winch_status = _WinchStatus(self.bundle.winch_controller)
         self.teensy_status = _TeensyStatus(self.bundle.teensy_controller)
         self.valve_status = _ValveStatus(self.bundle.esp32_valve_controller)
@@ -1278,6 +1281,7 @@ class AppRuntime:
         assert self.video_runtime is not None
         assert self.recording_status is not None
         assert self.wheel_status is not None
+        assert self.wheel_actions is not None
         assert self.winch_status is not None
         assert self.teensy_status is not None
         assert self.valve_status is not None
@@ -1300,6 +1304,7 @@ class AppRuntime:
             "videoRuntime": self.video_runtime,
             "recordingStatus": self.recording_status,
             "wheelStatus": self.wheel_status,
+            "wheelActions": self.wheel_actions,
             "winchStatus": self.winch_status,
             "teensyStatus": self.teensy_status,
             "valveStatus": self.valve_status,
@@ -1309,7 +1314,6 @@ class AppRuntime:
             "overlayController": self.bundle.overlay_controller,
             "warningHandler": self.bundle.warning_handler,
             "baseStreamHandler": self.video_stream_handler,
-            "wheelController": self.bundle.wheel_controller,
             "winchController": self.bundle.winch_controller,
             "teensyController": self.bundle.teensy_controller,
             "esp32ValveController": self.bundle.esp32_valve_controller,

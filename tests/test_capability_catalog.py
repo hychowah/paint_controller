@@ -65,7 +65,7 @@ def test_capability_catalog_inventories_known_admin_mutators(monkeypatch, tmp_pa
     assert relay["authority"] == "deviceActionHandler.requestTeensyRelayEnabled"
     assert relay["primarySurface"] == "page:status"
 
-    assert wheel_reset["authority"] == "deviceActionHandler.resetWheelPosition"
+    assert wheel_reset["authority"] == "wheelActions.resetPosition"
     assert wheel_reset["legalStateClass"] == "maintenance-preset"
 
     assert winch_increment["authority"] == "winchActions.moveIncrement"

@@ -61,7 +61,7 @@ def test_action_legality_model_combines_gate_and_capability_metadata(qt_app) -> 
         {
             "surfaceKeys": ["overlay:systemcontrol:devices", "page:wheel"],
             "primarySurface": "overlay:systemcontrol:devices",
-            "authority": "deviceActionHandler.resetWheelPosition",
+            "authority": "wheelActions.resetPosition",
             "capabilityClass": "direct-admin-action",
             "immediateRuntimeSideEffect": True,
         },
@@ -75,7 +75,7 @@ def test_action_legality_model_combines_gate_and_capability_metadata(qt_app) -> 
     assert legality["title"] == "Reset Wheel Position"
     assert legality["surfaceKeys"] == ["overlay:systemcontrol:devices", "page:wheel"]
     assert legality["primarySurface"] == "overlay:systemcontrol:devices"
-    assert legality["authority"] == "deviceActionHandler.resetWheelPosition"
+    assert legality["authority"] == "wheelActions.resetPosition"
     assert legality["capabilityClass"] == "direct-admin-action"
     assert legality["immediateRuntimeSideEffect"] is True
 

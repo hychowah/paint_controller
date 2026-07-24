@@ -200,7 +200,7 @@ Rectangle {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                deviceActionHandler.requestWheelEnabled(!page1Rect.wheelStatus.enabled)
+                                wheelActions.setEnabled(!page1Rect.wheelStatus.enabled)
                             }
                         }
                         
@@ -343,7 +343,7 @@ Rectangle {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                if (deviceActionHandler.resetWheelPosition()) {
+                                if (wheelActions.resetPosition()) {
                                     resetFeedback.visible = true
                                     resetFeedbackTimer.restart()
                                 }

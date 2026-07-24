@@ -133,7 +133,6 @@ def test_video_fullscreen_workspace_loads_with_stream_context(monkeypatch, tmp_p
 
     context_objects = _context_objects(monkeypatch, tmp_path)
     context_objects["lidarController"] = None
-    context_objects["wheelController"] = None
     context_objects["winchController"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
@@ -291,7 +290,6 @@ def test_page_wheel_loads_with_explicit_wheel_status(monkeypatch, tmp_path, qt_a
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
-    context_objects["wheelController"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
         ctx.setContextProperty(name, obj)
@@ -696,7 +694,6 @@ def test_video_fullscreen_overlay_wrapper_loads_with_stream_context(monkeypatch,
 
     context_objects = _context_objects(monkeypatch, tmp_path)
     context_objects["lidarController"] = None
-    context_objects["wheelController"] = None
     context_objects["winchController"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
@@ -762,7 +759,6 @@ def test_base_front_overlay_loads_with_explicit_wheel_status(monkeypatch, tmp_pa
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
-    context_objects["wheelController"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
         ctx.setContextProperty(name, obj)

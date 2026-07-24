@@ -25,6 +25,7 @@ from paint_controller.handlers.safety_coordinator import SafetyCoordinator
 from paint_controller.handlers.steam_deck import SteamDeckHandler
 from paint_controller.handlers.tuning_admin import TuningAdminHandler
 from paint_controller.handlers.warnings import WarningHandler
+from paint_controller.models.wheel_actions import WheelActions
 from paint_controller.models.winch_actions import WinchActions
 from paint_controller.services.ros_bag_recorder import RosBagRecorder
 from paint_controller.services.screen_manager import ScreenManager
@@ -63,6 +64,7 @@ class ControllerBundle:
     manual_command_handler: ManualCommandHandler
     device_action_handler: DeviceActionHandler
     device_operations_handler: DeviceOperationsHandler
+    wheel_actions: WheelActions
     winch_actions: WinchActions
     tuning_admin_handler: TuningAdminHandler
     base_top_view_admin_handler: BaseTopViewAdminHandler
@@ -182,7 +184,6 @@ def create_controllers(
     device_action_handler = DeviceActionHandler(
         teensy=teensy,
         winch=winch,
-        wheel=wheel,
         admin_action_gate=admin_action_gate,
         logger=logger,
     )
@@ -235,6 +236,12 @@ def create_controllers(
         logger=logger,
     )
 
+    wheel_actions = WheelActions(
+        wheel=wheel,
+        admin_action_gate=admin_action_gate,
+        logger=logger,
+    )
+
     winch_actions = WinchActions(
         winch=winch,
         admin_action_gate=admin_action_gate,
@@ -272,6 +279,7 @@ def create_controllers(
         manual_command_handler=manual_command_handler,
         device_action_handler=device_action_handler,
         device_operations_handler=device_operations_handler,
+        wheel_actions=wheel_actions,
         winch_actions=winch_actions,
         tuning_admin_handler=tuning_admin_handler,
         base_top_view_admin_handler=base_top_view_admin_handler,
