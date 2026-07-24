@@ -117,6 +117,111 @@ class FakeScreenManager(DynamicObject):
         return 1
 
 
+class FakeOverlayHost(QObject):
+    layout_changed = Signal()
+    video_fullscreen_active_changed = Signal(bool)
+    video_fullscreen_source_changed = Signal(str)
+
+    def __init__(
+        self,
+        video_fullscreen_active: bool = True,
+        video_fullscreen_source: str = "image://base_front_live/frame",
+    ) -> None:
+        super().__init__()
+        self._system_control_on_main_surface = True
+        self._system_control_on_secondary_surface = False
+        self._joystick_overlay_on_main_surface = True
+        self._joystick_overlay_on_secondary_surface = False
+        self._video_fullscreen_on_main_surface = True
+        self._video_fullscreen_on_secondary_surface = False
+        self._emergency_overlay_on_main_surface = True
+        self._emergency_overlay_on_secondary_surface = False
+        self._system_control_layer = 1001
+        self._joystick_overlay_layer = 1000
+        self._video_fullscreen_layer = 500
+        self._emergency_overlay_layer = 3000
+        self._video_fullscreen_active = video_fullscreen_active
+        self._video_fullscreen_source = video_fullscreen_source
+
+    @Property(bool, notify=layout_changed)
+    def system_control_on_main_surface(self) -> bool:
+        return self._system_control_on_main_surface
+
+    @Property(bool, notify=layout_changed)
+    def system_control_on_secondary_surface(self) -> bool:
+        return self._system_control_on_secondary_surface
+
+    @Property(bool, notify=layout_changed)
+    def joystick_overlay_on_main_surface(self) -> bool:
+        return self._joystick_overlay_on_main_surface
+
+    @Property(bool, notify=layout_changed)
+    def joystick_overlay_on_secondary_surface(self) -> bool:
+        return self._joystick_overlay_on_secondary_surface
+
+    @Property(bool, notify=layout_changed)
+    def video_fullscreen_on_main_surface(self) -> bool:
+        return self._video_fullscreen_on_main_surface
+
+    @Property(bool, notify=layout_changed)
+    def video_fullscreen_on_secondary_surface(self) -> bool:
+        return self._video_fullscreen_on_secondary_surface
+
+    @Property(bool, notify=layout_changed)
+    def emergency_overlay_on_main_surface(self) -> bool:
+        return self._emergency_overlay_on_main_surface
+
+    @Property(bool, notify=layout_changed)
+    def emergency_overlay_on_secondary_surface(self) -> bool:
+        return self._emergency_overlay_on_secondary_surface
+
+    @Property(int, constant=True)
+    def system_control_layer(self) -> int:
+        return self._system_control_layer
+
+    @Property(int, constant=True)
+    def joystick_overlay_layer(self) -> int:
+        return self._joystick_overlay_layer
+
+    @Property(int, constant=True)
+    def video_fullscreen_layer(self) -> int:
+        return self._video_fullscreen_layer
+
+    @Property(int, constant=True)
+    def emergency_overlay_layer(self) -> int:
+        return self._emergency_overlay_layer
+
+    @Property(bool, notify=video_fullscreen_active_changed)
+    def video_fullscreen_active(self) -> bool:
+        return self._video_fullscreen_active
+
+    @Property(str, notify=video_fullscreen_source_changed)
+    def video_fullscreen_source(self) -> str:
+        return self._video_fullscreen_source
+
+    @Slot(str)
+    def show_video_fullscreen(self, video_source: str) -> None:
+        self.set_video_fullscreen_source(video_source)
+        self._set_video_fullscreen_active(True)
+
+    @Slot()
+    def hide_video_fullscreen(self) -> None:
+        self._set_video_fullscreen_active(False)
+
+    @Slot(str)
+    def set_video_fullscreen_source(self, video_source: str) -> None:
+        if video_source == self._video_fullscreen_source:
+            return
+        self._video_fullscreen_source = video_source
+        self.video_fullscreen_source_changed.emit(video_source)
+
+    def _set_video_fullscreen_active(self, active: bool) -> None:
+        if active == self._video_fullscreen_active:
+            return
+        self._video_fullscreen_active = active
+        self.video_fullscreen_active_changed.emit(active)
+
+
 class FakeBaseTopViewController(QObject):
     frameReady = Signal()
     changed = Signal()
@@ -828,21 +933,9 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             show_system_control_on_secondary_surface=False,
             video_fullscreen_on_main_surface=True,
         ),
-        "overlayHost": DynamicObject(
-            system_control_on_main_surface=True,
-            system_control_on_secondary_surface=False,
-            joystick_overlay_on_main_surface=True,
-            joystick_overlay_on_secondary_surface=False,
-            video_fullscreen_on_main_surface=True,
-            video_fullscreen_on_secondary_surface=False,
-            emergency_overlay_on_main_surface=True,
-            emergency_overlay_on_secondary_surface=False,
-            system_control_layer=1001,
-            joystick_overlay_layer=1000,
-            video_fullscreen_layer=500,
-            emergency_overlay_layer=3000,
-            video_fullscreen_active=False,
-            video_fullscreen_source="",
+        "overlayHost": FakeOverlayHost(
+            video_fullscreen_active=True,
+            video_fullscreen_source="image://base_front_live/frame",
         ),
         "overlayController": FakeOverlayController(),
         "actionLegality": FakeActionLegality(),

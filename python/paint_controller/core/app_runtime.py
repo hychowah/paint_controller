@@ -1065,6 +1065,7 @@ class AppRuntime:
 
         self._setup_qml_engine()
         self._create_controller_bundle()
+        self._activate_default_video_overlay()
         self._wire_steam_deck_callbacks()
         self._wire_signals()
         self._register_context_properties()
@@ -1182,6 +1183,15 @@ class AppRuntime:
             teensy_controller=self.bundle.teensy_controller,
         )
         self.launcher_admin = _LauncherAdmin(self.bundle.ssh_controller)
+
+    def _activate_default_video_overlay(self) -> None:
+        """Show the fullscreen video overlay on startup with the current control-mode source."""
+        assert self.overlay_host is not None
+        assert self.qt_bridge is not None
+
+        video_source = self.qt_bridge._video_source_for_control_mode()
+        self.overlay_host.show_video_fullscreen(video_source)
+        self._log_startup(f"Default video overlay activated: {video_source}")
 
     def _wire_steam_deck_callbacks(self) -> None:
         assert self.bundle is not None

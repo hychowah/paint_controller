@@ -52,6 +52,14 @@ class QtBridge(QObject):
         if self._logger:
             self._logger.error(msg)
 
+    def _video_source_for_control_mode(self) -> str:
+        """Return the video image-provider URI for the current control mode."""
+        return (
+            "image://ef_live/frame"
+            if getattr(self._state_store, "control_mode", None) == "ef"
+            else "image://base_front_live/frame"
+        )
+
     @Slot(str, str, str, int)
     def show_popup(self, title: str, message: str, popup_type: str = "info", dismiss_delay: int = 500):
         self.showPopupRequested.emit(title, message, popup_type, dismiss_delay)
@@ -70,11 +78,7 @@ class QtBridge(QObject):
     def toggle_fullscreen(self):
         # Determine new state and source
         # QML side will handle the actual toggle logic via the signal
-        video_source = (
-            "image://ef_live/frame"
-            if self._state_store.control_mode == "ef"
-            else "image://base_front_live/frame"
-        )
+        video_source = self._video_source_for_control_mode()
         # Emit toggle — QML reads current active state and flips it
         self.toggleVideoOverlayRequested.emit(True, video_source)
         self._log_info(f'Requested fullscreen toggle with source: {video_source}')
@@ -100,11 +104,7 @@ class QtBridge(QObject):
 
     @Slot()
     def update_fullscreen_video_source(self):
-        video_source = (
-            "image://ef_live/frame"
-            if self._state_store.control_mode == "ef"
-            else "image://base_front_live/frame"
-        )
+        video_source = self._video_source_for_control_mode()
         self.updateVideoSourceRequested.emit(video_source)
         self._log_info(f'Updated fullscreen video source to: {video_source}')
         if self._base_top_view_service:

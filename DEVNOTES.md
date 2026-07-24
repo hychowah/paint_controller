@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-07-24 15:01 - Video Overlay As Default Startup View
+
+**Goal**: Make the fullscreen video overlay (`VideoFullscreenWorkspace`) the default view on startup instead of the multi-page navigation home page (`PageHome`).
+**Issues**: The application booted into `PageHome` and required the operator to manually toggle the video overlay. Making the overlay the default touches the Python startup sequence, the QML visibility binding, and the smoke-test fixtures that stand in for `OverlayHostPolicy`.
+**Tried**: A first plan proposed defaulting `OverlayHostPolicy.video_fullscreen_active` to `True`, but a peer review showed this would turn a reusable state-owner into a startup-decision footgun and break tests that instantiate a clean policy. Kept the policy default inactive and instead added an explicit `_activate_default_video_overlay()` step in `AppRuntime._bootstrap` after controller-bundle creation. Extracted `_video_source_for_control_mode()` in `QtBridge` so the control-mode → video-source mapping is not duplicated a third time. Tied `VideoFullscreenWorkspace.active` in `MainWindow.qml` to `selectedPageKey === "home"` so page navigation remains usable underneath the overlay. Added a `FakeOverlayHost` test double because the existing `DynamicObject` properties with underscores were not readable from QML, which made the new default-overlay smoke test fail; the fake implements the same property names and slots as the real `OverlayHostPolicy`. Added regression tests verifying the overlay is active by default and hides when navigating away.
+**Result**: ✅ The video overlay is now active on startup with the correct source for the current control mode. Navigation to other pages hides the overlay; returning to home restores it. Full suite green at `273 passed`; pyright clean on touched Python files.
+**Files**: `python/paint_controller/core/qt_bridge.py`, `python/paint_controller/core/app_runtime.py`, `python/paint_controller/qml/core/MainWindow.qml`, `tests/startup_smoke_support.py`, `tests/test_startup_smoke_shell.py`
+
 ### 2026-07-24 12:00 - ControlInfoPanel Touch Feedback And Compact Mode Labels
 
 **Goal**: Add visual feedback when touching the fullscreen-video `ControlInfoPanel` and joystick menu, and stop long control-mode names like `"Track Control Right"` from eliding in the small panel.

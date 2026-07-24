@@ -366,7 +366,7 @@ ApplicationWindow {
         objectName: "videoFullscreenOverlayMain"
         anchors.fill: parent
         z: overlayHost ? overlayHost.video_fullscreen_layer : 500
-        active: overlayHost ? (overlayHost.video_fullscreen_active && overlayHost.video_fullscreen_on_main_surface) : false
+        active: overlayHost ? (overlayHost.video_fullscreen_active && overlayHost.video_fullscreen_on_main_surface && selectedPageKey === "home") : false
         videoSource: overlayHost ? overlayHost.video_fullscreen_source : ""
         workflowServices: mainWindow.systemControlServicesModel
         videoRuntime: mainWindow.videoRuntimeModel

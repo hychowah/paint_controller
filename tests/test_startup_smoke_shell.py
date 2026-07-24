@@ -12,6 +12,7 @@ from tests.startup_smoke_support import (
     BlankImageProvider,
     DynamicObject,
     FakeLauncherAdmin,
+    FakeOverlayHost,
     _assert_component_ready,
     _context_objects,
     _qml_import_url,
@@ -61,6 +62,118 @@ def test_main_window_loads_offscreen_with_context_properties(monkeypatch, tmp_pa
         "detected function \"onbaserearframeready\"",
     )
     assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+
+
+def test_main_window_video_overlay_is_active_by_default(monkeypatch, tmp_path, qt_app):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    qml_path = qml_dir / "core" / "MainWindow.qml"
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+    engine.addImageProvider("ef_live", BlankImageProvider())
+    engine.addImageProvider("base_front_live", BlankImageProvider())
+    engine.addImageProvider("base_rear_live", BlankImageProvider())
+    engine.addImageProvider("base_top_view", BlankImageProvider())
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    engine.load(QUrl.fromLocalFile(str(qml_path)))
+    qt_app.processEvents()
+
+    assert engine.rootObjects(), "MainWindow.qml failed to load"
+
+    root = engine.rootObjects()[0]
+    video_overlay = root.findChild(QObject, "videoFullscreenOverlayMain")
+    assert video_overlay is not None
+    assert video_overlay.property("active") is True
+
+    fatal_warning_fragments = (
+        "failed to load component",
+        "no such file or directory",
+        "is not a type",
+        "cannot read property 'controls' of undefined",
+        "cannot read property 'feeds' of undefined",
+        "cannot read property 'topbar' of undefined",
+    )
+    assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+
+
+def test_main_window_video_overlay_hides_when_navigating_away(monkeypatch, tmp_path, qt_app, qtbot):
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    core_import_url = _qml_import_url(qml_dir / "core")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+    engine.addImageProvider("ef_live", BlankImageProvider())
+    engine.addImageProvider("base_front_live", BlankImageProvider())
+    engine.addImageProvider("base_rear_live", BlankImageProvider())
+    engine.addImageProvider("base_top_view", BlankImageProvider())
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{core_import_url}"
+
+MainWindow {{
+    id: rootWindow
+    objectName: "mainWindowRouteOverlayHarness"
+    property bool routeScenarioComplete: false
+
+    Timer {{
+        interval: 0
+        running: true
+        repeat: false
+        onTriggered: {{
+            rootWindow.navigateToPage("settings")
+            rootWindow.routeScenarioComplete = true
+        }}
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:MainWindowRouteOverlayHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+
+        qtbot.waitUntil(lambda: root.property("routeScenarioComplete") is True, timeout=2000)
+        qt_app.processEvents()
+
+        video_overlay = root.findChild(QObject, "videoFullscreenOverlayMain")
+        assert video_overlay is not None
+        assert video_overlay.property("active") is False
+        assert root.property("selectedPageKey") == "settings"
+
+        fatal_warning_fragments = (
+            "failed to load component",
+            "no such file or directory",
+            "is not a type",
+        )
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
 
 
 def test_main_window_navigation_updates_selected_page_key(monkeypatch, tmp_path, qt_app, qtbot):
@@ -286,22 +399,18 @@ def test_multi_screen_monitor_window_consumes_overlay_host_matrix(monkeypatch, t
 
     context_objects = _context_objects(monkeypatch, tmp_path)
     context_objects["lidarController"] = None
-    context_objects["overlayHost"] = DynamicObject(
-        system_control_on_main_surface=False,
-        system_control_on_secondary_surface=True,
-        joystick_overlay_on_main_surface=False,
-        joystick_overlay_on_secondary_surface=True,
-        video_fullscreen_on_main_surface=True,
-        video_fullscreen_on_secondary_surface=False,
-        emergency_overlay_on_main_surface=True,
-        emergency_overlay_on_secondary_surface=True,
-        system_control_layer=1001,
-        joystick_overlay_layer=1000,
-        video_fullscreen_layer=500,
-        emergency_overlay_layer=3000,
+    context_objects["overlayHost"] = FakeOverlayHost(
         video_fullscreen_active=True,
         video_fullscreen_source="image://base_front_live/frame",
     )
+    context_objects["overlayHost"]._system_control_on_main_surface = False
+    context_objects["overlayHost"]._system_control_on_secondary_surface = True
+    context_objects["overlayHost"]._joystick_overlay_on_main_surface = False
+    context_objects["overlayHost"]._joystick_overlay_on_secondary_surface = True
+    context_objects["overlayHost"]._emergency_overlay_on_main_surface = True
+    context_objects["overlayHost"]._emergency_overlay_on_secondary_surface = True
+    context_objects["overlayHost"]._video_fullscreen_on_main_surface = True
+    context_objects["overlayHost"]._video_fullscreen_on_secondary_surface = False
 
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
