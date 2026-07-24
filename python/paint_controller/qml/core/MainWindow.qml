@@ -469,9 +469,9 @@ ApplicationWindow {
     
     // Monitor screen changes and update
     Connections {
-        target: screenManager
-        
-        function onScreens_changed() {
+        target: shellState
+
+        function onScreen_count_changed(count) {
             console.log("MainWindow: Screen configuration changed, shell policy count: " + screenCount)
             // Use a small delay to let Qt.application.screens update
             screenUpdateTimer.restart()
@@ -549,7 +549,7 @@ ApplicationWindow {
                        " - " + s.width + "x" + s.height +
                        " @ (" + s.virtualX + ", " + s.virtualY + ")")
         }
-        console.log("ScreenManager count: " + (screenManager ? screenManager.get_screen_count() : "N/A"))
+        console.log("ShellState screen count: " + (shellState ? shellState.screen_count : "N/A"))
         
         applyShellSurfacePolicy()
     }

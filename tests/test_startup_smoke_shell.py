@@ -366,7 +366,6 @@ def test_multi_screen_monitor_window_loads_offscreen(monkeypatch, tmp_path, qt_a
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
-    context_objects["lidarController"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
         ctx.setContextProperty(name, obj)
@@ -398,7 +397,6 @@ def test_multi_screen_monitor_window_consumes_overlay_host_matrix(monkeypatch, t
     engine.addImageProvider("base_rear_live", BlankImageProvider())
 
     context_objects = _context_objects(monkeypatch, tmp_path)
-    context_objects["lidarController"] = None
     context_objects["overlayHost"] = FakeOverlayHost(
         video_fullscreen_active=True,
         video_fullscreen_source="image://base_front_live/frame",

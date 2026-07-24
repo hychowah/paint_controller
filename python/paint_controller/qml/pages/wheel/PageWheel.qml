@@ -516,7 +516,7 @@ Rectangle {
         }
 
         Connections {
-            target: baseStreamHandler
+            target: videoRuntime.feeds
             function onBaseFrontFrameReady() {
                 if (camSource == "image://base_front_live/frame"){
                     baseFrame.source = ""

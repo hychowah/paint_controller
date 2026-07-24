@@ -132,7 +132,6 @@ def test_video_fullscreen_workspace_loads_with_stream_context(monkeypatch, tmp_p
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
-    context_objects["lidarController"] = None
     context_objects["winchController"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
@@ -490,7 +489,6 @@ def test_imu_card_loads_with_explicit_teensy_status(monkeypatch, tmp_path, qt_ap
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
-    context_objects["teensyController"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
         ctx.setContextProperty(name, obj)
@@ -559,7 +557,6 @@ def test_teensy_arm_card_loads_with_explicit_teensy_status(monkeypatch, tmp_path
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
-    context_objects["teensyController"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
         ctx.setContextProperty(name, obj)
@@ -624,7 +621,6 @@ def test_valves_card_loads_with_explicit_valve_status(monkeypatch, tmp_path, qt_
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
-    context_objects["esp32ValveController"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
         ctx.setContextProperty(name, obj)
@@ -693,7 +689,6 @@ def test_video_fullscreen_overlay_wrapper_loads_with_stream_context(monkeypatch,
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
-    context_objects["lidarController"] = None
     context_objects["winchController"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
@@ -833,9 +828,6 @@ def test_end_effector_overlay_loads_with_explicit_status_models(monkeypatch, tmp
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
-    context_objects["teensyController"] = None
-    context_objects["esp32ValveController"] = None
-    context_objects["lidarController"] = None
     context_objects["winchController"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():

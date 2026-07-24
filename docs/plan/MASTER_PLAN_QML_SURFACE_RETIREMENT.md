@@ -1,6 +1,6 @@
 # Master Plan: Shrink the QML Runtime Surface
 
-> **Status**: Phase 3 completed; Phase 4 (base top-view family) is next.  
+> **Status**: Phase 6 completed; Phase 7 (`MainWindow.qml` shell simplification, optional) is next.  
 > **Branch**: `qml-surface-retirement-phase-0`  
 > **Goal**: Retire raw controller/handler context properties and replace them with bounded, feature-root Python models so QML stays declarative and Python owns policy.
 
@@ -349,8 +349,16 @@ Retire the remaining raw controllers from the QML context: `teensyController`, `
 
 ### Completion criteria
 
-- Only the intended ~12–15 root context properties remain.
-- No QML file references a raw `*Controller` object.
+- The nine retired names are removed from `_EXPECTED_CONTEXT_PROPERTY_NAMES` and `_build_context_properties()`.
+- No QML file references `teensyController`, `esp32ValveController`, `lidarController`, `controlProcessor`, `systemMonitor`, `screenRecorder`, `rosBagRecorder`, `screenManager`, or `baseStreamHandler`.
+
+### Completed
+
+- Extended `_TeensyStatus` with rails, propellers, and spray-gun details previously read from `teensyController.all_status`; updated `TeensyStatus.qml` to use `teensyStatus.*`.
+- Repointed `PageWheel.qml` to `videoRuntime.feeds` for base frame signals.
+- Repointed `MainWindow.qml` to `shellState` for screen-count changes.
+- Removed the nine retired globals from the app-scope QML context and startup-smoke fixtures.
+- Validation: focused band `48 passed`; full suite `294 passed`; `qmllint` clean.
 
 ---
 

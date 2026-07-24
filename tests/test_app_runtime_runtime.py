@@ -142,6 +142,15 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert "baseTopViewAdminHandler" not in runtime.engine.context.properties
     assert "baseTopViewController" not in runtime.engine.context.properties
     assert "deviceOperationsHandler" not in runtime.engine.context.properties
+    assert "teensyController" not in runtime.engine.context.properties
+    assert "esp32ValveController" not in runtime.engine.context.properties
+    assert "lidarController" not in runtime.engine.context.properties
+    assert "controlProcessor" not in runtime.engine.context.properties
+    assert "systemMonitor" not in runtime.engine.context.properties
+    assert "screenRecorder" not in runtime.engine.context.properties
+    assert "rosBagRecorder" not in runtime.engine.context.properties
+    assert "baseStreamHandler" not in runtime.engine.context.properties
+    assert "screenManager" not in runtime.engine.context.properties
     assert runtime.system_control_services.manualCommandHandler is runtime.bundle.manual_command_handler
     assert runtime.video_runtime.controls.leftMode == "None"
     assert runtime.video_runtime.topBar.systemBatteryPercent == 100
@@ -175,6 +184,24 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.teensy_status.yawPidD == 0.3
     assert runtime.teensy_status.armExtensionDist == 320.0
     assert runtime.teensy_status.gimbalPitchMotorAngle == -4.5
+    assert runtime.teensy_status.topRailPosition == 100.0
+    assert runtime.teensy_status.topRailSpeed == 5.0
+    assert runtime.teensy_status.topRailCurrent == 2.0
+    assert runtime.teensy_status.armRailPosition == 200.0
+    assert runtime.teensy_status.armRailSpeed == 3.0
+    assert runtime.teensy_status.armRailCurrent == 40.0
+    assert runtime.teensy_status.armSensorDist == 150.0
+    assert runtime.teensy_status.leftPropPosition == 10.0
+    assert runtime.teensy_status.rightPropPosition == 20.0
+    assert runtime.teensy_status.leftPropPwm == 1200
+    assert runtime.teensy_status.rightPropPwm == 1300
+    assert runtime.teensy_status.sprayGunPitch == 45.0
+    assert runtime.teensy_status.gimbalPitchMotorCurrent == 20.0
+    assert runtime.teensy_status.gimbalPitchMotorTemp == 35.0
+    assert runtime.teensy_status.gimbalRollMotorAngle == 5.0
+    assert runtime.teensy_status.gimbalRollMotorCurrent == 15.0
+    assert runtime.teensy_status.gimbalRollMotorTemp == 36.0
+    assert runtime.teensy_status.sprayGunTrigger is True
     assert runtime.valve_status.valvePosition == 42.0
     assert runtime.valve_status.valveMotorConnected is True
     assert runtime.lidar_status.distance == 1.25

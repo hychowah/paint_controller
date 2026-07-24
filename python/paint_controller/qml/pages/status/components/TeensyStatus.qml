@@ -292,12 +292,12 @@ Rectangle {
                                     spacing: 15
                                     
                                     Text { text: "Position:"; font.bold: true }
-                                    Text { text: teensyController.all_status.top_rail_position.toFixed(0) + " cnt" }
+                                    Text { text: teensyStatusRect.teensyStatus.topRailPosition.toFixed(0) + " cnt" }
                                     Text { text: "Speed:"; font.bold: true }
-                                    Text { text: teensyController.all_status.top_rail_speed.toFixed(0) + " m/s" }
+                                    Text { text: teensyStatusRect.teensyStatus.topRailSpeed.toFixed(0) + " m/s" }
                                     
                                     Text { text: "Current:"; font.bold: true }
-                                    Text { text: teensyController.all_status.top_rail_current.toFixed(0) + " A" }
+                                    Text { text: teensyStatusRect.teensyStatus.topRailCurrent.toFixed(0) + " A" }
                                 }
                             }
                         }
@@ -330,17 +330,17 @@ Rectangle {
                                     spacing: 15
                                     
                                     Text { text: "Position:"; font.bold: true }
-                                    Text { text: teensyController.all_status.arm_rail_position.toFixed(0) + " m" }
+                                    Text { text: teensyStatusRect.teensyStatus.armRailPosition.toFixed(0) + " m" }
                                     Text { text: "Speed:"; font.bold: true }
-                                    Text { text: teensyController.all_status.arm_rail_speed.toFixed(0) + " m/s" }
+                                    Text { text: teensyStatusRect.teensyStatus.armRailSpeed.toFixed(0) + " m/s" }
                                     
                                     Text { text: "Current:"; font.bold: true }
-                                    Text { text: teensyController.all_status.arm_rail_current.toFixed(0) + " A" }
+                                    Text { text: teensyStatusRect.teensyStatus.armRailCurrent.toFixed(0) + " A" }
                                     Text { text: "Extension:"; font.bold: true }
-                                    Text { text: teensyController.all_status.arm_extension_dist.toFixed(0) + " mm" }
+                                    Text { text: teensyStatusRect.teensyStatus.armExtensionDist.toFixed(0) + " mm" }
 
                                     Text { text: "Sensor:"; font.bold: true }
-                                    Text { text: teensyController.all_status.arm_sensor_dist.toFixed(0) + " mm" }
+                                    Text { text: teensyStatusRect.teensyStatus.armSensorDist.toFixed(0) + " mm" }
                                 }
                             }
                         }
@@ -440,7 +440,7 @@ Rectangle {
                                         }
                                         
                                         Text {
-                                            text: teensyController.all_status.left_prop_position.toFixed(0) + "°"
+                                            text: teensyStatusRect.teensyStatus.leftPropPosition.toFixed(0) + "°"
                                         }
                                     }
                                     
@@ -469,7 +469,7 @@ Rectangle {
                                         }
                                         
                                         Text {
-                                            text: teensyController.all_status.right_prop_position.toFixed(0) + "°"
+                                            text: teensyStatusRect.teensyStatus.rightPropPosition.toFixed(0) + "°"
                                         }
                                     }
                                 }
@@ -503,7 +503,7 @@ Rectangle {
                                         }
                                         
                                         Text {
-                                            text: teensyController.all_status.left_prop_pwm.toFixed(0)
+                                            text: teensyStatusRect.teensyStatus.leftPropPwm.toFixed(0)
                                         }
                                     }
                                     
@@ -532,7 +532,7 @@ Rectangle {
                                         }
                                         
                                         Text {
-                                            text: teensyController.all_status.right_prop_pwm.toFixed(0)
+                                            text: teensyStatusRect.teensyStatus.rightPropPwm.toFixed(0)
                                         }
                                     }
                                 }
@@ -577,7 +577,7 @@ Rectangle {
                                             transform: Rotation {
                                                 origin.x: 35
                                                 origin.y: 3
-                                                angle: teensyController.all_status.left_prop_position + 90
+                                                angle: teensyStatusRect.teensyStatus.leftPropPosition + 90
                                             }
                                         }
                                         
@@ -615,7 +615,7 @@ Rectangle {
                                             transform: Rotation {
                                                 origin.x: 35
                                                 origin.y: 3
-                                                angle: teensyController.all_status.right_prop_position + 90
+                                                angle: teensyStatusRect.teensyStatus.rightPropPosition + 90
                                             }
                                         }
                                         
@@ -668,11 +668,11 @@ Rectangle {
                                     spacing: 15
                                     
                                     Text { text: "Pitch:"; font.bold: true }
-                                    Text { text: teensyController.all_status.imu_pitch }
+                                    Text { text: teensyStatusRect.teensyStatus.imuPitch }
                                     Text { text: "Roll:"; font.bold: true }
-                                    Text { text: teensyController.all_status.imu_roll }
+                                    Text { text: teensyStatusRect.teensyStatus.imuRoll }
                                     Text { text: "Yaw:"; font.bold: true }
-                                    Text { text: teensyController.all_status.imu_yaw }
+                                    Text { text: teensyStatusRect.teensyStatus.imuYaw }
                                 }
                             }
                         }
@@ -705,11 +705,11 @@ Rectangle {
                                     spacing: 15
                                     
                                     Text { text: "X:"; font.bold: true }
-                                    Text { text: teensyController.all_status.imu_acc_x + " m/s²" }
+                                    Text { text: teensyStatusRect.teensyStatus.imuAccX + " m/s²" }
                                     Text { text: "Y:"; font.bold: true }
-                                    Text { text: teensyController.all_status.imu_acc_y + " m/s²" }
+                                    Text { text: teensyStatusRect.teensyStatus.imuAccY + " m/s²" }
                                     Text { text: "Z:"; font.bold: true }
-                                    Text { text: teensyController.all_status.imu_acc_z + " m/s²" }
+                                    Text { text: teensyStatusRect.teensyStatus.imuAccZ + " m/s²" }
                                 }
                             }
                         }
@@ -742,11 +742,11 @@ Rectangle {
                                     spacing: 15
                                     
                                     Text { text: "X:"; font.bold: true }
-                                    Text { text: teensyController.all_status.imu_angular_acc_x + " rad/s" }
+                                    Text { text: teensyStatusRect.teensyStatus.imuAngularAccX + " rad/s" }
                                     Text { text: "Y:"; font.bold: true }
-                                    Text { text: teensyController.all_status.imu_angular_acc_y + " rad/s" }
+                                    Text { text: teensyStatusRect.teensyStatus.imuAngularAccY + " rad/s" }
                                     Text { text: "Z:"; font.bold: true }
-                                    Text { text: teensyController.all_status.imu_angular_acc_z + " rad/s" }
+                                    Text { text: teensyStatusRect.teensyStatus.imuAngularAccZ + " rad/s" }
                                 }
                             }
                         }
@@ -770,43 +770,43 @@ Rectangle {
 
                             Label { text: "Pitch:"; font.bold: true }
                             Label { 
-                                text: teensyController.all_status.spray_gun_pitch.toFixed(1) + "°"
+                                text: teensyStatusRect.teensyStatus.sprayGunPitch.toFixed(1) + "°"
                             }
 
                             Label { text: "Pitch Motor Angle:"; font.bold: true }
                             Label { 
-                                text: teensyController.all_status.gimbal_pitch_motor_angle.toFixed(1) + "°"
+                                text: teensyStatusRect.teensyStatus.gimbalPitchMotorAngle.toFixed(1) + "°"
                             }
 
                             Label { text: "Pitch Motor Current:"; font.bold: true }
                             Label { 
-                                text: teensyController.all_status.gimbal_pitch_motor_current.toFixed(1) + " A"
+                                text: teensyStatusRect.teensyStatus.gimbalPitchMotorCurrent.toFixed(1) + " A"
                             }
 
                             Label { text: "Pitch Motor Temp:"; font.bold: true }
                             Label { 
-                                text: teensyController.all_status.gimbal_pitch_motor_temp.toFixed(1) + " °C"
+                                text: teensyStatusRect.teensyStatus.gimbalPitchMotorTemp.toFixed(1) + " °C"
                             }
 
                             Label { text: "Roll Motor Angle:"; font.bold: true }
                             Label { 
-                                text: teensyController.all_status.gimbal_roll_motor_angle.toFixed(1) + "°"
+                                text: teensyStatusRect.teensyStatus.gimbalRollMotorAngle.toFixed(1) + "°"
                             }
 
                             Label { text: "Roll Motor Current:"; font.bold: true }
                             Label { 
-                                text: teensyController.all_status.gimbal_roll_motor_current.toFixed(1) + " A"
+                                text: teensyStatusRect.teensyStatus.gimbalRollMotorCurrent.toFixed(1) + " A"
                             }
 
                             Label { text: "Roll Motor Temp:"; font.bold: true }
                             Label { 
-                                text: teensyController.all_status.gimbal_roll_motor_temp.toFixed(1) + " °C"
+                                text: teensyStatusRect.teensyStatus.gimbalRollMotorTemp.toFixed(1) + " °C"
                             }
 
                             Label { text: "Trigger:"; font.bold: true }
                             Label { 
-                                text: teensyController.all_status.spray_gun_trigger ? "Pressed" : "Released"
-                                color: teensyController.all_status.spray_gun_trigger ? "green" : "gray"
+                                text: teensyStatusRect.teensyStatus.sprayGunTrigger ? "Pressed" : "Released"
+                                color: teensyStatusRect.teensyStatus.sprayGunTrigger ? "green" : "gray"
                             }
                         }
                     }

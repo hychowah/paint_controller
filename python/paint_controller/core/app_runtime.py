@@ -51,13 +51,8 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "launcherAdmin",
     "overlayController",
     "warningHandler",
-    "baseStreamHandler",
     "wheelActions",
     "winchController",
-    "teensyController",
-    "esp32ValveController",
-    "lidarController",
-    "controlProcessor",
     "deviceActionHandler",
     "winchActions",
     "tuningActions",
@@ -66,11 +61,7 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "systemActions",
     "baseTopViewActions",
     "baseTopViewStatus",
-    "systemMonitor",
-    "screenRecorder",
-    "rosBagRecorder",
     "settingsManager",
-    "screenManager",
 )
 
 
@@ -770,6 +761,13 @@ class _TeensyStatus(QObject):
         except (TypeError, ValueError):
             return 0.0
 
+    def _status_int(self, key: str) -> int:
+        value = self._status_value(key)
+        try:
+            return int(value or 0)
+        except (TypeError, ValueError):
+            return 0
+
     @Property(bool, notify=changed)
     def enabled(self) -> bool:
         return bool(self._status_value("enabled"))
@@ -869,6 +867,70 @@ class _TeensyStatus(QObject):
     @Property(float, notify=changed)
     def gimbalPitchMotorAngle(self) -> float:
         return self._status_float("gimbal_pitch_motor_angle")
+
+    @Property(float, notify=changed)
+    def topRailPosition(self) -> float:
+        return self._status_float("top_rail_position")
+
+    @Property(float, notify=changed)
+    def topRailSpeed(self) -> float:
+        return self._status_float("top_rail_speed")
+
+    @Property(float, notify=changed)
+    def topRailCurrent(self) -> float:
+        return self._status_float("top_rail_current")
+
+    @Property(float, notify=changed)
+    def armRailPosition(self) -> float:
+        return self._status_float("arm_rail_position")
+
+    @Property(float, notify=changed)
+    def armRailSpeed(self) -> float:
+        return self._status_float("arm_rail_speed")
+
+    @Property(float, notify=changed)
+    def armSensorDist(self) -> float:
+        return self._status_float("arm_sensor_dist")
+
+    @Property(float, notify=changed)
+    def leftPropPosition(self) -> float:
+        return self._status_float("left_prop_position")
+
+    @Property(float, notify=changed)
+    def rightPropPosition(self) -> float:
+        return self._status_float("right_prop_position")
+
+    @Property(int, notify=changed)
+    def leftPropPwm(self) -> int:
+        return self._status_int("left_prop_pwm")
+
+    @Property(int, notify=changed)
+    def rightPropPwm(self) -> int:
+        return self._status_int("right_prop_pwm")
+
+    @Property(float, notify=changed)
+    def sprayGunPitch(self) -> float:
+        return self._status_float("spray_gun_pitch")
+
+    @Property(float, notify=changed)
+    def gimbalPitchMotorTemp(self) -> float:
+        return self._status_float("gimbal_pitch_motor_temp")
+
+    @Property(float, notify=changed)
+    def gimbalRollMotorAngle(self) -> float:
+        return self._status_float("gimbal_roll_motor_angle")
+
+    @Property(float, notify=changed)
+    def gimbalRollMotorCurrent(self) -> float:
+        return self._status_float("gimbal_roll_motor_current")
+
+    @Property(float, notify=changed)
+    def gimbalRollMotorTemp(self) -> float:
+        return self._status_float("gimbal_roll_motor_temp")
+
+    @Property(bool, notify=changed)
+    def sprayGunTrigger(self) -> bool:
+        return bool(self._status_value("spray_gun_trigger"))
 
     @Property(bool, notify=changed)
     def stabilityEnabled(self) -> bool:
@@ -1440,22 +1502,13 @@ class AppRuntime:
             "launcherAdmin": self.launcher_admin,
             "overlayController": self.bundle.overlay_controller,
             "warningHandler": self.bundle.warning_handler,
-            "baseStreamHandler": self.video_stream_handler,
             "winchController": self.bundle.winch_controller,
-            "teensyController": self.bundle.teensy_controller,
-            "esp32ValveController": self.bundle.esp32_valve_controller,
-            "lidarController": self.bundle.lidar_controller,
-            "controlProcessor": self.bundle.control_processor,
             "deviceActionHandler": self.bundle.device_action_handler,
             "winchActions": self.bundle.winch_actions,
             "tuningActions": self.tuning_actions,
             "baseTopViewActions": self.base_top_view_actions,
             "baseTopViewStatus": self.base_top_view_status,
-            "systemMonitor": self.bundle.system_monitor,
-            "screenRecorder": self.bundle.screen_recorder,
-            "rosBagRecorder": self.bundle.ros_bag_recorder,
             "settingsManager": self.settings_manager,
-            "screenManager": self.bundle.screen_manager,
         }
 
     def _register_context_properties(self) -> None:

@@ -25,7 +25,6 @@ def test_page_home_loads_with_explicit_video_runtime(monkeypatch, tmp_path, qt_a
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
-    context_objects["baseStreamHandler"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
         ctx.setContextProperty(name, obj)
