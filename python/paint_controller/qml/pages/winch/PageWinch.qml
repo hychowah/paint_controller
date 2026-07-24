@@ -348,7 +348,7 @@ Item {
                                     anchors.fill: parent
                                     onClicked: {
                                         var desiredLoadDetection = !winchPageRoot.winchStatus.loadDetectionEnabled;
-                                        if (deviceOperationsHandler.requestLoadDetectionEnabled(desiredLoadDetection)) {
+                                        if (winchActions.setLoadDetectionEnabled(desiredLoadDetection)) {
                                             notificationPopup.show(desiredLoadDetection ?
                                                 "Load detection enabled" :
                                                 "Load detection disabled", 2000);

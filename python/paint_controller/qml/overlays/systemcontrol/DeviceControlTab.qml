@@ -166,7 +166,7 @@ Item {
                         actionKey: "winch.load_detection"
                         legalityModel: actionLegality
                         
-                        onClicked: deviceOperationsHandler.toggleLoadDetection(deviceControlTab.winchStatus.loadDetectionEnabled)
+                        onClicked: winchActions.toggleLoadDetection(deviceControlTab.winchStatus.loadDetectionEnabled)
                     }
                 }
             }
@@ -304,7 +304,7 @@ Item {
                         enabledState: deviceControlTab.recordingStatus.endEffectorRecording
                         iconText: "REC"
                         
-                        onClicked: deviceOperationsHandler.toggleEndEffectorRecording()
+                        onClicked: recordingActions.toggleEndEffectorRecording()
                     }
 
                     // Base Camera Recording Control
@@ -316,7 +316,7 @@ Item {
                         enabledState: deviceControlTab.recordingStatus.baseRecording
                         iconText: "BASE"
                         
-                        onClicked: deviceOperationsHandler.toggleBaseRecording()
+                        onClicked: recordingActions.toggleBaseRecording()
                     }
 
                     // Screen Recording Control
@@ -338,7 +338,7 @@ Item {
                         enabledState: deviceControlTab.recordingStatus.screenRecording
                         iconText: "SCR"
                         
-                        onClicked: deviceOperationsHandler.toggleScreenRecording()
+                        onClicked: recordingActions.toggleScreenRecording()
                     }
 
                     // ROS Bag Recording Control (Remote End Effector)
@@ -364,7 +364,7 @@ Item {
                         enabled: !deviceControlTab.recordingStatus.rosBagCompressing
                         opacity: deviceControlTab.recordingStatus.rosBagCompressing ? 0.6 : 1.0
                         
-                        onClicked: deviceOperationsHandler.toggleRosBagRecording()
+                        onClicked: recordingActions.toggleRosBagRecording()
                     }
                 }
             }
@@ -423,7 +423,7 @@ Item {
                         enabledState: deviceControlTab.teensyStatus.stabilityEnabled
                         iconText: "SC"
                         
-                        onClicked: deviceOperationsHandler.toggleStability(deviceControlTab.teensyStatus.stabilityEnabled)
+                        onClicked: teensyActions.toggleStability(deviceControlTab.teensyStatus.stabilityEnabled)
                     }
 
                     // Yaw Control
@@ -435,7 +435,7 @@ Item {
                         enabledState: deviceControlTab.teensyStatus.yawEnabled
                         iconText: "Y"
                         
-                        onClicked: deviceOperationsHandler.toggleYaw(deviceControlTab.teensyStatus.yawEnabled)
+                        onClicked: teensyActions.toggleYaw(deviceControlTab.teensyStatus.yawEnabled)
                     }
 
                     // Auto Correction Control
@@ -447,7 +447,7 @@ Item {
                         enabledState: deviceControlTab.teensyStatus.autoCorrectionEnabled
                         iconText: "AC"
                         
-                        onClicked: deviceOperationsHandler.toggleAutoCorrection(deviceControlTab.teensyStatus.autoCorrectionEnabled)
+                        onClicked: teensyActions.toggleAutoCorrection(deviceControlTab.teensyStatus.autoCorrectionEnabled)
                     }
 
                     // SprayGun Levelling
@@ -459,7 +459,7 @@ Item {
                         enabledState: deviceControlTab.teensyStatus.sprayGunLevelingEnabled
                         iconText: "SL"
 
-                        onClicked: deviceOperationsHandler.toggleSprayGunLeveling(deviceControlTab.teensyStatus.sprayGunLevelingEnabled)
+                        onClicked: teensyActions.toggleSprayGunLeveling(deviceControlTab.teensyStatus.sprayGunLevelingEnabled)
                     }
 
                     // Roller Steering Control
@@ -471,7 +471,7 @@ Item {
                         enabledState: deviceControlTab.teensyStatus.rollerSteeringEnabled
                         iconText: "RS"
                         
-                        onClicked: deviceOperationsHandler.toggleRollerSteering(deviceControlTab.teensyStatus.rollerSteeringEnabled)
+                        onClicked: teensyActions.toggleRollerSteering(deviceControlTab.teensyStatus.rollerSteeringEnabled)
                     }
 
                     // Swing Damping Control
@@ -483,7 +483,7 @@ Item {
                         enabledState: deviceControlTab.teensyStatus.swingDampingEnabled
                         iconText: "SD"
                         
-                        onClicked: deviceOperationsHandler.toggleSwingDamping(deviceControlTab.teensyStatus.swingDampingEnabled)
+                        onClicked: teensyActions.toggleSwingDamping(deviceControlTab.teensyStatus.swingDampingEnabled)
                     }
                 }
             }
@@ -542,7 +542,7 @@ Item {
                         enabledState: deviceControlTab.teensyStatus.sprayGunLedOn
                         iconText: "LED"
                         
-                        onClicked: deviceOperationsHandler.toggleSprayGunLed(deviceControlTab.teensyStatus.sprayGunLedOn)
+                        onClicked: teensyActions.toggleSprayGunLed(deviceControlTab.teensyStatus.sprayGunLedOn)
                     }
 
                     ControlPanel {
@@ -552,7 +552,7 @@ Item {
                         iconText: "LID"
                         selfContained: true 
                         
-                        onClicked: deviceOperationsHandler.setLidarPower(enabledState)
+                        onClicked: teensyActions.setLidarPower(enabledState)
                     }
                     
                     ActionButton {
@@ -631,7 +631,7 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        deviceOperationsHandler.clearErrors()
+                        systemActions.clearErrors()
                     }
                 }
                 

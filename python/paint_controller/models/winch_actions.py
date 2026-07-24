@@ -74,6 +74,19 @@ class WinchActions(QObject):
             args=(0, 0),
         )
 
+    @Slot(bool, result=bool)
+    def setLoadDetectionEnabled(self, enabled: bool) -> bool:
+        return self._run_action(
+            action_key="winch.load_detection",
+            name="Load detection",
+            method_name="setLoadDetectionEnabled",
+            args=(enabled,),
+        )
+
+    @Slot(bool, result=bool)
+    def toggleLoadDetection(self, current_enabled: bool) -> bool:
+        return self.setLoadDetectionEnabled(not current_enabled)
+
     def _run_action(
         self,
         *,

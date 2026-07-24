@@ -22,6 +22,9 @@ from paint_controller.handlers.steam_deck import SteamDeckHandler
 from paint_controller.models.action_legality_model import ActionLegalityModel
 from paint_controller.models.base_top_view_actions import BaseTopViewActions
 from paint_controller.models.capability_catalog import CapabilityCatalog
+from paint_controller.models.recording_actions import RecordingActions
+from paint_controller.models.system_actions import SystemActions
+from paint_controller.models.teensy_actions import TeensyActions
 from paint_controller.models.tuning_actions import TuningActions
 from paint_controller.models.wheel_actions import WheelActions
 from paint_controller.services.base_top_view_service import BaseTopViewService
@@ -56,9 +59,11 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "lidarController",
     "controlProcessor",
     "deviceActionHandler",
-    "deviceOperationsHandler",
     "winchActions",
     "tuningActions",
+    "recordingActions",
+    "teensyActions",
+    "systemActions",
     "baseTopViewActions",
     "baseTopViewStatus",
     "systemMonitor",
@@ -1122,6 +1127,9 @@ class AppRuntime:
         self.system_control_services: _SystemControlServices | None = None
         self.video_runtime: _VideoRuntime | None = None
         self.recording_status: _RecordingStatus | None = None
+        self.recording_actions: RecordingActions | None = None
+        self.teensy_actions: TeensyActions | None = None
+        self.system_actions: SystemActions | None = None
         self.wheel_status: _WheelStatus | None = None
         self.wheel_actions: WheelActions | None = None
         self.winch_status: _WinchStatus | None = None
@@ -1277,6 +1285,9 @@ class AppRuntime:
             screen_recorder=self.bundle.screen_recorder,
             ros_bag_recorder=self.bundle.ros_bag_recorder,
         )
+        self.recording_actions = self.bundle.recording_actions
+        self.teensy_actions = self.bundle.teensy_actions
+        self.system_actions = self.bundle.system_actions
         self.wheel_status = _WheelStatus(self.bundle.wheel_controller)
         self.wheel_actions = self.bundle.wheel_actions
         self.winch_status = _WinchStatus(self.bundle.winch_controller)
@@ -1388,6 +1399,9 @@ class AppRuntime:
         assert self.system_control_services is not None
         assert self.video_runtime is not None
         assert self.recording_status is not None
+        assert self.recording_actions is not None
+        assert self.teensy_actions is not None
+        assert self.system_actions is not None
         assert self.wheel_status is not None
         assert self.wheel_actions is not None
         assert self.winch_status is not None
@@ -1413,8 +1427,11 @@ class AppRuntime:
             "systemControlServices": self.system_control_services,
             "videoRuntime": self.video_runtime,
             "recordingStatus": self.recording_status,
+            "recordingActions": self.recording_actions,
             "wheelStatus": self.wheel_status,
             "wheelActions": self.wheel_actions,
+            "teensyActions": self.teensy_actions,
+            "systemActions": self.system_actions,
             "winchStatus": self.winch_status,
             "teensyStatus": self.teensy_status,
             "valveStatus": self.valve_status,
@@ -1430,7 +1447,6 @@ class AppRuntime:
             "lidarController": self.bundle.lidar_controller,
             "controlProcessor": self.bundle.control_processor,
             "deviceActionHandler": self.bundle.device_action_handler,
-            "deviceOperationsHandler": self.bundle.device_operations_handler,
             "winchActions": self.bundle.winch_actions,
             "tuningActions": self.tuning_actions,
             "baseTopViewActions": self.base_top_view_actions,

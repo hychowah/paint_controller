@@ -275,7 +275,7 @@ Dissolve `deviceOperationsHandler` into feature-root models without creating sha
   - `toggleBaseRecording()`
   - `toggleScreenRecording()`
   - `toggleRosBagRecording()`
-- `teensyOperations`
+- `teensyActions`
   - `toggleStability()`, `toggleYaw()`, `toggleAutoCorrection()`
   - `toggleSprayGunLeveling()`, `toggleRollerSteering()`
   - `toggleSwingDamping()`, `toggleSprayGunLed()`
@@ -286,7 +286,7 @@ Dissolve `deviceOperationsHandler` into feature-root models without creating sha
 ### Files
 
 - New: `python/paint_controller/models/recording_actions.py`
-- New: `python/paint_controller/models/teensy_operations.py`
+- New: `python/paint_controller/models/teensy_actions.py`
 - Modify: `python/paint_controller/core/app_runtime.py`
 - Modify: `python/paint_controller/handlers/device_operations.py`
 - Modify: `python/paint_controller/qml/overlays/systemcontrol/DeviceControlTab.qml`

@@ -530,15 +530,7 @@ class FakeDeviceActionHandler(QObject):
         return True
 
 
-class FakeDeviceOperationsHandler(QObject):
-    @Slot(bool, result=bool)
-    def toggleLoadDetection(self, _current_enabled: bool) -> bool:
-        return True
-
-    @Slot(bool, result=bool)
-    def requestLoadDetectionEnabled(self, _enabled: bool) -> bool:
-        return True
-
+class FakeRecordingActions(QObject):
     @Slot(result=bool)
     def toggleEndEffectorRecording(self) -> bool:
         return True
@@ -555,6 +547,8 @@ class FakeDeviceOperationsHandler(QObject):
     def toggleRosBagRecording(self) -> bool:
         return True
 
+
+class FakeTeensyActions(QObject):
     @Slot(bool, result=bool)
     def toggleStability(self, _current_enabled: bool) -> bool:
         return True
@@ -587,6 +581,8 @@ class FakeDeviceOperationsHandler(QObject):
     def setLidarPower(self, _enabled: bool) -> bool:
         return True
 
+
+class FakeSystemActions(QObject):
     @Slot(result=bool)
     def clearErrors(self) -> bool:
         return True
@@ -661,6 +657,14 @@ class FakeWinchActions(QObject):
 
     @Slot(result=bool)
     def emergencyStop(self) -> bool:
+        return True
+
+    @Slot(bool, result=bool)
+    def setLoadDetectionEnabled(self, _enabled: bool) -> bool:
+        return True
+
+    @Slot(bool, result=bool)
+    def toggleLoadDetection(self, _current_enabled: bool) -> bool:
         return True
 
 
@@ -1038,7 +1042,9 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             right_control_value="",
         ),
         "deviceActionHandler": FakeDeviceActionHandler(),
-        "deviceOperationsHandler": FakeDeviceOperationsHandler(),
+        "recordingActions": FakeRecordingActions(),
+        "teensyActions": FakeTeensyActions(),
+        "systemActions": FakeSystemActions(),
         "launcherAdmin": FakeLauncherAdmin(),
         "systemMonitor": DynamicObject(
             battery_level=100,

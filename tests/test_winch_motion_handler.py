@@ -11,6 +11,7 @@ class FakeWinch:
         self.result = result
         self.increment_calls: list[tuple[int, int]] = []
         self.absolute_calls: list[tuple[int, int]] = []
+        self.load_detection_calls: list[bool] = []
 
     def move_increment(self, length_mm: int, speed_mm_s: int) -> bool:
         self.increment_calls.append((length_mm, speed_mm_s))
@@ -18,6 +19,10 @@ class FakeWinch:
 
     def move_absolute(self, length_mm: int, speed_mm_s: int) -> bool:
         self.absolute_calls.append((length_mm, speed_mm_s))
+        return self.result
+
+    def setLoadDetectionEnabled(self, enabled: bool) -> bool:
+        self.load_detection_calls.append(enabled)
         return self.result
 
 
@@ -89,3 +94,34 @@ def test_winch_motion_backend_rejection_is_reported() -> None:
     assert winch.increment_calls == [(120, 450)]
     assert results[-1] == (False, "Winch increment move was rejected by the backend")
     assert logger.records[-1].message == "Winch increment move was rejected by the backend"
+
+
+def test_load_detection_set_dispatches_desired_state() -> None:
+    actions, winch, admin_action_gate, logger, results = _build_actions()
+
+    assert actions.setLoadDetectionEnabled(True) is True
+    assert actions.toggleLoadDetection(False) is True
+
+    assert winch.load_detection_calls == [True, True]
+    assert admin_action_gate.calls == ["winch.load_detection", "winch.load_detection"]
+    assert results[-1] == (True, "Load detection requested")
+    assert logger.records[-1].message == "Load detection requested"
+
+
+def test_load_detection_gate_denial_blocks_backend_call() -> None:
+    actions, winch, admin_action_gate, _logger, results = _build_actions()
+    admin_action_gate.set_result("winch.load_detection", False, "Load Detection Toggle is blocked while the controller heartbeat is in WARNING")
+
+    assert actions.setLoadDetectionEnabled(True) is False
+
+    assert winch.load_detection_calls == []
+    assert results[-1] == (False, "Load Detection Toggle is blocked while the controller heartbeat is in WARNING")
+
+
+def test_load_detection_backend_rejection_is_reported() -> None:
+    actions, winch, _gate, _logger, results = _build_actions(result=False)
+
+    assert actions.toggleLoadDetection(True) is False
+
+    assert winch.load_detection_calls == [False]
+    assert results[-1] == (False, "Load detection was rejected by the backend")

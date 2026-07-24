@@ -36,7 +36,9 @@ def test_controller_bundle_cleanup_runs_reverse_order_and_logs_errors() -> None:
         admin_action_gate=object(),
         manual_command_handler=object(),
         device_action_handler=object(),
-        device_operations_handler=object(),
+        recording_actions=object(),
+        teensy_actions=object(),
+        system_actions=object(),
         wheel_actions=object(),
         winch_actions=object(),
         tuning_actions=object(),
@@ -114,7 +116,9 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     monkeypatch.setattr(module, "AdminActionGate", record("AdminActionGate"))
     monkeypatch.setattr(module, "ManualCommandHandler", record("ManualCommandHandler"))
     monkeypatch.setattr(module, "DeviceActionHandler", record("DeviceActionHandler"))
-    monkeypatch.setattr(module, "DeviceOperationsHandler", record("DeviceOperationsHandler"))
+    monkeypatch.setattr(module, "RecordingActions", record("RecordingActions"))
+    monkeypatch.setattr(module, "TeensyActions", record("TeensyActions"))
+    monkeypatch.setattr(module, "SystemActions", record("SystemActions"))
     monkeypatch.setattr(module, "WheelActions", record("WheelActions"))
     monkeypatch.setattr(module, "WinchActions", record("WinchActions"))
     monkeypatch.setattr(module, "TuningActions", record("TuningActions"))
@@ -174,14 +178,14 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     assert "wheel" not in bundle.device_action_handler.kwargs
     assert bundle.device_action_handler.kwargs["admin_action_gate"] is bundle.admin_action_gate
     assert bundle.device_action_handler.kwargs["logger"] is node.get_logger()
-    assert bundle.device_operations_handler.kwargs["teensy"] is bundle.teensy_controller
-    assert bundle.device_operations_handler.kwargs["winch"] is bundle.winch_controller
-    assert bundle.device_operations_handler.kwargs["video_stream_handler"] is video_stream_handler
-    assert bundle.device_operations_handler.kwargs["screen_recorder"] is bundle.screen_recorder
-    assert bundle.device_operations_handler.kwargs["ros_bag_recorder"] is bundle.ros_bag_recorder
-    assert bundle.device_operations_handler.kwargs["heartbeat_handler"] is bundle.heartbeat_handler
-    assert bundle.device_operations_handler.kwargs["admin_action_gate"] is bundle.admin_action_gate
-    assert bundle.device_operations_handler.kwargs["logger"] is node.get_logger()
+    assert bundle.recording_actions.kwargs["video_stream_handler"] is video_stream_handler
+    assert bundle.recording_actions.kwargs["screen_recorder"] is bundle.screen_recorder
+    assert bundle.recording_actions.kwargs["ros_bag_recorder"] is bundle.ros_bag_recorder
+    assert bundle.recording_actions.kwargs["logger"] is node.get_logger()
+    assert bundle.teensy_actions.kwargs["teensy"] is bundle.teensy_controller
+    assert bundle.teensy_actions.kwargs["logger"] is node.get_logger()
+    assert bundle.system_actions.kwargs["heartbeat_handler"] is bundle.heartbeat_handler
+    assert bundle.system_actions.kwargs["logger"] is node.get_logger()
     assert bundle.wheel_actions.kwargs["wheel"] is bundle.wheel_controller
     assert bundle.wheel_actions.kwargs["admin_action_gate"] is bundle.admin_action_gate
     assert bundle.wheel_actions.kwargs["logger"] is node.get_logger()

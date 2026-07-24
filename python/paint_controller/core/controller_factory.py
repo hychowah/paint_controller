@@ -15,7 +15,6 @@ from paint_controller.controllers.winch import WinchController
 from paint_controller.controllers.wind_monitor import WindMonitor
 from paint_controller.handlers.control_processor import ControlProcessor
 from paint_controller.handlers.device_actions import DeviceActionHandler
-from paint_controller.handlers.device_operations import DeviceOperationsHandler
 from paint_controller.handlers.emergency import EmergencyButtonHandler
 from paint_controller.handlers.heartbeat import UIHeartbeatHandler
 from paint_controller.handlers.input import UIInputHandler
@@ -24,6 +23,9 @@ from paint_controller.handlers.safety_coordinator import SafetyCoordinator
 from paint_controller.handlers.steam_deck import SteamDeckHandler
 from paint_controller.handlers.warnings import WarningHandler
 from paint_controller.models.base_top_view_actions import BaseTopViewActions
+from paint_controller.models.recording_actions import RecordingActions
+from paint_controller.models.system_actions import SystemActions
+from paint_controller.models.teensy_actions import TeensyActions
 from paint_controller.models.tuning_actions import TuningActions
 from paint_controller.models.wheel_actions import WheelActions
 from paint_controller.models.winch_actions import WinchActions
@@ -63,7 +65,9 @@ class ControllerBundle:
     admin_action_gate: AdminActionGate
     manual_command_handler: ManualCommandHandler
     device_action_handler: DeviceActionHandler
-    device_operations_handler: DeviceOperationsHandler
+    recording_actions: RecordingActions
+    teensy_actions: TeensyActions
+    system_actions: SystemActions
     wheel_actions: WheelActions
     winch_actions: WinchActions
     tuning_actions: TuningActions
@@ -225,14 +229,20 @@ def create_controllers(
     screen_rec = ScreenRecorder(screen_manager=screen_mgr)
     ros_bag = RosBagRecorder(show_popup_fn=show_popup_fn)
 
-    device_operations_handler = DeviceOperationsHandler(
-        teensy=teensy,
-        winch=winch,
+    recording_actions = RecordingActions(
         video_stream_handler=video_stream_handler,
         screen_recorder=screen_rec,
         ros_bag_recorder=ros_bag,
+        logger=logger,
+    )
+
+    teensy_actions = TeensyActions(
+        teensy=teensy,
+        logger=logger,
+    )
+
+    system_actions = SystemActions(
         heartbeat_handler=heartbeat,
-        admin_action_gate=admin_action_gate,
         logger=logger,
     )
 
@@ -278,7 +288,9 @@ def create_controllers(
         admin_action_gate=admin_action_gate,
         manual_command_handler=manual_command_handler,
         device_action_handler=device_action_handler,
-        device_operations_handler=device_operations_handler,
+        recording_actions=recording_actions,
+        teensy_actions=teensy_actions,
+        system_actions=system_actions,
         wheel_actions=wheel_actions,
         winch_actions=winch_actions,
         tuning_actions=tuning_actions,

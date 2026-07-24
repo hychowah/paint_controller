@@ -425,7 +425,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
         "title": "Load Detection Toggle",
         "surfaceKeys": ["overlay:systemcontrol:devices", "page:winch"],
         "primarySurface": "page:winch",
-        "authority": "deviceOperationsHandler.requestLoadDetectionEnabled",
+        "authority": "winchActions.setLoadDetectionEnabled",
         "capabilityClass": "direct-admin-action",
         "legalStateClass": "status-admin",
         "immediateRuntimeSideEffect": True,

@@ -21,6 +21,9 @@
     "python/paint_controller/core/settings.py",
     "python/paint_controller/core/state_store.py",
     "python/paint_controller/models/base_top_view_actions.py",
+    "python/paint_controller/models/recording_actions.py",
+    "python/paint_controller/models/system_actions.py",
+    "python/paint_controller/models/teensy_actions.py",
     "python/paint_controller/models/tuning_actions.py",
     "python/paint_controller/models/wheel_actions.py",
     "python/paint_controller/models/winch_actions.py"

@@ -10,27 +10,27 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 
 - Overall status: in progress
 - Active architecture program: QML surface retirement per `docs/plan/MASTER_PLAN_QML_SURFACE_RETIREMENT.md`
-- Most recent completed slice: Phase 4 base top-view family (`baseTopViewActions` / `baseTopViewStatus`) on 2026-07-24
+- Most recent completed slice: Phase 5 device operations split (`recordingActions`, `teensyActions`, `systemActions`, extended `winchActions`) on 2026-07-24
 - Core purpose: reduce global coupling, clarify ownership, shrink the app-scope QML contract, and make operator-visible behavior easier to trace
 - First-principles rule: success means fewer permanent app-scope QML reads and fewer equal-owner concepts, not wrapper proliferation
-- Last focused validation: `45 passed` for `tests/test_base_top_view_actions.py tests/test_base_top_view_service.py tests/test_app_runtime_runtime.py tests/test_controller_factory_runtime.py tests/test_startup_smoke.py tests/test_startup_smoke_shell.py tests/test_startup_smoke_home.py tests/test_startup_smoke_workflow_editor.py tests/test_qml_imports.py` on 2026-07-24
-- Last full-suite baseline: `287 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q` on 2026-07-24
+- Last focused validation: `59 passed` for `tests/test_recording_actions.py tests/test_teensy_actions.py tests/test_system_actions.py tests/test_winch_motion_handler.py tests/test_app_runtime_runtime.py tests/test_controller_factory_runtime.py tests/test_capability_catalog.py tests/test_startup_smoke.py tests/test_startup_smoke_shell.py tests/test_startup_smoke_home.py tests/test_startup_smoke_workflow_editor.py tests/test_qml_imports.py` on 2026-07-24
+- Last full-suite baseline: `294 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q` on 2026-07-24
 
 ## Live Board
 
 ### Now
 
-#### Phase 5: Device operations split
+#### Phase 6: Remaining raw controller retirement
 
-- Dissolve `deviceOperationsHandler` into feature-root models (`recordingActions`, `teensyOperations`, etc.) without creating shallow mirrors.
-- Remove `deviceOperationsHandler` from the QML context.
+- Retire the remaining raw controllers from the QML context: `teensyController`, `esp32ValveController`, `lidarController`, `controlProcessor`, `systemMonitor`, `screenRecorder`, `rosBagRecorder`, `screenManager`, `baseStreamHandler`.
+- Ensure every direct read has a bounded model and remove each retired name from `_EXPECTED_CONTEXT_PROPERTY_NAMES`.
 
 ### Next
 
-#### Phase 6: Remaining raw controller retirement
+#### Phase 7: MainWindow.qml shell simplification (optional)
 
-- Dissolve `deviceOperationsHandler` into feature-root models (`recordingActions`, `teensyOperations`, etc.) without creating shallow mirrors.
-- Remove `deviceOperationsHandler` from the QML context.
+- Move routing and multi-screen policy out of `MainWindow.qml` and into Python models.
+- Only start after Phase 6 is complete and the QML contract is materially smaller.
 
 ### Later
 
@@ -89,6 +89,7 @@ These files are allowed to keep temporary raw-global reads until their named fam
 - Phase 2 completed the wheel family retirement: `wheelActions` now owns wheel enable/reset policy; `wheelController` is removed from the app-scope QML context; wheel-related methods are removed from `DeviceActionHandler`.
 - Phase 3 completed the tuning family retirement: `tuningActions` now owns yaw PID tuning policy; `tuningAdminHandler` is removed from the QML context and the codebase; `PageTuning.qml` no longer reads raw `teensyController.all_status`.
 - Phase 4 completed the base top-view family retirement: `baseTopViewActions` now owns base-top view calibration policy and `_BaseTopViewStatus` owns the read-only calibration surface; `baseTopViewAdminHandler` and `baseTopViewController` are removed from the QML context; `BaseTopViewSettingsPopup.qml` and `BaseFrontOverlay.qml` use only bounded models; `BaseTopViewService.cleanup()` now disconnects `frameReady` before quitting the worker thread.
+- Phase 5 completed the device operations split: `recordingActions` owns EF/base camera, screen, and ROS bag recording toggles; `teensyActions` owns Teensy feature toggles and lidar power; `systemActions` owns `clearErrors`; `winchActions` now also owns load detection; `DeviceOperationsHandler` is removed from the QML context and the codebase; `DeviceControlTab.qml` and `PageWinch.qml` use only the new feature-root models.
 
 ## Active Risks
 
@@ -100,7 +101,7 @@ These files are allowed to keep temporary raw-global reads until their named fam
 ## Next Session Checklist
 
 1. Keep the live board in this file as the only source of truth for unfinished architecture work.
-2. Continue the master plan at Phase 5 (device operations split) unless a higher-leverage retirement is proven.
+2. Continue the master plan at Phase 6 (remaining raw controller retirement) unless a higher-leverage retirement is proven.
 3. Preserve frozen shell and launcher contracts.
 4. Keep the quarantined remainder explicit by file.
 5. Do not open automation follow-on work until the root QML contract is materially smaller.

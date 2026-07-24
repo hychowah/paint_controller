@@ -71,6 +71,9 @@ def test_capability_catalog_inventories_known_admin_mutators(monkeypatch, tmp_pa
     assert winch_increment["authority"] == "winchActions.moveIncrement"
     assert winch_increment["legalStateClass"] == "live-operational-motion"
 
+    load_detection = catalog.getActionCapability("winch.load_detection")
+    assert load_detection["authority"] == "winchActions.setLoadDetectionEnabled"
+
     assert [action["key"] for action in camera_actions] == [
         "camera.base_top_view.live_adjustments",
         "camera.base_top_view.reset",

@@ -65,7 +65,9 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
             "admin_action_gate": object(),
             "manual_command_handler": object(),
             "device_action_handler": object(),
-            "device_operations_handler": object(),
+            "recording_actions": object(),
+            "teensy_actions": object(),
+            "system_actions": object(),
             "wheel_actions": object(),
             "winch_actions": object(),
             "tuning_actions": object(),
@@ -132,10 +134,14 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.engine.context.properties["wheelActions"] is runtime.bundle.wheel_actions
     assert runtime.engine.context.properties["winchActions"] is runtime.bundle.winch_actions
     assert runtime.engine.context.properties["tuningActions"] is runtime.bundle.tuning_actions
+    assert runtime.engine.context.properties["recordingActions"] is runtime.bundle.recording_actions
+    assert runtime.engine.context.properties["teensyActions"] is runtime.bundle.teensy_actions
+    assert runtime.engine.context.properties["systemActions"] is runtime.bundle.system_actions
     assert runtime.engine.context.properties["baseTopViewActions"] is runtime.bundle.base_top_view_actions
     assert runtime.engine.context.properties["baseTopViewStatus"] is runtime.base_top_view_status
     assert "baseTopViewAdminHandler" not in runtime.engine.context.properties
     assert "baseTopViewController" not in runtime.engine.context.properties
+    assert "deviceOperationsHandler" not in runtime.engine.context.properties
     assert runtime.system_control_services.manualCommandHandler is runtime.bundle.manual_command_handler
     assert runtime.video_runtime.controls.leftMode == "None"
     assert runtime.video_runtime.topBar.systemBatteryPercent == 100
