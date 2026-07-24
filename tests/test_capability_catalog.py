@@ -68,7 +68,7 @@ def test_capability_catalog_inventories_known_admin_mutators(monkeypatch, tmp_pa
     assert wheel_reset["authority"] == "deviceActionHandler.resetWheelPosition"
     assert wheel_reset["legalStateClass"] == "maintenance-preset"
 
-    assert winch_increment["authority"] == "winchMotionHandler.requestMoveIncrement"
+    assert winch_increment["authority"] == "winchActions.moveIncrement"
     assert winch_increment["legalStateClass"] == "live-operational-motion"
 
     assert [action["key"] for action in camera_actions] == [

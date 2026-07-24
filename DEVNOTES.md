@@ -1,6 +1,15 @@
 # Development Notes
 
 ---
+### 2026-07-24 16:28 - Phase 1: Winch Family (`winchActions`)
+
+**Goal**: Execute Phase 1 of `docs/plan/MASTER_PLAN_QML_SURFACE_RETIREMENT.md`: retire `winchMotionHandler` from the QML context by moving its policy into a feature-root `winchActions` model.
+**Issues**: `PageWinch.qml` was the only QML consumer of `winchMotionHandler`, but the context-property contract and `CapabilityCatalog` authorities still pointed to the handler-shaped global. Keeping it would block the broader QML surface retirement program.
+**Tried**: Created `WinchActions` in `python/paint_controller/models/winch_actions.py` with the same admin-gate, logging, error emission, and dispatch policy as `WinchMotionHandler`, using QML-facing camelCase slots (`moveIncrement`, `moveAbsolute`, `retractFull`, `extendOneMeter`, `emergencyStop`). Merged the handler by updating `controller_factory.py` and `ControllerBundle`, then deleted `python/paint_controller/handlers/winch_motion.py`. Replaced `winchMotionHandler` with `winchActions` in AppRuntime's expected context-property list and registration. Updated `PageWinch.qml` call sites. Updated `CapabilityCatalog` authorities and `tests/test_capability_catalog.py`. Updated smoke fakes in `tests/startup_smoke_support.py` and factory/AppRuntime tests.
+**Result**: ✅ Focused band `tests/test_winch_motion_handler.py tests/test_app_runtime_runtime.py tests/test_controller_factory_runtime.py tests/test_capability_catalog.py tests/test_startup_smoke.py tests/test_qml_imports.py` green at `35 passed`; full suite green at `276 passed`; `qmllint` clean; pyright clean per `pyrightconfig.json`; no remaining `winchMotionHandler` references in production code or tests.
+**Files**: `python/paint_controller/models/winch_actions.py`, `python/paint_controller/core/controller_factory.py`, `python/paint_controller/core/app_runtime.py`, `python/paint_controller/models/capability_catalog.py`, `python/paint_controller/qml/pages/winch/PageWinch.qml`, `tests/startup_smoke_support.py`, `tests/test_app_runtime_runtime.py`, `tests/test_controller_factory_runtime.py`, `tests/test_winch_motion_handler.py`, `pyrightconfig.json` (plus deletion of `python/paint_controller/handlers/winch_motion.py`).
+
+---
 ### 2026-07-24 15:37 - Phase 0: QML Contract-Parity Harness And Cleanup
 
 **Goal**: Begin executing `docs/plan/MASTER_PLAN_QML_SURFACE_RETIREMENT.md` from Phase 0: make the AppRuntime → QML context-property contract drift-visible, fix shallow QML issues, and add teardown regression coverage.

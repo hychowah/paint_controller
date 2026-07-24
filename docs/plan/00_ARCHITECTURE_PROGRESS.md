@@ -9,28 +9,30 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 ## Current Snapshot
 
 - Overall status: in progress
-- Active architecture program: Workstream E boundary retirement and contract reduction
-- Most recent completed slice: PageHome preview and frame-refresh cleanup on 2026-04-28
+- Active architecture program: QML surface retirement per `docs/plan/MASTER_PLAN_QML_SURFACE_RETIREMENT.md`
+- Most recent completed slice: Phase 1 winch family (`winchActions`) on 2026-07-24
 - Core purpose: reduce global coupling, clarify ownership, shrink the app-scope QML contract, and make operator-visible behavior easier to trace
 - First-principles rule: success means fewer permanent app-scope QML reads and fewer equal-owner concepts, not wrapper proliferation
-- Last focused validation: `10 passed` for `tests/test_startup_smoke_home.py`, `tests/test_startup_smoke_shell.py`, and `tests/test_qml_imports.py`
-- Last full-suite baseline: `260 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q` on 2026-04-28
+- Last focused validation: `35 passed` for `tests/test_winch_motion_handler.py tests/test_app_runtime_runtime.py tests/test_controller_factory_runtime.py tests/test_capability_catalog.py tests/test_startup_smoke.py tests/test_qml_imports.py` on 2026-07-24
+- Last full-suite baseline: `276 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q` on 2026-07-24
 
 ## Live Board
 
 ### Now
 
-#### Settings cleanup
+#### Phase 2: Wheel family (`wheelActions`)
 
-- Keep residual settings cleanup behind the now-landed PageHome video/runtime slice unless a touched surface proves a larger real reduction in ambient reads.
-- Retirement requirement: the slice must remove at least one real settings-family raw-read or write-through path in the same change and avoid reopening shell, launcher, or fullscreen-video ownership.
+- Create `wheelActions` in `python/paint_controller/models/wheel_actions.py` and retire `wheelController` plus wheel-related `deviceActionHandler` calls from QML.
+- Move wheel enable/reset-position policy out of `DeviceActionHandler` into the new model.
+- Update `PageWheel.qml` to use `wheelActions` and `wheelStatus` only.
+- Follow the Phase 1 pattern: update `ControllerBundle`, AppRuntime context contract, `CapabilityCatalog` authorities, smoke fakes, and focused tests in the same slice.
 
 ### Next
 
-#### AppRuntime and handler decomposition
+#### Phase 3: Tuning family (`tuningActions`)
 
-- Treat large Python-file cleanup as maintainability follow-on, not a license to widen architecture scope.
-- Prefer bounded extractions that preserve the current contracts and keep `app_runtime.py` plus `control_processor.py` moving toward narrower ownership.
+- Create `tuningActions` and retire `tuningAdminHandler` from the QML context.
+- Stop direct `teensyController.all_status` reads in `PageTuning.qml` by extending `teensyStatus` coverage where needed.
 
 ### Later
 
@@ -84,6 +86,8 @@ These files are allowed to keep temporary raw-global reads until their named fam
 - Workstream A through Workstream D are complete for the targeted families.
 - Workstream E landed the workflow/editor and command contract reduction, bounded video runtime slice, shared winch, teensy, wheel, and recording status slices, the shell/connectivity family through `shellConnectivityStatus` plus `launcherAdmin`, the page-level wheel detail retirement in `PageWheel.qml`, the page/shared-card winch detail retirement through `winchStatus`, the teensy/end-effector detail retirement through extended `teensyStatus` plus bounded `valveStatus`, the lidar/monitor telemetry retirement through bounded `lidarStatus`, and the fullscreen overlay telemetry retirement through existing `wheelStatus` plus `winchStatus`.
 - The remaining PageHome preview/frame-refresh remainder is retired behind explicit `videoRuntime` ownership, and the supporting startup-smoke/runtime cleanup wave is in place to keep further large-file work bounded.
+- Phase 0 of the QML surface retirement program completed the contract-parity harness, removed the `MainWindow.qml` `visible`/`visibility` conflict, retired the duplicate `core/CommonStyle.qml` singleton, and added teardown regression coverage.
+- Phase 1 completed the winch family retirement: `winchActions` now owns winch motion policy; `winchMotionHandler` is removed from the QML context and the codebase.
 
 ## Active Risks
 
@@ -95,7 +99,7 @@ These files are allowed to keep temporary raw-global reads until their named fam
 ## Next Session Checklist
 
 1. Keep the live board in this file as the only source of truth for unfinished architecture work.
-2. Start with settings cleanup unless a touched caller proves a higher-leverage raw-read removal.
+2. Continue the master plan at Phase 2 (wheel family) unless a higher-leverage retirement is proven.
 3. Preserve frozen shell and launcher contracts.
 4. Keep the quarantined remainder explicit by file.
 5. Do not open automation follow-on work until the root QML contract is materially smaller.

@@ -65,7 +65,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
             "manual_command_handler": object(),
             "device_action_handler": object(),
             "device_operations_handler": object(),
-            "winch_motion_handler": object(),
+            "winch_actions": object(),
             "tuning_admin_handler": object(),
             "base_top_view_admin_handler": object(),
             "ssh_controller": _SshControllerRecorder(),
@@ -125,6 +125,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.engine.context.properties["lidarStatus"] is runtime.lidar_status
     assert runtime.engine.context.properties["shellConnectivityStatus"] is runtime.shell_connectivity_status
     assert runtime.engine.context.properties["launcherAdmin"] is runtime.launcher_admin
+    assert runtime.engine.context.properties["winchActions"] is runtime.bundle.winch_actions
     assert runtime.system_control_services.manualCommandHandler is runtime.bundle.manual_command_handler
     assert runtime.video_runtime.controls.leftMode == "None"
     assert runtime.video_runtime.topBar.systemBatteryPercent == 100

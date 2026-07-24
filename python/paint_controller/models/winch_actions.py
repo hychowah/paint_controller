@@ -1,4 +1,4 @@
-"""Python-owned winch motion boundary for page-level winch controls."""
+"""Python-owned, feature-root action boundary for winch motion controls."""
 
 from __future__ import annotations
 
@@ -7,8 +7,13 @@ from typing import Any
 from PySide6.QtCore import QObject, Signal, Slot
 
 
-class WinchMotionHandler(QObject):
-    """Own page-level winch motion requests initiated from QML."""
+class WinchActions(QObject):
+    """Own page-level winch motion requests initiated from QML.
+
+    This model absorbs the policy previously held by ``WinchMotionHandler`` so
+    that QML accesses winch motion through a single feature-root object rather
+    than a handler-shaped global.
+    """
 
     operation_result = Signal(bool, str)
 
@@ -25,7 +30,7 @@ class WinchMotionHandler(QObject):
         self._logger = logger
 
     @Slot(int, int, result=bool)
-    def requestMoveIncrement(self, length_mm: int, speed_mm_s: int) -> bool:
+    def moveIncrement(self, length_mm: int, speed_mm_s: int) -> bool:
         return self._run_action(
             action_key="winch.move_increment",
             name="Winch increment move",
@@ -34,7 +39,7 @@ class WinchMotionHandler(QObject):
         )
 
     @Slot(int, int, result=bool)
-    def requestMoveAbsolute(self, length_mm: int, speed_mm_s: int) -> bool:
+    def moveAbsolute(self, length_mm: int, speed_mm_s: int) -> bool:
         return self._run_action(
             action_key="winch.move_absolute",
             name="Winch absolute move",
@@ -43,7 +48,7 @@ class WinchMotionHandler(QObject):
         )
 
     @Slot(result=bool)
-    def requestRetractFull(self) -> bool:
+    def retractFull(self) -> bool:
         return self._run_action(
             action_key="winch.retract_full",
             name="Winch full retract",
@@ -52,7 +57,7 @@ class WinchMotionHandler(QObject):
         )
 
     @Slot(result=bool)
-    def requestExtendOneMeter(self) -> bool:
+    def extendOneMeter(self) -> bool:
         return self._run_action(
             action_key="winch.extend_one_meter",
             name="Winch extend 1m",
@@ -61,7 +66,7 @@ class WinchMotionHandler(QObject):
         )
 
     @Slot(result=bool)
-    def requestEmergencyStop(self) -> bool:
+    def emergencyStop(self) -> bool:
         return self._run_action(
             action_key="winch.emergency_stop",
             name="Winch emergency stop",

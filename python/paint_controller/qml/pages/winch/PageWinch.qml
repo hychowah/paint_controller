@@ -614,7 +614,7 @@ Item {
                                     text: "MOVE INCREMENT"
                                     enabled: winchPageRoot.winchStatus.enabled && incrementLengthField.text.length > 0 && incrementSpeedField.text.length > 0 && incrementLengthField.acceptableInput && incrementSpeedField.acceptableInput
                                     onClicked: {
-                                        if (winchMotionHandler.requestMoveIncrement(
+                                        if (winchActions.moveIncrement(
                                                 parseInt(incrementLengthField.text),
                                                 parseInt(incrementSpeedField.text))) {
                                             notificationPopup.show("Moving increment: " + incrementLengthField.text + "mm", 2000);
@@ -817,7 +817,7 @@ Item {
                                     text: "GO TO POSITION"
                                     enabled: winchPageRoot.winchStatus.enabled && absoluteLengthField.text.length > 0 && absoluteSpeedField.text.length > 0 // && absoluteLengthField.acceptableInput && absoluteSpeedField.acceptableInput
                                     onClicked: {
-                                        if (winchMotionHandler.requestMoveAbsolute(
+                                        if (winchActions.moveAbsolute(
                                                 parseInt(absoluteLengthField.text),
                                                 parseInt(absoluteSpeedField.text))) {
                                             notificationPopup.show("Moving to position: " + absoluteLengthField.text + "mm", 2000);
@@ -864,7 +864,7 @@ Item {
                                 text: "Retract Full"
                                 enabled: winchPageRoot.winchStatus.enabled
                                 onClicked: {
-                                    if (winchMotionHandler.requestRetractFull()) {
+                                    if (winchActions.retractFull()) {
                                         notificationPopup.show("Retracting cable fully", 2000);
                                         activityModel.insert(0, {
                                             timestamp: new Date().toLocaleTimeString(Qt.locale(), "hh:mm:ss"),
@@ -897,7 +897,7 @@ Item {
                                 text: "EMERGENCY STOP"
                                 enabled: winchPageRoot.winchStatus.enabled
                                 onClicked: {
-                                    if (winchMotionHandler.requestEmergencyStop()) {
+                                    if (winchActions.emergencyStop()) {
                                         notificationPopup.show("EMERGENCY STOP ACTIVATED", 3000);
                                         activityModel.insert(0, {
                                             timestamp: new Date().toLocaleTimeString(Qt.locale(), "hh:mm:ss"),
@@ -936,7 +936,7 @@ Item {
                                 text: "Extend 1m"
                                 enabled: winchPageRoot.winchStatus.enabled
                                 onClicked: {
-                                    if (winchMotionHandler.requestExtendOneMeter()) {
+                                    if (winchActions.extendOneMeter()) {
                                         notificationPopup.show("Extending cable by 1m", 2000);
                                     } else {
                                         notificationPopup.show("Extend 1m rejected", 2000);

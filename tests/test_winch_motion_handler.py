@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from paint_controller.handlers.winch_motion import WinchMotionHandler
+from paint_controller.models.winch_actions import WinchActions
 from tests.fakes import FakeLogger
 
 
@@ -34,28 +34,28 @@ class FakeAdminActionGate:
         return self.results.get(action_key, (True, ""))
 
 
-def _build_handler(result: bool = True) -> tuple[WinchMotionHandler, FakeWinch, FakeAdminActionGate, FakeLogger, list[tuple[bool, str]]]:
+def _build_actions(result: bool = True) -> tuple[WinchActions, FakeWinch, FakeAdminActionGate, FakeLogger, list[tuple[bool, str]]]:
     winch = FakeWinch(result=result)
     admin_action_gate = FakeAdminActionGate()
     logger = FakeLogger()
-    handler = WinchMotionHandler(
+    actions = WinchActions(
         winch=winch,
         admin_action_gate=admin_action_gate,
         logger=logger,
     )
     results: list[tuple[bool, str]] = []
-    handler.operation_result.connect(lambda success, message: results.append((success, message)))
-    return handler, winch, admin_action_gate, logger, results
+    actions.operation_result.connect(lambda success, message: results.append((success, message)))
+    return actions, winch, admin_action_gate, logger, results
 
 
 def test_winch_motion_requests_dispatch_to_backend() -> None:
-    handler, winch, admin_action_gate, logger, results = _build_handler()
+    actions, winch, admin_action_gate, logger, results = _build_actions()
 
-    assert handler.requestMoveIncrement(120, 450) is True
-    assert handler.requestMoveAbsolute(800, 500) is True
-    assert handler.requestRetractFull() is True
-    assert handler.requestExtendOneMeter() is True
-    assert handler.requestEmergencyStop() is True
+    assert actions.moveIncrement(120, 450) is True
+    assert actions.moveAbsolute(800, 500) is True
+    assert actions.retractFull() is True
+    assert actions.extendOneMeter() is True
+    assert actions.emergencyStop() is True
 
     assert winch.increment_calls == [(120, 450), (1000, 500), (0, 0)]
     assert winch.absolute_calls == [(800, 500), (0, 500)]
@@ -71,10 +71,10 @@ def test_winch_motion_requests_dispatch_to_backend() -> None:
 
 
 def test_winch_motion_gate_denial_blocks_backend_call() -> None:
-    handler, winch, admin_action_gate, logger, results = _build_handler()
+    actions, winch, admin_action_gate, logger, results = _build_actions()
     admin_action_gate.set_result("winch.move_absolute", False, "Winch Absolute Move requires the system to be idle")
 
-    assert handler.requestMoveAbsolute(500, 300) is False
+    assert actions.moveAbsolute(500, 300) is False
 
     assert winch.absolute_calls == []
     assert results[-1] == (False, "Winch Absolute Move requires the system to be idle")
@@ -82,9 +82,9 @@ def test_winch_motion_gate_denial_blocks_backend_call() -> None:
 
 
 def test_winch_motion_backend_rejection_is_reported() -> None:
-    handler, winch, _gate, logger, results = _build_handler(result=False)
+    actions, winch, _gate, logger, results = _build_actions(result=False)
 
-    assert handler.requestMoveIncrement(120, 450) is False
+    assert actions.moveIncrement(120, 450) is False
 
     assert winch.increment_calls == [(120, 450)]
     assert results[-1] == (False, "Winch increment move was rejected by the backend")

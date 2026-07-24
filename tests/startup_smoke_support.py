@@ -636,25 +636,25 @@ class FakeBaseTopViewAdminHandler(QObject):
         return True
 
 
-class FakeWinchMotionHandler(QObject):
+class FakeWinchActions(QObject):
     @Slot(int, int, result=bool)
-    def requestMoveIncrement(self, _length_mm: int, _speed_mm_s: int) -> bool:
+    def moveIncrement(self, _length_mm: int, _speed_mm_s: int) -> bool:
         return True
 
     @Slot(int, int, result=bool)
-    def requestMoveAbsolute(self, _length_mm: int, _speed_mm_s: int) -> bool:
+    def moveAbsolute(self, _length_mm: int, _speed_mm_s: int) -> bool:
         return True
 
     @Slot(result=bool)
-    def requestRetractFull(self) -> bool:
+    def retractFull(self) -> bool:
         return True
 
     @Slot(result=bool)
-    def requestExtendOneMeter(self) -> bool:
+    def extendOneMeter(self) -> bool:
         return True
 
     @Slot(result=bool)
-    def requestEmergencyStop(self) -> bool:
+    def emergencyStop(self) -> bool:
         return True
 
 
@@ -1006,7 +1006,7 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             motor_temperature=25.0,
             winch_torque=0.0,
         ),
-        "winchMotionHandler": FakeWinchMotionHandler(),
+        "winchActions": FakeWinchActions(),
         "teensyController": DynamicObject(
             available=True,
             all_status=_teensy_all_status(),
