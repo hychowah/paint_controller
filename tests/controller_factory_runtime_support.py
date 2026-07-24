@@ -303,6 +303,37 @@ class _LidarStatusRecorder:
         self.angle = -3.5
 
 
+class _BaseTopViewServiceRecorder:
+    def __init__(self) -> None:
+        self.zoomChanged = _SignalRecorder()
+        self.offsetXChanged = _SignalRecorder()
+        self.offsetYChanged = _SignalRecorder()
+        self.cropEnabledChanged = _SignalRecorder()
+        self.cropWidthRatioChanged = _SignalRecorder()
+        self.cropCenterXChanged = _SignalRecorder()
+        self.k1Changed = _SignalRecorder()
+        self.k2Changed = _SignalRecorder()
+        self.k3Changed = _SignalRecorder()
+        self.k4Changed = _SignalRecorder()
+        self.editModeChanged = _SignalRecorder()
+        self.enabledChanged = _SignalRecorder()
+        self.sourcePointsChanged = _SignalRecorder()
+        self.frameReady = _SignalRecorder()
+        self.enabled = True
+        self.editMode = False
+        self.zoom = 0.51
+        self.offsetX = 0.026
+        self.offsetY = 0.474
+        self.cropEnabled = True
+        self.cropWidthRatio = 0.9
+        self.cropCenterX = 0.5
+        self.k1 = -0.389
+        self.k2 = 0.142
+        self.k3 = 0.0
+        self.k4 = 0.0
+        self.sourcePoints = [[0.012, 1.0], [0.988, 1.0], [0.837, 0.727], [0.372, 0.727]]
+
+
 class _WinchStatusRecorder:
     def __init__(self) -> None:
         self.available_changed = _SignalRecorder()

@@ -222,7 +222,7 @@ class FakeOverlayHost(QObject):
         self.video_fullscreen_active_changed.emit(active)
 
 
-class FakeBaseTopViewController(QObject):
+class FakeBaseTopViewStatus(QObject):
     frameReady = Signal()
     changed = Signal()
 
@@ -592,45 +592,45 @@ class FakeDeviceOperationsHandler(QObject):
         return True
 
 
-class FakeBaseTopViewAdminHandler(QObject):
+class FakeBaseTopViewActions(QObject):
     @Slot(float, result=bool)
-    def requestZoom(self, _value: float) -> bool:
+    def setZoom(self, _value: float) -> bool:
         return True
 
     @Slot(float, result=bool)
-    def requestOffsetX(self, _value: float) -> bool:
+    def setOffsetX(self, _value: float) -> bool:
         return True
 
     @Slot(float, result=bool)
-    def requestOffsetY(self, _value: float) -> bool:
+    def setOffsetY(self, _value: float) -> bool:
         return True
 
     @Slot(bool, result=bool)
-    def requestCropEnabled(self, _value: bool) -> bool:
+    def setCropEnabled(self, _value: bool) -> bool:
         return True
 
     @Slot(float, result=bool)
-    def requestCropWidthRatio(self, _value: float) -> bool:
+    def setCropWidthRatio(self, _value: float) -> bool:
         return True
 
     @Slot(float, result=bool)
-    def requestCropCenterX(self, _value: float) -> bool:
+    def setCropCenterX(self, _value: float) -> bool:
         return True
 
     @Slot(float, result=bool)
-    def requestK1(self, _value: float) -> bool:
+    def setK1(self, _value: float) -> bool:
         return True
 
     @Slot(float, result=bool)
-    def requestK2(self, _value: float) -> bool:
+    def setK2(self, _value: float) -> bool:
         return True
 
     @Slot(float, result=bool)
-    def requestK3(self, _value: float) -> bool:
+    def setK3(self, _value: float) -> bool:
         return True
 
     @Slot(float, result=bool)
-    def requestK4(self, _value: float) -> bool:
+    def setK4(self, _value: float) -> bool:
         return True
 
     @Slot(result=bool)
@@ -1063,7 +1063,7 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
         ),
         "settingsManager": settings_manager,
         "tuningActions": FakeTuningActions(),
-        "baseTopViewAdminHandler": FakeBaseTopViewAdminHandler(),
+        "baseTopViewActions": FakeBaseTopViewActions(),
+        "baseTopViewStatus": FakeBaseTopViewStatus(),
         "screenManager": FakeScreenManager(),
-        "baseTopViewController": FakeBaseTopViewController(),
     }

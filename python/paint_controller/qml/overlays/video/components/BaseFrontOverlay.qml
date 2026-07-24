@@ -307,7 +307,7 @@ Rectangle {
         // Tap to open settings (only when not in edit mode)
         MouseArea {
             anchors.fill: parent
-            enabled: !controllerValue(baseTopViewController, "editMode", false)
+            enabled: !baseTopViewStatus.editMode
             cursorShape: Qt.PointingHandCursor
             onClicked: baseTopViewSettingsPopup.open()
         }
@@ -320,7 +320,7 @@ Rectangle {
     
     // Connections to refresh base top view when new frame is ready
     Connections {
-        target: baseTopViewController
+        target: baseTopViewStatus
         function onFrameReady() {
             baseTopViewDisplay.source = ""
             baseTopViewDisplay.source = "image://base_top_view/frame"

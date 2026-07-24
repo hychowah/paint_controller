@@ -13,7 +13,6 @@ from paint_controller.controllers.teensy import TeensyController
 from paint_controller.controllers.wheel import WheelController
 from paint_controller.controllers.winch import WinchController
 from paint_controller.controllers.wind_monitor import WindMonitor
-from paint_controller.handlers.base_top_view_admin import BaseTopViewAdminHandler
 from paint_controller.handlers.control_processor import ControlProcessor
 from paint_controller.handlers.device_actions import DeviceActionHandler
 from paint_controller.handlers.device_operations import DeviceOperationsHandler
@@ -24,6 +23,7 @@ from paint_controller.handlers.manual_commands import ManualCommandHandler
 from paint_controller.handlers.safety_coordinator import SafetyCoordinator
 from paint_controller.handlers.steam_deck import SteamDeckHandler
 from paint_controller.handlers.warnings import WarningHandler
+from paint_controller.models.base_top_view_actions import BaseTopViewActions
 from paint_controller.models.tuning_actions import TuningActions
 from paint_controller.models.wheel_actions import WheelActions
 from paint_controller.models.winch_actions import WinchActions
@@ -67,7 +67,7 @@ class ControllerBundle:
     wheel_actions: WheelActions
     winch_actions: WinchActions
     tuning_actions: TuningActions
-    base_top_view_admin_handler: BaseTopViewAdminHandler
+    base_top_view_actions: BaseTopViewActions
     input_handler: UIInputHandler
     emergency_handler: EmergencyButtonHandler
 
@@ -254,7 +254,7 @@ def create_controllers(
         logger=logger,
     )
 
-    base_top_view_admin_handler = BaseTopViewAdminHandler(
+    base_top_view_actions = BaseTopViewActions(
         base_top_view_service=base_top_view_service,
         admin_action_gate=admin_action_gate,
         logger=logger,
@@ -282,7 +282,7 @@ def create_controllers(
         wheel_actions=wheel_actions,
         winch_actions=winch_actions,
         tuning_actions=tuning_actions,
-        base_top_view_admin_handler=base_top_view_admin_handler,
+        base_top_view_actions=base_top_view_actions,
         input_handler=input_handler,
         emergency_handler=emergency,
         ssh_controller=ssh,

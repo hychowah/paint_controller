@@ -40,7 +40,7 @@ def test_controller_bundle_cleanup_runs_reverse_order_and_logs_errors() -> None:
         wheel_actions=object(),
         winch_actions=object(),
         tuning_actions=object(),
-        base_top_view_admin_handler=object(),
+        base_top_view_actions=object(),
         input_handler=cleanup_factory("input_handler"),
         emergency_handler=BrokenCleanup(),
         ssh_controller=cleanup_factory("ssh_controller"),
@@ -118,7 +118,7 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     monkeypatch.setattr(module, "WheelActions", record("WheelActions"))
     monkeypatch.setattr(module, "WinchActions", record("WinchActions"))
     monkeypatch.setattr(module, "TuningActions", record("TuningActions"))
-    monkeypatch.setattr(module, "BaseTopViewAdminHandler", record("BaseTopViewAdminHandler"))
+    monkeypatch.setattr(module, "BaseTopViewActions", record("BaseTopViewActions"))
     monkeypatch.setattr(module, "WorkflowCatalog", record("WorkflowCatalog"))
     monkeypatch.setattr(module, "WorkflowEditor", record("WorkflowEditor"))
     monkeypatch.setattr(module, "WorkFlowRunner", record("WorkFlowRunner"))
@@ -191,9 +191,9 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     assert bundle.tuning_actions.kwargs["teensy"] is bundle.teensy_controller
     assert bundle.tuning_actions.kwargs["admin_action_gate"] is bundle.admin_action_gate
     assert bundle.tuning_actions.kwargs["logger"] is node.get_logger()
-    assert bundle.base_top_view_admin_handler.kwargs["base_top_view_service"] is base_top_view_service
-    assert bundle.base_top_view_admin_handler.kwargs["admin_action_gate"] is bundle.admin_action_gate
-    assert bundle.base_top_view_admin_handler.kwargs["logger"] is node.get_logger()
+    assert bundle.base_top_view_actions.kwargs["base_top_view_service"] is base_top_view_service
+    assert bundle.base_top_view_actions.kwargs["admin_action_gate"] is bundle.admin_action_gate
+    assert bundle.base_top_view_actions.kwargs["logger"] is node.get_logger()
     assert bundle.input_handler.kwargs["selection_model"] is bundle.overlay_controller.kwargs["selection_model"]
     assert bundle.input_handler.kwargs["close_popup_fn"] is close_popup
     assert bundle.emergency_handler.kwargs["safety_coordinator"] is bundle.safety_coordinator

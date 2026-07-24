@@ -1,4 +1,4 @@
-"""Python-owned calibration boundary for base-top view adjustments."""
+"""Python-owned, feature-root action boundary for base-top view calibration."""
 
 from __future__ import annotations
 
@@ -7,8 +7,13 @@ from typing import Any
 from PySide6.QtCore import QObject, Signal, Slot
 
 
-class BaseTopViewAdminHandler(QObject):
-    """Own base-top calibration adjustments initiated from QML."""
+class BaseTopViewActions(QObject):
+    """Own base-top view calibration requests initiated from QML.
+
+    This model absorbs the policy previously held by ``BaseTopViewAdminHandler``
+    so that QML accesses base-top view adjustments through a single feature-root
+    object rather than a handler-shaped global.
+    """
 
     operation_result = Signal(bool, str)
 
@@ -25,43 +30,43 @@ class BaseTopViewAdminHandler(QObject):
         self._logger = logger
 
     @Slot(float, result=bool)
-    def requestZoom(self, value: float) -> bool:
+    def setZoom(self, value: float) -> bool:
         return self._set_property("Base top view zoom", "zoom", value)
 
     @Slot(float, result=bool)
-    def requestOffsetX(self, value: float) -> bool:
+    def setOffsetX(self, value: float) -> bool:
         return self._set_property("Base top view horizontal pan", "offsetX", value)
 
     @Slot(float, result=bool)
-    def requestOffsetY(self, value: float) -> bool:
+    def setOffsetY(self, value: float) -> bool:
         return self._set_property("Base top view vertical pan", "offsetY", value)
 
     @Slot(bool, result=bool)
-    def requestCropEnabled(self, value: bool) -> bool:
+    def setCropEnabled(self, value: bool) -> bool:
         return self._set_property("Base top view crop enabled", "cropEnabled", value)
 
     @Slot(float, result=bool)
-    def requestCropWidthRatio(self, value: float) -> bool:
+    def setCropWidthRatio(self, value: float) -> bool:
         return self._set_property("Base top view crop width", "cropWidthRatio", value)
 
     @Slot(float, result=bool)
-    def requestCropCenterX(self, value: float) -> bool:
+    def setCropCenterX(self, value: float) -> bool:
         return self._set_property("Base top view crop center", "cropCenterX", value)
 
     @Slot(float, result=bool)
-    def requestK1(self, value: float) -> bool:
+    def setK1(self, value: float) -> bool:
         return self._set_property("Base top view distortion K1", "k1", value)
 
     @Slot(float, result=bool)
-    def requestK2(self, value: float) -> bool:
+    def setK2(self, value: float) -> bool:
         return self._set_property("Base top view distortion K2", "k2", value)
 
     @Slot(float, result=bool)
-    def requestK3(self, value: float) -> bool:
+    def setK3(self, value: float) -> bool:
         return self._set_property("Base top view distortion K3", "k3", value)
 
     @Slot(float, result=bool)
-    def requestK4(self, value: float) -> bool:
+    def setK4(self, value: float) -> bool:
         return self._set_property("Base top view distortion K4", "k4", value)
 
     @Slot(result=bool)

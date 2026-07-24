@@ -167,12 +167,12 @@ Popup {
                     title: "Zoom"
                     minValue: 0.1
                     maxValue: 2.0
-                    currentValue: baseTopViewController.zoom
+                    currentValue: baseTopViewStatus.zoom
                     stepSize: 0.01
                     decimals: 2
                     enabled: settingsPopup.liveAdjustmentsAllowed
                     onValueChanged: function(value) {
-                        if (!baseTopViewAdminHandler.requestZoom(value)) {
+                        if (!baseTopViewActions.setZoom(value)) {
                             syncFromCurrentValue()
                         }
                     }
@@ -184,12 +184,12 @@ Popup {
                     title: "Horizontal Pan"
                     minValue: -1.0
                     maxValue: 1.0
-                    currentValue: baseTopViewController.offsetX
+                    currentValue: baseTopViewStatus.offsetX
                     stepSize: 0.01
                     decimals: 3
                     enabled: settingsPopup.liveAdjustmentsAllowed
                     onValueChanged: function(value) {
-                        if (!baseTopViewAdminHandler.requestOffsetX(value)) {
+                        if (!baseTopViewActions.setOffsetX(value)) {
                             syncFromCurrentValue()
                         }
                     }
@@ -201,12 +201,12 @@ Popup {
                     title: "Vertical Pan"
                     minValue: -1.0
                     maxValue: 1.0
-                    currentValue: baseTopViewController.offsetY
+                    currentValue: baseTopViewStatus.offsetY
                     stepSize: 0.01
                     decimals: 3
                     enabled: settingsPopup.liveAdjustmentsAllowed
                     onValueChanged: function(value) {
-                        if (!baseTopViewAdminHandler.requestOffsetY(value)) {
+                        if (!baseTopViewActions.setOffsetY(value)) {
                             syncFromCurrentValue()
                         }
                     }
@@ -230,11 +230,11 @@ Popup {
                         
                         Switch {
                             id: cropToggle
-                            checked: baseTopViewController.cropEnabled
+                            checked: baseTopViewStatus.cropEnabled
                             enabled: settingsPopup.liveAdjustmentsAllowed
                             opacity: enabled ? 1.0 : 0.5
                             onToggled: {
-                                if (!baseTopViewAdminHandler.requestCropEnabled(checked)) {
+                                if (!baseTopViewActions.setCropEnabled(checked)) {
                                     cropToggle.checked = !checked
                                 }
                             }
@@ -248,12 +248,12 @@ Popup {
                     title: "Crop Width"
                     minValue: 0.1
                     maxValue: 1.0
-                    currentValue: baseTopViewController.cropWidthRatio
+                    currentValue: baseTopViewStatus.cropWidthRatio
                     stepSize: 0.01
                     decimals: 3
-                    enabled: baseTopViewController.cropEnabled && settingsPopup.liveAdjustmentsAllowed
+                    enabled: baseTopViewStatus.cropEnabled && settingsPopup.liveAdjustmentsAllowed
                     onValueChanged: function(value) {
-                        if (!baseTopViewAdminHandler.requestCropWidthRatio(value)) {
+                        if (!baseTopViewActions.setCropWidthRatio(value)) {
                             syncFromCurrentValue()
                         }
                     }
@@ -265,12 +265,12 @@ Popup {
                     title: "Crop Center"
                     minValue: 0.0
                     maxValue: 1.0
-                    currentValue: baseTopViewController.cropCenterX
+                    currentValue: baseTopViewStatus.cropCenterX
                     stepSize: 0.01
                     decimals: 3
-                    enabled: baseTopViewController.cropEnabled && settingsPopup.liveAdjustmentsAllowed
+                    enabled: baseTopViewStatus.cropEnabled && settingsPopup.liveAdjustmentsAllowed
                     onValueChanged: function(value) {
-                        if (!baseTopViewAdminHandler.requestCropCenterX(value)) {
+                        if (!baseTopViewActions.setCropCenterX(value)) {
                             syncFromCurrentValue()
                         }
                     }
@@ -282,12 +282,12 @@ Popup {
                     title: "Distortion K1"
                     minValue: -1.0
                     maxValue: 1.0
-                    currentValue: baseTopViewController.k1
+                    currentValue: baseTopViewStatus.k1
                     stepSize: 0.01
                     decimals: 3
                     enabled: settingsPopup.liveAdjustmentsAllowed
                     onValueChanged: function(value) {
-                        if (!baseTopViewAdminHandler.requestK1(value)) {
+                        if (!baseTopViewActions.setK1(value)) {
                             syncFromCurrentValue()
                         }
                     }
@@ -299,12 +299,12 @@ Popup {
                     title: "Distortion K2"
                     minValue: -1.0
                     maxValue: 1.0
-                    currentValue: baseTopViewController.k2
+                    currentValue: baseTopViewStatus.k2
                     stepSize: 0.01
                     decimals: 3
                     enabled: settingsPopup.liveAdjustmentsAllowed
                     onValueChanged: function(value) {
-                        if (!baseTopViewAdminHandler.requestK2(value)) {
+                        if (!baseTopViewActions.setK2(value)) {
                             syncFromCurrentValue()
                         }
                     }
@@ -316,12 +316,12 @@ Popup {
                     title: "Distortion K3"
                     minValue: -2.0
                     maxValue: 2.0
-                    currentValue: baseTopViewController.k3
+                    currentValue: baseTopViewStatus.k3
                     stepSize: 0.01
                     decimals: 3
                     enabled: settingsPopup.liveAdjustmentsAllowed
                     onValueChanged: function(value) {
-                        if (!baseTopViewAdminHandler.requestK3(value)) {
+                        if (!baseTopViewActions.setK3(value)) {
                             syncFromCurrentValue()
                         }
                     }
@@ -333,12 +333,12 @@ Popup {
                     title: "Distortion K4"
                     minValue: -2.0
                     maxValue: 2.0
-                    currentValue: baseTopViewController.k4
+                    currentValue: baseTopViewStatus.k4
                     stepSize: 0.01
                     decimals: 3
                     enabled: settingsPopup.liveAdjustmentsAllowed
                     onValueChanged: function(value) {
-                        if (!baseTopViewAdminHandler.requestK4(value)) {
+                        if (!baseTopViewActions.setK4(value)) {
                             syncFromCurrentValue()
                         }
                     }
@@ -397,8 +397,8 @@ Popup {
                     }
                     
                     onClicked: {
-                        if (baseTopViewController) {
-                            var success = baseTopViewAdminHandler.saveSettings()
+                        if (baseTopViewStatus) {
+                            var success = baseTopViewActions.saveSettings()
                             
                             if (success) {
                                 confirmationPopup.messageTitle = "Saved"
@@ -436,11 +436,11 @@ Popup {
                     }
                     
                     onClicked: {
-                        if (baseTopViewAdminHandler.resetToDefaults()) {
+                        if (baseTopViewActions.resetToDefaults()) {
                             zoomSlider.syncFromCurrentValue()
                             offsetXSlider.syncFromCurrentValue()
                             offsetYSlider.syncFromCurrentValue()
-                            cropToggle.checked = baseTopViewController.cropEnabled
+                            cropToggle.checked = baseTopViewStatus.cropEnabled
                             cropWidthSlider.syncFromCurrentValue()
                             cropCenterSlider.syncFromCurrentValue()
                             k1Slider.syncFromCurrentValue()

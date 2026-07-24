@@ -7,6 +7,7 @@ import json
 
 from tests.controller_factory_runtime_support import (
     FakeNode,
+    _BaseTopViewServiceRecorder,
     _CleanupRecorder,
     _ControlProcessorRecorder,
     _EngineRecorder,
@@ -41,7 +42,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     runtime.capability_catalog = object()
     runtime.state_store = object()
     runtime.steam_deck_handler = _SteamDeckHandlerRecorder()
-    runtime.base_top_view_service = object()
+    runtime.base_top_view_service = _BaseTopViewServiceRecorder()
     runtime.video_stream_handler = _VideoHandlerRecorder()
     runtime.qt_bridge = _QtBridgeRecorder()
     runtime.engine = _EngineRecorder()
@@ -68,7 +69,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
             "wheel_actions": object(),
             "winch_actions": object(),
             "tuning_actions": object(),
-            "base_top_view_admin_handler": object(),
+            "base_top_view_actions": object(),
             "ssh_controller": _SshControllerRecorder(),
             "system_monitor": _SystemMonitorRecorder(),
             "screen_manager": object(),
@@ -113,6 +114,8 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.teensy_status is not None
     assert runtime.valve_status is not None
     assert runtime.lidar_status is not None
+    assert runtime.base_top_view_status is not None
+    assert runtime.base_top_view_actions is not None
     assert runtime.shell_connectivity_status is not None
     assert runtime.launcher_admin is not None
     assert runtime.engine.context.properties["actionLegality"] is runtime.action_legality
@@ -129,6 +132,10 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.engine.context.properties["wheelActions"] is runtime.bundle.wheel_actions
     assert runtime.engine.context.properties["winchActions"] is runtime.bundle.winch_actions
     assert runtime.engine.context.properties["tuningActions"] is runtime.bundle.tuning_actions
+    assert runtime.engine.context.properties["baseTopViewActions"] is runtime.bundle.base_top_view_actions
+    assert runtime.engine.context.properties["baseTopViewStatus"] is runtime.base_top_view_status
+    assert "baseTopViewAdminHandler" not in runtime.engine.context.properties
+    assert "baseTopViewController" not in runtime.engine.context.properties
     assert runtime.system_control_services.manualCommandHandler is runtime.bundle.manual_command_handler
     assert runtime.video_runtime.controls.leftMode == "None"
     assert runtime.video_runtime.topBar.systemBatteryPercent == 100
@@ -166,6 +173,18 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.valve_status.valveMotorConnected is True
     assert runtime.lidar_status.distance == 1.25
     assert runtime.lidar_status.angle == -3.5
+    assert runtime.base_top_view_status.enabled is True
+    assert runtime.base_top_view_status.editMode is False
+    assert runtime.base_top_view_status.zoom == 0.51
+    assert runtime.base_top_view_status.offsetX == 0.026
+    assert runtime.base_top_view_status.offsetY == 0.474
+    assert runtime.base_top_view_status.cropEnabled is True
+    assert runtime.base_top_view_status.cropWidthRatio == 0.9
+    assert runtime.base_top_view_status.cropCenterX == 0.5
+    assert runtime.base_top_view_status.k1 == -0.389
+    assert runtime.base_top_view_status.k2 == 0.142
+    assert runtime.base_top_view_status.k3 == 0.0
+    assert runtime.base_top_view_status.k4 == 0.0
     assert runtime.teensy_status.enabled is True
     assert runtime.teensy_status.relayOn is False
     assert runtime.teensy_status.loopTime == 450.0

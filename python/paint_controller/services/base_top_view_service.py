@@ -433,6 +433,7 @@ class BaseTopViewService(QObject):
         self.logger = logging.getLogger(__name__)
         self._edit_mode = False
         self._enabled = False  # Start disabled to save resources
+        self._frame_ready_connected = False
         self._base_top_stream = None
         
         # Create worker and thread
@@ -512,6 +513,14 @@ class BaseTopViewService(QObject):
         """Clean up thread resources"""
         try:
             self.logger.info("Stopping base top view worker thread...")
+            self._enabled = False
+            if self._base_top_stream is not None and self._frame_ready_connected:
+                try:
+                    self._base_top_stream.frameReady.disconnect(self.worker.process_frame)
+                    self._frame_ready_connected = False
+                except RuntimeError:
+                    # Already disconnected
+                    self._frame_ready_connected = False
             self.worker_thread.quit()
             self.worker_thread.wait()
             self.logger.info("Base top view worker thread stopped")
@@ -762,11 +771,13 @@ class BaseTopViewService(QObject):
             # Connect/disconnect signal based on enabled state
             if value and self._base_top_stream:
                 self._base_top_stream.frameReady.connect(self.worker.process_frame)
+                self._frame_ready_connected = True
                 self.logger.info("Base top view processing enabled")
             elif not value and self._base_top_stream:
                 try:
                     self._base_top_stream.frameReady.disconnect(self.worker.process_frame)
+                    self._frame_ready_connected = False
                     self.logger.info("Base top view processing disabled")
                 except RuntimeError:
                     # Already disconnected
-                    pass
+                    self._frame_ready_connected = False

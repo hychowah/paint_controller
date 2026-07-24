@@ -1,8 +1,8 @@
-"""Focused tests for the Python-owned base-top calibration boundary."""
+"""Focused tests for the Python-owned base-top calibration action boundary."""
 
 from __future__ import annotations
 
-from paint_controller.handlers.base_top_view_admin import BaseTopViewAdminHandler
+from paint_controller.models.base_top_view_actions import BaseTopViewActions
 from tests.fakes import FakeLogger
 
 
@@ -43,37 +43,55 @@ class FakeAdminActionGate:
         return self.results.get(action_key, (True, ""))
 
 
-def _build_handler() -> tuple[BaseTopViewAdminHandler, FakeBaseTopViewService, FakeAdminActionGate, FakeLogger, list[tuple[bool, str]]]:
+def _build_actions() -> tuple[BaseTopViewActions, FakeBaseTopViewService, FakeAdminActionGate, FakeLogger, list[tuple[bool, str]]]:
     service = FakeBaseTopViewService()
     admin_action_gate = FakeAdminActionGate()
     logger = FakeLogger()
-    handler = BaseTopViewAdminHandler(
+    actions = BaseTopViewActions(
         base_top_view_service=service,
         admin_action_gate=admin_action_gate,
         logger=logger,
     )
     results: list[tuple[bool, str]] = []
-    handler.operation_result.connect(lambda success, message: results.append((success, message)))
-    return handler, service, admin_action_gate, logger, results
+    actions.operation_result.connect(lambda success, message: results.append((success, message)))
+    return actions, service, admin_action_gate, logger, results
 
 
-def test_base_top_live_adjustments_and_admin_actions_dispatch() -> None:
-    handler, service, admin_action_gate, logger, results = _build_handler()
+def test_base_top_live_adjustments_and_actions_dispatch() -> None:
+    actions, service, admin_action_gate, logger, results = _build_actions()
 
-    assert handler.requestZoom(0.75) is True
-    assert handler.requestOffsetX(0.11) is True
-    assert handler.requestCropEnabled(False) is True
-    assert handler.requestK2(0.22) is True
-    assert handler.saveSettings() is True
-    assert handler.resetToDefaults() is True
+    assert actions.setZoom(0.75) is True
+    assert actions.setOffsetX(0.11) is True
+    assert actions.setOffsetY(0.22) is True
+    assert actions.setCropEnabled(False) is True
+    assert actions.setCropWidthRatio(0.8) is True
+    assert actions.setCropCenterX(0.6) is True
+    assert actions.setK1(-0.5) is True
+    assert actions.setK2(0.25) is True
+    assert actions.setK3(0.1) is True
+    assert actions.setK4(0.05) is True
+    assert actions.saveSettings() is True
+    assert actions.resetToDefaults() is True
 
     assert service.zoom == 0.75
     assert service.offsetX == 0.11
+    assert service.offsetY == 0.22
     assert service.cropEnabled is False
-    assert service.k2 == 0.22
+    assert service.cropWidthRatio == 0.8
+    assert service.cropCenterX == 0.6
+    assert service.k1 == -0.5
+    assert service.k2 == 0.25
+    assert service.k3 == 0.1
+    assert service.k4 == 0.05
     assert service.save_calls == 1
     assert service.reset_calls == 1
     assert admin_action_gate.calls == [
+        "camera.base_top_view.live_adjustments",
+        "camera.base_top_view.live_adjustments",
+        "camera.base_top_view.live_adjustments",
+        "camera.base_top_view.live_adjustments",
+        "camera.base_top_view.live_adjustments",
+        "camera.base_top_view.live_adjustments",
         "camera.base_top_view.live_adjustments",
         "camera.base_top_view.live_adjustments",
         "camera.base_top_view.live_adjustments",
@@ -86,14 +104,14 @@ def test_base_top_live_adjustments_and_admin_actions_dispatch() -> None:
 
 
 def test_base_top_gate_denial_blocks_live_adjustment() -> None:
-    handler, service, admin_action_gate, logger, results = _build_handler()
+    actions, service, admin_action_gate, logger, results = _build_actions()
     admin_action_gate.set_result(
         "camera.base_top_view.live_adjustments",
         False,
         "camera.base_top_view.live_adjustments requires the system to be idle",
     )
 
-    assert handler.requestZoom(0.92) is False
+    assert actions.setZoom(0.92) is False
 
     assert service.zoom == 0.51
     assert results[-1] == (False, "camera.base_top_view.live_adjustments requires the system to be idle")
@@ -101,10 +119,10 @@ def test_base_top_gate_denial_blocks_live_adjustment() -> None:
 
 
 def test_base_top_save_rejection_is_reported() -> None:
-    handler, service, _gate, logger, results = _build_handler()
+    actions, service, _gate, logger, results = _build_actions()
     service.save_result = False
 
-    assert handler.saveSettings() is False
+    assert actions.saveSettings() is False
 
     assert service.save_calls == 1
     assert results[-1] == (False, "Base top view save was rejected by the backend")

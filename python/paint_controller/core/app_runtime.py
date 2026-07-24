@@ -20,6 +20,7 @@ from paint_controller.core.ros_node import RosThread
 from paint_controller.core.settings import SettingsManager
 from paint_controller.handlers.steam_deck import SteamDeckHandler
 from paint_controller.models.action_legality_model import ActionLegalityModel
+from paint_controller.models.base_top_view_actions import BaseTopViewActions
 from paint_controller.models.capability_catalog import CapabilityCatalog
 from paint_controller.models.tuning_actions import TuningActions
 from paint_controller.models.wheel_actions import WheelActions
@@ -58,13 +59,13 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "deviceOperationsHandler",
     "winchActions",
     "tuningActions",
-    "baseTopViewAdminHandler",
+    "baseTopViewActions",
+    "baseTopViewStatus",
     "systemMonitor",
     "screenRecorder",
     "rosBagRecorder",
     "settingsManager",
     "screenManager",
-    "baseTopViewController",
 )
 
 
@@ -971,6 +972,91 @@ class _LidarStatus(QObject):
         return self._float_value("angle")
 
 
+class _BaseTopViewStatus(QObject):
+    changed = Signal()
+    frameReady = Signal()
+
+    def __init__(self, base_top_view_service: object) -> None:
+        super().__init__()
+        self._service = base_top_view_service
+        for signal_name in (
+            "zoomChanged",
+            "offsetXChanged",
+            "offsetYChanged",
+            "cropEnabledChanged",
+            "cropWidthRatioChanged",
+            "cropCenterXChanged",
+            "k1Changed",
+            "k2Changed",
+            "k3Changed",
+            "k4Changed",
+            "editModeChanged",
+            "enabledChanged",
+            "sourcePointsChanged",
+        ):
+            _connect_if_signal(base_top_view_service, signal_name, self.changed.emit)
+        _connect_if_signal(base_top_view_service, "frameReady", self.frameReady.emit)
+
+    def _float_value(self, key: str) -> float:
+        value = _read_object_value(self._service, key, default=0.0)
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @Property(bool, notify=changed)
+    def enabled(self) -> bool:
+        return bool(_read_object_value(self._service, "enabled", default=False))
+
+    @Property(bool, notify=changed)
+    def editMode(self) -> bool:
+        return bool(_read_object_value(self._service, "editMode", default=False))
+
+    @Property(float, notify=changed)
+    def zoom(self) -> float:
+        return self._float_value("zoom")
+
+    @Property(float, notify=changed)
+    def offsetX(self) -> float:
+        return self._float_value("offsetX")
+
+    @Property(float, notify=changed)
+    def offsetY(self) -> float:
+        return self._float_value("offsetY")
+
+    @Property(bool, notify=changed)
+    def cropEnabled(self) -> bool:
+        return bool(_read_object_value(self._service, "cropEnabled", default=False))
+
+    @Property(float, notify=changed)
+    def cropWidthRatio(self) -> float:
+        return self._float_value("cropWidthRatio")
+
+    @Property(float, notify=changed)
+    def cropCenterX(self) -> float:
+        return self._float_value("cropCenterX")
+
+    @Property(float, notify=changed)
+    def k1(self) -> float:
+        return self._float_value("k1")
+
+    @Property(float, notify=changed)
+    def k2(self) -> float:
+        return self._float_value("k2")
+
+    @Property(float, notify=changed)
+    def k3(self) -> float:
+        return self._float_value("k3")
+
+    @Property(float, notify=changed)
+    def k4(self) -> float:
+        return self._float_value("k4")
+
+    @Property("QVariantList", notify=changed)
+    def sourcePoints(self) -> Any:
+        return _read_object_value(self._service, "sourcePoints", default=[])
+
+
 def teardown_qml_runtime(
     engine: QQmlApplicationEngine,
     app: QApplication,
@@ -1027,6 +1113,8 @@ class AppRuntime:
         self.steam_deck_handler: SteamDeckHandler | None = None
         self.video_stream_handler: VideoStreamHandler | None = None
         self.base_top_view_service: BaseTopViewService | None = None
+        self.base_top_view_status: _BaseTopViewStatus | None = None
+        self.base_top_view_actions: BaseTopViewActions | None = None
         self.ros_thread: RosThread | None = None
         self.engine: QQmlApplicationEngine | None = None
         self.qt_bridge = None
@@ -1196,6 +1284,8 @@ class AppRuntime:
         self.teensy_status = _TeensyStatus(self.bundle.teensy_controller)
         self.valve_status = _ValveStatus(self.bundle.esp32_valve_controller)
         self.lidar_status = _LidarStatus(self.bundle.lidar_controller)
+        self.base_top_view_status = _BaseTopViewStatus(self.base_top_view_service)
+        self.base_top_view_actions = self.bundle.base_top_view_actions
         self.shell_connectivity_status = _ShellConnectivityStatus(
             ssh_controller=self.bundle.ssh_controller,
             heartbeat_handler=self.bundle.heartbeat_handler,
@@ -1311,7 +1401,8 @@ class AppRuntime:
         assert self.steam_deck_handler is not None
         assert self.settings_manager is not None
         assert self.capability_catalog is not None
-        assert self.base_top_view_service is not None
+        assert self.base_top_view_status is not None
+        assert self.base_top_view_actions is not None
 
         return {
             "stateStore": self.state_store,
@@ -1342,13 +1433,13 @@ class AppRuntime:
             "deviceOperationsHandler": self.bundle.device_operations_handler,
             "winchActions": self.bundle.winch_actions,
             "tuningActions": self.tuning_actions,
-            "baseTopViewAdminHandler": self.bundle.base_top_view_admin_handler,
+            "baseTopViewActions": self.base_top_view_actions,
+            "baseTopViewStatus": self.base_top_view_status,
             "systemMonitor": self.bundle.system_monitor,
             "screenRecorder": self.bundle.screen_recorder,
             "rosBagRecorder": self.bundle.ros_bag_recorder,
             "settingsManager": self.settings_manager,
             "screenManager": self.bundle.screen_manager,
-            "baseTopViewController": self.base_top_view_service,
         }
 
     def _register_context_properties(self) -> None:
