@@ -1,6 +1,6 @@
 # Master Plan: Shrink the QML Runtime Surface
 
-> **Status**: Phase 0 completed; Phase 1 (winch family) is next.  
+> **Status**: Phase 3 completed; Phase 4 (base top-view family) is next.  
 > **Branch**: `qml-surface-retirement-phase-0`  
 > **Goal**: Retire raw controller/handler context properties and replace them with bounded, feature-root Python models so QML stays declarative and Python owns policy.
 

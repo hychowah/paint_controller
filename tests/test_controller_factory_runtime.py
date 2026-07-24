@@ -39,7 +39,7 @@ def test_controller_bundle_cleanup_runs_reverse_order_and_logs_errors() -> None:
         device_operations_handler=object(),
         wheel_actions=object(),
         winch_actions=object(),
-        tuning_admin_handler=object(),
+        tuning_actions=object(),
         base_top_view_admin_handler=object(),
         input_handler=cleanup_factory("input_handler"),
         emergency_handler=BrokenCleanup(),
@@ -117,7 +117,7 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     monkeypatch.setattr(module, "DeviceOperationsHandler", record("DeviceOperationsHandler"))
     monkeypatch.setattr(module, "WheelActions", record("WheelActions"))
     monkeypatch.setattr(module, "WinchActions", record("WinchActions"))
-    monkeypatch.setattr(module, "TuningAdminHandler", record("TuningAdminHandler"))
+    monkeypatch.setattr(module, "TuningActions", record("TuningActions"))
     monkeypatch.setattr(module, "BaseTopViewAdminHandler", record("BaseTopViewAdminHandler"))
     monkeypatch.setattr(module, "WorkflowCatalog", record("WorkflowCatalog"))
     monkeypatch.setattr(module, "WorkflowEditor", record("WorkflowEditor"))
@@ -188,9 +188,9 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     assert bundle.winch_actions.kwargs["winch"] is bundle.winch_controller
     assert bundle.winch_actions.kwargs["admin_action_gate"] is bundle.admin_action_gate
     assert bundle.winch_actions.kwargs["logger"] is node.get_logger()
-    assert bundle.tuning_admin_handler.kwargs["teensy"] is bundle.teensy_controller
-    assert bundle.tuning_admin_handler.kwargs["admin_action_gate"] is bundle.admin_action_gate
-    assert bundle.tuning_admin_handler.kwargs["logger"] is node.get_logger()
+    assert bundle.tuning_actions.kwargs["teensy"] is bundle.teensy_controller
+    assert bundle.tuning_actions.kwargs["admin_action_gate"] is bundle.admin_action_gate
+    assert bundle.tuning_actions.kwargs["logger"] is node.get_logger()
     assert bundle.base_top_view_admin_handler.kwargs["base_top_view_service"] is base_top_view_service
     assert bundle.base_top_view_admin_handler.kwargs["admin_action_gate"] is bundle.admin_action_gate
     assert bundle.base_top_view_admin_handler.kwargs["logger"] is node.get_logger()

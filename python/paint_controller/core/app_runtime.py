@@ -21,6 +21,7 @@ from paint_controller.core.settings import SettingsManager
 from paint_controller.handlers.steam_deck import SteamDeckHandler
 from paint_controller.models.action_legality_model import ActionLegalityModel
 from paint_controller.models.capability_catalog import CapabilityCatalog
+from paint_controller.models.tuning_actions import TuningActions
 from paint_controller.models.wheel_actions import WheelActions
 from paint_controller.services.base_top_view_service import BaseTopViewService
 from paint_controller.services.video_stream import VideoStreamHandler
@@ -56,7 +57,7 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "deviceActionHandler",
     "deviceOperationsHandler",
     "winchActions",
-    "tuningAdminHandler",
+    "tuningActions",
     "baseTopViewAdminHandler",
     "systemMonitor",
     "screenRecorder",
@@ -808,6 +809,22 @@ class _TeensyStatus(QObject):
         return self._status_float("imu_yaw")
 
     @Property(float, notify=changed)
+    def yawCommand(self) -> float:
+        return self._status_float("yaw_command")
+
+    @Property(float, notify=changed)
+    def yawPidP(self) -> float:
+        return self._status_float("yaw_pid_p")
+
+    @Property(float, notify=changed)
+    def yawPidI(self) -> float:
+        return self._status_float("yaw_pid_i")
+
+    @Property(float, notify=changed)
+    def yawPidD(self) -> float:
+        return self._status_float("yaw_pid_d")
+
+    @Property(float, notify=changed)
     def imuAccX(self) -> float:
         return self._status_float("imu_acc_x")
 
@@ -1175,6 +1192,7 @@ class AppRuntime:
         self.wheel_status = _WheelStatus(self.bundle.wheel_controller)
         self.wheel_actions = self.bundle.wheel_actions
         self.winch_status = _WinchStatus(self.bundle.winch_controller)
+        self.tuning_actions = self.bundle.tuning_actions
         self.teensy_status = _TeensyStatus(self.bundle.teensy_controller)
         self.valve_status = _ValveStatus(self.bundle.esp32_valve_controller)
         self.lidar_status = _LidarStatus(self.bundle.lidar_controller)
@@ -1283,6 +1301,7 @@ class AppRuntime:
         assert self.wheel_status is not None
         assert self.wheel_actions is not None
         assert self.winch_status is not None
+        assert self.tuning_actions is not None
         assert self.teensy_status is not None
         assert self.valve_status is not None
         assert self.lidar_status is not None
@@ -1322,7 +1341,7 @@ class AppRuntime:
             "deviceActionHandler": self.bundle.device_action_handler,
             "deviceOperationsHandler": self.bundle.device_operations_handler,
             "winchActions": self.bundle.winch_actions,
-            "tuningAdminHandler": self.bundle.tuning_admin_handler,
+            "tuningActions": self.tuning_actions,
             "baseTopViewAdminHandler": self.bundle.base_top_view_admin_handler,
             "systemMonitor": self.bundle.system_monitor,
             "screenRecorder": self.bundle.screen_recorder,

@@ -10,7 +10,7 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 
 - Overall status: in progress
 - Active architecture program: QML surface retirement per `docs/plan/MASTER_PLAN_QML_SURFACE_RETIREMENT.md`
-- Most recent completed slice: Phase 2 wheel family (`wheelActions`) on 2026-07-24
+- Most recent completed slice: Phase 3 tuning family (`tuningActions`) on 2026-07-24
 - Core purpose: reduce global coupling, clarify ownership, shrink the app-scope QML contract, and make operator-visible behavior easier to trace
 - First-principles rule: success means fewer permanent app-scope QML reads and fewer equal-owner concepts, not wrapper proliferation
 - Last focused validation: `44 passed` for `tests/test_wheel_actions.py tests/test_device_actions.py tests/test_app_runtime_runtime.py tests/test_controller_factory_runtime.py tests/test_capability_catalog.py tests/test_action_legality_model.py tests/test_startup_smoke.py tests/test_qml_imports.py` on 2026-07-24
@@ -20,17 +20,17 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 
 ### Now
 
-#### Phase 3: Tuning family (`tuningActions`)
-
-- Create `tuningActions` and retire `tuningAdminHandler` from the QML context.
-- Stop direct `teensyController.all_status` reads in `PageTuning.qml` by extending `teensyStatus` coverage where needed.
-
-### Next
-
 #### Phase 4: Base top-view family (`baseTopViewActions`)
 
 - Create `baseTopViewActions` and retire `baseTopViewAdminHandler`.
 - Rationalize `baseTopViewController` and `baseStreamHandler` exposure.
+
+### Next
+
+#### Phase 5: Device operations split
+
+- Dissolve `deviceOperationsHandler` into feature-root models (`recordingActions`, `teensyOperations`, etc.) without creating shallow mirrors.
+- Remove `deviceOperationsHandler` from the QML context.
 
 ### Later
 
@@ -87,6 +87,7 @@ These files are allowed to keep temporary raw-global reads until their named fam
 - Phase 0 of the QML surface retirement program completed the contract-parity harness, removed the `MainWindow.qml` `visible`/`visibility` conflict, retired the duplicate `core/CommonStyle.qml` singleton, and added teardown regression coverage.
 - Phase 1 completed the winch family retirement: `winchActions` now owns winch motion policy; `winchMotionHandler` is removed from the QML context and the codebase.
 - Phase 2 completed the wheel family retirement: `wheelActions` now owns wheel enable/reset policy; `wheelController` is removed from the app-scope QML context; wheel-related methods are removed from `DeviceActionHandler`.
+- Phase 3 completed the tuning family retirement: `tuningActions` now owns yaw PID tuning policy; `tuningAdminHandler` is removed from the QML context and the codebase; `PageTuning.qml` no longer reads raw `teensyController.all_status`.
 
 ## Active Risks
 
@@ -98,7 +99,7 @@ These files are allowed to keep temporary raw-global reads until their named fam
 ## Next Session Checklist
 
 1. Keep the live board in this file as the only source of truth for unfinished architecture work.
-2. Continue the master plan at Phase 2 (wheel family) unless a higher-leverage retirement is proven.
+2. Continue the master plan at Phase 4 (base top-view family) unless a higher-leverage retirement is proven.
 3. Preserve frozen shell and launcher contracts.
 4. Keep the quarantined remainder explicit by file.
 5. Do not open automation follow-on work until the root QML contract is materially smaller.

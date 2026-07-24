@@ -67,7 +67,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
             "device_operations_handler": object(),
             "wheel_actions": object(),
             "winch_actions": object(),
-            "tuning_admin_handler": object(),
+            "tuning_actions": object(),
             "base_top_view_admin_handler": object(),
             "ssh_controller": _SshControllerRecorder(),
             "system_monitor": _SystemMonitorRecorder(),
@@ -128,6 +128,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.engine.context.properties["launcherAdmin"] is runtime.launcher_admin
     assert runtime.engine.context.properties["wheelActions"] is runtime.bundle.wheel_actions
     assert runtime.engine.context.properties["winchActions"] is runtime.bundle.winch_actions
+    assert runtime.engine.context.properties["tuningActions"] is runtime.bundle.tuning_actions
     assert runtime.system_control_services.manualCommandHandler is runtime.bundle.manual_command_handler
     assert runtime.video_runtime.controls.leftMode == "None"
     assert runtime.video_runtime.topBar.systemBatteryPercent == 100
@@ -153,6 +154,12 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.winch_status.loadDetectionEnabled is True
     assert runtime.winch_status.cableLength == 1200.0
     assert runtime.teensy_status.imuPitch == 1.5
+    assert runtime.teensy_status.imuRoll == -0.5
+    assert runtime.teensy_status.imuYaw == 3.0
+    assert runtime.teensy_status.yawCommand == 5.0
+    assert runtime.teensy_status.yawPidP == 0.1
+    assert runtime.teensy_status.yawPidI == 0.2
+    assert runtime.teensy_status.yawPidD == 0.3
     assert runtime.teensy_status.armExtensionDist == 320.0
     assert runtime.teensy_status.gimbalPitchMotorAngle == -4.5
     assert runtime.valve_status.valvePosition == 42.0

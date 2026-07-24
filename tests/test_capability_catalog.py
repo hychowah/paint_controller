@@ -58,7 +58,7 @@ def test_capability_catalog_inventories_known_admin_mutators(monkeypatch, tmp_pa
     camera_actions = catalog.getSurfaceActions("overlay_popup:base_top_view")
     winch_actions = catalog.getSurfaceActions("page:winch")
 
-    assert tuning["authority"] == "tuningAdminHandler.requestShortYawPid"
+    assert tuning["authority"] == "tuningActions.setShortYawPid"
     assert tuning["immediateRuntimeSideEffect"] is True
     assert tuning["legalStateClass"] == "tuning-calibration"
 

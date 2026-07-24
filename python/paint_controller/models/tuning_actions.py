@@ -1,4 +1,4 @@
-"""Python-owned tuning boundary for page-level PID actions."""
+"""Python-owned, feature-root action boundary for tuning controls."""
 
 from __future__ import annotations
 
@@ -7,8 +7,13 @@ from typing import Any
 from PySide6.QtCore import QObject, Signal, Slot
 
 
-class TuningAdminHandler(QObject):
-    """Own tuning actions initiated from QML."""
+class TuningActions(QObject):
+    """Own page-level tuning requests initiated from QML.
+
+    This model absorbs the policy previously held by ``TuningAdminHandler`` so
+    that QML accesses yaw PID tuning through a single feature-root object rather
+    than a handler-shaped global.
+    """
 
     operation_result = Signal(bool, str)
 
@@ -25,7 +30,7 @@ class TuningAdminHandler(QObject):
         self._logger = logger
 
     @Slot(float, float, float, result=bool)
-    def requestShortYawPid(self, p_value: float, i_value: float, d_value: float) -> bool:
+    def setShortYawPid(self, p_value: float, i_value: float, d_value: float) -> bool:
         return self._run_action(
             action_key="tuning.short_yaw_pid",
             name="Short yaw PID",
@@ -34,7 +39,7 @@ class TuningAdminHandler(QObject):
         )
 
     @Slot(float, float, float, result=bool)
-    def requestLongYawPid(self, p_value: float, i_value: float, d_value: float) -> bool:
+    def setLongYawPid(self, p_value: float, i_value: float, d_value: float) -> bool:
         return self._run_action(
             action_key="tuning.long_yaw_pid",
             name="Long yaw PID",

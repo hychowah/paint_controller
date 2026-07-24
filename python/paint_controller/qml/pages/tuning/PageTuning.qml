@@ -18,86 +18,86 @@ Item {
         "Short Yaw PID": {
             description: "Tune yaw axis PID parameters",
             chartSeries: "yaw",
-            currentValueGetter: () => teensyController.all_status.imu_yaw,
-            targetValueGetter: () => teensyController.all_status.yaw_command,
+            currentValueGetter: () => teensyStatus.imuYaw,
+            targetValueGetter: () => teensyStatus.yawCommand,
             parameters: [
                 { 
                     name: "P Value", 
                     type: "number", 
-                    currentGetter: () => teensyController.all_status.yaw_pid_p,
+                    currentGetter: () => teensyStatus.yawPidP,
                     unit: "",
                     stepPercent: 5 
                 },
                 { 
                     name: "I Value", 
                     type: "number", 
-                    currentGetter: () => teensyController.all_status.yaw_pid_i,
+                    currentGetter: () => teensyStatus.yawPidI,
                     unit: "",
                     stepPercent: 5 
                 },
                 { 
                     name: "D Value", 
                     type: "number", 
-                    currentGetter: () => teensyController.all_status.yaw_pid_d,
+                    currentGetter: () => teensyStatus.yawPidD,
                     unit: "",
                     stepPercent: 5 
                 },
                 { 
                     name: "Target", 
                     type: "number", 
-                    currentGetter: () => teensyController.all_status.yaw_command,
+                    currentGetter: () => teensyStatus.yawCommand,
                     unit: "degrees",
                     stepPercent: 10 
                 }
             ],
             sendFunction: (params) => {
-                return tuningAdminHandler.requestShortYawPid(
-                    params["P Value"] !== undefined ? params["P Value"] : teensyController.all_status.yaw_pid_p,
-                    params["I Value"] !== undefined ? params["I Value"] : teensyController.all_status.yaw_pid_i,
-                    params["D Value"] !== undefined ? params["D Value"] : teensyController.all_status.yaw_pid_d
+                return tuningActions.setShortYawPid(
+                    params["P Value"] !== undefined ? params["P Value"] : teensyStatus.yawPidP,
+                    params["I Value"] !== undefined ? params["I Value"] : teensyStatus.yawPidI,
+                    params["D Value"] !== undefined ? params["D Value"] : teensyStatus.yawPidD
                 )
             }
         },
         "Long Yaw PID": {
             description: "Tune long yaw axis PID parameters",
             chartSeries: "yaw",
-            currentValueGetter: () => teensyController.all_status.imu_yaw,
-            targetValueGetter: () => teensyController.all_status.yaw_command,
+            currentValueGetter: () => teensyStatus.imuYaw,
+            targetValueGetter: () => teensyStatus.yawCommand,
             parameters: [
                 { 
                     name: "P Value", 
                     type: "number", 
-                    currentGetter: () => teensyController.all_status.yaw_pid_p,
+                    currentGetter: () => teensyStatus.yawPidP,
                     unit: "",
                     stepPercent: 5 
                 },
                 { 
                     name: "I Value", 
                     type: "number", 
-                    currentGetter: () => teensyController.all_status.yaw_pid_i,
+                    currentGetter: () => teensyStatus.yawPidI,
                     unit: "",
                     stepPercent: 5 
                 },
                 { 
                     name: "D Value", 
                     type: "number", 
-                    currentGetter: () => teensyController.all_status.yaw_pid_d,
+                    currentGetter: () => teensyStatus.yawPidD,
                     unit: "",
                     stepPercent: 5 
                 },
                 { 
                     name: "Target", 
                     type: "number", 
-                    currentGetter: () => teensyController.all_status.yaw_command,
+                    currentGetter: () => teensyStatus.yawCommand,
                     unit: "degrees",
                     stepPercent: 10 
                 }
             ],
             sendFunction: (params) => {
-                return tuningAdminHandler.requestLongYawPid(
-                    params["P Value"] !== undefined ? params["P Value"] : teensyController.all_status.yaw_pid_p,
-                    params["I Value"] !== undefined ? params["I Value"] : teensyController.all_status.yaw_pid_i,
-                    params["D Value"] !== undefined ? params["D Value"] : teensyController.all_status.yaw_pid_d
+                return tuningActions.setLongYawPid(
+                    params["P Value"] !== undefined ? params["P Value"] : teensyStatus.yawPidP,
+                    params["I Value"] !== undefined ? params["I Value"] : teensyStatus.yawPidI,
+                    params["D Value"] !== undefined ? params["D Value"] : teensyStatus.yawPidD
                 )
             }
         }
@@ -115,9 +115,9 @@ Item {
         onTriggered: {
             var currentTime = new Date().getTime()
             
-            pitchSeries.append(currentTime - startTime, teensyController.all_status.imu_pitch)
-            rollSeries.append(currentTime - startTime, teensyController.all_status.imu_roll)
-            yawSeries.append(currentTime - startTime, teensyController.all_status.imu_yaw)
+            pitchSeries.append(currentTime - startTime, teensyStatus.imuPitch)
+            rollSeries.append(currentTime - startTime, teensyStatus.imuRoll)
+            yawSeries.append(currentTime - startTime, teensyStatus.imuYaw)
             
             while (pitchSeries.count > 0 && 
                    pitchSeries.at(0).x < currentTime - startTime - timeWindow) {

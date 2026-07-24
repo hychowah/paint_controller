@@ -20,6 +20,7 @@
     "python/paint_controller/core/qt_bridge.py",
     "python/paint_controller/core/settings.py",
     "python/paint_controller/core/state_store.py",
+    "python/paint_controller/models/tuning_actions.py",
     "python/paint_controller/models/wheel_actions.py",
     "python/paint_controller/models/winch_actions.py"
   ]

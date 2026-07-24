@@ -23,8 +23,8 @@ from paint_controller.handlers.input import UIInputHandler
 from paint_controller.handlers.manual_commands import ManualCommandHandler
 from paint_controller.handlers.safety_coordinator import SafetyCoordinator
 from paint_controller.handlers.steam_deck import SteamDeckHandler
-from paint_controller.handlers.tuning_admin import TuningAdminHandler
 from paint_controller.handlers.warnings import WarningHandler
+from paint_controller.models.tuning_actions import TuningActions
 from paint_controller.models.wheel_actions import WheelActions
 from paint_controller.models.winch_actions import WinchActions
 from paint_controller.services.ros_bag_recorder import RosBagRecorder
@@ -66,7 +66,7 @@ class ControllerBundle:
     device_operations_handler: DeviceOperationsHandler
     wheel_actions: WheelActions
     winch_actions: WinchActions
-    tuning_admin_handler: TuningAdminHandler
+    tuning_actions: TuningActions
     base_top_view_admin_handler: BaseTopViewAdminHandler
     input_handler: UIInputHandler
     emergency_handler: EmergencyButtonHandler
@@ -248,7 +248,7 @@ def create_controllers(
         logger=logger,
     )
 
-    tuning_admin_handler = TuningAdminHandler(
+    tuning_actions = TuningActions(
         teensy=teensy,
         admin_action_gate=admin_action_gate,
         logger=logger,
@@ -281,7 +281,7 @@ def create_controllers(
         device_operations_handler=device_operations_handler,
         wheel_actions=wheel_actions,
         winch_actions=winch_actions,
-        tuning_admin_handler=tuning_admin_handler,
+        tuning_actions=tuning_actions,
         base_top_view_admin_handler=base_top_view_admin_handler,
         input_handler=input_handler,
         emergency_handler=emergency,

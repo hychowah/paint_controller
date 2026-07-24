@@ -664,13 +664,13 @@ class FakeWinchActions(QObject):
         return True
 
 
-class FakeTuningAdminHandler(QObject):
+class FakeTuningActions(QObject):
     @Slot(float, float, float, result=bool)
-    def requestShortYawPid(self, _p: float, _i: float, _d: float) -> bool:
+    def setShortYawPid(self, _p: float, _i: float, _d: float) -> bool:
         return True
 
     @Slot(float, float, float, result=bool)
-    def requestLongYawPid(self, _p: float, _i: float, _d: float) -> bool:
+    def setLongYawPid(self, _p: float, _i: float, _d: float) -> bool:
         return True
 
 
@@ -849,6 +849,10 @@ def _teensy_all_status() -> DynamicObject:
         imu_pitch=0.0,
         imu_roll=0.0,
         imu_yaw=0.0,
+        yaw_command=0.0,
+        yaw_pid_p=0.0,
+        yaw_pid_i=0.0,
+        yaw_pid_d=0.0,
         imu_acc_x=0.0,
         imu_acc_y=0.0,
         imu_acc_z=0.0,
@@ -918,6 +922,10 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
         imuPitch=0.0,
         imuRoll=0.0,
         imuYaw=0.0,
+        yawCommand=0.0,
+        yawPidP=0.0,
+        yawPidI=0.0,
+        yawPidD=0.0,
         imuAccX=0.0,
         imuAccY=0.0,
         imuAccZ=0.0,
@@ -1054,7 +1062,7 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             bag_status_message="",
         ),
         "settingsManager": settings_manager,
-        "tuningAdminHandler": FakeTuningAdminHandler(),
+        "tuningActions": FakeTuningActions(),
         "baseTopViewAdminHandler": FakeBaseTopViewAdminHandler(),
         "screenManager": FakeScreenManager(),
         "baseTopViewController": FakeBaseTopViewController(),
