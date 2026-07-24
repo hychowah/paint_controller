@@ -287,6 +287,9 @@ class FakeOverlay:
     def get_right_selected_option(self) -> str:
         return self._right
 
+    def display_name_for_option(self, option: str) -> str:
+        return option
+
 
 class FakeHeartbeatHandler:
     """Minimal UIHeartbeatHandler double with configurable status values."""

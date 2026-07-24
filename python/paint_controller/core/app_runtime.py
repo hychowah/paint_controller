@@ -125,6 +125,8 @@ class _VideoRuntimeControls(QObject):
             "left_control_value_changed",
             "right_control_mode_changed",
             "right_control_value_changed",
+            "left_control_mode_display_changed",
+            "right_control_mode_display_changed",
         ):
             _connect_if_signal(control_processor, signal_name, self.changed.emit)
 
@@ -143,6 +145,18 @@ class _VideoRuntimeControls(QObject):
     @Property(str, notify=changed)
     def rightValue(self) -> str:
         return str(_read_object_value(self._control_processor, "right_control_value", default=""))
+
+    @Property(str, notify=changed)
+    def leftModeDisplay(self) -> str:
+        return str(
+            _read_object_value(self._control_processor, "left_control_mode_display", default="")
+        )
+
+    @Property(str, notify=changed)
+    def rightModeDisplay(self) -> str:
+        return str(
+            _read_object_value(self._control_processor, "right_control_mode_display", default="")
+        )
 
 
 class _VideoRuntimeFeeds(QObject):

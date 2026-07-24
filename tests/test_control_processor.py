@@ -262,6 +262,9 @@ class _MutableOverlay:
     def get_right_selected_option(self) -> str:
         return self.right
 
+    def display_name_for_option(self, option: str) -> str:
+        return option
+
 
 def test_process_input_seeds_yaw_offset_when_selection_changes_to_yaw(qt_app) -> None:
     teensy = FakeTeensy()
@@ -445,3 +448,19 @@ def test_process_input_unknown_mode_sends_no_command(qt_app) -> None:
     cp.process_input(_stick_state(ly=JOYSTICK_MAX, ry=JOYSTICK_MAX))
     assert wheel.left_speed_commands == []
     assert wheel.right_speed_commands == []
+
+
+def test_display_properties_follow_selection_model(qt_app) -> None:
+    """Compact display labels are derived from the canonical selection model names."""
+    from paint_controller.models.joystick_selection import JoystickSelectionModel
+
+    model = JoystickSelectionModel()
+    model.set_joystick_controls("Track Control Left", "EF Yaw Angle")
+    cp = _make_cp(overlay=model)
+
+    cp.process_input(_stick_state())
+
+    assert cp.left_control_mode == "Track Control Left"
+    assert cp.left_control_mode_display == "Track Left"
+    assert cp.right_control_mode == "EF Yaw Angle"
+    assert cp.right_control_mode_display == "Yaw"

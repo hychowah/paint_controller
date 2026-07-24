@@ -249,6 +249,8 @@ class FakeVideoRuntimeControls(QObject):
         self._left_value = ""
         self._right_mode = "None"
         self._right_value = ""
+        self._left_mode_display = "None"
+        self._right_mode_display = "None"
 
     @Property(str, constant=True)
     def leftMode(self) -> str:
@@ -265,6 +267,14 @@ class FakeVideoRuntimeControls(QObject):
     @Property(str, constant=True)
     def rightValue(self) -> str:
         return self._right_value
+
+    @Property(str, constant=True)
+    def leftModeDisplay(self) -> str:
+        return self._left_mode_display
+
+    @Property(str, constant=True)
+    def rightModeDisplay(self) -> str:
+        return self._right_mode_display
 
 
 class FakeVideoRuntimeTopBar(QObject):

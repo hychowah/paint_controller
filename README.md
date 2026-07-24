@@ -198,7 +198,7 @@ Useful focused handoff bands:
 
 - Multi-screen behavior is managed by `ScreenManager` and the QML shell; use `docs/plan/00_ARCHITECTURE_PROGRESS.md` for the live next slice and `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture rationale.
 - The build system is now a pure `ament_cmake` wrapper around the Python package; no live C++ UI/runtime path remains in the repo.
-- In fullscreen video, the left/right `ControlInfoPanel` tiles are touch targets: tapping one opens the joystick control menu, tapping a menu item selects and commits that mode, and tapping outside the menu dismisses it. Physical L4/R4 and D-pad navigation continue to work as before.
+- In fullscreen video, the left/right `ControlInfoPanel` tiles are touch targets: tapping one shows a pressed highlight and opens the joystick control menu; tapping a menu item briefly highlights it before selecting and committing that mode; tapping outside the menu dismisses it. Long mode names (e.g., `"Track Control Right"`) are shown as compact labels in the panel while the full names remain in the menu. Physical L4/R4 and D-pad navigation continue to work as before.
 
 ## Troubleshooting
 

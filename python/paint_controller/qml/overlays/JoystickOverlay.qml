@@ -74,6 +74,7 @@ Item {
                 width: optionsList.width
                 height: CommonStyle.listRowHeight
                 color: "transparent"
+                property bool visuallyPressed: false
 
                 Rectangle {
                     visible: index === menuOverlay.selectedIndex
@@ -100,22 +101,59 @@ Item {
                 }
 
                 MouseArea {
+                    id: delegateMouse
                     anchors.fill: parent
-                    onClicked: overlayController.select_index(index)
+                    onPressed: parent.visuallyPressed = true
+                    onClicked: commitTimer.start()
+                    onCanceled: parent.visuallyPressed = false
+                    onExited: {
+                        if (!commitTimer.running) parent.visuallyPressed = false
+                    }
+
+                    Timer {
+                        id: commitTimer
+                        interval: 150
+                        repeat: false
+                        onTriggered: overlayController.select_index(index)
+                    }
+                }
+
+                // Touch-down feedback: high-contrast highlight that lingers
+                // briefly after release so the operator sees what was tapped.
+                Rectangle {
+                    visible: parent.visuallyPressed
+                    anchors.fill: parent
+                    color: CommonStyle.accentPrimary
+                    opacity: 0.5
+                    border.color: CommonStyle.borderFocused
+                    border.width: CommonStyle.borderWidthThick
+                    radius: CommonStyle.radiusSm
                 }
             }
         }
 
+        // Proportional scrollbar thumb aligned to the ListView viewport.
         Rectangle {
             width: 8
-            height: CommonStyle.listRowHeight
-            color: CommonStyle.accentPrimary
             radius: 4
+            color: CommonStyle.accentPrimary
             anchors {
                 right: parent.left
                 rightMargin: -4
             }
-            y: menuTitleLabel.height + CommonStyle.spacingXl + (menuOverlay.selectedIndex * CommonStyle.listRowHeight) - optionsList.contentY
+            visible: optionsList.contentHeight > optionsList.height
+
+            readonly property real listViewTopY: menuTitleLabel.height + 2 * CommonStyle.spacingXl
+            readonly property real viewportHeight: optionsList.height
+            readonly property real maxContentY: Math.max(0, optionsList.contentHeight - viewportHeight)
+
+            height: Math.max(
+                20,
+                viewportHeight * Math.min(1, viewportHeight / Math.max(optionsList.contentHeight, 1))
+            )
+            y: listViewTopY + (maxContentY > 0
+                ? (optionsList.contentY / maxContentY) * (viewportHeight - height)
+                : 0)
 
             Behavior on y {
                 NumberAnimation {

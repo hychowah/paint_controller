@@ -44,6 +44,8 @@ class ControlProcessor(QObject):
     left_control_value_changed = Signal(str)
     right_control_mode_changed = Signal(str)
     right_control_value_changed = Signal(str)
+    left_control_mode_display_changed = Signal(str)
+    right_control_mode_display_changed = Signal(str)
 
     def __init__(
         self,
@@ -78,7 +80,9 @@ class ControlProcessor(QObject):
         self._left_control_value = ""
         self._right_control_mode = "None"
         self._right_control_value = ""
-        
+        self._left_control_mode_display = "None"
+        self._right_control_mode_display = "None"
+
         # Deadzone trackers for controls that need timed suppression
         self._valve_turn_deadzone = DeadzoneTracker(timeout=2.0)
         self._arm_rail_speed_deadzone = DeadzoneTracker(timeout=2.0)
@@ -348,6 +352,12 @@ class ControlProcessor(QObject):
                 f"Fx:{right_value[0]:.1f} Fy:{right_value[1]:.1f}" if isinstance(right_value, tuple) else (
                     f"R:{right_value:.1f}" if isinstance(right_value, (int, float)) else str(right_value)
                 )
+            )
+            self.left_control_mode_display = self._selection_model.display_name_for_option(
+                str(left_mode if left_mode else "None")
+            )
+            self.right_control_mode_display = self._selection_model.display_name_for_option(
+                str(right_mode if right_mode else "None")
             )
 
     def _can_send_message(self) -> bool:
@@ -730,6 +740,9 @@ class ControlProcessor(QObject):
                 self.controls["EF Yaw Angle"].offset = float(teensy_imu_yaw)
             self._last_selection_pair = selection_pair
 
+        self.left_control_mode_display = self._selection_model.display_name_for_option(left_mode)
+        self.right_control_mode_display = self._selection_model.display_name_for_option(right_mode)
+
         return selection_pair
 
     def process_input(self, input_state: dict[str, Any]) -> None:
@@ -924,3 +937,24 @@ class ControlProcessor(QObject):
         if self._right_control_value != value:
             self._right_control_value = value
             self.right_control_value_changed.emit(value)
+
+    # Properties for compact control-mode display labels
+    @Property(str, notify=left_control_mode_display_changed)
+    def left_control_mode_display(self) -> str:
+        return self._left_control_mode_display
+
+    @left_control_mode_display.setter
+    def left_control_mode_display(self, display: str) -> None:
+        if self._left_control_mode_display != display:
+            self._left_control_mode_display = display
+            self.left_control_mode_display_changed.emit(display)
+
+    @Property(str, notify=right_control_mode_display_changed)
+    def right_control_mode_display(self) -> str:
+        return self._right_control_mode_display
+
+    @right_control_mode_display.setter
+    def right_control_mode_display(self, display: str) -> None:
+        if self._right_control_mode_display != display:
+            self._right_control_mode_display = display
+            self.right_control_mode_display_changed.emit(display)

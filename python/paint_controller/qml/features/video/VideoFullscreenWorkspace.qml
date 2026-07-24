@@ -133,6 +133,7 @@ Rectangle {
         width: root.panelWidth
         height: root.panelHeight
         controlMode: root.videoRuntime.controls.leftMode
+        controlModeDisplay: root.videoRuntime.controls.leftModeDisplay
         controlValue: root.videoRuntime.controls.leftValue
         title: "LEFT CONTROL"
         onPanelClicked: overlayController.open_menu("left")
@@ -147,6 +148,7 @@ Rectangle {
         width: root.panelWidth
         height: root.panelHeight
         controlMode: root.videoRuntime.controls.rightMode
+        controlModeDisplay: root.videoRuntime.controls.rightModeDisplay
         controlValue: root.videoRuntime.controls.rightValue
         title: "RIGHT CONTROL"
         onPanelClicked: overlayController.open_menu("right")

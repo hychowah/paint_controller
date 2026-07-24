@@ -87,3 +87,14 @@ def test_select_control_allows_track_options_independently_on_both_sides(qt_app)
     assert model.select_left_control(_TRACK_RIGHT) is True
     assert model.select_right_control(_TRACK_LEFT) is True
     assert model.get_current_joystick_controls() == ["Track Control Right", "Track Control Left"]
+
+
+def test_display_name_mapping_abbreviates_long_modes(qt_app) -> None:
+    model = JoystickSelectionModel()
+
+    assert model.display_name_for_option("Track Control Left") == "Track Left"
+    assert model.display_name_for_option("Track Control Right") == "Track Right"
+    assert model.display_name_for_option("Wheel Travel Left") == "Wheel Left"
+    assert model.display_name_for_option("EF Yaw Angle") == "Yaw"
+    assert model.display_name_for_option("None") == "None"
+    assert model.display_name_for_option("Unknown Mode") == "Unknown Mode"

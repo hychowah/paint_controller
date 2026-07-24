@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-07-24 12:00 - ControlInfoPanel Touch Feedback And Compact Mode Labels
+
+**Goal**: Add visual feedback when touching the fullscreen-video `ControlInfoPanel` and joystick menu, and stop long control-mode names like `"Track Control Right"` from eliding in the small panel.
+**Issues**: Touch-selecting a joystick menu item closed the menu with no visible highlight; touching an info panel to open the menu had no pressed state; the mode label elided long names because the panel width is only 200 px.
+**Tried**: A first plan proposed adding a new `OverlayController.set_temporary_index` slot so the menu highlight followed the finger, but a peer review showed this would widen the QML/Python boundary and could commit a selection if the user pressed then cancelled. Kept all touch feedback inside QML using `MouseArea.pressed` overlays. Owned the compact labels in Python by adding a `JoystickSelectionModel.display_name_for_option` mapping and threading `left_control_mode_display` / `right_control_mode_display` through `ControlProcessor` and `_VideoRuntimeControls` to a new `controlModeDisplay` property in `ControlInfoPanel.qml`. Added a delegate pressed highlight in `JoystickOverlay.qml`, a focused-border pressed overlay in `ControlInfoPanel.qml`, and regression tests for the mapping and processor properties. On review the highlights were still too brief to notice, so both the delegate and the panel now keep the pressed state visible for 150 ms after release; the panel also got a default thin border so it looks like a tappable card. Further feedback that the border was too thin over video led to a brighter `accentPrimary` pressed overlay at 0.45–0.5 opacity with a 3 px focused border. Also fixed the legacy joystick-menu scrollbar thumb alignment by converting it to a proportional thumb positioned relative to the ListView viewport.
+**Result**: ✅ Touch-down on a panel or menu item now shows immediate visual feedback; long mode names render as compact labels (e.g., `"Track Right"`, `"Yaw"`); full names remain in the selection menu. Touched validation band green at `74 passed`; full suite green at `271 passed`; pyright clean on touched Python files.
+**Files**: `python/paint_controller/models/joystick_selection.py`, `python/paint_controller/handlers/control_processor.py`, `python/paint_controller/core/app_runtime.py`, `python/paint_controller/qml/overlays/video/components/ControlInfoPanel.qml`, `python/paint_controller/qml/features/video/VideoFullscreenWorkspace.qml`, `python/paint_controller/qml/overlays/JoystickOverlay.qml`, `tests/startup_smoke_support.py`, `tests/test_joystick_selection.py`, `tests/test_control_processor.py`, `tests/fakes.py`
+
 ### 2026-07-23 18:08 - Touch Joystick Control Selection And ControlInfoPanel Default Text
 
 **Goal**: Fix the default `ControlInfoPanel` mode text showing `JoystickControl...`, and add touchscreen control of joystick mode selection in fullscreen video.

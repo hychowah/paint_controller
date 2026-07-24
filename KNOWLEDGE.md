@@ -113,6 +113,12 @@ When adding a second consumer of a camera feed, connect to the existing `VideoSt
 ### Touchscreen-Bound Controls in Dual-Monitor Setup
 Interactive controls requiring touch must live on the secondary window that owns the touchscreen (built-in display), not the main UI on the external non-touch monitor. Use `visible: screenCount <= 1` on the main-window instance and add the same component to the secondary window. The secondary window always maps to the built-in screen.
 
+### Touch Feedback Should Linger After Release
+A `MouseArea.pressed` highlight disappears the moment the finger lifts, which is often too brief to register on a small touchscreen. For commit actions, keep a `visuallyPressed` state, start the commit/action from `onClicked`, and clear the state with a short `Timer` (≈150 ms) so the operator sees what was tapped before the UI changes. Keep the feedback purely in QML; avoid adding model-mutating slots just for visual state.
+
+### Keep Display-Name Mappings With Canonical Strings
+When a small UI surface needs compact labels for long canonical names, put the mapping in the same Python layer that owns the canonical strings (e.g., the selection model) and expose read-only display properties. Duplicating the mapping in QML makes it untestable and lets it drift when options are renamed or added.
+
 ---
 
 ## Architecture / Design Patterns

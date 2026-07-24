@@ -12,6 +12,25 @@ class JoystickSelectionModel(QObject):
     temporary_right_index_changed = Signal(int)
     control_options_changed = Signal(list)
 
+    # Compact display labels for the small ControlInfoPanel surfaces.
+    # Full canonical names remain in control_options for the selection menu.
+    _DISPLAY_NAMES: dict[str, str] = {
+        "None": "None",
+        "Winch Speed": "Winch",
+        "Track Control Left": "Track Left",
+        "Track Control Right": "Track Right",
+        "Wheel Travel Left": "Wheel Left",
+        "Wheel Travel Right": "Wheel Right",
+        "EF arm": "EF Arm",
+        "EF top rail": "Top Rail",
+        "EF prop pwm": "Prop PWM",
+        "EF prop joint": "Prop Joint",
+        "EF spray trigger": "Spray Trigger",
+        "EF spray pitch": "Spray Pitch",
+        "EF Yaw Angle": "Yaw",
+        "EF Force": "EF Force",
+    }
+
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._control_options = [
@@ -164,6 +183,11 @@ class JoystickSelectionModel(QObject):
     @Slot(result=list)
     def get_current_joystick_controls(self) -> list[str]:
         return [self.get_left_selected_option(), self.get_right_selected_option()]
+
+    @Slot(str, result=str)
+    def display_name_for_option(self, option: str) -> str:
+        """Return a compact display label for a canonical control option."""
+        return self._DISPLAY_NAMES.get(option, option)
 
     def remember_current_controls(self, mode: str) -> None:
         self._remembered_controls_by_mode[mode] = (

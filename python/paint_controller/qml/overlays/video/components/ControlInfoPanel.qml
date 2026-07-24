@@ -16,6 +16,7 @@ Rectangle {
     required property string controlValue
     required property string title
     required property string position
+    property string controlModeDisplay: controlMode
     property int leftMargin: 20
     property int rightMargin: 20
     property int bottomMargin: 20
@@ -24,12 +25,13 @@ Rectangle {
 
     // UI Design properties
     property color backgroundColor: CommonStyle.videoSurface
-    property color borderColor: CommonStyle.videoDivider
+    property color borderColor: CommonStyle.borderDefault
     property color titleColor: CommonStyle.textSecondary
     property color modeColor: CommonStyle.videoBorderEnabled
     property color valueColor: CommonStyle.textPrimary
-    property int borderWidth: 0 // <--- Removed border by setting width to 0
+    property int borderWidth: CommonStyle.borderWidthThin
     property int cornerRadius: CommonStyle.radiusSm
+    property bool visuallyPressed: false
 
     // Dynamic font sizes based on panel height - adjusted for new emphasis
     readonly property real titleFontSize: Math.max(8, panel.height * 0.12) // Slightly smaller
@@ -86,7 +88,7 @@ Rectangle {
 
         // Mode value - smaller focus on text, but still distinct if needed
         Label {
-            text: controlMode
+            text: panel.controlModeDisplay
             color: panel.modeColor // Keep green for mode
             font.pixelSize: panel.modeFontSize
             font.bold: true // Keep bold for mode readability
@@ -110,8 +112,37 @@ Rectangle {
     }
 
     MouseArea {
+        id: panelMouse
         anchors.fill: parent
-        onClicked: panel.panelClicked(panel.position)
+        onPressed: panel.visuallyPressed = true
+        onClicked: {
+            panel.panelClicked(panel.position)
+            releaseTimer.start()
+        }
+        onCanceled: panel.visuallyPressed = false
+
+        Timer {
+            id: releaseTimer
+            interval: 150
+            repeat: false
+            onTriggered: panel.visuallyPressed = false
+        }
+    }
+
+    // Pressed feedback: high-contrast overlay so the tap is visible even over
+    // a busy video background. The highlight lingers briefly after release.
+    Rectangle {
+        visible: panel.visuallyPressed
+        anchors.fill: parent
+        color: CommonStyle.accentPrimary
+        opacity: 0.45
+        border.color: CommonStyle.borderFocused
+        border.width: 3
+        radius: panel.cornerRadius
+
+        Behavior on opacity {
+            NumberAnimation { duration: CommonStyle.motionFast }
+        }
     }
 
     // Smooth animations
