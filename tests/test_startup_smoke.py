@@ -132,7 +132,6 @@ def test_video_fullscreen_workspace_loads_with_stream_context(monkeypatch, tmp_p
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
-    context_objects["winchController"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
         ctx.setContextProperty(name, obj)
@@ -218,7 +217,6 @@ def test_page_winch_loads_with_explicit_winch_status(monkeypatch, tmp_path, qt_a
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
-    context_objects["winchController"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
         ctx.setContextProperty(name, obj)
@@ -418,7 +416,6 @@ def test_winch_card_loads_with_explicit_winch_status(monkeypatch, tmp_path, qt_a
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
-    context_objects["winchController"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
         ctx.setContextProperty(name, obj)
@@ -689,7 +686,6 @@ def test_video_fullscreen_overlay_wrapper_loads_with_stream_context(monkeypatch,
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
-    context_objects["winchController"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
         ctx.setContextProperty(name, obj)
@@ -828,7 +824,6 @@ def test_end_effector_overlay_loads_with_explicit_status_models(monkeypatch, tmp
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
-    context_objects["winchController"] = None
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
         ctx.setContextProperty(name, obj)

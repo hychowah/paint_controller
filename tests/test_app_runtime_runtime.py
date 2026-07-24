@@ -120,6 +120,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.base_top_view_actions is not None
     assert runtime.shell_connectivity_status is not None
     assert runtime.launcher_admin is not None
+    assert runtime.shell_router is not None
     assert runtime.engine.context.properties["actionLegality"] is runtime.action_legality
     assert runtime.engine.context.properties["systemControlServices"] is runtime.system_control_services
     assert runtime.engine.context.properties["videoRuntime"] is runtime.video_runtime
@@ -139,6 +140,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.engine.context.properties["systemActions"] is runtime.bundle.system_actions
     assert runtime.engine.context.properties["baseTopViewActions"] is runtime.bundle.base_top_view_actions
     assert runtime.engine.context.properties["baseTopViewStatus"] is runtime.base_top_view_status
+    assert runtime.engine.context.properties["shellRouter"] is runtime.shell_router
     assert "baseTopViewAdminHandler" not in runtime.engine.context.properties
     assert "baseTopViewController" not in runtime.engine.context.properties
     assert "deviceOperationsHandler" not in runtime.engine.context.properties
@@ -151,6 +153,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert "rosBagRecorder" not in runtime.engine.context.properties
     assert "baseStreamHandler" not in runtime.engine.context.properties
     assert "screenManager" not in runtime.engine.context.properties
+    assert "winchController" not in runtime.engine.context.properties
     assert runtime.system_control_services.manualCommandHandler is runtime.bundle.manual_command_handler
     assert runtime.video_runtime.controls.leftMode == "None"
     assert runtime.video_runtime.topBar.systemBatteryPercent == 100

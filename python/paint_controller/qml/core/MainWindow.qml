@@ -26,9 +26,6 @@ ApplicationWindow {
     // Shell policy is owned by shellState; QML consumes it and keeps window composition declarative.
     property int screenCount: shellState ? shellState.screen_count : 1
     property int mainScreenIndex: shellState ? shellState.main_surface_screen_index : 0
-    property int secondaryScreenIndex: shellState ? shellState.secondary_surface_screen_index : 0
-    property bool secondarySurfaceActive: shellState ? shellState.secondary_surface_active : false
-    property bool secondarySurfaceFullscreen: shellState ? shellState.secondary_surface_fullscreen : false
     property bool showSystemControlOnMainSurface: overlayHost ? overlayHost.system_control_on_main_surface : (shellState ? shellState.show_system_control_on_main_surface : true)
     property bool showJoystickOverlayOnMainSurface: overlayHost ? overlayHost.joystick_overlay_on_main_surface : true
     property bool showEmergencyOverlayOnMainSurface: overlayHost ? overlayHost.emergency_overlay_on_main_surface : true
@@ -43,18 +40,26 @@ ApplicationWindow {
     property var lidarStatusModel: lidarStatus
     property var shellConnectivityStatusModel: shellConnectivityStatus
     property var launcherAdminModel: launcherAdmin
-    
+
     // Use Qt's Screen type for positioning - access via Screen attached property
     screen: Qt.application.screens[mainScreenIndex] || Qt.application.screens[0]
 
     property int sidebarWidth: CommonStyle.shellSidebarExpandedWidth
-    property string selectedPageKey: "home"
-    
+
     // Expose the video fullscreen overlay as a property
     property alias videoFullscreenOverlay: videoFullscreenOverlay
-    
-    // Multi-screen test window
-    property var multiScreenWindow: null
+
+    // Minimal QML-side mapping from route key to page component. The route
+    // registry (order, titles, icons) lives in Python-owned shellRouter.
+    readonly property var routeComponentMap: ({
+        "home": homeComponent,
+        "base": wheelPageComponent,
+        "winch": winchPageComponent,
+        "monitor": statusPageComponent,
+        "tuning": tuningPageComponent,
+        "launcher": launcherPageComponent,
+        "settings": settingsPageComponent
+    })
     
     // Position and size are now derived from the assigned screen
     x: screen ? screen.virtualX : 0
@@ -136,13 +141,9 @@ ApplicationWindow {
                 
                 SelectBar {
                     id: selectBar
-                    pageRegistry: mainWindow.pageRegistry
-                    selectedPageKey: mainWindow.selectedPageKey
+                    shellRouter: mainWindow.shellRouter
                     shellConnectivityStatus: mainWindow.shellConnectivityStatusModel
                     height: parent.height
-                    onNavigateRequested: function(pageKey) {
-                        mainWindow.navigateToPage(pageKey)
-                    }
                     // Connect to the signal
                     onExpandedStateChanged: {
                         sidebarWidth = newWidth
@@ -190,10 +191,10 @@ ApplicationWindow {
                                     objectName: "stackView"
                                     anchors.fill: parent
                                     initialItem: homeComponent
-                                    
-                                    property int currentIndex: 0
+
+                                    property int currentIndex: shellRouter ? shellRouter.currentRouteOrder : 0
                                     property int targetIndex: 0
-                                    
+
                                     replaceEnter: Transition {
                                         NumberAnimation {
                                             property: "y"
@@ -203,7 +204,7 @@ ApplicationWindow {
                                             easing.type: Easing.InOutQuad
                                         }
                                     }
-                                    
+
                                     replaceExit: Transition {
                                         NumberAnimation {
                                             property: "y"
@@ -211,6 +212,26 @@ ApplicationWindow {
                                             to: stackView.currentIndex > stackView.targetIndex ? stackView.height : -stackView.height
                                             duration: 400
                                             easing.type: Easing.InOutQuad
+                                        }
+                                    }
+
+                                    Connections {
+                                        target: shellRouter
+
+                                        function onCurrentRouteChanged(route) {
+                                            var component = mainWindow.routeComponentMap[route]
+                                            if (!component) {
+                                                console.warn("MainWindow: unknown route", route)
+                                                return
+                                            }
+
+                                            var targetOrder = shellRouter.routeOrder(route)
+                                            if (targetOrder === stackView.currentIndex) {
+                                                return
+                                            }
+
+                                            stackView.targetIndex = targetOrder
+                                            stackView.replace(stackView.currentItem, component)
                                         }
                                     }
                                 }
@@ -272,53 +293,6 @@ ApplicationWindow {
         PageSettings {}
     }
 
-    readonly property var pageRegistry: [
-        { routeOrder: 0, buttonKey: "home", buttonText: "Home", iconSource: "../../resource/homepage.svg", iconScale: 0.7, component: homeComponent },
-        { routeOrder: 1, buttonKey: "base", buttonText: "Base", iconSource: "../../resource/base.png", iconScale: 0.7, component: wheelPageComponent },
-        { routeOrder: 2, buttonKey: "winch", buttonText: "Winch", iconSource: "../../resource/winch.png", iconScale: 0.6, component: winchPageComponent },
-        { routeOrder: 3, buttonKey: "monitor", buttonText: "Monitor", iconSource: "../../resource/monitor.svg", iconScale: 0.6, component: statusPageComponent },
-        { routeOrder: 4, buttonKey: "tuning", buttonText: "Tuning", iconSource: "../../resource/icon-pid.png", iconScale: 0.6, component: tuningPageComponent },
-        { routeOrder: 5, buttonKey: "launcher", buttonText: "Launcher", iconSource: "../../resource/launcher.svg", iconScale: 0.7, component: launcherPageComponent },
-        { routeOrder: 6, buttonKey: "settings", buttonText: "Settings", iconSource: "../../resource/setting.svg", iconScale: 0.6, component: settingsPageComponent }
-    ]
-
-    function getPageConfig(pageKey) {
-        for (var i = 0; i < pageRegistry.length; i++) {
-            if (pageRegistry[i].buttonKey === pageKey) {
-                return pageRegistry[i]
-            }
-        }
-        return null
-    }
-
-    function getRouteOrder(pageKey) {
-        var targetPage = getPageConfig(pageKey)
-        if (!targetPage) {
-            return -1
-        }
-        return targetPage.routeOrder
-    }
-
-    function navigateToPage(pageKey) {
-        var targetPage = getPageConfig(pageKey)
-        if (!targetPage || !targetPage.component) {
-            console.warn("MainWindow: unknown page key", pageKey)
-            return
-        }
-
-        selectedPageKey = targetPage.buttonKey
-
-        var targetOrder = targetPage.routeOrder
-
-        if (targetOrder === stackView.currentIndex) {
-            return
-        }
-
-        stackView.targetIndex = targetOrder
-        stackView.replace(stackView.currentItem, targetPage.component)
-        stackView.currentIndex = targetOrder
-    }
-
     SystemControlWorkspace {
         anchors.fill: parent
         id: systemControlMenu
@@ -366,7 +340,7 @@ ApplicationWindow {
         objectName: "videoFullscreenOverlayMain"
         anchors.fill: parent
         z: overlayHost ? overlayHost.video_fullscreen_layer : 500
-        active: overlayHost ? (overlayHost.video_fullscreen_active && overlayHost.video_fullscreen_on_main_surface && selectedPageKey === "home") : false
+        active: overlayHost ? (overlayHost.video_fullscreen_active && overlayHost.video_fullscreen_on_main_surface && shellRouter && shellRouter.currentRoute === "home") : false
         videoSource: overlayHost ? overlayHost.video_fullscreen_source : ""
         workflowServices: mainWindow.systemControlServicesModel
         videoRuntime: mainWindow.videoRuntimeModel
@@ -382,100 +356,12 @@ ApplicationWindow {
         id: lidar3DView
         objectName: "lidarOverlay"
     }
-    
-    // Multi-screen test window component
-    Component {
-        id: multiScreenComponent
-        MultiScreenListUI {
-            id: multiScreenTestWindow
-        }
-    }
-    
-    // Function to open/close multi-screen test window (manual toggle)
-    function toggleMultiScreenWindow() {
-        var appScreens = Qt.application.screens
-        console.log("toggleMultiScreenWindow: Found " + appScreens.length + " screens")
-        
-        if (multiScreenWindow === null) {
-            // Use the fullscreen function if we have 2 screens
-            if (secondarySurfaceActive && appScreens.length > secondaryScreenIndex) {
-                ensureSecondaryScreenWindow(appScreens)
-            } else {
-                // Create windowed on primary if only one screen
-                multiScreenWindow = multiScreenComponent.createObject(mainWindow)
-                if (multiScreenWindow) {
-                    multiScreenWindow.showWindow()
-                    console.log("Multi-screen test window opened (windowed on primary)")
-                }
-            }
-        } else {
-            // Close and destroy the window
-            closeSecondaryScreenWindow()
-            console.log("Multi-screen test window closed")
-        }
-    }
 
-    function closeSecondaryScreenWindow() {
-        if (multiScreenWindow !== null) {
-            multiScreenWindow.hideWindow()
-            multiScreenWindow.destroy()
-            multiScreenWindow = null
-        }
-    }
-
-    function ensureSecondaryScreenWindow(appScreens) {
-        if (!secondarySurfaceActive || appScreens.length <= secondaryScreenIndex) {
-            closeSecondaryScreenWindow()
-            return
-        }
-
-        if (multiScreenWindow === null) {
-            multiScreenWindow = multiScreenComponent.createObject(mainWindow)
-            if (!multiScreenWindow) {
-                return
-            }
-        }
-
-        var secondaryScreen = appScreens[secondaryScreenIndex]
-        multiScreenWindow.screen = secondaryScreen
-        multiScreenWindow.x = secondaryScreen.virtualX
-        multiScreenWindow.y = secondaryScreen.virtualY
-        multiScreenWindow.width = secondaryScreen.width
-        multiScreenWindow.height = secondaryScreen.height
-        multiScreenWindow.targetScreenIndex = secondaryScreenIndex
-        multiScreenWindow.fullscreenMode = secondarySurfaceFullscreen
-        multiScreenWindow.showWindow()
-    }
-
-    function applyShellSurfacePolicy() {
-        var appScreens = Qt.application.screens
-        console.log("Applying shell surface policy, Qt screens: " + appScreens.length)
-
-        var mainSurfaceScreen = appScreens[mainScreenIndex] || appScreens[0]
-        if (mainSurfaceScreen) {
-            mainWindow.screen = mainSurfaceScreen
-            mainWindow.x = mainSurfaceScreen.virtualX
-            mainWindow.y = mainSurfaceScreen.virtualY
-            mainWindow.width = mainSurfaceScreen.width
-            mainWindow.height = mainSurfaceScreen.height
-        }
-
-        if (secondarySurfaceActive && appScreens.length > secondaryScreenIndex) {
-            ensureSecondaryScreenWindow(appScreens)
-        } else {
-            closeSecondaryScreenWindow()
-        }
-    }
-    
-    // Monitor screen changes and update
-    Connections {
-        target: shellState
-
-        function onScreen_count_changed(count) {
-            console.log("MainWindow: Screen configuration changed, shell policy count: " + screenCount)
-            // Use a small delay to let Qt.application.screens update
-            screenUpdateTimer.restart()
-        }
+    // Secondary screen lifecycle is owned by MultiScreenHost
+    MultiScreenHost {
+        id: multiScreenHost
+        shellState: mainWindow.shellState
+        mainWindow: mainWindow
     }
 
     // Bridge signals from Python backend to QML UI elements
@@ -497,47 +383,8 @@ ApplicationWindow {
         function onToggleSidebarRequested() {
             selectBar.toggleSidebar()
         }
-
-        function onToggleVideoOverlayRequested(active, videoSource) {
-            if (!videoFullscreenOnMainSurface) {
-                return
-            }
-
-            if (overlayHost) {
-                overlayHost.toggle_video_fullscreen(videoSource)
-                return
-            }
-
-            if (videoFullscreenOverlay.active) {
-                videoFullscreenOverlay.active = false
-            } else {
-                videoFullscreenOverlay.videoSource = videoSource
-                videoFullscreenOverlay.active = true
-            }
-        }
-
-        function onUpdateVideoSourceRequested(videoSource) {
-            if (overlayHost) {
-                overlayHost.set_video_fullscreen_source(videoSource)
-                return
-            }
-
-            if (videoFullscreenOverlay.active) {
-                videoFullscreenOverlay.videoSource = videoSource
-            }
-        }
     }
-    
-    // Timer to handle screen updates after Qt.application.screens has updated
-    Timer {
-        id: screenUpdateTimer
-        interval: 100  // 100ms delay for Qt to update screen list
-        repeat: false
-        onTriggered: {
-            applyShellSurfacePolicy()
-        }
-    }
-    
+
     // Debug: Log screen info on startup
     Component.onCompleted: {
         var appScreens = Qt.application.screens
@@ -545,13 +392,13 @@ ApplicationWindow {
         console.log("Number of screens detected: " + appScreens.length)
         for (var i = 0; i < appScreens.length; i++) {
             var s = appScreens[i]
-            console.log("  Screen " + i + ": " + s.name + 
+            console.log("  Screen " + i + ": " + s.name +
                        " - " + s.width + "x" + s.height +
                        " @ (" + s.virtualX + ", " + s.virtualY + ")")
         }
         console.log("ShellState screen count: " + (shellState ? shellState.screen_count : "N/A"))
-        
-        applyShellSurfacePolicy()
+
+        multiScreenHost.applyShellSurfacePolicy()
     }
 }
 

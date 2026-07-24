@@ -141,7 +141,7 @@ MainWindow {{
         running: true
         repeat: false
         onTriggered: {{
-            rootWindow.navigateToPage("settings")
+            shellRouter.navigateTo("settings")
             rootWindow.routeScenarioComplete = true
         }}
     }}
@@ -162,7 +162,7 @@ MainWindow {{
         video_overlay = root.findChild(QObject, "videoFullscreenOverlayMain")
         assert video_overlay is not None
         assert video_overlay.property("active") is False
-        assert root.property("selectedPageKey") == "settings"
+        assert context_objects["shellRouter"].currentRoute == "settings"
 
         fatal_warning_fragments = (
             "failed to load component",
@@ -212,7 +212,7 @@ MainWindow {{
         running: true
         repeat: false
         onTriggered: {{
-            rootWindow.navigateToPage("settings")
+            shellRouter.navigateTo("settings")
             rootWindow.routeScenarioComplete = true
         }}
     }}
@@ -232,9 +232,8 @@ MainWindow {{
 
         stack_view = root.findChild(QObject, "stackView")
         assert stack_view is not None
-        assert root.property("selectedPageKey") == "settings"
+        assert context_objects["shellRouter"].currentRoute == "settings"
         assert stack_view.property("currentIndex") == 6
-        assert stack_view.property("targetIndex") == 6
 
         fatal_warning_fragments = (
             "failed to load component",
@@ -281,8 +280,8 @@ MainWindow {{
         running: true
         repeat: false
         onTriggered: {{
-            rootWindow.navigateToPage("settings")
-            rootWindow.navigateToPage("missing")
+            shellRouter.navigateTo("settings")
+            shellRouter.navigateTo("missing")
             rootWindow.routeScenarioComplete = true
         }}
     }}
@@ -302,9 +301,8 @@ MainWindow {{
 
         stack_view = root.findChild(QObject, "stackView")
         assert stack_view is not None
-        assert root.property("selectedPageKey") == "settings"
+        assert context_objects["shellRouter"].currentRoute == "settings"
         assert stack_view.property("currentIndex") == 6
-        assert stack_view.property("targetIndex") == 6
     finally:
         if root is not None:
             root.deleteLater()
@@ -447,7 +445,6 @@ Item {{
     id: harnessRoot
     width: 1280
     height: 800
-    property string selectedPageKey: "home"
     property var shellConnectivityStatusModel: ({{
         winchAvailable: true,
         wheelAvailable: true,
@@ -460,24 +457,43 @@ Item {{
         endEffectorIpAddress: "10.0.0.3"
     }})
 
-    property var pageRegistry: [
-        {{ routeOrder: 0, buttonKey: "home", buttonText: "Home", component: homeComponent }},
-        {{ routeOrder: 1, buttonKey: "settings", buttonText: "Settings", component: settingsComponent }}
-    ]
+    QtObject {{
+        id: fakeShellRouter
+        objectName: "fakeShellRouter"
+        property var routeRegistry: [
+            {{ key: "home", title: "Home", iconSource: "", iconScale: 0.6, order: 0 }},
+            {{ key: "settings", title: "Settings", iconSource: "", iconScale: 0.6, order: 1 }}
+        ]
+        property string currentRoute: "home"
+        property int currentRouteOrder: 0
 
-    function getPageConfig(pageKey) {{
-        for (var i = 0; i < pageRegistry.length; i++) {{
-            if (pageRegistry[i].buttonKey === pageKey) {{
-                return pageRegistry[i]
+        function navigateTo(route) {{
+            for (var i = 0; i < routeRegistry.length; i++) {{
+                if (routeRegistry[i].key === route) {{
+                    if (currentRoute !== route) {{
+                        currentRoute = route
+                        currentRouteOrder = routeRegistry[i].order
+                    }}
+                    return true
+                }}
             }}
+            return false
         }}
-        return null
+
+        function routeOrder(route) {{
+            for (var i = 0; i < routeRegistry.length; i++) {{
+                if (routeRegistry[i].key === route) {{
+                    return routeRegistry[i].order
+                }}
+            }}
+            return -1
+        }}
     }}
 
     QtObject {{
         id: fakeStackView
         objectName: "fakeStackView"
-        property int currentIndex: 0
+        property int currentIndex: fakeShellRouter.currentRouteOrder
         property int targetIndex: 0
         property var currentItem: null
         property var lastComponent: null
@@ -501,19 +517,17 @@ Item {{
     SelectBar {{
         id: selectBar
         objectName: "selectBar"
-        pageRegistry: harnessRoot.pageRegistry
-        selectedPageKey: harnessRoot.selectedPageKey
+        shellRouter: fakeShellRouter
         shellConnectivityStatus: harnessRoot.shellConnectivityStatusModel
-        onNavigateRequested: function(pageKey) {{
-            var targetPage = harnessRoot.getPageConfig(pageKey)
-            if (!targetPage) {{
-                return
-            }}
+    }}
 
-            harnessRoot.selectedPageKey = targetPage.buttonKey
-            fakeStackView.targetIndex = targetPage.routeOrder
-            fakeStackView.replace(fakeStackView.currentItem, targetPage.component)
-            fakeStackView.currentIndex = targetPage.routeOrder
+    Connections {{
+        target: fakeShellRouter
+        function onCurrentRouteChanged() {{
+            var route = fakeShellRouter.currentRoute
+            var order = fakeShellRouter.routeOrder(route)
+            fakeStackView.targetIndex = order
+            fakeStackView.replace(fakeStackView.currentItem, route === "home" ? homeComponent : settingsComponent)
         }}
     }}
 }}
@@ -535,6 +549,8 @@ Item {{
 
         fake_stack_view = root.findChild(QObject, "fakeStackView")
         assert fake_stack_view is not None
+        fake_shell_router = root.findChild(QObject, "fakeShellRouter")
+        assert fake_shell_router is not None
         assert select_bar.property("navigationCount") == 2
         assert connection_status_panel.property("baseIpAddress") == "10.0.0.2"
         assert connection_status_panel.property("efIpAddress") == "10.0.0.3"
@@ -542,16 +558,15 @@ Item {{
         select_bar.navigateToPage("settings")
         qt_app.processEvents()
 
-        assert fake_stack_view.property("currentIndex") == 1
         assert fake_stack_view.property("targetIndex") == 1
-        assert select_bar.property("selectedPageKey") == "settings"
+        assert fake_shell_router.property("currentRoute") == "settings"
         assert fake_stack_view.property("lastComponent") is not None
 
         select_bar.navigateToPage("missing")
         qt_app.processEvents()
 
         assert fake_stack_view.property("currentIndex") == 1
-        assert select_bar.property("selectedPageKey") == "settings"
+        assert fake_shell_router.property("currentRoute") == "settings"
     finally:
         if root is not None:
             root.deleteLater()

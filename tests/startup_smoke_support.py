@@ -61,6 +61,52 @@ class FakeOverlayController(QObject):
         return True
 
 
+class FakeShellRouter(QObject):
+    current_route_changed = Signal(str)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._current_route = "home"
+        self._route_registry = [
+            {"key": "home", "title": "Home", "iconSource": "../../resource/homepage.svg", "iconScale": 0.7, "order": 0},
+            {"key": "base", "title": "Base", "iconSource": "../../resource/base.png", "iconScale": 0.7, "order": 1},
+            {"key": "winch", "title": "Winch", "iconSource": "../../resource/winch.png", "iconScale": 0.6, "order": 2},
+            {"key": "monitor", "title": "Monitor", "iconSource": "../../resource/monitor.svg", "iconScale": 0.6, "order": 3},
+            {"key": "tuning", "title": "Tuning", "iconSource": "../../resource/icon-pid.png", "iconScale": 0.6, "order": 4},
+            {"key": "launcher", "title": "Launcher", "iconSource": "../../resource/launcher.svg", "iconScale": 0.7, "order": 5},
+            {"key": "settings", "title": "Settings", "iconSource": "../../resource/setting.svg", "iconScale": 0.6, "order": 6},
+        ]
+
+    @Property(list, constant=True)
+    def routeRegistry(self) -> list[dict[str, object]]:
+        return list(self._route_registry)
+
+    @Property(str, notify=current_route_changed)
+    def currentRoute(self) -> str:
+        return self._current_route
+
+    @Property(int, notify=current_route_changed)
+    def currentRouteOrder(self) -> int:
+        return self.routeOrder(self._current_route)
+
+    @Slot(str, result=bool)
+    def navigateTo(self, route: str) -> bool:
+        if route == self._current_route:
+            return True
+        if self.routeOrder(route) < 0:
+            return False
+        self._current_route = route
+        self.current_route_changed.emit(route)
+        return True
+
+    @Slot(str, result=int)
+    def routeOrder(self, route: str) -> int:
+        for entry in self._route_registry:
+            if entry.get("key") == route:
+                return int(entry.get("order", -1))
+        return -1
+
+
 class FakeLauncherAdmin(QObject):
     def __init__(self) -> None:
         super().__init__()
@@ -115,6 +161,60 @@ class FakeScreenManager(DynamicObject):
     @Slot(result=int)
     def get_screen_count(self) -> int:
         return 1
+
+
+class FakeShellState(QObject):
+    screen_count_changed = Signal(int)
+    main_surface_screen_index_changed = Signal(int)
+    secondary_surface_screen_index_changed = Signal(int)
+    secondary_surface_active_changed = Signal(bool)
+    secondary_surface_fullscreen_changed = Signal(bool)
+    show_system_control_on_main_surface_changed = Signal(bool)
+    show_system_control_on_secondary_surface_changed = Signal(bool)
+    video_fullscreen_on_main_surface_changed = Signal(bool)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._screen_count = 1
+        self._main_surface_screen_index = 0
+        self._secondary_surface_screen_index = 0
+        self._secondary_surface_active = False
+        self._secondary_surface_fullscreen = False
+        self._show_system_control_on_main_surface = True
+        self._show_system_control_on_secondary_surface = False
+        self._video_fullscreen_on_main_surface = True
+
+    @Property(int, notify=screen_count_changed)
+    def screen_count(self) -> int:
+        return self._screen_count
+
+    @Property(int, notify=main_surface_screen_index_changed)
+    def main_surface_screen_index(self) -> int:
+        return self._main_surface_screen_index
+
+    @Property(int, notify=secondary_surface_screen_index_changed)
+    def secondary_surface_screen_index(self) -> int:
+        return self._secondary_surface_screen_index
+
+    @Property(bool, notify=secondary_surface_active_changed)
+    def secondary_surface_active(self) -> bool:
+        return self._secondary_surface_active
+
+    @Property(bool, notify=secondary_surface_fullscreen_changed)
+    def secondary_surface_fullscreen(self) -> bool:
+        return self._secondary_surface_fullscreen
+
+    @Property(bool, notify=show_system_control_on_main_surface_changed)
+    def show_system_control_on_main_surface(self) -> bool:
+        return self._show_system_control_on_main_surface
+
+    @Property(bool, notify=show_system_control_on_secondary_surface_changed)
+    def show_system_control_on_secondary_surface(self) -> bool:
+        return self._show_system_control_on_secondary_surface
+
+    @Property(bool, notify=video_fullscreen_on_main_surface_changed)
+    def video_fullscreen_on_main_surface(self) -> bool:
+        return self._video_fullscreen_on_main_surface
 
 
 class FakeOverlayHost(QObject):
@@ -959,16 +1059,7 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
     return {
         "stateStore": StateStore(),
         "backend": FakeBackend(),
-        "shellState": DynamicObject(
-            screen_count=1,
-            main_surface_screen_index=0,
-            secondary_surface_screen_index=0,
-            secondary_surface_active=False,
-            secondary_surface_fullscreen=False,
-            show_system_control_on_main_surface=True,
-            show_system_control_on_secondary_surface=False,
-            video_fullscreen_on_main_surface=True,
-        ),
+        "shellState": FakeShellState(),
         "overlayHost": FakeOverlayHost(
             video_fullscreen_active=True,
             video_fullscreen_source="image://base_front_live/frame",
@@ -990,22 +1081,13 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
         "shellConnectivityStatus": shell_connectivity_status,
         "warningHandler": DynamicObject(active_warning=""),
         "wheelActions": FakeWheelActions(),
-        "winchController": DynamicObject(
-            available=True,
-            enabled=True,
-            load_detection_enabled=False,
-            cable_length=0.0,
-            cable_speed=0.0,
-            motor_voltage=24.0,
-            motor_temperature=25.0,
-            winch_torque=0.0,
-        ),
         "winchActions": FakeWinchActions(),
         "deviceActionHandler": FakeDeviceActionHandler(),
         "recordingActions": FakeRecordingActions(),
         "teensyActions": FakeTeensyActions(),
         "systemActions": FakeSystemActions(),
         "launcherAdmin": FakeLauncherAdmin(),
+        "shellRouter": FakeShellRouter(),
         "settingsManager": settings_manager,
         "tuningActions": FakeTuningActions(),
         "baseTopViewActions": FakeBaseTopViewActions(),

@@ -23,6 +23,7 @@ from paint_controller.models.action_legality_model import ActionLegalityModel
 from paint_controller.models.base_top_view_actions import BaseTopViewActions
 from paint_controller.models.capability_catalog import CapabilityCatalog
 from paint_controller.models.recording_actions import RecordingActions
+from paint_controller.models.shell_router import ShellRouter
 from paint_controller.models.system_actions import SystemActions
 from paint_controller.models.teensy_actions import TeensyActions
 from paint_controller.models.tuning_actions import TuningActions
@@ -33,7 +34,7 @@ from paint_controller.utils.qt_env import ensure_pyside6_windows_dll_path
 
 logger = logging.getLogger(__name__)
 
-_EXPECTED_CONTEXT_PROPERTY_NAMES = (
+_EXPECTED_CONTEXT_PROPERTY_NAMES: tuple[str, ...] = (
     "stateStore",
     "backend",
     "shellState",
@@ -52,8 +53,6 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "overlayController",
     "warningHandler",
     "wheelActions",
-    "winchController",
-    "deviceActionHandler",
     "winchActions",
     "tuningActions",
     "recordingActions",
@@ -61,6 +60,8 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES = (
     "systemActions",
     "baseTopViewActions",
     "baseTopViewStatus",
+    "shellRouter",
+    "deviceActionHandler",
     "settingsManager",
 )
 
@@ -1201,6 +1202,7 @@ class AppRuntime:
         self.shell_connectivity_status: _ShellConnectivityStatus | None = None
         self.launcher_admin: _LauncherAdmin | None = None
         self.shell_state = None
+        self.shell_router: ShellRouter | None = None
         self.overlay_host = None
         self.action_legality = None
         self.status_timer: QTimer | None = None
@@ -1323,6 +1325,7 @@ class AppRuntime:
         self.qt_bridge.set_base_top_view_service(self.base_top_view_service)
         self.qt_bridge.set_input_handler(self.bundle.input_handler)
         self.shell_state = ShellState(screen_manager=self.bundle.screen_manager)
+        self.shell_router = ShellRouter(parent=self.shell_state)
         self.overlay_host = OverlayHostPolicy(shell_state=self.shell_state)
         self.action_legality = ActionLegalityModel(
             admin_action_gate=self.bundle.admin_action_gate,
@@ -1426,6 +1429,12 @@ class AppRuntime:
         self.video_runtime.topBar.baseVideoRequested.connect(
             lambda: self.overlay_host.set_video_fullscreen_source("image://base_front_live/frame")
         )
+        self.qt_bridge.toggleVideoOverlayRequested.connect(
+            lambda _active, video_source: self.overlay_host.toggle_video_fullscreen(video_source)
+        )
+        self.qt_bridge.updateVideoSourceRequested.connect(
+            self.overlay_host.set_video_fullscreen_source
+        )
 
     def _on_wheel_motor_error(self, has_error, error_message) -> None:
         if not has_error:
@@ -1456,6 +1465,7 @@ class AppRuntime:
         assert self.state_store is not None
         assert self.qt_bridge is not None
         assert self.shell_state is not None
+        assert self.shell_router is not None
         assert self.overlay_host is not None
         assert self.action_legality is not None
         assert self.system_control_services is not None
@@ -1502,12 +1512,12 @@ class AppRuntime:
             "launcherAdmin": self.launcher_admin,
             "overlayController": self.bundle.overlay_controller,
             "warningHandler": self.bundle.warning_handler,
-            "winchController": self.bundle.winch_controller,
             "deviceActionHandler": self.bundle.device_action_handler,
             "winchActions": self.bundle.winch_actions,
             "tuningActions": self.tuning_actions,
             "baseTopViewActions": self.base_top_view_actions,
             "baseTopViewStatus": self.base_top_view_status,
+            "shellRouter": self.shell_router,
             "settingsManager": self.settings_manager,
         }
 

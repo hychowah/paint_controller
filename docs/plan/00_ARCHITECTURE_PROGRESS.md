@@ -10,24 +10,21 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 
 - Overall status: in progress
 - Active architecture program: QML surface retirement per `docs/plan/MASTER_PLAN_QML_SURFACE_RETIREMENT.md`
-- Most recent completed slice: Phase 6 remaining raw controller retirement (`teensyController`, `esp32ValveController`, `lidarController`, `controlProcessor`, `systemMonitor`, `screenRecorder`, `rosBagRecorder`, `screenManager`, `baseStreamHandler`) on 2026-07-24
+- Most recent completed slice: Phase 7 MainWindow.qml shell simplification (`shellRouter`, `MultiScreenHost.qml`, removal of `winchController` context global) on 2026-07-24
 - Core purpose: reduce global coupling, clarify ownership, shrink the app-scope QML contract, and make operator-visible behavior easier to trace
 - First-principles rule: success means fewer permanent app-scope QML reads and fewer equal-owner concepts, not wrapper proliferation
-- Last focused validation: `48 passed` for `tests/test_app_runtime_runtime.py tests/test_controller_factory_runtime.py tests/test_startup_smoke.py tests/test_startup_smoke_shell.py tests/test_startup_smoke_home.py tests/test_qml_imports.py tests/test_teensy.py` on 2026-07-24
-- Last full-suite baseline: `294 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q` on 2026-07-24
+- Last focused validation: `45 passed` for `tests/test_app_runtime_runtime.py tests/test_controller_factory_runtime.py tests/test_startup_smoke.py tests/test_startup_smoke_shell.py tests/test_startup_smoke_home.py tests/test_qml_imports.py tests/test_shell_router.py` on 2026-07-24
+- Last full-suite baseline: `300 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q` on 2026-07-24
 
 ## Live Board
 
 ### Now
 
-#### Phase 7: MainWindow.qml shell simplification (optional)
-
-- Move routing and multi-screen policy out of `MainWindow.qml` and into Python models.
-- Only start after Phase 6 is complete and the QML contract is materially smaller.
+- Phase 7 is complete. Deferred until the next phase is chosen or reprioritized.
 
 ### Next
 
-- Deferred until Phase 7 is started or reprioritized.
+- Phase 8 (`AppRuntime` wiring extraction, optional) or a higher-leverage retirement target.
 
 ### Later
 
@@ -88,6 +85,7 @@ These files are allowed to keep temporary raw-global reads until their named fam
 - Phase 4 completed the base top-view family retirement: `baseTopViewActions` now owns base-top view calibration policy and `_BaseTopViewStatus` owns the read-only calibration surface; `baseTopViewAdminHandler` and `baseTopViewController` are removed from the QML context; `BaseTopViewSettingsPopup.qml` and `BaseFrontOverlay.qml` use only bounded models; `BaseTopViewService.cleanup()` now disconnects `frameReady` before quitting the worker thread.
 - Phase 5 completed the device operations split: `recordingActions` owns EF/base camera, screen, and ROS bag recording toggles; `teensyActions` owns Teensy feature toggles and lidar power; `systemActions` owns `clearErrors`; `winchActions` now also owns load detection; `DeviceOperationsHandler` is removed from the QML context and the codebase; `DeviceControlTab.qml` and `PageWinch.qml` use only the new feature-root models.
 - Phase 6 completed the remaining raw controller retirement: `_TeensyStatus` now exposes rails, propellers, and spray-gun details previously read from `teensyController.all_status`; `TeensyStatus.qml` no longer reads `teensyController`; `PageWheel.qml` reads frame signals from `videoRuntime.feeds`; `MainWindow.qml` reads screen changes from `shellState`; the raw globals `teensyController`, `esp32ValveController`, `lidarController`, `controlProcessor`, `systemMonitor`, `screenRecorder`, `rosBagRecorder`, `screenManager`, and `baseStreamHandler` are removed from `_EXPECTED_CONTEXT_PROPERTY_NAMES` and the QML context.
+- Phase 7 completed the MainWindow.qml shell simplification: `ShellRouter` now owns the route registry, current route, and navigation slot; `MultiScreenHost.qml` owns the secondary window lifecycle; `MainWindow.qml` uses `shellRouter` for navigation and defers multi-screen window management to `MultiScreenHost`; backend fullscreen-video toggle/update signals are wired directly to `overlayHost` in Python; the unused `winchController` context global is removed.
 
 ## Active Risks
 

@@ -6,8 +6,7 @@ import "../theme"
 
 Rectangle {
     id: selectBar
-    required property var pageRegistry
-    required property string selectedPageKey
+    required property var shellRouter
     required property var shellConnectivityStatus
     property int expandedWidth: CommonStyle.shellSidebarExpandedWidth
     property int collapsedWidth: CommonStyle.shellSidebarCollapsedWidth
@@ -18,7 +17,6 @@ Rectangle {
     property int navigationCount: navButtonRepeater.count
 
     signal expandedStateChanged(bool isExpanded, int newWidth)
-    signal navigateRequested(string pageKey)
     
     width: expanded ? expandedWidth : collapsedWidth
     Layout.fillHeight: true
@@ -153,7 +151,9 @@ Rectangle {
             return
         }
 
-        navigateRequested(pageKey)
+        if (shellRouter) {
+            shellRouter.navigateTo(pageKey)
+        }
     }
 
     // Top spacer
@@ -200,13 +200,13 @@ Rectangle {
             Repeater {
                 id: navButtonRepeater
                 objectName: "navButtonRepeater"
-                model: pageRegistry
+                model: shellRouter ? shellRouter.routeRegistry : []
 
                 delegate: NavigationButton {
-                    buttonKey: modelData.buttonKey
-                    buttonText: modelData.buttonText || modelData.buttonKey
+                    buttonKey: modelData.key
+                    buttonText: modelData.title || modelData.key
                     iconSource: modelData.iconSource || ""
-                    isSelected: selectBar.selectedPageKey === modelData.buttonKey
+                    isSelected: shellRouter && shellRouter.currentRoute === modelData.key
                     iconScale: modelData.iconScale !== undefined ? modelData.iconScale : 0.6
                 }
             }
