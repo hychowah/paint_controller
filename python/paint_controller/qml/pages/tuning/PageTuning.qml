@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtCharts
-import "../../core"
+import "../../theme"
 import "../../components/displays"
 
 Item {

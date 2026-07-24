@@ -1,6 +1,15 @@
 # Development Notes
 
 ---
+### 2026-07-24 15:37 - Phase 0: QML Contract-Parity Harness And Cleanup
+
+**Goal**: Begin executing `docs/plan/MASTER_PLAN_QML_SURFACE_RETIREMENT.md` from Phase 0: make the AppRuntime → QML context-property contract drift-visible, fix shallow QML issues, and add teardown regression coverage.
+**Issues**: `_EXPECTED_CONTEXT_PROPERTY_NAMES` and `tests/startup_smoke_support._context_objects()` were out of sync (smoke fixture was missing `winchMotionHandler` and `tuningAdminHandler` while including non-contract extras `steamDeckHandler`, `windMonitor`, `heartbeatHandler`). `MainWindow.qml` used both `visible` and `visibility`. `core/CommonStyle.qml` was a forwarding duplicate of `theme/CommonStyle.qml`. `OverlayController` and `BaseTopViewService` lacked teardown regression tests.
+**Tried**: Added a parity test that fails if the smoke fixture keys diverge from `_EXPECTED_CONTEXT_PROPERTY_NAMES`. Aligned the fixture by adding `FakeWinchMotionHandler`/`FakeTuningAdminHandler` and removing the non-contract extras. Removed `visible: true` from `MainWindow.qml` and retired the duplicate `core/CommonStyle.qml` singleton, repointing all `import ".../core"` imports that were only for `CommonStyle` to the equivalent `theme/` path. Added a `cleanup()` method to `OverlayController` that stops the input timer and disables model callbacks via a `_cleaned_up` guard. Added teardown regression tests for `OverlayController` and `BaseTopViewService`.
+**Result**: ✅ Contract-parity test passes; focused validation band `tests/test_app_runtime_runtime.py tests/test_startup_smoke*.py tests/test_qml_imports.py tests/test_overlay_controller.py tests/test_base_top_view_service.py tests/test_steam_deck_handler.py` green at `45 passed`; full suite green at `276 passed`; `qmllint` clean on all QML files; pyright clean on touched Python files.
+**Files**: `tests/test_app_runtime_runtime.py`, `tests/startup_smoke_support.py`, `python/paint_controller/qml/core/MainWindow.qml`, `python/paint_controller/qml/core/CommonStyle.qml`, `python/paint_controller/qml/core/qmldir`, `python/paint_controller/ui/overlay.py`, `tests/test_overlay_controller.py`, `tests/test_base_top_view_service.py`, plus all QML files whose `CommonStyle` import path changed.
+
+---
 ### 2026-07-24 15:01 - Video Overlay As Default Startup View
 
 **Goal**: Make the fullscreen video overlay (`VideoFullscreenWorkspace`) the default view on startup instead of the multi-page navigation home page (`PageHome`).

@@ -2,7 +2,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "../../core"
+import "../../theme"
 
 Rectangle {
     id: windVisualizer

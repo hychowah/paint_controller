@@ -636,6 +636,38 @@ class FakeBaseTopViewAdminHandler(QObject):
         return True
 
 
+class FakeWinchMotionHandler(QObject):
+    @Slot(int, int, result=bool)
+    def requestMoveIncrement(self, _length_mm: int, _speed_mm_s: int) -> bool:
+        return True
+
+    @Slot(int, int, result=bool)
+    def requestMoveAbsolute(self, _length_mm: int, _speed_mm_s: int) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def requestRetractFull(self) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def requestExtendOneMeter(self) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def requestEmergencyStop(self) -> bool:
+        return True
+
+
+class FakeTuningAdminHandler(QObject):
+    @Slot(float, float, float, result=bool)
+    def requestShortYawPid(self, _p: float, _i: float, _d: float) -> bool:
+        return True
+
+    @Slot(float, float, float, result=bool)
+    def requestLongYawPid(self, _p: float, _i: float, _d: float) -> bool:
+        return True
+
+
 class FakeActionLegality(QObject):
     legalityChanged = Signal()
 
@@ -974,8 +1006,7 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             motor_temperature=25.0,
             winch_torque=0.0,
         ),
-        "steamDeckHandler": DynamicObject(),
-        "windMonitor": DynamicObject(speed=0.0, direction=0.0),
+        "winchMotionHandler": FakeWinchMotionHandler(),
         "teensyController": DynamicObject(
             available=True,
             all_status=_teensy_all_status(),
@@ -995,14 +1026,6 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             flow_meter_connected=False,
         ),
         "lidarController": FakeLidarController(distance=0.0, angle=0.0),
-        "heartbeatHandler": DynamicObject(
-            controller_online=True,
-            controller_status=0x01,
-            base_online=True,
-            base_status=0x00,
-            ef_online=True,
-            ef_status=0x00,
-        ),
         "controlProcessor": DynamicObject(
             left_control_mode="None",
             left_control_value="",
@@ -1034,6 +1057,7 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
             bag_status_message="",
         ),
         "settingsManager": settings_manager,
+        "tuningAdminHandler": FakeTuningAdminHandler(),
         "baseTopViewAdminHandler": FakeBaseTopViewAdminHandler(),
         "screenManager": FakeScreenManager(),
         "baseTopViewController": FakeBaseTopViewController(),

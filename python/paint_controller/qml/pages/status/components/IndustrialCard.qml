@@ -1,7 +1,7 @@
 // Industrial-styled card component with dark theme
 import QtQuick
 import QtQuick.Controls
-import "../../../core"
+import "../../../theme"
 
 Rectangle {
     id: root

@@ -108,3 +108,32 @@ def test_select_index_returns_false_for_blocked_duplicate(qt_app) -> None:
     assert selected is False
     assert overlay.show_overlay is True
     assert model.get_left_selected_option() == "Winch Speed"
+
+
+def test_cleanup_stops_input_timer_and_disconnects_model_signals(qt_app) -> None:
+    model, overlay = _build_overlay()
+    overlay.open_menu("left")
+    overlay.move_down()
+
+    assert overlay._input_timer is not None
+    assert overlay._input_timer.isActive()
+
+    overlay.cleanup()
+
+    assert overlay._input_timer.isActive() is False
+
+    # After cleanup, model signals must not trigger overlay callbacks.
+    overlay_emissions: list[str] = []
+    overlay.leftSelectedIndexChanged.connect(lambda _idx: overlay_emissions.append("left"))
+    overlay.rightSelectedIndexChanged.connect(lambda _idx: overlay_emissions.append("right"))
+
+    model.committed_left_index_changed.emit(5)
+    model.committed_right_index_changed.emit(5)
+    model.temporary_left_index_changed.emit(5)
+    model.temporary_right_index_changed.emit(5)
+
+    assert overlay_emissions == []
+
+    # Cleanup must be idempotent.
+    overlay.cleanup()
+    assert overlay._input_timer.isActive() is False

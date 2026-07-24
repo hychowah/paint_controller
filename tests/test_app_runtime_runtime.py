@@ -264,3 +264,18 @@ def test_app_runtime_init_shuts_down_when_bootstrap_fails(monkeypatch) -> None:
         assert False, "AppRuntime constructor should re-raise bootstrap errors"
 
     assert len(shutdown_calls) == 1
+
+def test_expected_context_properties_match_startup_smoke_fixture(monkeypatch, tmp_path) -> None:
+    """Smoke fixture context objects must match AppRuntime's expected contract exactly."""
+    module = importlib.import_module("paint_controller.core.app_runtime")
+    from tests.startup_smoke_support import _context_objects
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    expected = set(module._EXPECTED_CONTEXT_PROPERTY_NAMES)
+    actual = set(context_objects)
+
+    missing = sorted(expected - actual)
+    unexpected = sorted(actual - expected)
+
+    assert not missing, f"Startup smoke fixture missing expected context properties: {missing}"
+    assert not unexpected, f"Startup smoke fixture has unexpected context properties: {unexpected}"

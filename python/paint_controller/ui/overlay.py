@@ -23,6 +23,7 @@ class OverlayController(QObject):
         self._teensy = teensy
         self._show_overlay = False
         self._active_menu = ""  # Start with no active menu
+        self._cleaned_up = False
 
         self._selection_model.committed_left_index_changed.connect(self._on_committed_left_index_changed)
         self._selection_model.committed_right_index_changed.connect(self._on_committed_right_index_changed)
@@ -36,18 +37,26 @@ class OverlayController(QObject):
         self._input_locked = False
 
     def _on_committed_left_index_changed(self, index: int) -> None:
+        if self._cleaned_up:
+            return
         if not self._show_overlay:
             self.leftSelectedIndexChanged.emit(index)
 
     def _on_committed_right_index_changed(self, index: int) -> None:
+        if self._cleaned_up:
+            return
         if not self._show_overlay:
             self.rightSelectedIndexChanged.emit(index)
 
     def _on_temporary_left_index_changed(self, index: int) -> None:
+        if self._cleaned_up:
+            return
         if self._show_overlay:
             self.leftSelectedIndexChanged.emit(index)
 
     def _on_temporary_right_index_changed(self, index: int) -> None:
+        if self._cleaned_up:
+            return
         if self._show_overlay:
             self.rightSelectedIndexChanged.emit(index)
 
@@ -219,3 +228,9 @@ class OverlayController(QObject):
         self._input_locked = True
         self._input_timer.start()
 
+    def cleanup(self) -> None:
+        """Stop timers and disable model callbacks to avoid late updates during teardown."""
+        self._cleaned_up = True
+        if self._input_timer is not None:
+            self._input_timer.stop()
+            self._input_timer.deleteLater()

@@ -17,12 +17,12 @@ import "../overlays"
 import "../features/systemcontrol"
 import "../features/video"
 import "../overlays/lidar"
+import "../theme"
 
 ApplicationWindow {
     id: mainWindow
-    visible: true
     visibility: Window.FullScreen
-    
+
     // Shell policy is owned by shellState; QML consumes it and keeps window composition declarative.
     property int screenCount: shellState ? shellState.screen_count : 1
     property int mainScreenIndex: shellState ? shellState.main_surface_screen_index : 0

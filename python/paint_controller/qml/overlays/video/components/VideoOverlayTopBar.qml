@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import "."
-import "../../../core"
+import "../../../theme"
 import "../../../components/displays"
 
 

@@ -1,6 +1,6 @@
 // Horizontal progress bar for showing load/current indicators
 import QtQuick
-import "../../../core"
+import "../../../theme"
 
 Item {
     id: root

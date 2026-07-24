@@ -1,7 +1,7 @@
 // MetricValue - Reusable centered label/value/unit display
 import QtQuick
 import QtQuick.Layouts
-import "../../../core"
+import "../../../theme"
 
 ColumnLayout {
     id: root

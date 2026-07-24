@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import "../../core"
+import "../../theme"
 
 Item {
     id: root

@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "../../../core"
+import "../../../theme"
 
 /**
  * ControlInfoPanel - Compact Steam Deck optimized display
