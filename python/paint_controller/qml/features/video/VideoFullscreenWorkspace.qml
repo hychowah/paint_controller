@@ -41,6 +41,58 @@ Rectangle {
     }
 
     Rectangle {
+        id: systemMenuButton
+        z: 10
+        width: Math.round(72 * CommonStyle.scaleFactor)
+        height: width
+        radius: Math.round(12 * CommonStyle.scaleFactor)
+
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
+
+        color: systemMenuMouseArea.pressed
+            ? CommonStyle.backgroundL2
+            : (systemMenuMouseArea.containsMouse ? CommonStyle.backgroundL1 : CommonStyle.videoSurface)
+        border.color: systemMenuMouseArea.pressed
+            ? CommonStyle.accentPrimary
+            : CommonStyle.borderDefault
+        border.width: CommonStyle.borderWidthThin
+        opacity: 0.85
+
+        Behavior on color { ColorAnimation { duration: CommonStyle.motionFast } }
+        Behavior on border.color { ColorAnimation { duration: CommonStyle.motionFast } }
+        Behavior on opacity { NumberAnimation { duration: CommonStyle.motionStandard } }
+        Behavior on scale { NumberAnimation { duration: CommonStyle.motionFast } }
+
+        MouseArea {
+            id: systemMenuMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: overlayController.toggle_system_menu()
+            onPressed: systemMenuButton.scale = 0.92
+            onReleased: systemMenuButton.scale = 1.0
+            onCanceled: systemMenuButton.scale = 1.0
+        }
+
+        Column {
+            anchors.centerIn: parent
+            spacing: Math.round(5 * CommonStyle.scaleFactor)
+            width: Math.round(22 * CommonStyle.scaleFactor)
+
+            Repeater {
+                model: 3
+                Rectangle {
+                    width: parent.width
+                    height: Math.round(3 * CommonStyle.scaleFactor)
+                    radius: height / 2
+                    color: CommonStyle.textPrimary
+                }
+            }
+        }
+    }
+
+    Rectangle {
         id: centerCrosshair
         anchors.centerIn: parent
         width: 30

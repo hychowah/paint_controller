@@ -56,10 +56,10 @@ Item {
         anchors {
             horizontalCenter: parent.horizontalCenter
             verticalCenter: parent.verticalCenter
-            verticalCenterOffset: showSystemMenu ? 0 : -parent.height
+            horizontalCenterOffset: showSystemMenu ? 0 : -(parent.width / 2 + systemMenuContainer.width / 2)
         }
 
-        Behavior on anchors.verticalCenterOffset {
+        Behavior on anchors.horizontalCenterOffset {
             NumberAnimation {
                 duration: CommonStyle.motionSlow
                 easing.type: Easing.OutBack
@@ -189,6 +189,52 @@ Item {
                     workflowEditor: systemControlWorkspace.systemControlServices.workflowEditor
                 }
             }
+        }
+    }
+
+    Rectangle {
+        id: systemMenuCloseButton
+        z: 10
+        width: Math.round(72 * CommonStyle.scaleFactor)
+        height: width
+        radius: Math.round(12 * CommonStyle.scaleFactor)
+
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
+
+        color: systemMenuCloseMouseArea.pressed
+            ? CommonStyle.backgroundL2
+            : (systemMenuCloseMouseArea.containsMouse ? CommonStyle.backgroundL1 : CommonStyle.videoSurface)
+        border.color: systemMenuCloseMouseArea.pressed
+            ? CommonStyle.accentPrimary
+            : CommonStyle.borderDefault
+        border.width: CommonStyle.borderWidthThin
+        opacity: showSystemMenu ? 0.85 : 0
+        visible: opacity > 0
+
+        Behavior on color { ColorAnimation { duration: CommonStyle.motionFast } }
+        Behavior on border.color { ColorAnimation { duration: CommonStyle.motionFast } }
+        Behavior on opacity { NumberAnimation { duration: CommonStyle.motionStandard } }
+        Behavior on scale { NumberAnimation { duration: CommonStyle.motionFast } }
+
+        MouseArea {
+            id: systemMenuCloseMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: overlayController.hide_menu()
+            onPressed: systemMenuCloseButton.scale = 0.92
+            onReleased: systemMenuCloseButton.scale = 1.0
+            onCanceled: systemMenuCloseButton.scale = 1.0
+        }
+
+        Text {
+            anchors.centerIn: parent
+            text: "×"
+            color: CommonStyle.textPrimary
+            font.family: CommonStyle.fontSans
+            font.pixelSize: CommonStyle.fontDisplay
+            font.bold: true
         }
     }
 

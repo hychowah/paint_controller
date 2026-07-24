@@ -38,6 +38,14 @@ class FakeOverlayController(QObject):
         self.setProperty("show_overlay", True)
 
     @Slot()
+    def toggle_system_menu(self) -> None:
+        if self.property("show_overlay") and self.property("active_menu") == "system":
+            self.setProperty("show_overlay", False)
+        else:
+            self.setProperty("active_menu", "system")
+            self.setProperty("show_overlay", True)
+
+    @Slot()
     def hide_menu(self) -> None:
         self.setProperty("show_overlay", False)
 
