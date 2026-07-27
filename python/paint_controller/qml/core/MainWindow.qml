@@ -31,6 +31,8 @@ ApplicationWindow {
     property bool showEmergencyOverlayOnMainSurface: overlayHost ? overlayHost.emergency_overlay_on_main_surface : true
     property bool videoFullscreenOnMainSurface: overlayHost ? overlayHost.video_fullscreen_on_main_surface : (shellState ? shellState.video_fullscreen_on_main_surface : true)
     property var systemControlServicesModel: systemControlServices
+    property var shellRouterModel: shellRouter
+    property var shellStateModel: shellState
     property var videoRuntimeModel: videoRuntime
     property var recordingStatusModel: recordingStatus
     property var wheelStatusModel: wheelStatus
@@ -141,7 +143,7 @@ ApplicationWindow {
                 
                 SelectBar {
                     id: selectBar
-                    shellRouter: mainWindow.shellRouter
+                    shellRouter: mainWindow.shellRouterModel
                     shellConnectivityStatus: mainWindow.shellConnectivityStatusModel
                     height: parent.height
                     // Connect to the signal
@@ -360,7 +362,7 @@ ApplicationWindow {
     // Secondary screen lifecycle is owned by MultiScreenHost
     MultiScreenHost {
         id: multiScreenHost
-        shellState: mainWindow.shellState
+        shellState: mainWindow.shellStateModel
         mainWindow: mainWindow
     }
 
