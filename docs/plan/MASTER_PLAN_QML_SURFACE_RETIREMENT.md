@@ -1,6 +1,6 @@
 # Master Plan: Shrink the QML Runtime Surface
 
-> **Status**: Phase 6 completed; Phase 7 (`MainWindow.qml` shell simplification, optional) is next.  
+> **Status**: Phase 8 completed. The core QML surface retirement program (Phases 0–8) is finished.  
 > **Branch**: `qml-surface-retirement-phase-0`  
 > **Goal**: Retire raw controller/handler context properties and replace them with bounded, feature-root Python models so QML stays declarative and Python owns policy.
 
@@ -388,6 +388,16 @@ Move routing and multi-screen policy out of `MainWindow.qml` and into Python mod
 - Full pytest suite passes.
 - Manual smoke: app launches, navigation works, dual-screen mode works.
 
+### Completed
+
+- Created `ShellRouter` in `python/paint_controller/models/shell_router.py` owning the route registry, `currentRoute`, `currentRouteOrder`, `navigateTo()`, and `routeOrder()`.
+- Created `python/paint_controller/qml/core/MultiScreenHost.qml` to encapsulate secondary window creation, placement, and destruction.
+- Updated `MainWindow.qml` to bind navigation to `shellRouter`, kept a minimal route-to-component map, and removed inline multi-screen lifecycle code.
+- Wired `qt_bridge.toggleVideoOverlayRequested` → `overlay_host.toggle_video_fullscreen(source)` and `qt_bridge.updateVideoSourceRequested` → `overlay_host.set_video_fullscreen_source(source)` in `AppRuntime._wire_signals()`, removing the backend `Connections` handlers from QML.
+- Removed the unused `winchController` context global from `_EXPECTED_CONTEXT_PROPERTY_NAMES` and `_build_context_properties()`.
+- Updated `SelectBar.qml` to consume `shellRouter` directly; added `FakeShellRouter`/`FakeShellState` to startup-smoke fixtures and added `tests/test_shell_router.py`.
+- Validation: focused band `45 passed`; full suite `300 passed`; `qmllint` clean; `shell_router.py` pyright clean.
+
 ---
 
 ## Phase 8: AppRuntime wiring extraction (optional)
@@ -415,6 +425,16 @@ Keep `AppRuntime` as a thin composition root; move context-property building and
 - Full pytest suite passes.
 - Startup smoke tests pass.
 - `colcon build` passes.
+
+### Completed
+
+- Created `python/paint_controller/core/qml_context_composer.py` owning `_EXPECTED_CONTEXT_PROPERTY_NAMES`, `_SystemControlServices`, all status-wrapper classes (`_VideoRuntime*`, `_RecordingStatus`, `_ShellConnectivityStatus`, `_LauncherAdmin`, `_*Status`), helper functions, and `QmlContextComposer.compose()`.
+- Created `python/paint_controller/core/signal_wiring.py` owning `SignalWiring.wire()` (Steam Deck callbacks, emergency/video/fullscreen signal routing, wheel-error handler) and `SignalWiring.start_timers()` (status timer, system monitor, deferred video startup).
+- Slimmed `python/paint_controller/core/app_runtime.py` from ~1650 lines to ~470 lines; it now orchestrates creation, composer/wiring invocation, context-property registration, and shutdown.
+- Updated `tests/test_app_runtime_runtime.py` to source `_EXPECTED_CONTEXT_PROPERTY_NAMES` from `qml_context_composer` and to exercise `SignalWiring` directly.
+- Added `tests/test_qml_context_composer.py` and `tests/test_signal_wiring.py` for focused coverage of the new helpers.
+- Added `qml_context_composer.py` and `signal_wiring.py` to `pyrightconfig.json`; pyright clean on included scope.
+- Validation: focused band `58 passed`; full suite `313 passed`; `qmllint` clean. `colcon build` still fails pre-existingly because the `resource/` directory is missing from the package root.
 
 ---
 

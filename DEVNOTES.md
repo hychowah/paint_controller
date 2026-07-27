@@ -1,6 +1,15 @@
 # Development Notes
 
 ---
+### 2026-07-24 22:30 - Phase 8: AppRuntime Wiring Extraction
+
+**Goal**: Execute Phase 8 of `docs/plan/MASTER_PLAN_QML_SURFACE_RETIREMENT.md`: keep `AppRuntime` as a thin composition root by moving QML context-property construction and signal wiring into focused helpers.
+**Issues**: `python/paint_controller/core/app_runtime.py` had grown to ~1650 lines, mixing runtime orchestration with status-wrapper classes, context-property dict construction, and signal/timer wiring. This made the QML contract hard to test in isolation and blurred ownership.
+**Tried**: Created `python/paint_controller/core/qml_context_composer.py` owning `_EXPECTED_CONTEXT_PROPERTY_NAMES`, `_SystemControlServices`, all `_*Status` / `_VideoRuntime*` wrapper classes, the `_read_*` helpers, and `QmlContextComposer.compose()`. Created `python/paint_controller/core/signal_wiring.py` owning `SignalWiring.wire()` (Steam Deck callbacks + all signal connections) and `SignalWiring.start_timers()` (status timer, system monitor, deferred video startup). Slimmed `AppRuntime` to object creation, bootstrap orchestration, context-property registration, and shutdown sequencing. Updated `tests/test_app_runtime_runtime.py` to import `_EXPECTED_CONTEXT_PROPERTY_NAMES` from `qml_context_composer` and to call `SignalWiring(runtime).wire()` directly. Added `tests/test_qml_context_composer.py` and `tests/test_signal_wiring.py` for focused coverage. Extended `_StatusTimerRecorder` and `_SystemMonitorRecorder` and updated `_SignalRecorder`/`_QtBridgeRecorder` to support the new tests. Added the two new modules to `pyrightconfig.json`.
+**Result**: ✅ Focused band `tests/test_app_runtime_runtime.py tests/test_controller_factory_runtime.py tests/test_startup_smoke.py tests/test_startup_smoke_shell.py tests/test_startup_smoke_home.py tests/test_qml_imports.py tests/test_shell_router.py tests/test_qml_context_composer.py tests/test_signal_wiring.py` green at `58 passed`; full suite green at `313 passed`; `qmllint` clean; pyright clean on included scope. `colcon build --packages-select paint_interfaces paint_controller_ros2` still fails pre-existingly because the `resource/` directory is missing from the package root.
+**Files**: `python/paint_controller/core/qml_context_composer.py`, `python/paint_controller/core/signal_wiring.py`, `python/paint_controller/core/app_runtime.py`, `tests/test_app_runtime_runtime.py`, `tests/test_qml_context_composer.py`, `tests/test_signal_wiring.py`, `tests/controller_factory_runtime_support.py`, `pyrightconfig.json`, `docs/plan/MASTER_PLAN_QML_SURFACE_RETIREMENT.md`, `docs/plan/00_ARCHITECTURE_PROGRESS.md`.
+
+---
 ### 2026-07-24 21:30 - Phase 7: MainWindow.qml Shell Simplification
 
 **Goal**: Execute Phase 7 of `docs/plan/MASTER_PLAN_QML_SURFACE_RETIREMENT.md`: move routing and multi-screen window policy out of `MainWindow.qml` into Python models, and move backend fullscreen-video signal handling from QML into Python wiring.

@@ -59,9 +59,13 @@ class _EngineRecorder:
 class _SignalRecorder:
     def __init__(self) -> None:
         self.connections: list[tuple[object, tuple]] = []
+        self.emits: list[tuple[object, ...]] = []
 
     def connect(self, callback, *args) -> None:
         self.connections.append((callback, args))
+
+    def emit(self, *args) -> None:
+        self.emits.append(args)
 
 
 class _SteamDeckHandlerRecorder:
@@ -89,9 +93,11 @@ class _InputHandlerRecorder:
 class _QtBridgeRecorder:
     def __init__(self) -> None:
         self.status_updated = _SignalRecorder()
-        self.emergency_overlay_changed = type("Emitter", (), {"emit": lambda self, *args: None})()
-        self.emergency_triggered = type("Emitter", (), {"emit": lambda self, *args: None})()
-        self.frame_ready = type("Emitter", (), {"emit": lambda self, *args: None})()
+        self.emergency_overlay_changed = _SignalRecorder()
+        self.emergency_triggered = _SignalRecorder()
+        self.frame_ready = _SignalRecorder()
+        self.toggleVideoOverlayRequested = _SignalRecorder()
+        self.updateVideoSourceRequested = _SignalRecorder()
         self.show_popup_calls: list[tuple[str, str, str, int]] = []
         self.base_top_view_service = None
         self.input_handler = None
@@ -106,6 +112,9 @@ class _QtBridgeRecorder:
         pass
 
     def toggle_lidar_overlay(self) -> None:
+        pass
+
+    def update_fullscreen_video_source(self) -> None:
         pass
 
     def set_base_top_view_service(self, service) -> None:
@@ -234,6 +243,10 @@ class _SystemMonitorRecorder:
         self.battery_level = 100
         self.battery_remaining_time = "N/A"
         self.cpu_temperature = 0.0
+        self.monitoring_started = False
+
+    def start_monitoring(self, interval_ms: int = 1000) -> None:
+        self.monitoring_started = True
 
 
 class _TeensyControllerRecorder:
@@ -397,9 +410,14 @@ class _SafetyCoordinatorRecorder:
 class _StatusTimerRecorder:
     def __init__(self) -> None:
         self.stopped = False
+        self.started = False
+        self.timeout = _SignalRecorder()
 
     def stop(self) -> None:
         self.stopped = True
+
+    def start(self, _interval_ms: int) -> None:
+        self.started = True
 
 
 class _WaitableRecorder:

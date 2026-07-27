@@ -18,6 +18,8 @@
     "python/paint_controller/handlers",
     "python/paint_controller/core/controller_factory.py",
     "python/paint_controller/core/qt_bridge.py",
+    "python/paint_controller/core/qml_context_composer.py",
+    "python/paint_controller/core/signal_wiring.py",
     "python/paint_controller/core/settings.py",
     "python/paint_controller/core/state_store.py",
     "python/paint_controller/models/base_top_view_actions.py",

@@ -5,8 +5,11 @@ from __future__ import annotations
 import importlib
 import json
 
+from paint_controller.core import qml_context_composer
+from paint_controller.core.signal_wiring import SignalWiring
 from tests.controller_factory_runtime_support import (
     FakeNode,
+    _SignalRecorder,
     _BaseTopViewServiceRecorder,
     _CleanupRecorder,
     _ControlProcessorRecorder,
@@ -40,7 +43,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     runtime.node = FakeNode()
     runtime.settings_manager = type("Settings", (), {"_show_popup_fn": None})()
     runtime.capability_catalog = object()
-    runtime.state_store = object()
+    runtime.state_store = type("StateStore", (), {"control_mode_changed": _SignalRecorder()})()
     runtime.steam_deck_handler = _SteamDeckHandlerRecorder()
     runtime.base_top_view_service = _BaseTopViewServiceRecorder()
     runtime.video_stream_handler = _VideoHandlerRecorder()
@@ -98,7 +101,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
 
     runtime._create_controller_bundle()
     runtime._register_context_properties()
-    runtime._wire_steam_deck_callbacks()
+    SignalWiring(runtime).wire()
 
     assert create_calls[0]["show_popup_fn"] == runtime.qt_bridge.show_popup
     assert create_calls[0]["close_popup_fn"] == runtime.qt_bridge.close_popup
@@ -256,7 +259,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.bundle.ssh_controller.command_calls == [("BASE", "Wheel", "start")]
     assert "heartbeatHandler" not in runtime.engine.context.properties
     assert "sshHandler" not in runtime.engine.context.properties
-    assert set(runtime.engine.context.properties) == set(module._EXPECTED_CONTEXT_PROPERTY_NAMES)
+    assert set(runtime.engine.context.properties) == set(qml_context_composer._EXPECTED_CONTEXT_PROPERTY_NAMES)
     assert [button for button, _ in runtime.steam_deck_handler.callbacks] == [
         "up", "down", "left", "right", "r4", "l4", "menu", "switch", "l5", "r5", "dot", "a", "l1"
     ]
@@ -332,11 +335,10 @@ def test_app_runtime_init_shuts_down_when_bootstrap_fails(monkeypatch) -> None:
 
 def test_expected_context_properties_match_startup_smoke_fixture(monkeypatch, tmp_path) -> None:
     """Smoke fixture context objects must match AppRuntime's expected contract exactly."""
-    module = importlib.import_module("paint_controller.core.app_runtime")
     from tests.startup_smoke_support import _context_objects
 
     context_objects = _context_objects(monkeypatch, tmp_path)
-    expected = set(module._EXPECTED_CONTEXT_PROPERTY_NAMES)
+    expected = set(qml_context_composer._EXPECTED_CONTEXT_PROPERTY_NAMES)
     actual = set(context_objects)
 
     missing = sorted(expected - actual)
