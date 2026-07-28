@@ -38,7 +38,7 @@ class TeensyActions(QObject):
 
     @Slot(result=bool)
     def toggleAutoCorrection(self) -> bool:
-        return self._run_toggle("Auto correction", "setAutoCorrectonEnabled", not self._teensy_intent("auto_correction_enabled"))
+        return self._run_toggle("Auto correction", "setAutoCorrectionEnabled", not self._teensy_intent("auto_correction_enabled"))
 
     @Slot(result=bool)
     def toggleSprayGunLeveling(self) -> bool:

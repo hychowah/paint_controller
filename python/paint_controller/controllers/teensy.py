@@ -550,7 +550,7 @@ class TeensyController(RosStatusController):
         self._publish_bool(self.stability_yaw_enable_pub, enabled)
 
     @Slot(bool)
-    def setAutoCorrectonEnabled(self, enabled: bool):
+    def setAutoCorrectionEnabled(self, enabled: bool):
         """Enable/disable yaw auto correction"""
         self._auto_correction_enabled = enabled
         status_snapshot = self._update_status_fields(auto_correction_enabled=enabled)

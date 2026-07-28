@@ -40,7 +40,7 @@ class FakeTeensy:
         self._status["yaw_enabled"] = enabled
         return self.result
 
-    def setAutoCorrectonEnabled(self, enabled: bool) -> bool:
+    def setAutoCorrectionEnabled(self, enabled: bool) -> bool:
         self.auto_correction_calls.append(enabled)
         self.auto_correction_enabled = enabled
         return self.result

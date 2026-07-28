@@ -45,7 +45,7 @@ def test_status_callback_preserves_user_controlled_fields(qt_app, fake_node):
     controller.setRollerSteeringEnabled(True)
     controller.setSwingDampingEnabled(True)
     controller.setSprayGunLevelingEnabled(True)
-    controller.setAutoCorrectonEnabled(True)
+    controller.setAutoCorrectionEnabled(True)
 
     status = _teensy_status_class()()
     status.runtime = 123000
