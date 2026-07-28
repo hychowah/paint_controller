@@ -82,10 +82,16 @@ class ActionLegalityModel(QObject):
             return {}
 
         getter = getattr(self._capability_catalog, "getActionCapability", None)
-        if not callable(getter):
-            return {}
+        if callable(getter):
+            metadata = getter(action_key)
+            if isinstance(metadata, dict) and metadata:
+                return deepcopy(metadata)
 
-        metadata = getter(action_key)
-        if not isinstance(metadata, dict):
-            return {}
-        return deepcopy(metadata)
+        # Fall back to setting capabilities (TD-036 settings legality affordance).
+        setting_getter = getattr(self._capability_catalog, "getSettingCapability", None)
+        if callable(setting_getter):
+            setting_metadata = setting_getter(action_key)
+            if isinstance(setting_metadata, dict) and setting_metadata:
+                return deepcopy(setting_metadata)
+
+        return {}

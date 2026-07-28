@@ -82,6 +82,12 @@ def test_signal_property_pairs_match_schema_entries() -> None:
     assert not extra, f"_make_setting_pair calls without schema entries: {extra}"
 
 
+def test_legality_schema_defaults_off_for_development() -> None:
+    """Development default: action legality enforcement off until hardening is done."""
+    schema = _get_schema()
+    assert schema["action_legality_enforced"]["default"] is False
+
+
 def test_schema_source_has_no_duplicate_keys() -> None:
     tree = _read_settings_tree()
     for node in ast.walk(tree):

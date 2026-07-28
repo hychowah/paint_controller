@@ -1,6 +1,23 @@
 # Development Notes
 
 ---
+### 2026-07-28 - System-control toggles unblocked; legality default off in dev
+
+**Goal**: System control menu toggles must work regardless of heartbeat; keep legality enforcement off by default until development finishes.
+**Tried**: Expanded `status-admin` / `status-admin-warning-ok` to all heartbeat states (IDLE/ONTASK/WARNING/ERROR). Schema + gate default `action_legality_enforced=false`; removed load-time force-true. Lab/field can force on with `PAINT_ACTION_LEGALITY_ENFORCED=1`.
+**Result**: ✅ 46 passed settings/gate band. Motion/maintenance actions still blocked in ERROR when enforcement is on.
+**Files**: `admin_action_gate.py`, `settings.py`, related tests
+
+---
+### 2026-07-28 - TD-036 gated settings writes, XDG path, legality default
+
+**Goal**: Close TD-036 — last free-form machine-affecting QML write path, dual settings API, in-tree config path, legality ship bypass.
+**Issues**: `settingsManager.apply*/set*` unguarded; Property setters wrote via ungated `set`; package-tree `settings.json`; `action_legality_enforced: false` in file; gate only knew action capabilities not setting keys; `mixed-admin-route`/`safety-admin` unregistered.
+**Tried**: Gate QML slots in `SettingsManager` after `set_admin_action_gate` from AppRuntime; `_action_metadata` falls back to `getSettingCapability`; env `PAINT_ACTION_LEGALITY_ENFORCED`; force-true legality on load/migrate; live path `PAINT_CONTROLLER_SETTINGS_PATH` → XDG; package file template-only; read-only generated Properties; SettingInputField→apply*; deny refresh on ManagedSettingSpinBox; hard-block QML writes to legality key.
+**Result**: ✅ Focused band `tests/test_settings_runtime.py tests/test_settings_schema.py tests/test_admin_action_gate.py tests/test_capability_catalog.py` green at 45 passed; app_runtime gate injection fixed.
+**Files**: `python/paint_controller/core/settings.py`, `admin_action_gate.py`, `action_legality_model.py`, `app_runtime.py`, QML ManagedSettingSpinBox/SettingInputField, `python/config/settings.json`, tests, `docs/tech-debt.md`
+
+---
 ### 2026-07-28 - TD-039 concurrency loose ends
 
 **Goal**: Close the four TD-039 concurrency items (BaseTopView map race, ROS error consumer, Steam Deck in-lock emit, CameraStream null image cleanup).

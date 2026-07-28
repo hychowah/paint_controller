@@ -110,13 +110,14 @@ ColumnLayout {
                         parseFloat(inputField.text)
                     
                     if (!isNaN(num) && settingsManager) {
-                        var updated = root.decimalPlaces === 0
-                            ? settingsManager.setInt(root.settingKey, num)
-                            : settingsManager.setFloat(root.settingKey, num)
-                        if (updated) {
-                            settingsManager.saveSetting(root.settingKey)
-                            root.refreshDisplayText()
+                        // TD-036: single gated write path (set+persist).
+                        if (root.decimalPlaces === 0) {
+                            settingsManager.applyInt(root.settingKey, num)
+                        } else {
+                            settingsManager.applyFloat(root.settingKey, num)
                         }
+                        // Always refresh so a gate deny restores the truthful value.
+                        root.refreshDisplayText()
                     }
                 }
             }

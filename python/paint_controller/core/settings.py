@@ -1,9 +1,10 @@
 """
 SettingsManager - Centralized settings management with file persistence
 
-This module provides a centralized location for application parameters that were
-previously scattered across multiple controller classes. Settings are persisted
-to ~/ros2_ws/src/paint_controller_ros2/python/config/settings.json and can be modified at runtime.
+Machine settings live under XDG config by default
+(``$XDG_CONFIG_HOME/paint_controller/settings.json``), overridable with
+``PAINT_CONTROLLER_SETTINGS_PATH``. The package ``python/config/settings.json``
+is a ship template used for first-run migration only.
 """
 
 import os
@@ -16,6 +17,12 @@ from typing import Any, Dict, Optional, Tuple
 from PySide6.QtCore import QObject, Signal, Slot, Property
 
 logger = logging.getLogger(__name__)
+
+# Live config path override (absolute file path).
+SETTINGS_PATH_ENV = "PAINT_CONTROLLER_SETTINGS_PATH"
+# Not writable from QML; lab bypass is PAINT_ACTION_LEGALITY_ENFORCED env (TD-036).
+_LEGALITY_SETTING_KEY = "action_legality_enforced"
+_UI_CHROME_KEYS = frozenset({"ui_section_states"})
 
 
 def _fsync_parent_directory(path: Path) -> None:
@@ -244,10 +251,12 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "description": "Base top view source trapezoid points (normalized coordinates)"
     },
     "action_legality_enforced": {
-        "default": True,
+        # Development default: off until field hardening is complete.
+        # Override with PAINT_ACTION_LEGALITY_ENFORCED=1 or set true in live settings.
+        "default": False,
         "type": "bool",
         "requires_restart": False,
-        "description": "Enforce heartbeat-state action legality gate (set false only for development testing)"
+        "description": "Enforce heartbeat-state action legality gate (not QML-writable; force via PAINT_ACTION_LEGALITY_ENFORCED env)"
     }
 }
 
@@ -256,7 +265,10 @@ _PROPERTY_TYPES = {"float": float, "int": int, "bool": bool, "list": "QVariantLi
 
 
 def _make_setting_pair(key):
-    """Create a (Signal, Property) pair for a setting key from the schema."""
+    """Create a (Signal, read-only Property) pair for a setting key from the schema.
+
+    Properties are notify-only (TD-036): QML must use gated apply* slots to write.
+    """
     schema = _SETTINGS_SCHEMA[key]
     sig_type = _SIGNAL_TYPES[schema["type"]]
     prop_type = _PROPERTY_TYPES[schema["type"]]
@@ -267,18 +279,34 @@ def _make_setting_pair(key):
     def getter(self):
         return self.get(key, default)
 
-    def setter(self, value):
-        self.set(key, value)
+    return signal, Property(prop_type, getter, notify=signal)
 
-    return signal, Property(prop_type, getter, setter, notify=signal)
+
+def package_settings_template_path() -> Path:
+    """Ship/template settings file under the package tree (not the live write target)."""
+    return Path(__file__).resolve().parent.parent.parent / "config" / "settings.json"
+
+
+def resolve_settings_path() -> Path:
+    """Resolve the live settings file path (env → XDG). Does not create directories."""
+    env_path = os.environ.get(SETTINGS_PATH_ENV)
+    if env_path:
+        return Path(env_path).expanduser().resolve()
+
+    xdg = os.environ.get("XDG_CONFIG_HOME")
+    if xdg:
+        base = Path(xdg).expanduser()
+    else:
+        base = Path.home() / ".config"
+    return (base / "paint_controller" / "settings.json").resolve()
 
 
 class SettingsManager(QObject):
     """
     Centralized settings manager with file persistence and QML integration.
-    
-    Settings are stored in ~/ros2_ws/src/paint_controller_ros2/python/config/settings.json
-    Each setting has metadata including: value, default, min, max, type, requires_restart, description
+
+    Live file: ``resolve_settings_path()`` (env / XDG). Package config is template only.
+    QML mutations go through apply*/set* slots and are AdminActionGate-checked (TD-036).
     """
     
     _settings_schema = _SETTINGS_SCHEMA
@@ -314,28 +342,42 @@ class SettingsManager(QObject):
     operation_result = Signal(bool, str)
     setting_saved = Signal(str, object, str)
     
-    def __init__(self, parent=None, show_popup_fn=None):
+    def __init__(self, parent=None, show_popup_fn=None, admin_action_gate=None):
         super().__init__(parent)
         self._show_popup_fn = show_popup_fn
+        self._admin_action_gate = admin_action_gate
+        self._gate_missing_warned = False
         self._values: Dict[str, Any] = {}
         self._values_lock = threading.Lock()
 
-        package_dir = Path(__file__).parent.parent.parent
-        self._config_dir = package_dir / "config"
-        self._config_file = self._config_dir / "settings.json"
+        self._package_template_path = package_settings_template_path()
+        self._config_file = resolve_settings_path()
         self.load()
+
+    def set_admin_action_gate(self, gate) -> None:
+        """Inject AdminActionGate after construction (gate is created later in AppRuntime)."""
+        self._admin_action_gate = gate
     
     def _get_config_path(self) -> Path:
-        """Get the configuration file path, creating directory if needed"""
-        self._config_dir.mkdir(parents=True, exist_ok=True)
+        """Live configuration file path; creates only the live parent directory."""
+        self._config_file.parent.mkdir(parents=True, exist_ok=True)
         return self._config_file
+
+    def _merge_saved_values(self, saved_values: dict) -> None:
+        with self._values_lock:
+            for key, value in saved_values.items():
+                if key in self._settings_schema:
+                    validated = self._validate_value(key, value)
+                    if validated is not None:
+                        self._values[key] = validated
     
     def load(self) -> bool:
         """
-        Load settings from file. If file doesn't exist, use defaults.
+        Load settings from the live config file. If missing, migrate from the
+        package template once, otherwise use schema defaults.
         
         Returns:
-            bool: True if loaded successfully, False if using defaults
+            bool: True if loaded from disk (live or migrated), False if pure defaults
         """
         # Initialize with defaults first
         with self._values_lock:
@@ -345,21 +387,45 @@ class SettingsManager(QObject):
         config_path = self._get_config_path()
         
         if not config_path.exists():
-            logger.info("No config file found, using defaults")
+            # Migrate package template only for the real live path (not test overrides
+            # that monkeypatch `_get_config_path` to a temporary file).
+            live_path = Path(self._config_file).resolve()
+            using_live_path = config_path.resolve() == live_path
+            template = self._package_template_path
+            if (
+                using_live_path
+                and template.exists()
+                and template.resolve() != config_path.resolve()
+            ):
+                try:
+                    with open(template, "r", encoding="utf-8") as f:
+                        saved_values = json.load(f)
+                    if isinstance(saved_values, dict):
+                        self._merge_saved_values(saved_values)
+                        success, message = self.save_all()
+                        if success:
+                            logger.info(
+                                "Migrated settings template %s → %s",
+                                template,
+                                config_path,
+                            )
+                            return True
+                        logger.warning("Settings migrate save failed: %s", message)
+                except Exception as e:
+                    logger.warning("Failed to migrate settings template: %s", e)
+            logger.info("No config file found at %s, using defaults", config_path)
             return False
         
         try:
             with open(config_path, 'r') as f:
                 saved_values = json.load(f)
             
-            # Merge saved values with defaults (validate each)
-            with self._values_lock:
-                for key, value in saved_values.items():
-                    if key in self._settings_schema:
-                        validated = self._validate_value(key, value)
-                        if validated is not None:
-                            self._values[key] = validated
-            
+            if not isinstance(saved_values, dict):
+                logger.warning("Invalid settings file (not an object): %s", config_path)
+                return False
+
+            # Merge saved values with defaults (validate each) + legality sanitize.
+            self._merge_saved_values(saved_values)
             logger.info("Loaded settings from %s", config_path)
             return True
             
@@ -469,6 +535,31 @@ class SettingsManager(QObject):
         if signal is not None:
             signal.emit(value)
     
+    def _check_qml_mutation(self, key: str) -> Tuple[bool, str]:
+        """Gate QML-facing mutations (TD-036). Internal set()/load stay open."""
+        if key == _LEGALITY_SETTING_KEY:
+            return (
+                False,
+                "action_legality_enforced is not writable from the UI; "
+                "use PAINT_ACTION_LEGALITY_ENFORCED for lab bypass",
+            )
+        if key in _UI_CHROME_KEYS:
+            return True, ""
+
+        gate = self._admin_action_gate
+        if gate is None:
+            if not self._gate_missing_warned:
+                logger.warning(
+                    "SettingsManager QML write without admin_action_gate; allowing"
+                )
+                self._gate_missing_warned = True
+            return True, ""
+
+        check = getattr(gate, "check_action", None)
+        if not callable(check):
+            return True, ""
+        return check(key)
+
     @Slot(str, result=bool)
     def saveSetting(self, key: str) -> bool:
         """
@@ -480,6 +571,11 @@ class SettingsManager(QObject):
         Returns:
             bool: True if successful
         """
+        allowed, reason = self._check_qml_mutation(key)
+        if not allowed:
+            self.operation_result.emit(False, reason)
+            return False
+
         success, message = self.save_setting(key)
         self.operation_result.emit(success, message)
         
@@ -552,6 +648,10 @@ class SettingsManager(QObject):
         Returns:
             bool: True if successful
         """
+        allowed, reason = self._check_qml_mutation(key)
+        if not allowed:
+            self.operation_result.emit(False, reason)
+            return False
         success, message = self.reset_setting(key)
         self.operation_result.emit(success, message)
         return success
@@ -622,19 +722,31 @@ class SettingsManager(QObject):
     
     @Slot(str, float, result=bool)
     def setFloat(self, key: str, value: float) -> bool:
-        """Set a float setting value from QML"""
+        """Set a float setting value from QML (gated; prefer applyFloat)."""
+        allowed, reason = self._check_qml_mutation(key)
+        if not allowed:
+            self.operation_result.emit(False, reason)
+            return False
         success, _ = self.set(key, value)
         return success
     
     @Slot(str, int, result=bool)
     def setInt(self, key: str, value: int) -> bool:
-        """Set an int setting value from QML"""
+        """Set an int setting value from QML (gated; prefer applyInt)."""
+        allowed, reason = self._check_qml_mutation(key)
+        if not allowed:
+            self.operation_result.emit(False, reason)
+            return False
         success, _ = self.set(key, value)
         return success
 
     @Slot(str, float, result=bool)
     def applyFloat(self, key: str, value: float) -> bool:
         """Set and persist a float setting value from QML without popup notification."""
+        allowed, reason = self._check_qml_mutation(key)
+        if not allowed:
+            self.operation_result.emit(False, reason)
+            return False
         success, message = self.apply_value(key, value)
         self.operation_result.emit(success, message)
         return success
@@ -642,6 +754,10 @@ class SettingsManager(QObject):
     @Slot(str, int, result=bool)
     def applyInt(self, key: str, value: int) -> bool:
         """Set and persist an int setting value from QML without popup notification."""
+        allowed, reason = self._check_qml_mutation(key)
+        if not allowed:
+            self.operation_result.emit(False, reason)
+            return False
         success, message = self.apply_value(key, value)
         self.operation_result.emit(success, message)
         return success
@@ -649,6 +765,10 @@ class SettingsManager(QObject):
     @Slot(str, bool, result=bool)
     def applyBool(self, key: str, value: bool) -> bool:
         """Set and persist a bool setting value from QML without popup notification."""
+        allowed, reason = self._check_qml_mutation(key)
+        if not allowed:
+            self.operation_result.emit(False, reason)
+            return False
         success, message = self.apply_value(key, value)
         self.operation_result.emit(success, message)
         return success

@@ -29,11 +29,13 @@ DetailSettingItem {
         if (!_ready || !settingsManager) {
             return
         }
-        if (integerValue) {
-            settingsManager.applyInt(settingKey, Math.round(value))
-            return
+        var ok = integerValue
+            ? settingsManager.applyInt(settingKey, Math.round(value))
+            : settingsManager.applyFloat(settingKey, value)
+        // TD-036: gate deny must not leave the spinbox stuck on the rejected value.
+        if (!ok) {
+            root.refreshValue()
         }
-        settingsManager.applyFloat(settingKey, value)
     }
 
     Connections {

@@ -5,14 +5,39 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from paint_controller.core.settings import SettingsManager
+from paint_controller.core.settings import (
+    SETTINGS_PATH_ENV,
+    SettingsManager,
+    package_settings_template_path,
+    resolve_settings_path,
+)
 
 
-def _make_manager(monkeypatch, tmp_path: Path, show_popup_fn=None) -> tuple[SettingsManager, Path]:
+class _FakeGate:
+    def __init__(self, allowed: bool = True, reason: str = "blocked by test") -> None:
+        self.allowed = allowed
+        self.reason = reason
+        self.checked: list[str] = []
+
+    def check_action(self, action_key: str) -> tuple[bool, str]:
+        self.checked.append(action_key)
+        if self.allowed:
+            return True, ""
+        return False, self.reason
+
+
+def _make_manager(
+    monkeypatch,
+    tmp_path: Path,
+    show_popup_fn=None,
+    gate: _FakeGate | None = None,
+) -> tuple[SettingsManager, Path]:
     config_path = tmp_path / "config" / "settings.json"
     config_path.parent.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(SettingsManager, "_get_config_path", lambda self: config_path)
     manager = SettingsManager(show_popup_fn=show_popup_fn)
+    if gate is not None:
+        manager.set_admin_action_gate(gate)
     return manager, config_path
 
 
@@ -217,3 +242,142 @@ def test_settings_route_summaries_reflect_current_values(monkeypatch, tmp_path, 
     assert manager.getRouteSummary("camera") == "Base-top zoom: 0.73; full calibration remains overlay-primary"
     assert manager.getRouteSummary("arm") == "Retract: 111 mm, extend: 999 mm"
     assert manager.getCameraCalibrationSummary() == "Saved zoom 0.73, crop disabled. Full calibration remains overlay-primary."
+
+
+# --- TD-036: gated QML writes, legality key, path resolution ---
+
+
+def test_apply_float_denied_by_gate_leaves_value_and_file_unchanged(monkeypatch, tmp_path, qt_core_app):
+    gate = _FakeGate(allowed=False, reason="not idle")
+    manager, config_path = _make_manager(monkeypatch, tmp_path, gate=gate)
+    manager.set("winch_max_speed_mmps", 200.0)
+    manager.save_all()
+    before = json.loads(config_path.read_text())
+    results: list[tuple[bool, str]] = []
+    manager.operation_result.connect(lambda ok, msg: results.append((ok, msg)))
+
+    assert manager.applyFloat("winch_max_speed_mmps", 300.0) is False
+    assert manager.get("winch_max_speed_mmps") == 200.0
+    assert json.loads(config_path.read_text()) == before
+    assert results and results[-1] == (False, "not idle")
+    assert gate.checked == ["winch_max_speed_mmps"]
+
+
+def test_apply_float_allowed_by_gate_persists(monkeypatch, tmp_path, qt_core_app):
+    gate = _FakeGate(allowed=True)
+    manager, config_path = _make_manager(monkeypatch, tmp_path, gate=gate)
+
+    assert manager.applyFloat("winch_max_speed_mmps", 250.0) is True
+    assert manager.getFloat("winch_max_speed_mmps") == 250.0
+    assert json.loads(config_path.read_text())["winch_max_speed_mmps"] == 250.0
+    assert gate.checked == ["winch_max_speed_mmps"]
+
+
+def test_internal_set_succeeds_when_gate_denies_qml_apply(monkeypatch, tmp_path, qt_core_app):
+    gate = _FakeGate(allowed=False)
+    manager, _ = _make_manager(monkeypatch, tmp_path, gate=gate)
+
+    success, _ = manager.set("winch_max_speed_mmps", 300.0)
+    assert success is True
+    assert manager.get("winch_max_speed_mmps") == 300.0
+    assert manager.applyFloat("winch_max_speed_mmps", 350.0) is False
+    assert manager.get("winch_max_speed_mmps") == 300.0
+
+
+def test_set_float_and_save_setting_gated(monkeypatch, tmp_path, qt_core_app):
+    gate = _FakeGate(allowed=False, reason="blocked")
+    manager, config_path = _make_manager(monkeypatch, tmp_path, gate=gate)
+    manager.set("winch_max_speed_mmps", 210.0)
+    manager.save_all()
+
+    assert manager.setFloat("winch_max_speed_mmps", 300.0) is False
+    assert manager.get("winch_max_speed_mmps") == 210.0
+    assert manager.saveSetting("winch_max_speed_mmps") is False
+
+
+def test_section_expand_ungated_when_gate_denies(monkeypatch, tmp_path, qt_core_app):
+    gate = _FakeGate(allowed=False)
+    manager, _ = _make_manager(monkeypatch, tmp_path, gate=gate)
+
+    manager.setSectionExpanded("device_winch", False)
+    assert manager.getSectionExpanded("device_winch") is False
+    assert gate.checked == []
+
+
+def test_apply_bool_blocks_action_legality_enforced_key(monkeypatch, tmp_path, qt_core_app):
+    gate = _FakeGate(allowed=True)
+    manager, _ = _make_manager(monkeypatch, tmp_path, gate=gate)
+
+    assert manager.applyBool("action_legality_enforced", True) is False
+    # Development default remains false; QML cannot flip the flag.
+    assert manager.get("action_legality_enforced") is False
+    # Hard-blocked before gate check.
+    assert gate.checked == []
+
+
+def test_generated_setting_properties_are_read_only(qt_core_app, monkeypatch, tmp_path):
+    manager, _ = _make_manager(monkeypatch, tmp_path)
+    meta = manager.metaObject()
+    idx = meta.indexOfProperty("winch_max_speed_mmps")
+    assert idx >= 0
+    prop = meta.property(idx)
+    assert prop.isReadable()
+    assert not prop.isWritable()
+
+
+def test_resolve_settings_path_env_override(monkeypatch, tmp_path):
+    target = tmp_path / "custom" / "live.json"
+    monkeypatch.setenv(SETTINGS_PATH_ENV, str(target))
+    assert resolve_settings_path() == target.resolve()
+
+
+def test_resolve_settings_path_xdg(monkeypatch, tmp_path):
+    monkeypatch.delenv(SETTINGS_PATH_ENV, raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    expected = (tmp_path / "xdg" / "paint_controller" / "settings.json").resolve()
+    assert resolve_settings_path() == expected
+
+
+def test_settings_path_env_load_and_save(monkeypatch, tmp_path, qt_core_app):
+    live = tmp_path / "env_live" / "settings.json"
+    monkeypatch.setenv(SETTINGS_PATH_ENV, str(live))
+    # Do not monkeypatch _get_config_path — exercise real resolver.
+    manager = SettingsManager()
+    assert manager._config_file == live.resolve()
+    manager.set("winch_max_speed_mmps", 222.0)
+    assert manager.save_all()[0] is True
+    assert live.exists()
+    assert json.loads(live.read_text())["winch_max_speed_mmps"] == 222.0
+    # Development default: legality enforcement off until field hardening.
+    assert json.loads(live.read_text()).get("action_legality_enforced") is False
+
+
+def test_migrate_from_template_preserves_values(monkeypatch, tmp_path, qt_core_app):
+    live = tmp_path / "migrate_live" / "settings.json"
+    template = tmp_path / "template" / "settings.json"
+    template.parent.mkdir(parents=True)
+    template.write_text(json.dumps({
+        "winch_max_speed_mmps": 250.0,
+        "action_legality_enforced": False,
+    }))
+    monkeypatch.setenv(SETTINGS_PATH_ENV, str(live))
+    # Avoid first-load migrate from the real package template into live.
+    monkeypatch.setattr(SettingsManager, "_get_config_path", lambda self: live)
+    manager = SettingsManager()
+    manager._package_template_path = template
+    manager._config_file = live.resolve()
+    if live.exists():
+        live.unlink()
+    # load uses _get_config_path (live) and migrates only when path == _config_file.
+    assert manager.load() is True
+    assert live.exists()
+    data = json.loads(live.read_text())
+    assert data["winch_max_speed_mmps"] == 250.0
+    assert data.get("action_legality_enforced") is False
+    assert manager.get("action_legality_enforced") is False
+
+
+def test_package_template_path_points_at_ship_file():
+    path = package_settings_template_path()
+    assert path.name == "settings.json"
+    assert path.parent.name == "config"

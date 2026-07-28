@@ -237,6 +237,12 @@ class AppRuntime:
         )
         self._log_startup("Controller bundle created")
 
+        # TD-036: QML settings mutations check AdminActionGate (created in factory).
+        assert self.settings_manager is not None
+        inject_gate = getattr(self.settings_manager, "set_admin_action_gate", None)
+        if callable(inject_gate):
+            inject_gate(self.bundle.admin_action_gate)
+
         self.qt_bridge.set_base_top_view_service(self.base_top_view_service)
         self.qt_bridge.set_input_handler(self.bundle.input_handler)
         self.shell_state = ShellState(screen_manager=self.bundle.screen_manager)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from copy import deepcopy
 from typing import Any
 
@@ -8,15 +9,31 @@ from PySide6.QtCore import QObject, Property, Signal, Slot
 from paint_controller.utils.constants import HeartbeatStatus
 
 
+# Env override for lab/field (TD-036). Takes precedence over the settings flag.
+_ENFORCEMENT_ENV_VAR = "PAINT_ACTION_LEGALITY_ENFORCED"
+_ENV_FORCE_OFF = frozenset({"0", "false", "off", "no"})
+_ENV_FORCE_ON = frozenset({"1", "true", "on", "yes"})
+
 _LEGAL_STATE_ALLOWED_HEARTBEAT_STATES: dict[str, tuple[int, ...]] = {
     "overlay-primary-calibration": (HeartbeatStatus.IDLE.value,),
     "tuning-calibration": (HeartbeatStatus.IDLE.value,),
     "maintenance-preset": (HeartbeatStatus.IDLE.value,),
-    "status-admin": (HeartbeatStatus.IDLE.value, HeartbeatStatus.ONTASK.value),
+    # Settings-route / admin machine limits (TD-036): require idle for edits.
+    "mixed-admin-route": (HeartbeatStatus.IDLE.value,),
+    "safety-admin": (HeartbeatStatus.IDLE.value,),
+    # System-control / device toggles: must remain usable in any heartbeat state
+    # while field development continues (operator can re-enable devices after ERROR).
+    "status-admin": (
+        HeartbeatStatus.IDLE.value,
+        HeartbeatStatus.ONTASK.value,
+        HeartbeatStatus.WARNING.value,
+        HeartbeatStatus.ERROR.value,
+    ),
     "status-admin-warning-ok": (
         HeartbeatStatus.IDLE.value,
         HeartbeatStatus.ONTASK.value,
         HeartbeatStatus.WARNING.value,
+        HeartbeatStatus.ERROR.value,
     ),
     "live-operational-motion": (HeartbeatStatus.IDLE.value, HeartbeatStatus.ONTASK.value),
     "emergency-exception": (
@@ -112,8 +129,8 @@ class AdminActionGate(QObject):
         heartbeat_state = self._heartbeat_state()
 
         if not self._enforcement_enabled():
-            # Development bypass (settings action_legality_enforced=false):
-            # everything is allowed; the heartbeat state is still reported.
+            # Lab bypass: env PAINT_ACTION_LEGALITY_ENFORCED=0/false/off, or
+            # settings action_legality_enforced=false when env is unset.
             return {
                 "actionKey": action_key,
                 "allowed": True,
@@ -145,17 +162,40 @@ class AdminActionGate(QObject):
         return int(getattr(self._state_store, "controller_heartbeat_state", HeartbeatStatus.IDLE.value))
 
     def _enforcement_enabled(self) -> bool:
-        """Read the development bypass flag (enforced unless explicitly disabled)."""
+        """Whether legality checks run.
+
+        Precedence (TD-036):
+        1. Env ``PAINT_ACTION_LEGALITY_ENFORCED`` force on/off
+        2. Else settings ``action_legality_enforced`` (default True)
+        """
+        env_raw = os.environ.get(_ENFORCEMENT_ENV_VAR)
+        if env_raw is not None:
+            token = env_raw.strip().lower()
+            if token in _ENV_FORCE_OFF:
+                return False
+            if token in _ENV_FORCE_ON:
+                return True
+
         if self._settings_manager is None:
-            return True
-        return bool(self._settings_manager.get("action_legality_enforced", True))
+            # Align with schema development default (off until hardening is done).
+            return False
+        return bool(self._settings_manager.get("action_legality_enforced", False))
 
     def _action_metadata(self, action_key: str) -> dict[str, Any]:
         metadata: dict[str, Any] = {}
         if self._capability_catalog is not None:
             catalog_metadata = self._capability_catalog.getActionCapability(action_key)
-            if isinstance(catalog_metadata, dict):
+            if isinstance(catalog_metadata, dict) and catalog_metadata:
                 metadata.update(deepcopy(catalog_metadata))
+            else:
+                # Setting keys live in _SETTING_CAPABILITIES, not action map (TD-036).
+                setting_getter = getattr(
+                    self._capability_catalog, "getSettingCapability", None
+                )
+                if callable(setting_getter):
+                    setting_metadata = setting_getter(action_key)
+                    if isinstance(setting_metadata, dict) and setting_metadata:
+                        metadata.update(deepcopy(setting_metadata))
 
         metadata.update(deepcopy(_ACTION_METADATA_OVERRIDES.get(action_key, {})))
         metadata.setdefault("title", action_key)

@@ -19,34 +19,19 @@ When the goal is **frontend + backend program architecture** (not UI chrome, not
 
 | Rank | ID | Why |
 |---|---|---|
-| 1 | **TD-036** (gate + one settings API first; path second) | Restores single machine-write invariant |
-| 2 | **TD-032** close-out | Ends dual command owners; freezes root contract |
-| 3 | **TD-038** structural half | Domain out of QML; god-file size (defer tokens) |
-| 4 | **TD-037** | Highest structural ROI on the QML↔Python joint; high effort — slice it |
-| 5 | **TD-046 / TD-047** | Backend module shape after the surface is honest |
-| 6 | **TD-044 + TD-045**, then **TD-040** | Make CI/types real control planes |
-| 7 | **TD-042 / TD-043 / TD-041** | Hygiene |
+| 1 | **TD-032** close-out | Ends dual command owners; freezes root contract |
+| 2 | **TD-038** structural half | Domain out of QML; god-file size (defer tokens) |
+| 3 | **TD-037** | Highest structural ROI on the QML↔Python joint; high effort — slice it |
+| 4 | **TD-046 / TD-047** | Backend module shape after the surface is honest |
+| 5 | **TD-044 + TD-045**, then **TD-040** | Make CI/types real control planes |
+| 6 | **TD-042 / TD-043 / TD-041** | Hygiene |
 | — | **TD-002 / TD-016** | Out of scope for a pure program track |
+| — | **TD-036** | Resolved 2026-07-28 |
 | — | **TD-039** | Resolved 2026-07-28 |
 
 ---
 
 ## Active Debt
-
-### TD-036 — Settings: ungated QML writes, dual API, in-tree path; legality ship default
-**Area**: Settings / Deployment / Contract
-**Priority**: high
-**Effort**: low
-**Architecture leverage**: high
-**Why it matters**: The architecture program's real win is a single gated write path for machine-affecting actions (`*Actions` → `AdminActionGate`). Settings still break that invariant:
-- QML mutates persisted machine limits via raw `settingsManager.getInt/applyFloat/setFloat` (~18 call sites) with no gate — last free-form machine-affecting write path.
-- Generated per-setting Qt Properties are unused by QML (hand-rolled `Connections` refresh) — two parallel APIs, weaker one in use.
-- `settings.py` resolves `settings.json` inside the source tree (docstrings hardcode `~/ros2_ws/src/...`) — breaks under colcon install or read-only deployment.
-- Shipped `python/config/settings.json` has `"action_legality_enforced": false`, so `AdminActionGate` allows all gated actions regardless of heartbeat (dev bypass left on by default). Schema default is `True`; file overrides it.
-**What to do**: (1) Route QML settings mutations through one gated command surface (or one explicit settings-command API). (2) Pick one settings API (bind generated Properties or drop them). (3) Move persistence to an XDG/env-overridable path. (4) Ship with `action_legality_enforced: true`; keep lab bypass via env/build flag, not a casually persisted operator setting if field units matter.
-**Files**: `python/paint_controller/core/settings.py`, `python/config/settings.json`, `python/paint_controller/models/admin_action_gate.py`, `python/paint_controller/qml/pages/settings/components/ManagedSettingSpinBox.qml`, `python/paint_controller/qml/overlays/systemcontrol/components/SettingInputField.qml`
-
----
 
 ### TD-032 — QML boundary retirement program: close out honestly, then stop
 **Area**: QML↔Python contract
@@ -54,7 +39,7 @@ When the goal is **frontend + backend program architecture** (not UI chrome, not
 **Effort**: low
 **Architecture leverage**: high
 **Why it matters**: Reconfirmed 2026-07-28. The program's headline metric was never met (target ~12–15 root-context properties; actual 28 in `_EXPECTED_CONTEXT_PROPERTY_NAMES`) and explicit elimination targets still live: `deviceActionHandler` (call sites in `DeviceControlTab.qml`, `PageStatus.qml`, `PageWinch.qml`, `TeensyStatus.qml`), `stateStore` (1 QML use), `backend` (2 QML uses). The substantive win (no raw controllers in QML; gated action models) is real and done; the remaining tail is small and the program is past diminishing returns (Phases 7–8 produced the TD-033 navigation regression and net line growth). Dual equal owners for similar device commands (`*Actions` vs `deviceActionHandler`) is the important residual, not the count itself.
-**What to do**: One final close-out slice: retire `deviceActionHandler`, `stateStore`, and `backend` per the board's own "remove when last consumer is gone" rule — **or** formally amend the 12–15 target in the plan docs and freeze the real list. Correct stale frozen/quarantine entries (TD-041), declare the QML surface retirement program **closed**, and redirect effort to remaining active TDs (especially TD-036, TD-037, TD-038, TD-046). **Do not open new boundary phases.**
+**What to do**: One final close-out slice: retire `deviceActionHandler`, `stateStore`, and `backend` per the board's own "remove when last consumer is gone" rule — **or** formally amend the 12–15 target in the plan docs and freeze the real list. Correct stale frozen/quarantine entries (TD-041), declare the QML surface retirement program **closed**, and redirect effort to remaining active TDs (especially TD-037, TD-038, TD-046). **Do not open new boundary phases.**
 **Files**: `docs/plan/00_ARCHITECTURE_PROGRESS.md`, `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`, `python/paint_controller/core/qml_context_composer.py`, `python/paint_controller/qml/overlays/systemcontrol/DeviceControlTab.qml`, `python/paint_controller/qml/pages/status/PageStatus.qml`, `python/paint_controller/qml/pages/winch/PageWinch.qml`, `python/paint_controller/qml/pages/status/components/TeensyStatus.qml`
 
 ---
@@ -197,6 +182,7 @@ When the goal is **frontend + backend program architecture** (not UI chrome, not
 
 | ID | Title | Resolved | Notes |
 |---|---|---|---|
+| TD-036 | Settings: ungated QML writes, dual API, in-tree path; legality ship default | 2026-07-28 | QML apply*/set*/saveSetting gated via AdminActionGate (setting-capability fallback + mixed-admin-route/safety-admin); read-only generated Properties; SettingInputField→apply*; deny refresh in ManagedSettingSpinBox; live path env/XDG with template migrate+legality sanitize; lab bypass PAINT_ACTION_LEGALITY_ENFORCED; ship template no longer disables gate. Focused band 45+ passed |
 | TD-039 | Concurrency loose ends: BaseTopView race, ROS error path, in-lock emit, image null cleanup | 2026-07-28 | (1) Worker-owned map recompute via `mapsRecomputeRequested` + 0ms coalesce timer; k setters no longer write `dist_coeffs` on GUI. (2) `RosThread.error_occurred` → `SignalWiring` → `StateStore.display_message` (throttled); removed dead `_last_spin_time`/`_spin_timeout`. (3) `button_held` collected under lock, emitted after unlock. (4) `ImageProvider` never-None placeholder under lock + defensive `requestImage`. Focused band 19 passed (`test_video_stream`, `test_base_top_view_service`, `test_steam_deck_handler`, `test_signal_wiring`). Residual: GUI may still write scalar float params while worker reads them |
 | TD-035 | View-authoritative toggle commands; optimistic device state never reconciled | 2026-07-28 | Arg-less backend-authoritative toggles in 5 commits (`b84346f`..`19aa335`): relay/enable negate firmware echo, six un-echoed fields negate controller intent, wheel intent tracking, TouchSwitch request-only binding fix, typo rename, lidar backend state. Hardware-validated on the live rig; suite 373 passed, pyright green. Reconnect reconciliation deliberately not built — pending the operator's firmware echo of the six user-controlled fields |
 | TD-033 | Zero behavioral UI / NOTIFY-contract test coverage | 2026-07-27 | `tests/test_notify_contracts.py` (48 tests: ShellState/OverlayHostPolicy/ShellRouter + composer-wrapper connection-completeness and fan-in, mutation-checked), 7 heartbeat recovery/flap tests incl. coordinator variants, and the first real input-simulation test (`QTest.mouseClick` nav click through real `MainWindow.qml` wiring — fails on reintroduced SelectBar bug). Suite at 369 passed |

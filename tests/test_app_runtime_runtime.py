@@ -41,7 +41,14 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     module, runtime = _runtime_without_bootstrap(monkeypatch)
 
     runtime.node = FakeNode()
-    runtime.settings_manager = type("Settings", (), {"_show_popup_fn": None})()
+    runtime.settings_manager = type(
+        "Settings",
+        (),
+        {
+            "_show_popup_fn": None,
+            "set_admin_action_gate": lambda self, gate: setattr(self, "admin_action_gate", gate),
+        },
+    )()
     runtime.capability_catalog = object()
     runtime.state_store = type("StateStore", (), {"control_mode_changed": _SignalRecorder()})()
     runtime.steam_deck_handler = _SteamDeckHandlerRecorder()
