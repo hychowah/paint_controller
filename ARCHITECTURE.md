@@ -230,6 +230,11 @@ Rough groups (names as exposed to QML):
 
 Understanding these two paths avoids putting code in the wrong place.
 
+| Path | Entry | Policy | Examples |
+|---|---|---|---|
+| **Discrete** | QML → `*Actions` | `AdminActionGate` (+ capability metadata) | Enable, home, increment, settings apply |
+| **Continuous teleop** | Status timer → `ControlProcessor.process_input` | Rate limits, deadzones, effector locks (e.g. winch ONTASK) — **not** the gate | Sticks, continuous triggers |
+
 ### A. Discrete commands (buttons, admin actions)
 
 ```
@@ -254,8 +259,10 @@ SignalWiring status timer (~60 Hz default)
 ```
 
 - This path is **not** the same as per-button `AdminActionGate` slots.
-- Effector-specific locks and rate limits live in `ControlProcessor`.
+- Effector-specific locks and rate limits live in `ControlProcessor` (and helpers such as `winch_teleop` / `wheel_travel_teleop`).
 - Shared hard stop sequence lives in `SafetyCoordinator.halt_all_effectors()` (used by emergency, heartbeat, motor fault paths).
+
+**Do not:** assume the gate covers sticks; put stick math in `*Actions`; add a second continuous entry beside `process_input`.
 
 When adding a new “hold button to move” vs “tap to home” behavior, pick the path deliberately.
 

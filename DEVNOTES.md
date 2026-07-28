@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-07-28 - TD-046 resolved (teleop docs + selective structure)
+
+**Goal**: Document dual command paths (gate vs continuous teleop); extract high-state winch/wheel teleop without product UX latch.
+**Tried**: Module docstring on `control_processor`; ARCHITECTURE §7 table/do-not; AdminActionGate discrete-only note; `winch_teleop` + `wheel_travel_teleop` flat helpers with façade delegates. Skipped `handlers/teleop/` package and EF mode splits.
+**Result**: ✅ 35 control_processor tests + full suite 433 passed. Residual: EF stick mass in façade; post-halt stick inhibit still product-only.
+**Files**: `control_processor.py`, `winch_teleop.py`, `wheel_travel_teleop.py`, `admin_action_gate.py`, `ARCHITECTURE.md`, tech-debt
+
+---
 ### 2026-07-28 - TD-037 resolved (device status honesty + valve/lidar)
 
 **Goal**: Per-property/fine-grained QML status models outside the composer for device telemetry families.

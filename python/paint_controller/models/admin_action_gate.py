@@ -1,3 +1,10 @@
+"""Discrete action legality for ``*Actions`` / settings-style slots.
+
+Covers button and admin command slots only. Continuous stick/trigger teleop is
+owned by ``ControlProcessor`` and does **not** consult this gate
+(see ``ARCHITECTURE.md`` §7 and TD-046).
+"""
+
 from __future__ import annotations
 
 import os
@@ -86,7 +93,7 @@ _ACTION_METADATA_OVERRIDES: dict[str, dict[str, Any]] = {
 
 
 class AdminActionGate(QObject):
-    """Centralize Stage 4.5 action gating by runtime state."""
+    """Centralize discrete action gating by runtime state (not continuous teleop)."""
 
     gate_state_changed = Signal()
 

@@ -10,7 +10,7 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 
 - Overall status: in progress
 - Active architecture program: none — the QML surface retirement program (Phases 0–8) is closing per `docs/tech-debt.md` TD-032; the master plan doc was deleted 2026-07-27 and is recoverable from git history
-- Most recent completed slice: **TD-037 resolved** — Winch/Wheel/Teensy status models with honest NOTIFY (2026-07-28); TD-038 resolved same day
+- Most recent completed slice: **TD-046 resolved** — teleop dual-path docs + winch/wheel helpers (2026-07-28); TD-037/038 same day
 - Debt tracker re-validated 2026-07-28 (program-side FE+BE review): priorities and gaps updated in `docs/tech-debt.md` (TD-039/TD-036 → high; TD-046/TD-047 added; program-track order published)
 - Core purpose: reduce global coupling, clarify ownership, shrink the app-scope QML contract, and make operator-visible behavior easier to trace
 - First-principles rule: success means fewer permanent app-scope QML reads and fewer equal-owner concepts, not wrapper proliferation
@@ -25,8 +25,8 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 
 ### Next
 
-- **TD-037 resolved** (winch/wheel/teensy). Next program-track candidates: **TD-046 / TD-047** (backend module shape) or CI gates TD-044/045.
-- Program-track order for remaining work lives in `docs/tech-debt.md`. TD-032, TD-036, TD-037, TD-038, TD-039 resolved 2026-07-28.
+- **TD-046 resolved** (docs + selective teleop structure). Next program-track candidates: **TD-047** or CI gates TD-044/045.
+- Program-track order for remaining work lives in `docs/tech-debt.md`. TD-032, TD-036, TD-037, TD-038, TD-039, TD-046 resolved 2026-07-28.
 - Root context contract is frozen at the post-TD-032 list in `qml_context_composer._EXPECTED_CONTEXT_PROPERTY_NAMES` (~26 names). Do not open new boundary phases; amend count only when retiring a last consumer.
 - TD-038 pure structural slices are exempt from the “retire a raw app-scope QML read every slice” gate; success is domain ownership / file size.
 

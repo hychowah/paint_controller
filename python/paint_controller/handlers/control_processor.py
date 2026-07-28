@@ -1,4 +1,18 @@
 # pyright: reportRedeclaration=false
+"""Continuous teleop owner (sticks / triggers) — not the discrete action gate.
+
+This module owns **continuous** machine motion from operator axes:
+
+- Entry: ``ControlProcessor.process_input`` (status timer in ``SignalWiring``, ~60 Hz).
+- Does **not** call ``AdminActionGate``. Gate covers discrete ``*Actions`` / settings slots only.
+- Teleop policy instead: per-mode rate limits, deadzone timeouts, winch ONTASK lock,
+  winch stick-activation gate. Effector helpers: ``winch_teleop``, ``wheel_travel_teleop``.
+
+Discrete buttons/admin: QML → ``*Actions`` → ``AdminActionGate`` → controllers
+(see ``ARCHITECTURE.md`` §7). Shared hard stop: ``SafetyCoordinator.halt_all_effectors``.
+
+Post-halt stick inhibit is product policy elsewhere — not implemented here (TD-046 residual).
+"""
 
 from __future__ import annotations
 
@@ -8,7 +22,7 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from std_msgs.msg import Float32, Int32
-from paint_controller.handlers.heartbeat import HeartbeatStatus
+from paint_controller.handlers import wheel_travel_teleop, winch_teleop
 from paint_controller.utils.constants import JoystickControl
 from paint_controller.utils.input import DeadzoneTracker
 from PySide6.QtCore import QObject, Signal, Property
@@ -587,97 +601,34 @@ class ControlProcessor(QObject):
                 logger.error("Error commanding arm rail speed: %s", e)
 
     def _process_winch_speed(self, input_state: dict[str, Any], mode: str, stick: str) -> None:
-        """Handle winch speed control using joystick Y-axis
-        
-        Maps the joystick Y-axis to winch speed range (min_value to max_value)
-        Stops sending commands after 1 second in deadzone until joystick moves beyond deadzone
-        """
-        config = self.controls[mode]
-        
-        # Get joystick Y-axis input and calculate winch speed value
-        value = input_state[f'{stick}_stick']['y'] * config.scale + config.offset
-        
-        # Clamp value to configured min/max
-        value = max(config.min_value, min(config.max_value, value))
-        
-        # Update current values for display
-        if stick == 'left':
-            self.current_values['left_mode'] = mode
-            self.current_values['left_value'] = value
-        else:
-            self.current_values['right_mode'] = mode
-            self.current_values['right_value'] = value
-        
-        # Normalize to 0-1 range for deadzone check (handling bidirectional range)
-        normalized_value = abs(value) / config.max_value if config.max_value > 0 else 0
-        
-        # Update deadzone tracker
-        should_send = self._winch_speed_deadzone.update(normalized_value, self.WINCH_SPEED_DEADZONE)
-        
-        if not self._winch_speed_deadzone.in_deadzone:
-            self.winch_speed_has_been_active = True  # Mark as active when joystick moves
-        
-        # Only send command if we should send, conditions are met, and joystick has been activated
-        if should_send and self.winch_speed_has_been_active:
-            try:
-                if not self._winch.get_available():
-                    logger.warning("Winch not available")
-                    return
-                
-                if self._winch.get_motor_brake():
-                    logger.warning("Winch motor brake is on")
-                    return
-                
-                if self._is_winch_control_locked():
-                    logger.warning("Winch control locked: Base or EF is in ONTASK state")
-                    return
-                
-                self._winch.command_speed_mmps(value)
-                # print(f"Commanding winch speed: {value} mm/s")
-            except Exception as e:
-                logger.error("Error commanding winch speed: %s", e)
+        """Handle winch speed control using joystick Y-axis (delegates to winch_teleop)."""
+        self.winch_speed_has_been_active = winch_teleop.process_winch_speed(
+            input_state,
+            mode,
+            stick,
+            config=self.controls[mode],
+            current_values=self.current_values,
+            deadzone=self._winch_speed_deadzone,
+            deadzone_threshold=self.WINCH_SPEED_DEADZONE,
+            has_been_active=self.winch_speed_has_been_active,
+            winch=self._winch,
+            heartbeat_handler=self._heartbeat_handler,
+        )
 
     def _process_wheel_travel(self, input_state: dict[str, Any], mode: str, stick: str) -> None:
-        """Handle wheel travel position control using joystick Y-axis
-        
-        Accumulates travel distance from joystick input without sending commands.
-        Commands are sent only when trigger button (A button) is pressed.
-        Accumulates at wheel_travel_rate mm/sec at full joystick deflection.
-        
-        The mode name determines which wheel to control:
-        - "Wheel Travel Left" controls left wheel
-        - "Wheel Travel Right" controls right wheel
-        """
-        # Get joystick Y-axis input and calculate delta travel distance
-        # Scale: (rate * update_interval) / joystick_max gives mm per update at full deflection
-        scale = self._get_wheel_travel_scale()
-        delta = input_state[f'{stick}_stick']['y'] * scale
-        
-        # Determine which wheel to control based on mode name (not which joystick)
-        if mode == "Wheel Travel Left":
-            self._left_wheel_travel_mm += delta
-            self._left_wheel_travel_mm = max(-self._wheel_travel_max, min(self._wheel_travel_max, self._left_wheel_travel_mm))
-            # Update current values for display - use the joystick side for display mapping
-            if stick == 'left':
-                self.current_values['left_mode'] = mode
-                self.current_values['left_value'] = self._left_wheel_travel_mm
-            else:
-                self.current_values['right_mode'] = mode
-                self.current_values['right_value'] = self._left_wheel_travel_mm
-        else:  # "Wheel Travel Right"
-            self._right_wheel_travel_mm += delta
-            self._right_wheel_travel_mm = max(-self._wheel_travel_max, min(self._wheel_travel_max, self._right_wheel_travel_mm))
-            # Update current values for display - use the joystick side for display mapping
-            if stick == 'left':
-                self.current_values['left_mode'] = mode
-                self.current_values['left_value'] = self._right_wheel_travel_mm
-            else:
-                self.current_values['right_mode'] = mode
-                self.current_values['right_value'] = self._right_wheel_travel_mm
-        
-        # Note: No ROS command is sent here - only accumulate the value
-        # Command will be sent when A button is pressed (see input.py handler)
-
+        """Accumulate wheel travel from stick (command on A button via send_wheel_travel_command)."""
+        self._left_wheel_travel_mm, self._right_wheel_travel_mm = (
+            wheel_travel_teleop.accumulate_wheel_travel(
+                input_state,
+                mode,
+                stick,
+                left_mm=self._left_wheel_travel_mm,
+                right_mm=self._right_wheel_travel_mm,
+                scale=self._get_wheel_travel_scale(),
+                travel_max=self._wheel_travel_max,
+                current_values=self.current_values,
+            )
+        )
     def _process_standard_control(self, input_state: dict[str, Any], mode: str, stick: str) -> None:
         """Handle standard control modes"""
         config = self.controls[mode]
@@ -787,23 +738,11 @@ class ControlProcessor(QObject):
     def reset_winch_activation(self):
         """Reset winch activation state - call when switching to EF mode to prevent spurious commands"""
         self.winch_speed_has_been_active = False
-        self._winch_speed_deadzone.reset()
+        winch_teleop.reset_winch_activation(self._winch_speed_deadzone)
 
     def _is_winch_control_locked(self) -> bool:
-        """
-        Check if winch control should be locked based on heartbeat status
-        Returns:
-            bool: True if winch control should be locked, False otherwise
-        """
-        # Get the current heartbeat status for base and EF
-        base_status = self._heartbeat_handler.get_base_status()
-        ef_status = self._heartbeat_handler.get_ef_status()
-        
-        # Check if either component is in ONTASK status (0x01)
-        if base_status == HeartbeatStatus.ONTASK.value or ef_status == HeartbeatStatus.ONTASK.value:
-            return True
-            
-        return False
+        """Check if winch control should be locked based on heartbeat status."""
+        return winch_teleop.is_winch_control_locked(self._heartbeat_handler)
     
     # Settings change callbacks
     def _on_track_max_speed_changed(self, new_value: float):
@@ -838,12 +777,12 @@ class ControlProcessor(QObject):
         logger.info("Winch max speed updated to: %s mm/s", new_value)
 
     def _get_wheel_travel_scale(self) -> float:
-        """Calculate wheel travel scale factor based on rate and update interval.
-        
-        Returns mm per update at full joystick deflection.
-        At rate=100mm/sec and interval=0.1sec: scale = (100 * 0.1) / 32768 = 10mm per update
-        """
-        return (self._wheel_travel_rate * self.WHEEL_TRAVEL_UPDATE_INTERVAL) / self.JOYSTICK_MAX_VALUE
+        """mm per update at full joystick deflection."""
+        return wheel_travel_teleop.travel_scale(
+            self._wheel_travel_rate,
+            self.WHEEL_TRAVEL_UPDATE_INTERVAL,
+            self.JOYSTICK_MAX_VALUE,
+        )
 
     def _on_wheel_travel_max_changed(self, new_value: float):
         """Handle wheel_travel_max change from SettingsManager"""
@@ -869,32 +808,13 @@ class ControlProcessor(QObject):
         logger.info("Wheel travel RPM updated to: %s", new_value)
 
     def send_wheel_travel_command(self):
-        """Send accumulated wheel travel position command and reset values
-        
-        Called when trigger button (A button) is pressed to execute the wheel travel movement.
-        Uses the accumulated travel values from joystick input and sends position command
-        with configured RPM.
-        """
-        try:
-            # Get accumulated travel values - these are set by whichever joystick is controlling each wheel
-            left_travel = self._left_wheel_travel_mm
-            right_travel = self._right_wheel_travel_mm
-            
-            # Send position command with configured RPM
-            success = self._wheel.command_position(
-                left_mm=int(left_travel),
-                right_mm=int(right_travel),
-                rpm_limit=self._wheel_travel_rpm,
-                relative=True
-            )
-            
-            if success:
-                logger.info("Wheel travel command sent: left=%.0fmm, right=%.0fmm, rpm=%s", left_travel, right_travel, self._wheel_travel_rpm)
-            else:
-                logger.warning("Failed to send wheel travel command")
-                
-        except Exception as e:
-            logger.error("Error sending wheel travel command: %s", e)
+        """Send accumulated wheel travel position command (A-button path from input handler)."""
+        wheel_travel_teleop.send_wheel_travel_command(
+            self._wheel,
+            left_mm=self._left_wheel_travel_mm,
+            right_mm=self._right_wheel_travel_mm,
+            rpm=self._wheel_travel_rpm,
+        )
 
     # Properties for left control info
     @Property(str, notify=left_control_mode_changed)
