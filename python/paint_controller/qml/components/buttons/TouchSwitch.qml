@@ -51,8 +51,9 @@ Rectangle {
     MouseArea {
         anchors.fill: parent
         onClicked: {
-            touchSwitchContainer.checked = !touchSwitchContainer.checked
-            touchSwitchContainer.toggled(touchSwitchContainer.checked)
+            // Request only: the visual follows the external `checked` binding,
+            // so a rejected request needs no revert and the binding survives.
+            touchSwitchContainer.toggled(!touchSwitchContainer.checked)
         }
     }
 }

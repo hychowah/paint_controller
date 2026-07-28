@@ -70,9 +70,9 @@ Rectangle {
                                 id: winchEnableSwitch
                                 checked: page3Rect.winchStatus.enabled
                                 onToggled: {
-                                    if (!deviceActionHandler.requestWinchEnabled(checked)) {
-                                        winchEnableSwitch.checked = !checked
-                                    }
+                                    // No revert needed: the switch never self-assigns,
+                                    // so a rejected request leaves the binding intact.
+                                    deviceActionHandler.requestWinchEnabled(checked)
                                 }
                         }
                     }

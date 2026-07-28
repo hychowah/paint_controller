@@ -38,9 +38,9 @@ Rectangle {
                 id: teensyEnableSwitch
                 checked: teensyStatusRect.teensyStatus.enabled
                 onToggled: {
-                    if (!deviceActionHandler.requestTeensyEnabled(checked)) {
-                        teensyEnableSwitch.checked = !checked
-                    }
+                    // No revert needed: the switch never self-assigns,
+                    // so a rejected request leaves the binding intact.
+                    deviceActionHandler.requestTeensyEnabled(checked)
                 }
             }
 
@@ -50,9 +50,9 @@ Rectangle {
                 id: teensyRelayEnableSwitch
                 checked: teensyStatusRect.teensyStatus.relayOn
                 onToggled: {
-                    if (!deviceActionHandler.requestTeensyRelayEnabled(checked)) {
-                        teensyRelayEnableSwitch.checked = !checked
-                    }
+                    // No revert needed: the switch never self-assigns,
+                    // so a rejected request leaves the binding intact.
+                    deviceActionHandler.requestTeensyRelayEnabled(checked)
                 }
             }
         }
