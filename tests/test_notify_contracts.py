@@ -27,6 +27,27 @@ from paint_controller.core import qml_context_composer as qcc
 from paint_controller.models.overlay_host_policy import OverlayHostPolicy
 from paint_controller.models.shell_router import ShellRouter
 from paint_controller.models.shell_state import ShellState
+from paint_controller.models.lidar_status import (
+    LIDAR_STATUS_PROPERTY_NAMES,
+    LIDAR_STATUS_SIGNAL_MAP,
+    LidarStatus,
+)
+from paint_controller.models.teensy_status import TEENS_STATUS_PROPERTY_NAMES, TeensyStatus
+from paint_controller.models.valve_status import (
+    VALVE_STATUS_PROPERTY_NAMES,
+    VALVE_STATUS_SIGNAL_MAP,
+    ValveStatus,
+)
+from paint_controller.models.wheel_status import (
+    WHEEL_STATUS_PROPERTY_NAMES,
+    WHEEL_STATUS_SIGNAL_MAP,
+    WheelStatus,
+)
+from paint_controller.models.winch_status import (
+    WINCH_STATUS_PROPERTY_NAMES,
+    WINCH_STATUS_SIGNAL_MAP,
+    WinchStatus,
+)
 from tests.test_shell_state import FakeScreenManager
 
 
@@ -423,71 +444,6 @@ _BASE_TOP_VIEW_CHANGED_SIGNALS: tuple[str, ...] = (
 # Each builder returns (wrapper, owners, expected (owner_key, signal_name)
 # table). The signal names mirror the wrapper's _connect_if_signal lists in
 # qml_context_composer.py — that list is the contract being pinned.
-def _spec_teensy_status() -> tuple[QObject, dict[str, _SignalHub], list[tuple[str, str]]]:
-    teensy = _SignalHub("status_changed")
-    wrapper = qcc._TeensyStatus(teensy_controller=teensy)
-    owners = {"teensy": teensy}
-    return wrapper, owners, _table(owners)
-
-
-def _spec_winch_status() -> tuple[QObject, dict[str, _SignalHub], list[tuple[str, str]]]:
-    winch = _SignalHub(
-        "available_changed",
-        "enabled_changed",
-        "load_detection_changed",
-        "cable_length_changed",
-        "cable_speed_changed",
-        "winch_torque_changed",
-        "motor_temperature_changed",
-        "motor_voltage_changed",
-        "motor_brake_changed",
-        "unusual_load_detected_changed",
-    )
-    wrapper = qcc._WinchStatus(winch_controller=winch)
-    owners = {"winch": winch}
-    return wrapper, owners, _table(owners)
-
-
-def _spec_wheel_status() -> tuple[QObject, dict[str, _SignalHub], list[tuple[str, str]]]:
-    wheel = _SignalHub(
-        "available_changed",
-        "enabled_changed",
-        "left_motor_available_changed",
-        "right_motor_available_changed",
-        "left_wheel_speed_changed",
-        "right_wheel_speed_changed",
-        "left_wheel_current_changed",
-        "right_wheel_current_changed",
-        "left_wheel_position_changed",
-        "right_wheel_position_changed",
-    )
-    wrapper = qcc._WheelStatus(wheel_controller=wheel)
-    owners = {"wheel": wheel}
-    return wrapper, owners, _table(owners)
-
-
-def _spec_valve_status() -> tuple[QObject, dict[str, _SignalHub], list[tuple[str, str]]]:
-    valve = _SignalHub(
-        "valve_position_changed",
-        "valve_rate_changed",
-        "total_volume_changed",
-        "valve_motor_current_changed",
-        "valve_motor_connected_changed",
-        "flow_meter_connected_changed",
-        "esp32_connected_changed",
-    )
-    wrapper = qcc._ValveStatus(valve_controller=valve)
-    owners = {"valve": valve}
-    return wrapper, owners, _table(owners)
-
-
-def _spec_lidar_status() -> tuple[QObject, dict[str, _SignalHub], list[tuple[str, str]]]:
-    lidar = _SignalHub("distance_changed", "angle_changed")
-    wrapper = qcc._LidarStatus(lidar_controller=lidar)
-    owners = {"lidar": lidar}
-    return wrapper, owners, _table(owners)
-
-
 def _spec_recording_status() -> tuple[QObject, dict[str, _SignalHub], list[tuple[str, str]]]:
     video = _SignalHub("recordingStatusChanged", "baseRecordingStatusChanged")
     screen = _SignalHub("is_recording_changed", "recording_duration_changed", "free_space_gb_changed")
@@ -510,7 +466,9 @@ def _spec_shell_connectivity_status() -> tuple[QObject, dict[str, _SignalHub], l
         "base_online_changed", "base_status_changed", "ef_online_changed", "ef_status_changed"
     )
     winch = _SignalHub("available_changed")
-    wheel = _SignalHub("changed")
+    # WheelStatus per-property surface (TD-037 B)
+    wheel = _SignalHub("availableChanged")
+    wheel.available = True
     teensy = _SignalHub("connection_changed")
     wrapper = qcc._ShellConnectivityStatus(
         ssh_controller=ssh,
@@ -564,12 +522,9 @@ def _spec_base_top_view_status() -> tuple[QObject, dict[str, _SignalHub], list[t
     return wrapper, owners, [("service", name) for name in _BASE_TOP_VIEW_CHANGED_SIGNALS]
 
 
+# Blanket-changed wrappers still living in qml_context_composer.py.
+# Migrated device status families use dedicated per-property tests below.
 _FLEET_SPECS: dict[str, Callable[[], tuple[QObject, dict[str, _SignalHub], list[tuple[str, str]]]]] = {
-    "_TeensyStatus": _spec_teensy_status,
-    "_WinchStatus": _spec_winch_status,
-    "_WheelStatus": _spec_wheel_status,
-    "_ValveStatus": _spec_valve_status,
-    "_LidarStatus": _spec_lidar_status,
     "_RecordingStatus": _spec_recording_status,
     "_ShellConnectivityStatus": _spec_shell_connectivity_status,
     "_VideoRuntimeControls": _spec_video_runtime_controls,
@@ -605,6 +560,378 @@ def test_wrapper_changed_fires_once_per_backing_emission(qt_core_app, build_spec
         assert spy.count() == 1, (
             f"{owner_key}.{signal_name}: expected exactly 1 changed emission, got {spy.count()}"
         )
+
+
+# ---------------------------------------------------------------------------
+# WinchStatus (TD-037 Slice A) — per-property NOTIFY fleet
+# ---------------------------------------------------------------------------
+
+
+def _make_winch_controller_hub() -> _SignalHub:
+    return _SignalHub(*(producer for producer, _ in WINCH_STATUS_SIGNAL_MAP))
+
+
+def test_winch_status_connects_every_required_producer_signal(qt_core_app) -> None:
+    hub = _make_winch_controller_hub()
+    # Attach typed attribute defaults so property getters stay usable.
+    for name, value in (
+        ("available", True),
+        ("enabled", False),
+        ("load_detection_enabled", True),
+        ("cable_length", 100.0),
+        ("cable_speed", 1.0),
+        ("winch_torque", 2.0),
+        ("motor_temperature", 30.0),
+        ("motor_voltage", 24.0),
+        ("motor_brake", True),
+        ("unusual_load_detected", False),
+    ):
+        setattr(hub, name, value)
+
+    status = WinchStatus(hub)
+    for producer, _ in WINCH_STATUS_SIGNAL_MAP:
+        recorder = getattr(hub, producer)
+        assert len(recorder.connections) == 1, f"{producer}: expected 1 connection"
+
+
+def test_winch_status_raises_when_required_signal_missing(qt_core_app) -> None:
+    hub = _SignalHub("available_changed")  # incomplete
+    hub.available = True
+    with pytest.raises(AttributeError, match="enabled_changed"):
+        WinchStatus(hub)
+
+
+@pytest.mark.parametrize(
+    ("producer", "status_signal"),
+    list(WINCH_STATUS_SIGNAL_MAP),
+)
+def test_winch_status_producer_emits_only_matching_property_notify(
+    qt_core_app, producer: str, status_signal: str
+) -> None:
+    hub = _make_winch_controller_hub()
+    for name, value in (
+        ("available", True),
+        ("enabled", False),
+        ("load_detection_enabled", True),
+        ("cable_length", 100.0),
+        ("cable_speed", 1.0),
+        ("winch_torque", 2.0),
+        ("motor_temperature", 30.0),
+        ("motor_voltage", 24.0),
+        ("motor_brake", True),
+        ("unusual_load_detected", False),
+    ):
+        setattr(hub, name, value)
+
+    status = WinchStatus(hub)
+    spies = {
+        notify_name: QSignalSpy(getattr(status, notify_name))
+        for _, notify_name in WINCH_STATUS_SIGNAL_MAP
+    }
+
+    getattr(hub, producer).emit()
+
+    for notify_name, spy in spies.items():
+        if notify_name == status_signal:
+            assert spy.count() == 1, f"{producer} should fire {notify_name}"
+        else:
+            assert spy.count() == 0, f"{producer} must not fire {notify_name}"
+
+
+def test_winch_status_projects_controller_values(qt_core_app) -> None:
+    hub = _make_winch_controller_hub()
+    hub.available = True
+    hub.enabled = True
+    hub.load_detection_enabled = False
+    hub.cable_length = 1234.5
+    hub.cable_speed = -12.0
+    hub.winch_torque = 9.5
+    hub.motor_temperature = 41.0
+    hub.motor_voltage = 23.5
+    hub.motor_brake = False
+    hub.unusual_load_detected = True
+
+    status = WinchStatus(hub)
+    assert status.available is True
+    assert status.enabled is True
+    assert status.loadDetectionEnabled is False
+    assert status.cableLength == 1234.5
+    assert status.cableSpeed == -12.0
+    assert status.winchTorque == 9.5
+    assert status.motorTemperature == 41.0
+    assert status.motorVoltage == 23.5
+    assert status.motorBrake is False
+    assert status.unusualLoadDetected is True
+    for name in WINCH_STATUS_PROPERTY_NAMES:
+        assert hasattr(status, name), name
+
+
+# ---------------------------------------------------------------------------
+# WheelStatus (TD-037 Slice B)
+# ---------------------------------------------------------------------------
+
+
+def _make_wheel_controller_hub() -> _SignalHub:
+    hub = _SignalHub(*(producer for producer, _ in WHEEL_STATUS_SIGNAL_MAP))
+    for name, value in (
+        ("available", True),
+        ("enabled", True),
+        ("left_motor_available", True),
+        ("right_motor_available", False),
+        ("left_wheel_speed", 1.0),
+        ("right_wheel_speed", 2.0),
+        ("left_wheel_current", 3.0),
+        ("right_wheel_current", 4.0),
+        ("left_wheel_position", 5.0),
+        ("right_wheel_position", 6.0),
+    ):
+        setattr(hub, name, value)
+    return hub
+
+
+def test_wheel_status_connects_every_required_producer_signal(qt_core_app) -> None:
+    hub = _make_wheel_controller_hub()
+    status = WheelStatus(hub)
+    assert status is not None
+    for producer, _ in WHEEL_STATUS_SIGNAL_MAP:
+        assert len(getattr(hub, producer).connections) == 1
+
+
+def test_wheel_status_raises_when_required_signal_missing(qt_core_app) -> None:
+    hub = _SignalHub("available_changed")
+    hub.available = True
+    with pytest.raises(AttributeError, match="enabled_changed"):
+        WheelStatus(hub)
+
+
+@pytest.mark.parametrize(
+    ("producer", "status_signal"),
+    list(WHEEL_STATUS_SIGNAL_MAP),
+)
+def test_wheel_status_producer_emits_only_matching_property_notify(
+    qt_core_app, producer: str, status_signal: str
+) -> None:
+    hub = _make_wheel_controller_hub()
+    status = WheelStatus(hub)
+    spies = {
+        notify_name: QSignalSpy(getattr(status, notify_name))
+        for _, notify_name in WHEEL_STATUS_SIGNAL_MAP
+    }
+    getattr(hub, producer).emit()
+    for notify_name, spy in spies.items():
+        if notify_name == status_signal:
+            assert spy.count() == 1
+        else:
+            assert spy.count() == 0
+
+
+def test_wheel_status_projects_controller_values(qt_core_app) -> None:
+    hub = _make_wheel_controller_hub()
+    status = WheelStatus(hub)
+    assert status.available is True
+    assert status.leftWheelSpeed == 1.0
+    assert status.rightMotorAvailable is False
+    for name in WHEEL_STATUS_PROPERTY_NAMES:
+        assert hasattr(status, name)
+
+
+def test_shell_connectivity_updates_on_wheel_available_changed(qt_core_app) -> None:
+    """Regression: shell connectivity must not depend on removed wheel.changed."""
+    wrapper, owners, _table = _spec_shell_connectivity_status()
+    spy = QSignalSpy(wrapper.changed)
+    owners["wheel"].availableChanged.emit()
+    assert spy.count() == 1
+    assert wrapper.wheelAvailable is True
+
+
+# ---------------------------------------------------------------------------
+# TeensyStatus (TD-037 Slice C) — cached fine-grained notify
+# ---------------------------------------------------------------------------
+
+
+def _make_teensy_controller_hub(all_status: dict | None = None) -> _SignalHub:
+    hub = _SignalHub(
+        "status_changed",
+        "stability_enabled_changed",
+        "auto_correction_enabled_changed",
+        "spray_gun_leveling_changed",
+        "roller_steering_enabled_changed",
+        "swing_damping_enabled_changed",
+        "spray_gun_led_changed",
+    )
+    hub.stability_enabled = True
+    hub.auto_correction_enabled = False
+    hub.spray_gun_leveling_enabled = True
+    hub.roller_steering_enabled = False
+    hub.swing_damping_enabled = True
+    hub.spray_gun_led_on = False
+    hub.all_status = all_status if all_status is not None else {
+        "enabled": True,
+        "relay_on": False,
+        "voltage": 24.0,
+        "current": 1.0,
+        "temperature": 30.0,
+        "run_time": 10.0,
+        "loop_time": 100.0,
+        "loop_time_counter": 1.0,
+        "imu_pitch": 1.0,
+        "imu_roll": 2.0,
+        "imu_yaw": 3.0,
+        "yaw_command": 0.0,
+        "yaw_pid_p": 0.1,
+        "yaw_pid_i": 0.2,
+        "yaw_pid_d": 0.3,
+        "imu_acc_x": 0.0,
+        "imu_acc_y": 0.0,
+        "imu_acc_z": 0.0,
+        "imu_angular_acc_x": 0.0,
+        "imu_angular_acc_y": 0.0,
+        "imu_angular_acc_z": 0.0,
+        "arm_extension_dist": 0.0,
+        "arm_rail_current": 0.0,
+        "gimbal_pitch_motor_current": 0.0,
+        "gimbal_pitch_motor_angle": 0.0,
+        "top_rail_position": 100.0,
+        "top_rail_speed": 0.0,
+        "top_rail_current": 0.0,
+        "arm_rail_position": 0.0,
+        "arm_rail_speed": 0.0,
+        "arm_sensor_dist": 0.0,
+        "left_prop_position": 0.0,
+        "right_prop_position": 0.0,
+        "left_prop_pwm": 0,
+        "right_prop_pwm": 0,
+        "spray_gun_pitch": 0.0,
+        "gimbal_pitch_motor_temp": 0.0,
+        "gimbal_roll_motor_angle": 0.0,
+        "gimbal_roll_motor_current": 0.0,
+        "gimbal_roll_motor_temp": 0.0,
+        "spray_gun_trigger": False,
+        "yaw_enabled": False,
+        "lidar_power": False,
+    }
+    return hub
+
+
+def test_teensy_status_connects_required_signals(qt_core_app) -> None:
+    hub = _make_teensy_controller_hub()
+    status = TeensyStatus(hub)
+    assert status is not None
+    assert len(hub.status_changed.connections) == 1
+    assert len(hub.stability_enabled_changed.connections) == 1
+
+
+def test_teensy_status_raises_when_status_changed_missing(qt_core_app) -> None:
+    hub = _SignalHub("stability_enabled_changed")
+    hub.stability_enabled = False
+    hub.all_status = {}
+    with pytest.raises(AttributeError, match="status_changed"):
+        TeensyStatus(hub)
+
+
+def test_teensy_status_diff_emits_only_changed_fields(qt_core_app) -> None:
+    hub = _make_teensy_controller_hub()
+    status = TeensyStatus(hub)
+
+    pitch_spy = QSignalSpy(status.imuPitchChanged)
+    roll_spy = QSignalSpy(status.imuRollChanged)
+    voltage_spy = QSignalSpy(status.voltageChanged)
+
+    # Change only imu_pitch in the snapshot; re-read path uses all_status.
+    hub.all_status = {**hub.all_status, "imu_pitch": 9.5}
+    hub.status_changed.emit(hub.all_status)
+
+    assert pitch_spy.count() == 1
+    assert status.imuPitch == 9.5
+    assert roll_spy.count() == 0
+    assert voltage_spy.count() == 0
+
+
+def test_teensy_status_projects_seeded_values(qt_core_app) -> None:
+    hub = _make_teensy_controller_hub()
+    status = TeensyStatus(hub)
+    assert status.imuPitch == 1.0
+    assert status.topRailPosition == 100.0
+    assert status.stabilityEnabled is True
+    assert status.autoCorrectionEnabled is False
+    for name in TEENS_STATUS_PROPERTY_NAMES:
+        assert hasattr(status, name)
+
+
+def test_teensy_status_discrete_enable_signal_updates_cache(qt_core_app) -> None:
+    hub = _make_teensy_controller_hub()
+    status = TeensyStatus(hub)
+    spy = QSignalSpy(status.stabilityEnabledChanged)
+    hub.stability_enabled = False
+    hub.stability_enabled_changed.emit()
+    assert spy.count() == 1
+    assert status.stabilityEnabled is False
+
+
+# ---------------------------------------------------------------------------
+# ValveStatus / LidarStatus (TD-037 residual)
+# ---------------------------------------------------------------------------
+
+
+def _make_valve_controller_hub() -> _SignalHub:
+    hub = _SignalHub(*(p for p, _ in VALVE_STATUS_SIGNAL_MAP))
+    hub.valve_position = 42.0
+    hub.valve_rate = 1.5
+    hub.total_volume = 8.0
+    hub.valve_motor_current = 0.7
+    hub.valve_motor_connected = True
+    hub.flow_meter_connected = False
+    hub.esp32_connected = True
+    return hub
+
+
+def test_valve_status_connects_and_isolates_notifies(qt_core_app) -> None:
+    hub = _make_valve_controller_hub()
+    status = ValveStatus(hub)
+    for producer, _ in VALVE_STATUS_SIGNAL_MAP:
+        assert len(getattr(hub, producer).connections) == 1
+    spies = {n: QSignalSpy(getattr(status, n)) for _, n in VALVE_STATUS_SIGNAL_MAP}
+    hub.valve_position_changed.emit()
+    assert spies["valvePositionChanged"].count() == 1
+    assert spies["valveRateChanged"].count() == 0
+    assert status.valvePosition == 42.0
+    for name in VALVE_STATUS_PROPERTY_NAMES:
+        assert hasattr(status, name)
+
+
+def test_valve_status_raises_when_required_signal_missing(qt_core_app) -> None:
+    hub = _SignalHub("valve_position_changed")
+    with pytest.raises(AttributeError, match="valve_rate_changed"):
+        ValveStatus(hub)
+
+
+def _make_lidar_controller_hub() -> _SignalHub:
+    hub = _SignalHub(*(p for p, _ in LIDAR_STATUS_SIGNAL_MAP))
+    hub.distance = 1.25
+    hub.angle = -3.5
+    return hub
+
+
+def test_lidar_status_connects_and_isolates_notifies(qt_core_app) -> None:
+    hub = _make_lidar_controller_hub()
+    status = LidarStatus(hub)
+    for producer, _ in LIDAR_STATUS_SIGNAL_MAP:
+        assert len(getattr(hub, producer).connections) == 1
+    dist_spy = QSignalSpy(status.distanceChanged)
+    angle_spy = QSignalSpy(status.angleChanged)
+    hub.distance_changed.emit()
+    assert dist_spy.count() == 1
+    assert angle_spy.count() == 0
+    assert status.distance == 1.25
+    assert status.angle == -3.5
+    for name in LIDAR_STATUS_PROPERTY_NAMES:
+        assert hasattr(status, name)
+
+
+def test_lidar_status_raises_when_required_signal_missing(qt_core_app) -> None:
+    hub = _SignalHub("distance_changed")
+    with pytest.raises(AttributeError, match="angle_changed"):
+        LidarStatus(hub)
 
 
 def test_base_top_view_frame_ready_passes_through_without_changed(qt_core_app) -> None:

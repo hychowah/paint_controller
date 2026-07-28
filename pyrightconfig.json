@@ -29,6 +29,12 @@
     "python/paint_controller/models/teensy_actions.py",
     "python/paint_controller/models/tuning_actions.py",
     "python/paint_controller/models/wheel_actions.py",
-    "python/paint_controller/models/winch_actions.py"
+    "python/paint_controller/models/winch_actions.py",
+    "python/paint_controller/models/winch_status.py",
+    "python/paint_controller/models/wheel_status.py",
+    "python/paint_controller/models/teensy_status.py",
+    "python/paint_controller/models/valve_status.py",
+    "python/paint_controller/models/lidar_status.py",
+    "python/paint_controller/models/status_wiring.py"
   ]
 }

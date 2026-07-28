@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-07-28 - TD-037 resolved (device status honesty + valve/lidar)
+
+**Goal**: Per-property/fine-grained QML status models outside the composer for device telemetry families.
+**Tried**: Winch/Wheel/Teensy + residual Valve/Lidar status models with `connect_required`; shellConnectivity wheel rewire; Teensy cache/diff; QML lidar `onChanged` → `onDistanceChanged`/`onAngleChanged`; notify isolation tests.
+**Result**: ✅ Full suite green. Composer ~1191→~730 LOC. Residual: videoRuntime multi-home, aggregator wrappers, TD-033 soft pins.
+**Files**: `models/{status_wiring,winch,wheel,teensy,valve,lidar}_status.py`, `qml_context_composer.py`, WallDetectionOverlay/PageMonitor, notify/composer tests, docs
+
+---
 ### 2026-07-28 - TD-038 resolved (C+D + close-out)
 
 **Goal**: Finish residual TeensyStatus tab extract (C) and EditWorkFlowTab param-panel extract (D); mark TD-038 resolved.

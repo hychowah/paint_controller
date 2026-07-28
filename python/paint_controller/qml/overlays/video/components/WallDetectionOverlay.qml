@@ -23,11 +23,16 @@ Rectangle {
     readonly property real lidarDistance: (lidarStatus && typeof lidarStatus.distance === "number") ? lidarStatus.distance : 0.0
     readonly property real lidarAngle: (lidarStatus && typeof lidarStatus.angle === "number") ? lidarStatus.angle : 0.0
     
-    // Update timestamp when distance changes
+    // Update timestamp when lidar telemetry moves (per-property NOTIFY after TD-037)
     Connections {
         target: overlay.lidarStatus
 
-        function onChanged() {
+        function onDistanceChanged() {
+            overlay.lastLidarUpdateTime = new Date()
+            overlay.isLidarActive = true
+        }
+
+        function onAngleChanged() {
             overlay.lastLidarUpdateTime = new Date()
             overlay.isLidarActive = true
         }

@@ -19,11 +19,11 @@ When the goal is **frontend + backend program architecture** (not UI chrome, not
 
 | Rank | ID | Why |
 |---|---|---|
-| 1 | **TD-037** | Highest structural ROI on the QML↔Python joint; high effort — slice it |
-| 2 | **TD-046 / TD-047** | Backend module shape after the surface is honest |
-| 3 | **TD-044 + TD-045**, then **TD-040** | Make CI/types real control planes |
-| 4 | **TD-042 / TD-043 / TD-041** | Hygiene |
+| 1 | **TD-046 / TD-047** | Backend module shape after the surface is honest |
+| 2 | **TD-044 + TD-045**, then **TD-040** | Make CI/types real control planes |
+| 3 | **TD-042 / TD-043 / TD-041** | Hygiene |
 | — | **TD-002 / TD-016** | Out of scope for a pure program track |
+| — | **TD-037** | Resolved 2026-07-28 (residual: videoRuntime multi-home only) |
 | — | **TD-038** | Resolved 2026-07-28 |
 | — | **TD-032** | Resolved 2026-07-28 |
 | — | **TD-036** | Resolved 2026-07-28 |
@@ -32,17 +32,6 @@ When the goal is **frontend + backend program architecture** (not UI chrome, not
 ---
 
 ## Active Debt
-
-### TD-037 — Status wrapper layer: blanket notify, stringly reads, duplicated telemetry
-**Area**: QML↔Python boundary
-**Priority**: medium
-**Effort**: high
-**Architecture leverage**: high
-**Why it matters**: `qml_context_composer.py` (~1195 lines, largest Python file) re-implements the per-property NOTIFY the controllers already have — worse: one blanket `changed` signal fans ~50 properties per wrapper (every teensy tick re-evaluates every binding), `_connect_if_signal` silently skips missing signals (a controller-side rename becomes invisible drift), `_read_object_value`'s duck-typed fallbacks exist partly to tolerate test fakes in production code, and physical values are duplicated under multiple names (battery voltage ×3 across `_VideoRuntimeTopBar`/`_TeensyStatus`/`_WinchStatus`; SSH reachability ×2). Composer mixes **registration** (composition concern) with **presentation-model implementation**. Violates the retirement program's own "no controller-shaped mirrors / no shallow wrappers" principles. Also found by TD-033 contract tests (2026-07-27): `OverlayHostPolicy`'s `screen_count_changed → refresh_layout` is a dead input; `ShellRouter.route_registry_changed` has no emission path (registry built once — property could be `constant`). Both pinned as intentional in `tests/test_notify_contracts.py` until this item is worked.
-**What to do**: Long-term: move per-property NOTIFY onto controller-owned (or feature-owned) read-only status QObjects; delete most composer wrapper classes; leave composer as a pure registrar that builds the context dict. Consolidate one canonical owner per physical value; keep the `*Actions`/gating models (the program's real win). Slice by family (winch/teensy/video) — do not rewrite the file in one PR.
-**Files**: `python/paint_controller/core/qml_context_composer.py`, `python/paint_controller/controllers/winch.py`, `python/paint_controller/controllers/teensy.py`
-
----
 
 ### TD-046 — ControlProcessor teleop monolith; second command path undocumented
 **Area**: Backend / handlers
@@ -158,6 +147,7 @@ When the goal is **frontend + backend program architecture** (not UI chrome, not
 
 | ID | Title | Resolved | Notes |
 |---|---|---|---|
+| TD-037 | Status wrapper layer: blanket notify, stringly reads, duplicated telemetry | 2026-07-28 | Device status honesty: `models.{Winch,Wheel,Teensy,Valve,Lidar}Status` with per-property or fine-grained NOTIFY + `connect_required`; composer thinned (~1191→~730 LOC); shellConnectivity rewired to `wheel.availableChanged`; QML lidar Connections retargeted off blanket `changed`. Residual: videoRuntime/topBar multi-home voltages/SSH; recording multi-home; aggregator wrappers (recording/video/baseTopView); TD-033 soft pins. Full suite green |
 | TD-038 | File-scale QML decomposition: PageWinch, EditWorkFlowTab, TeensyStatus | 2026-07-28 | A1: `WorkflowEditor.load_document`/`save_document`, no QML JSON document assembly. B: PageWinch ~1606→~213 LOC + `winch/components/*`. C: TeensyStatus ~831→~103 LOC + `status/components/teensy/*` tabs. D: workflow param forms under `systemcontrol/components/` (EditWorkFlowTab ~1027→~715). Tokens remain TD-002. Focused band green (workflow editor, winch/status smokes, qml imports) |
 | TD-032 | QML boundary retirement program: close out honestly, then stop | 2026-07-28 | Retired deviceActionHandler into teensyActions/winchActions; stateStore root → qtBridge.display_message; backend renamed qtBridge; freeze root list (26 names, no vanity 12–15); boundary program closed. 62 passed focused band |
 | TD-036 | Settings: ungated QML writes, dual API, in-tree path; legality ship default | 2026-07-28 | QML apply*/set*/saveSetting gated via AdminActionGate (setting-capability fallback + mixed-admin-route/safety-admin); read-only generated Properties; SettingInputField→apply*; deny refresh in ManagedSettingSpinBox; live path env/XDG with template migrate+legality sanitize; lab bypass PAINT_ACTION_LEGALITY_ENFORCED; ship template no longer disables gate. Focused band 45+ passed |

@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from paint_controller.core import qml_context_composer
 from paint_controller.core.qml_context_composer import QmlContextComposer
+from paint_controller.models.lidar_status import LidarStatus
+from paint_controller.models.teensy_status import TeensyStatus
+from paint_controller.models.valve_status import ValveStatus
+from paint_controller.models.wheel_status import WheelStatus
+from paint_controller.models.winch_status import WinchStatus
 from tests.controller_factory_runtime_support import (
     _BaseTopViewServiceRecorder,
     _EngineRecorder,
@@ -103,11 +108,17 @@ def test_composer_creates_status_wrappers() -> None:
 
     assert properties["videoRuntime"] is not None
     assert properties["recordingStatus"] is not None
-    assert properties["wheelStatus"] is not None
-    assert properties["winchStatus"] is not None
-    assert properties["teensyStatus"] is not None
-    assert properties["valveStatus"] is not None
-    assert properties["lidarStatus"] is not None
+    assert isinstance(properties["wheelStatus"], WheelStatus)
+    assert properties["wheelStatus"].leftWheelSpeed == 1.5
+    assert isinstance(properties["winchStatus"], WinchStatus)
+    assert properties["winchStatus"].cableLength == 1200.0
+    assert properties["winchStatus"].available is True
+    assert isinstance(properties["teensyStatus"], TeensyStatus)
+    assert properties["teensyStatus"].imuPitch == 1.5
+    assert isinstance(properties["valveStatus"], ValveStatus)
+    assert properties["valveStatus"].valvePosition == 42.0
+    assert isinstance(properties["lidarStatus"], LidarStatus)
+    assert properties["lidarStatus"].distance == 1.25
     assert properties["shellConnectivityStatus"] is not None
     assert properties["launcherAdmin"] is not None
     assert properties["baseTopViewStatus"] is not None

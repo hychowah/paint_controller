@@ -193,10 +193,10 @@ Rectangle {
                         }
                     }
                     
-                    // Update chart on lidar angle change
+                    // Update chart on lidar angle change (per-property NOTIFY after TD-037)
                     Connections {
                         target: monitorPage.lidarStatus
-                        function onChanged() {
+                        function onAngleChanged() {
                             var currentTime = new Date().getTime()
                             var elapsed = currentTime - monitorPage.lidarStartTime
                             

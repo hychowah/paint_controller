@@ -253,6 +253,12 @@ class _TeensyControllerRecorder:
     def __init__(self) -> None:
         self.status_changed = _SignalRecorder()
         self.connection_changed = _SignalRecorder()
+        self.stability_enabled_changed = _SignalRecorder()
+        self.auto_correction_enabled_changed = _SignalRecorder()
+        self.spray_gun_leveling_changed = _SignalRecorder()
+        self.roller_steering_enabled_changed = _SignalRecorder()
+        self.swing_damping_enabled_changed = _SignalRecorder()
+        self.spray_gun_led_changed = _SignalRecorder()
         self.available = True
         self.stability_enabled = True
         self.auto_correction_enabled = False
