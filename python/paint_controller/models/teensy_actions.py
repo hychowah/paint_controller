@@ -65,6 +65,10 @@ class TeensyActions(QObject):
             args=(enabled,),
         )
 
+    @Slot(result=bool)
+    def toggleLidarPower(self) -> bool:
+        return self._run_toggle("Lidar power", "setLidarPower", not self._teensy_intent("_lidar_power"))
+
     def _teensy_intent(self, attribute: str) -> bool:
         """Read a controller intent member (False when the controller is missing)."""
         if self._teensy is None:

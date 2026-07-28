@@ -548,11 +548,11 @@ Item {
                     ControlPanel {
                         Layout.fillWidth: true
                         controlName: "Lidar Power"
-                        controlStatus: enabledState ? "On" : "Off"
+                        controlStatus: deviceControlTab.teensyStatus.lidarPower ? "On" : "Off"
+                        enabledState: deviceControlTab.teensyStatus.lidarPower
                         iconText: "LID"
-                        selfContained: true 
                         
-                        onClicked: teensyActions.setLidarPower(enabledState)
+                        onClicked: teensyActions.toggleLidarPower()
                     }
                     
                     ActionButton {

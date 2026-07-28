@@ -83,6 +83,7 @@ class TeensyStatusDict(TypedDict, total=False):
     roller_steering_enabled: bool
     swing_damping_enabled: bool
     spray_gun_leveling_enabled: bool
+    lidar_power: bool
 
 
 # Fields set locally by UI actions that must survive ROS status updates
@@ -93,6 +94,7 @@ _USER_CONTROLLED_FIELDS = (
     'roller_steering_enabled',
     'swing_damping_enabled',
     'spray_gun_leveling_enabled',
+    'lidar_power',
 )
 
 
@@ -177,7 +179,8 @@ class TeensyController(RosStatusController):
             'valve_rate': 0.0,
             'total_volume': 0.0,
             'valve_motor_connected': False,
-            'flow_meter_connected': False
+            'flow_meter_connected': False,
+            'lidar_power': False
         }
         
         self._status_lock = threading.Lock()
@@ -191,6 +194,7 @@ class TeensyController(RosStatusController):
         self._spray_gun_leveling_enabled = False
         self._auto_correction_enabled = False
         self._spray_gun_led_on = False
+        self._lidar_power = False
         self._target_yaw = 0.0
         self._roller_steering_enabled = False
         self._swing_damping_enabled = False
@@ -532,7 +536,10 @@ class TeensyController(RosStatusController):
     def setLidarPower(self, on: bool):
         """Turn the Lidar power on/off"""
         self._node.get_logger().info(f'Lidar power {"on" if on else "off"}')
+        self._lidar_power = on
+        status_snapshot = self._update_status_fields(lidar_power=on)
         self._publish_bool(self.ef_lidar_power_pub, on)
+        self.status_changed.emit(status_snapshot)
 
     @Slot(bool)
     def setStabilityEnabled(self, enabled: bool):

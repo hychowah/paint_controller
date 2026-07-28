@@ -16,6 +16,7 @@ class FakeTeensy:
         self.roller_steering_enabled = False
         self.swing_damping_enabled = False
         self.spray_gun_led_on = False
+        self._lidar_power = False
         # Firmware-echoed status flags
         self._status = {"yaw_enabled": False}
         self.stability_calls: list[bool] = []
@@ -67,6 +68,7 @@ class FakeTeensy:
 
     def setLidarPower(self, enabled: bool) -> bool:
         self.lidar_power_calls.append(enabled)
+        self._lidar_power = enabled
         return self.result
 
 
@@ -92,6 +94,7 @@ def test_toggle_operations_invert_controller_state_and_dispatch() -> None:
     assert actions.toggleRollerSteering() is True
     assert actions.toggleSwingDamping() is True
     assert actions.toggleSprayGunLed() is True
+    assert actions.toggleLidarPower() is True
     assert actions.setLidarPower(True) is True
 
     assert teensy.stability_calls == [True]
@@ -101,7 +104,7 @@ def test_toggle_operations_invert_controller_state_and_dispatch() -> None:
     assert teensy.roller_calls == [True]
     assert teensy.swing_calls == [True]
     assert teensy.led_calls == [True]
-    assert teensy.lidar_power_calls == [True]
+    assert teensy.lidar_power_calls == [True, True]
     assert results[-1] == (True, "Lidar power requested")
     assert logger.records[-1].message == "Lidar power requested"
 
@@ -120,9 +123,11 @@ def test_toggles_negate_backend_state_not_caller_argument() -> None:
     # State-driven inversion: a second toggle flips back
     assert actions.toggleStability() is True
     assert actions.toggleYaw() is True
+    assert actions.toggleLidarPower() is True
 
     assert teensy.stability_calls == [False, True]
     assert teensy.yaw_calls == [False, True]
+    assert teensy.lidar_power_calls == [True]
 
 
 def test_backend_rejection_is_reported() -> None:

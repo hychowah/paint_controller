@@ -46,6 +46,7 @@ def test_status_callback_preserves_user_controlled_fields(qt_app, fake_node):
     controller.setSwingDampingEnabled(True)
     controller.setSprayGunLevelingEnabled(True)
     controller.setAutoCorrectionEnabled(True)
+    controller.setLidarPower(True)
 
     status = _teensy_status_class()()
     status.runtime = 123000
@@ -65,6 +66,7 @@ def test_status_callback_preserves_user_controlled_fields(qt_app, fake_node):
     assert current["swing_damping_enabled"] is True
     assert current["spray_gun_leveling_enabled"] is True
     assert current["auto_correction_enabled"] is True
+    assert current["lidar_power"] is True
     assert current["left_prop_position"] == 2.5
     assert current["right_prop_position"] == 5.0
     assert current["imu_yaw"] == 33.0
@@ -113,6 +115,21 @@ def test_spray_gun_leveling_emits_status_snapshot(qt_app, fake_node):
     controller.setSprayGunLevelingEnabled(True)
 
     assert emitted_statuses[-1]["spray_gun_leveling_enabled"] is True
+
+
+def test_set_lidar_power_updates_member_status_and_emits(qt_app, fake_node):
+    controller = _teensy_controller_class()(fake_node)
+    emitted_statuses = []
+
+    controller.status_changed.connect(emitted_statuses.append)
+
+    controller.setLidarPower(True)
+
+    published = controller.ef_lidar_power_pub.published_messages[-1]
+    assert published.data is True
+    assert controller._lidar_power is True
+    assert controller.get_status()["lidar_power"] is True
+    assert emitted_statuses[-1]["lidar_power"] is True
 
 
 def test_thrust_force_setting_change_clamps_value(qt_app, fake_node):

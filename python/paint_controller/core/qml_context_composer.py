@@ -943,6 +943,10 @@ class _TeensyStatus(QObject):
     def sprayGunLedOn(self) -> bool:
         return bool(_read_object_value(self._teensy_controller, "spray_gun_led_on", default=False))
 
+    @Property(bool, notify=changed)
+    def lidarPower(self) -> bool:
+        return bool(self._status_value("lidar_power"))
+
 
 class _ValveStatus(QObject):
     changed = Signal()

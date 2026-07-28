@@ -681,6 +681,10 @@ class FakeTeensyActions(QObject):
     def setLidarPower(self, _enabled: bool) -> bool:
         return True
 
+    @Slot(result=bool)
+    def toggleLidarPower(self) -> bool:
+        return True
+
 
 class FakeSystemActions(QObject):
     @Slot(result=bool)
@@ -1033,6 +1037,7 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
         rollerSteeringEnabled=False,
         swingDampingEnabled=True,
         sprayGunLedOn=False,
+        lidarPower=False,
     )
     valve_status = DynamicObject(
         valvePosition=0.0,
