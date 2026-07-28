@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QCoreApplication, QEvent, QObject, QUrl
+from PySide6.QtCore import QCoreApplication, QEvent, QObject, QPointF, Qt, QUrl
 from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent
+from PySide6.QtTest import QTest
 
 from paint_controller.core.application import _teardown_qml_runtime
 from tests.startup_smoke_support import (
@@ -307,6 +308,85 @@ MainWindow {{
         if root is not None:
             root.deleteLater()
             qt_app.processEvents()
+
+
+def test_main_window_select_bar_click_navigates_to_base_route(monkeypatch, tmp_path, qt_app, qtbot):
+    """Real-shell interaction regression test for the Phase-7 SelectBar break.
+
+    Clicks the "base" nav delegate in the real MainWindow.qml and asserts the
+    route change propagates to the Python-owned shellRouter and StackView. If
+    SelectBar's required `shellRouter` property is ever wired to something that
+    resolves to undefined again (`SelectBar { shellRouter: mainWindow.shellRouter }`),
+    the Repeater model collapses (`shellRouter ? shellRouter.routeRegistry : []`)
+    and zero delegates render — caught by the delegate-count assertion below.
+    """
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    qml_path = qml_dir / "core" / "MainWindow.qml"
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+    engine.addImageProvider("ef_live", BlankImageProvider())
+    engine.addImageProvider("base_front_live", BlankImageProvider())
+    engine.addImageProvider("base_rear_live", BlankImageProvider())
+    engine.addImageProvider("base_top_view", BlankImageProvider())
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    # The default fixture's active fullscreen video overlay mounts full-window
+    # MouseAreas that swallow every sidebar click on the home route; keep it
+    # inactive so QTest mouse delivery reaches the nav delegates.
+    context_objects["overlayHost"] = FakeOverlayHost(video_fullscreen_active=False)
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    engine.load(QUrl.fromLocalFile(str(qml_path)))
+    qt_app.processEvents()
+
+    assert engine.rootObjects(), "MainWindow.qml failed to load"
+    window = engine.rootObjects()[0]
+
+    shell_router = context_objects["shellRouter"]
+    assert shell_router.currentRoute == "home"
+
+    # repeater.itemAt() returns None from Python; the delegates are the visual
+    # children of the Repeater's parent Column.
+    repeater = window.findChild(QObject, "navButtonRepeater")
+    assert repeater is not None
+    nav_delegates = [item for item in repeater.parentItem().childItems() if item.property("buttonKey") is not None]
+    assert len(nav_delegates) > 0, "SelectBar rendered zero nav delegates — shellRouter wiring regression"
+    assert len(nav_delegates) == len(shell_router.routeRegistry)
+
+    base_delegate = next((item for item in nav_delegates if item.property("buttonKey") == "base"), None)
+    assert base_delegate is not None
+    assert base_delegate.property("isSelected") is False
+
+    click_point = base_delegate.mapToScene(QPointF(base_delegate.width() / 2, base_delegate.height() / 2)).toPoint()
+    QTest.mouseClick(window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, click_point)
+
+    qtbot.waitUntil(lambda: shell_router.currentRoute == "base", timeout=2000)
+    qt_app.processEvents()
+
+    assert base_delegate.property("isSelected") is True
+
+    stack_view = window.findChild(QObject, "stackView")
+    assert stack_view is not None
+    # "base" has order 1 in the route registry (FakeShellRouter / models/shell_router.py).
+    assert stack_view.property("currentIndex") == 1
+
+    video_overlay = window.findChild(QObject, "videoFullscreenOverlayMain")
+    assert video_overlay is not None
+    assert video_overlay.property("active") is False
+
+    fatal_warning_fragments = (
+        "failed to load component",
+        "no such file or directory",
+        "is not a type",
+    )
+    assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
 
 
 def test_main_window_teardown_does_not_emit_null_binding_warnings(monkeypatch, tmp_path, qt_app):
