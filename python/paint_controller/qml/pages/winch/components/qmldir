@@ -1,0 +1,6 @@
+WinchNotificationPopup 1.0 WinchNotificationPopup.qml
+WinchEnableToggle 1.0 WinchEnableToggle.qml
+WinchMoveIncrementPanel 1.0 WinchMoveIncrementPanel.qml
+WinchMoveAbsolutePanel 1.0 WinchMoveAbsolutePanel.qml
+WinchQuickActionsBar 1.0 WinchQuickActionsBar.qml
+WinchTelemetryPanel 1.0 WinchTelemetryPanel.qml

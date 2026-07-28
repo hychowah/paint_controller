@@ -817,17 +817,24 @@ class FakeActionLegality(QObject):
 
 class FakeWorkflowEditor(QObject):
     workflow_list_changed = Signal()
+    error_occurred = Signal(str)
 
     @Property(list, notify=workflow_list_changed)
     def workflow_list(self):
         return []
 
-    @Slot(str, result=str)
-    def get_workflow_data(self, _workflow_name: str) -> str:
-        return ""
+    @Slot(str, result="QVariant")
+    def load_document(self, _workflow_name: str):
+        return {}
 
-    @Slot(str, str, result=bool)
-    def save_workflow_data(self, _workflow_name: str, _workflow_json: str) -> bool:
+    @Slot(str, str, bool, list, result=bool)
+    def save_document(
+        self,
+        _workflow_name: str,
+        _description: str,
+        _loop: bool,
+        _actions: list,
+    ) -> bool:
         return True
 
 

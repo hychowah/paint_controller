@@ -1,6 +1,30 @@
 # Development Notes
 
 ---
+### 2026-07-28 - TD-038 resolved (C+D + close-out)
+
+**Goal**: Finish residual TeensyStatus tab extract (C) and EditWorkFlowTab param-panel extract (D); mark TD-038 resolved.
+**Tried**: Teensy tabs under `pages/status/components/teensy/*`; host TeensyStatus as header+tab bar+StackLayout. Workflow param forms + shared `WorkflowParamField` under `overlays/systemcontrol/components/`; EditWorkFlowTab Component wrappers only.
+**Result**: ✅ TeensyStatus ~103 LOC; EditWorkFlowTab ~715 LOC. Focused band 11+ passed (status smoke, workflow editor smoke/unit, winch smoke, qml imports). TD-038 moved to Resolved; next program-track item TD-037.
+**Files**: TeensyStatus + teensy tabs, EditWorkFlowTab + Workflow*Params, `docs/tech-debt.md`, progress board
+
+---
+### 2026-07-28 - TD-038 Slice B: PageWinch component extraction
+
+**Goal**: Shrink `PageWinch.qml` god page into a composer + page-local components without restyle or TouchSwitch migration.
+**Tried**: Extracted notification popup, shared enable toggle (power/load as-is dual-button + toast), move increment/absolute panels, quick actions bar, and right-column telemetry panel under `qml/pages/winch/components/`. Notify/activity via signals to keep toast/log ownership on the page.
+**Result**: ✅ PageWinch ~213 LOC (from ~1606). `test_page_winch_loads_with_explicit_winch_status` + `test_qml_imports` green. Structural TD-038 A1+B complete; C/D optional.
+**Files**: `python/paint_controller/qml/pages/winch/PageWinch.qml`, `python/paint_controller/qml/pages/winch/components/*`, `docs/tech-debt.md`
+
+---
+### 2026-07-28 - TD-038 Slice A1: workflow document ownership → Python
+
+**Goal**: Remove workflow document assembly/JSON transport from `EditWorkFlowTab.qml` so Python owns save-time document construction (TD-038 program half, first slice).
+**Tried**: Added `WorkflowEditor.load_document` / `save_document` with shared `_persist_workflow` (collision → normalize → atomic write). Retired JSON `get_workflow_data` / `save_workflow_data`. QML keeps local edit buffers for in-place param edits; only load/save crossed the boundary. Updated `FakeWorkflowEditor` + unit/smoke tests.
+**Result**: ✅ `9 passed` for `tests/test_workflow_editor.py tests/test_startup_smoke_workflow_editor.py tests/test_qml_imports.py`. No `JSON.stringify`/`JSON.parse` remain in `EditWorkFlowTab.qml`.
+**Files**: `python/paint_controller/services/workflow/workflow_editor.py`, `python/paint_controller/qml/overlays/systemcontrol/EditWorkFlowTab.qml`, `tests/test_workflow_editor.py`, `tests/startup_smoke_support.py`, `docs/tech-debt.md`
+
+---
 ### 2026-07-28 - TD-032 QML boundary close-out
 
 **Goal**: Close boundary retirement program — retire dual-owner `deviceActionHandler`, drop residual root globals, freeze contract.

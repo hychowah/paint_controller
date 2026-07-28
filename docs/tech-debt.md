@@ -19,12 +19,12 @@ When the goal is **frontend + backend program architecture** (not UI chrome, not
 
 | Rank | ID | Why |
 |---|---|---|
-| 1 | **TD-038** structural half | Domain out of QML; god-file size (defer tokens) |
-| 2 | **TD-037** | Highest structural ROI on the QML↔Python joint; high effort — slice it |
-| 3 | **TD-046 / TD-047** | Backend module shape after the surface is honest |
-| 4 | **TD-044 + TD-045**, then **TD-040** | Make CI/types real control planes |
-| 5 | **TD-042 / TD-043 / TD-041** | Hygiene |
+| 1 | **TD-037** | Highest structural ROI on the QML↔Python joint; high effort — slice it |
+| 2 | **TD-046 / TD-047** | Backend module shape after the surface is honest |
+| 3 | **TD-044 + TD-045**, then **TD-040** | Make CI/types real control planes |
+| 4 | **TD-042 / TD-043 / TD-041** | Hygiene |
 | — | **TD-002 / TD-016** | Out of scope for a pure program track |
+| — | **TD-038** | Resolved 2026-07-28 |
 | — | **TD-032** | Resolved 2026-07-28 |
 | — | **TD-036** | Resolved 2026-07-28 |
 | — | **TD-039** | Resolved 2026-07-28 |
@@ -41,19 +41,6 @@ When the goal is **frontend + backend program architecture** (not UI chrome, not
 **Why it matters**: `qml_context_composer.py` (~1195 lines, largest Python file) re-implements the per-property NOTIFY the controllers already have — worse: one blanket `changed` signal fans ~50 properties per wrapper (every teensy tick re-evaluates every binding), `_connect_if_signal` silently skips missing signals (a controller-side rename becomes invisible drift), `_read_object_value`'s duck-typed fallbacks exist partly to tolerate test fakes in production code, and physical values are duplicated under multiple names (battery voltage ×3 across `_VideoRuntimeTopBar`/`_TeensyStatus`/`_WinchStatus`; SSH reachability ×2). Composer mixes **registration** (composition concern) with **presentation-model implementation**. Violates the retirement program's own "no controller-shaped mirrors / no shallow wrappers" principles. Also found by TD-033 contract tests (2026-07-27): `OverlayHostPolicy`'s `screen_count_changed → refresh_layout` is a dead input; `ShellRouter.route_registry_changed` has no emission path (registry built once — property could be `constant`). Both pinned as intentional in `tests/test_notify_contracts.py` until this item is worked.
 **What to do**: Long-term: move per-property NOTIFY onto controller-owned (or feature-owned) read-only status QObjects; delete most composer wrapper classes; leave composer as a pure registrar that builds the context dict. Consolidate one canonical owner per physical value; keep the `*Actions`/gating models (the program's real win). Slice by family (winch/teensy/video) — do not rewrite the file in one PR.
 **Files**: `python/paint_controller/core/qml_context_composer.py`, `python/paint_controller/controllers/winch.py`, `python/paint_controller/controllers/teensy.py`
-
----
-
-### TD-038 — File-scale QML decomposition: PageWinch, EditWorkFlowTab, TeensyStatus
-**Area**: QML structure (program) / UI tokens (deferrable)
-**Priority**: medium
-**Effort**: high
-**Architecture leverage**: high (structural half)
-**Why it matters**: `PageWinch.qml` is ~1606 lines with duplicated ~120-line control blocks and hand-rolled toggles despite `TouchSwitch` — pure **module size / change-cost** debt. `EditWorkFlowTab.qml` (~1027 lines) builds and JSON-serializes the workflow document in JavaScript (`saveWorkflow()`) — **business logic in the view layer**, the worst program-side FE smell. Zero/`CommonStyle` and ~70 hardcoded colors are real but **UI chrome** (also TD-002); do not block structural work on tokenization. These files are the maintenance risk the boundary program never touched.
-**What to do**:
-1. **Program first:** extract reusable winch control components; move workflow document assembly/save into the Python workflow editor model so QML only edits UI state and calls slots.
-2. **UI later:** tokenize with `CommonStyle` only as files are touched (or under TD-002).
-**Files**: `python/paint_controller/qml/pages/winch/PageWinch.qml`, `python/paint_controller/qml/overlays/systemcontrol/EditWorkFlowTab.qml`, `python/paint_controller/qml/pages/status/components/TeensyStatus.qml`, `python/paint_controller/services/workflow/workflow_editor.py`
 
 ---
 
@@ -117,7 +104,7 @@ When the goal is **frontend + backend program architecture** (not UI chrome, not
 **Priority**: low
 **Effort**: medium
 **Architecture leverage**: low (UI chrome)
-**Why it matters**: Hardcoded colours, spacing, and font sizes in the remaining untokenized files will diverge from the rest of the UI and make theme-wide changes expensive later, but this is not the architecture-driving problem. Worst structural offender (`PageWinch.qml`) is tracked under TD-038; token cleanup there is explicitly deferrable.
+**Why it matters**: Hardcoded colours, spacing, and font sizes in the remaining untokenized files will diverge from the rest of the UI and make theme-wide changes expensive later, but this is not the architecture-driving problem. PageWinch/TeensyStatus structure was fixed under TD-038; token cleanup there remains deferrable UI chrome.
 **What to do**: Resume remaining `CommonStyle` rollout only after program-track structure work is stable, or when a file is already open for TD-038. Not feature-blocking.
 **Files**: `python/paint_controller/qml/overlays/systemcontrol/`, `python/paint_controller/qml/overlays/video/`, `python/paint_controller/qml/pages/home/`, `python/paint_controller/qml/pages/wheel/`, `python/paint_controller/qml/pages/winch/`, `python/paint_controller/qml/pages/tuning/`, `python/paint_controller/qml/pages/settings/`, `python/paint_controller/qml/pages/status/`
 
@@ -171,6 +158,7 @@ When the goal is **frontend + backend program architecture** (not UI chrome, not
 
 | ID | Title | Resolved | Notes |
 |---|---|---|---|
+| TD-038 | File-scale QML decomposition: PageWinch, EditWorkFlowTab, TeensyStatus | 2026-07-28 | A1: `WorkflowEditor.load_document`/`save_document`, no QML JSON document assembly. B: PageWinch ~1606→~213 LOC + `winch/components/*`. C: TeensyStatus ~831→~103 LOC + `status/components/teensy/*` tabs. D: workflow param forms under `systemcontrol/components/` (EditWorkFlowTab ~1027→~715). Tokens remain TD-002. Focused band green (workflow editor, winch/status smokes, qml imports) |
 | TD-032 | QML boundary retirement program: close out honestly, then stop | 2026-07-28 | Retired deviceActionHandler into teensyActions/winchActions; stateStore root → qtBridge.display_message; backend renamed qtBridge; freeze root list (26 names, no vanity 12–15); boundary program closed. 62 passed focused band |
 | TD-036 | Settings: ungated QML writes, dual API, in-tree path; legality ship default | 2026-07-28 | QML apply*/set*/saveSetting gated via AdminActionGate (setting-capability fallback + mixed-admin-route/safety-admin); read-only generated Properties; SettingInputField→apply*; deny refresh in ManagedSettingSpinBox; live path env/XDG with template migrate+legality sanitize; lab bypass PAINT_ACTION_LEGALITY_ENFORCED; ship template no longer disables gate. Focused band 45+ passed |
 | TD-039 | Concurrency loose ends: BaseTopView race, ROS error path, in-lock emit, image null cleanup | 2026-07-28 | (1) Worker-owned map recompute via `mapsRecomputeRequested` + 0ms coalesce timer; k setters no longer write `dist_coeffs` on GUI. (2) `RosThread.error_occurred` → `SignalWiring` → `StateStore.display_message` (throttled); removed dead `_last_spin_time`/`_spin_timeout`. (3) `button_held` collected under lock, emitted after unlock. (4) `ImageProvider` never-None placeholder under lock + defensive `requestImage`. Focused band 19 passed (`test_video_stream`, `test_base_top_view_service`, `test_steam_deck_handler`, `test_signal_wiring`). Residual: GUI may still write scalar float params while worker reads them |

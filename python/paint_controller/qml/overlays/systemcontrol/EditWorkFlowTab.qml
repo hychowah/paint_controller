@@ -526,352 +526,50 @@ Item {
         id: numpad
     }
 
-    // Parameter components
+    // Parameter form components (bodies live under ./components/)
     Component {
         id: winchParamsComponent
-        GridLayout {
-            id: winchGrid
-            width: parent ? parent.width : 0
-            columns: 2
-            columnSpacing: 10
-            rowSpacing: 8
-            
-            property bool ignoreChanges: false
-
-            Text { text: "Length (mm):"; color: "#CCCCCC"; font.pixelSize: 12; Layout.preferredWidth: 100 }
-            TextField {
-                id: lengthField
-                Layout.fillWidth: true
-                Layout.preferredWidth: 200
-                Layout.preferredHeight: editWorkFlowTab.paramFieldHeight
-                readOnly: true
-                color: "#FFFFFF"
-                background: Rectangle {
-                    color: "#2A2A2A"
-                    border.color: "#3A5A8C"
-                    border.width: 1
-                    radius: 4
-                }
-                Component.onCompleted: {
-                    winchGrid.ignoreChanges = true
-                    text = getParam("length", 0).toString()
-                    winchGrid.ignoreChanges = false
-                }
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        numpad.targetField = lengthField
-                        numpad.open()
-                    }
-                }
-                onTextChanged: {
-                    if (!winchGrid.ignoreChanges) {
-                        var val = parseFloat(text)
-                        if (!isNaN(val)) updateParam("length", val)
-                    }
-                }
-            }
-
-            Text { text: "Speed (mm/s):"; color: "#CCCCCC"; font.pixelSize: 12; Layout.preferredWidth: 100 }
-            TextField {
-                id: speedField
-                Layout.fillWidth: true
-                Layout.preferredWidth: 200
-                Layout.preferredHeight: editWorkFlowTab.paramFieldHeight
-                readOnly: true
-                color: "#FFFFFF"
-                background: Rectangle {
-                    color: "#2A2A2A"
-                    border.color: "#3A5A8C"
-                    border.width: 1
-                    radius: 4
-                }
-                Component.onCompleted: {
-                    winchGrid.ignoreChanges = true
-                    text = getParam("speed", 100).toString()
-                    winchGrid.ignoreChanges = false
-                }
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        numpad.targetField = speedField
-                        numpad.open()
-                    }
-                }
-                onTextChanged: {
-                    if (!winchGrid.ignoreChanges) {
-                        var val = parseFloat(text)
-                        if (!isNaN(val)) updateParam("speed", val)
-                    }
-                }
-            }
+        WorkflowWinchParams {
+            editor: editWorkFlowTab
+            numpad: numpad
         }
     }
 
     Component {
         id: valveParamsComponent
-        GridLayout {
-            id: valveGrid
-            width: 200
-            columns: 2
-            columnSpacing: 10
-            rowSpacing: 8
-            
-            property bool ignoreChanges: false
-
-            Text { text: "Turn Value:"; color: "#CCCCCC"; font.pixelSize: 12; Layout.preferredWidth: 100 }
-            TextField {
-                id: turnValueField
-                Layout.fillWidth: true
-                Layout.preferredWidth: 200
-                Layout.preferredHeight: editWorkFlowTab.paramFieldHeight
-                readOnly: true
-                color: "#FFFFFF"
-                background: Rectangle {
-                    color: "#2A2A2A"
-                    border.color: "#3A5A8C"
-                    border.width: 1
-                    radius: 4
-                }
-                Component.onCompleted: {
-                    valveGrid.ignoreChanges = true
-                    text = getParam("turn_value", 0).toString()
-                    valveGrid.ignoreChanges = false
-                }
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        numpad.targetField = turnValueField
-                        numpad.open()
-                    }
-                }
-                onTextChanged: {
-                    if (!valveGrid.ignoreChanges) {
-                        var val = parseFloat(text)
-                        if (!isNaN(val)) updateParam("turn_value", val)
-                    }
-                }
-            }
+        WorkflowValveParams {
+            editor: editWorkFlowTab
+            numpad: numpad
         }
     }
 
     Component {
         id: gimbalParamsComponent
-        GridLayout {
-            id: gimbalGrid
-            width: parent ? parent.width : 0
-            columns: 2
-            columnSpacing: 10
-            rowSpacing: 8
-            
-            property bool ignoreChanges: false
-
-            Text { text: "Angle (°):"; color: "#CCCCCC"; font.pixelSize: 12; Layout.preferredWidth: 100 }
-            TextField {
-                id: angleField
-                Layout.fillWidth: true
-                Layout.preferredWidth: 200
-                Layout.preferredHeight: editWorkFlowTab.paramFieldHeight
-                readOnly: true
-                color: "#FFFFFF"
-                background: Rectangle {
-                    color: "#2A2A2A"
-                    border.color: "#3A5A8C"
-                    border.width: 1
-                    radius: 4
-                }
-                Component.onCompleted: {
-                    gimbalGrid.ignoreChanges = true
-                    text = getParam("angle", 0).toString()
-                    gimbalGrid.ignoreChanges = false
-                }
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        numpad.targetField = angleField
-                        numpad.open()
-                    }
-                }
-                onTextChanged: {
-                    if (!gimbalGrid.ignoreChanges) {
-                        var val = parseFloat(text)
-                        if (!isNaN(val)) updateParam("angle", val)
-                    }
-                }
-            }
-
-            Text { text: "Speed (°/s):"; color: "#CCCCCC"; font.pixelSize: 12; Layout.preferredWidth: 100 }
-            TextField {
-                id: gimbalSpeedField
-                Layout.fillWidth: true
-                Layout.preferredWidth: 200
-                Layout.preferredHeight: editWorkFlowTab.paramFieldHeight
-                readOnly: true
-                color: "#FFFFFF"
-                background: Rectangle {
-                    color: "#2A2A2A"
-                    border.color: "#3A5A8C"
-                    border.width: 1
-                    radius: 4
-                }
-                Component.onCompleted: {
-                    gimbalGrid.ignoreChanges = true
-                    text = getParam("speed", 10).toString()
-                    gimbalGrid.ignoreChanges = false
-                }
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        numpad.targetField = gimbalSpeedField
-                        numpad.open()
-                    }
-                }
-                onTextChanged: {
-                    if (!gimbalGrid.ignoreChanges) {
-                        var val = parseFloat(text)
-                        if (!isNaN(val)) updateParam("speed", val)
-                    }
-                }
-            }
+        WorkflowGimbalParams {
+            editor: editWorkFlowTab
+            numpad: numpad
         }
     }
 
     Component {
         id: armParamsComponent
-        GridLayout {
-            id: armGrid
-            width: parent ? parent.width : 0
-            columns: 2
-            columnSpacing: 10
-            rowSpacing: 8
-            
-            property bool ignoreChanges: false
-
-            Text { text: "Distance (mm):"; color: "#CCCCCC"; font.pixelSize: 12; Layout.preferredWidth: 100 }
-            TextField {
-                id: distanceField
-                Layout.fillWidth: true
-                Layout.preferredWidth: 200
-                Layout.preferredHeight: editWorkFlowTab.paramFieldHeight
-                readOnly: true
-                color: "#FFFFFF"
-                background: Rectangle {
-                    color: "#2A2A2A"
-                    border.color: "#3A5A8C"
-                    border.width: 1
-                    radius: 4
-                }
-                Component.onCompleted: {
-                    armGrid.ignoreChanges = true
-                    text = getParam("distance", 0).toString()
-                    armGrid.ignoreChanges = false
-                }
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        numpad.targetField = distanceField
-                        numpad.open()
-                    }
-                }
-                onTextChanged: {
-                    if (!armGrid.ignoreChanges) {
-                        var val = parseFloat(text)
-                        if (!isNaN(val)) updateParam("distance", val)
-                    }
-                }
-            }
+        WorkflowArmParams {
+            editor: editWorkFlowTab
+            numpad: numpad
         }
     }
 
     Component {
         id: forceParamsComponent
-        GridLayout {
-            id: forceGrid
-            width: parent ? parent.width : 0
-            columns: 2
-            columnSpacing: 10
-            rowSpacing: 8
-            
-            property bool ignoreChanges: false
-
-            Text { text: "Force X:"; color: "#CCCCCC"; font.pixelSize: 12; Layout.preferredWidth: 100 }
-            TextField {
-                id: fxField
-                Layout.fillWidth: true
-                Layout.preferredWidth: 200
-                Layout.preferredHeight: editWorkFlowTab.paramFieldHeight
-                readOnly: true
-                color: "#FFFFFF"
-                background: Rectangle {
-                    color: "#2A2A2A"
-                    border.color: "#3A5A8C"
-                    border.width: 1
-                    radius: 4
-                }
-                Component.onCompleted: {
-                    forceGrid.ignoreChanges = true
-                    text = getParam("fx", 0).toString()
-                    forceGrid.ignoreChanges = false
-                }
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        numpad.targetField = fxField
-                        numpad.open()
-                    }
-                }
-                onTextChanged: {
-                    if (!forceGrid.ignoreChanges) {
-                        var val = parseFloat(text)
-                        if (!isNaN(val)) updateParam("fx", val)
-                    }
-                }
-            }
-
-            Text { text: "Force Y:"; color: "#CCCCCC"; font.pixelSize: 12; Layout.preferredWidth: 100 }
-            TextField {
-                id: fyField
-                Layout.fillWidth: true
-                Layout.preferredWidth: 200
-                Layout.preferredHeight: editWorkFlowTab.paramFieldHeight
-                readOnly: true
-                color: "#FFFFFF"
-                background: Rectangle {
-                    color: "#2A2A2A"
-                    border.color: "#3A5A8C"
-                    border.width: 1
-                    radius: 4
-                }
-                Component.onCompleted: {
-                    forceGrid.ignoreChanges = true
-                    text = getParam("fy", 0).toString()
-                    forceGrid.ignoreChanges = false
-                }
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        numpad.targetField = fyField
-                        numpad.open()
-                    }
-                }
-                onTextChanged: {
-                    if (!forceGrid.ignoreChanges) {
-                        var val = parseFloat(text)
-                        if (!isNaN(val)) updateParam("fy", val)
-                    }
-                }
-            }
+        WorkflowForceParams {
+            editor: editWorkFlowTab
+            numpad: numpad
         }
     }
 
     Component {
         id: genericParamsComponent
-        Text {
-            text: "No parameters for this action type"
-            color: "#AAAAAA"
-            font.pixelSize: 12
-            font.italic: true
-        }
+        WorkflowGenericParams {}
     }
 
     // Helper functions
@@ -971,26 +669,21 @@ Item {
             console.log("WorkflowEditor not available")
             return
         }
-        
-        // Get full workflow data from Python
-        var workflowJson = workflowEditor.get_workflow_data(name)
-        if (workflowJson === "") {
+
+        // Python owns YAML load and document shaping; QML only binds UI state.
+        var workflow = workflowEditor.load_document(name)
+        if (!workflow || !workflow.name) {
             console.log("Failed to load workflow data")
             return
         }
-        
-        try {
-            var workflow = JSON.parse(workflowJson)
-            workflowName = workflow.name || name
-            currentWorkflow = workflow
-            actions = workflow.actions || []
-            workflowLoop = workflow.loop === true
-            selectedActionIndex = -1
-            
-            console.log("Loaded workflow with", actions.length, "actions, loop:", workflowLoop)
-        } catch (e) {
-            console.log("Error parsing workflow JSON:", e)
-        }
+
+        workflowName = workflow.name || name
+        currentWorkflow = workflow
+        actions = workflow.actions || []
+        workflowLoop = workflow.loop === true
+        selectedActionIndex = -1
+
+        console.log("Loaded workflow with", actions.length, "actions, loop:", workflowLoop)
     }
 
     function saveWorkflow() {
@@ -998,30 +691,25 @@ Item {
             console.log("No workflow name specified")
             return
         }
-        
+
         if (!workflowEditor) {
             console.log("WorkflowEditor not available")
             return
         }
-        
-        // Build workflow structure
-        var workflow = {
-            "name": workflowName,
-            "description": currentWorkflow ? (currentWorkflow.description || "") : "",
-            "loop": workflowLoop,
-            "actions": actions
-        }
-        
-        // Convert to JSON and save via Python
-        var workflowJson = JSON.stringify(workflow)
-        var success = workflowEditor.save_workflow_data(workflowName, workflowJson)
-        
+
+        // Python owns document assembly, normalize, collision, and atomic write.
+        var description = currentWorkflow ? (currentWorkflow.description || "") : ""
+        var success = workflowEditor.save_document(
+            workflowName,
+            description,
+            workflowLoop,
+            actions
+        )
+
         if (success) {
             console.log("Successfully saved workflow:", workflowName)
-            // Show success message (could add a popup here)
         } else {
             console.log("Failed to save workflow:", workflowName)
-            // Show error message (could add a popup here)
         }
     }
 }
