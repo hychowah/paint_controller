@@ -138,7 +138,7 @@ The test suite relies on a deliberately lightweight harness. Do not break these 
 
 You MUST pause and ask for explicit guidance before:
 
-- **Deleting any file**
+- **Deleting any non-doc file** (code, config, launch files, tests). Deleting stale docs/plans/notes is routine per the Pruning Policy — no approval needed, but state what was deleted and why.
 - **Modifying launch files** (`launch/*.py`)
 - **Changing ROS2 message types** or service definitions
 - **Modifying CMakeLists.txt or package.xml**
@@ -170,27 +170,24 @@ Development notes track what was tried, issues encountered, and solutions found.
 2. **One timestamp per feature/session** — Group related work together
 3. **Code snippets**: Keep short (3-5 lines), show before/after pattern
 
-### Rotation Policy (90-day rolling window)
+### Pruning Policy — judgment-based, git is the archive
 
-DEVNOTES entries have a maximum age of **90 days**. Older entries must be triaged and rotated out.
+DEVNOTES is an inbox of *current* context, and the same retention rule applies to all project docs (plans, boards, notes): **docs describe current reality.** Completed plans, superseded boards, and stale narratives are deleted, not archived — git history is the archive (`git log` / `git show` recover anything). Do not create verbatim cold-storage files such as `docs/devnotes/YYYY-QN.md`; the existing ones are frozen legacy.
 
-**Rotation trigger**: Any entry older than 90 days, OR file exceeds ~300 lines.
+**Prune trigger**: judgment, not a fixed calendar — e.g. DEVNOTES has grown past ~300 lines, an entry describes completed work whose details no longer affect current decisions, or a doc's statements no longer match the code.
 
-**Triage steps** (for each entry older than 90 days):
-1. Read the entry fully
-2. Does it contain a reusable pattern, gotcha, anti-pattern, or design decision not yet in KNOWLEDGE.md?
-   - Yes → propose the extracted entry to the user for confirmation, then add to KNOWLEDGE.md
+**Prune steps** (per entry or doc):
+1. Read it fully
+2. Does it contain a reusable pattern, gotcha, anti-pattern, or design decision not yet in KNOWLEDGE.md or `docs/tech-debt.md`?
+   - Yes → propose the extraction to the user for confirmation, then add it there
    - No → proceed to step 3
-3. Move the full entry verbatim to `docs/devnotes/YYYY-QN.md` (quarterly archive):
-   - Q1 = Jan–Mar, Q2 = Apr–Jun, Q3 = Jul–Sep, Q4 = Oct–Dec
-   - Create the file if it does not exist
-4. Remove the entry from DEVNOTES.md
+3. Delete it. Do not move it anywhere.
 
 **What to extract → KNOWLEDGE.md**: gotchas, design decisions, anti-patterns, timing rules, discovered constraints
 
-**What to archive only**: step-by-step implementation narratives, file lists, "tried X failed" detail
+**What to delete freely**: step-by-step implementation narratives, file lists, "tried X failed" detail, completed plans, superseded boards
 
-**What git handles** (do not duplicate in DEVNOTES): exact line changes, before/after code diffs
+**What git handles** (do not duplicate anywhere): exact line changes, before/after code diffs, and all deleted history
 
 ---
 

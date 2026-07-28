@@ -23,7 +23,7 @@ Read in this order at the start of any session:
 1. **`INDEX.md`** (this file) — repo map and orientation
 2. **`AGENTS.md`** — workflow rules, planning process, stop-and-ask triggers, and the Kimi CLI tool mapping (when to use plan mode, `TodoList`, subagents, etc.)
 3. **`KNOWLEDGE.md`** — gotchas, patterns, anti-patterns. Check before debugging.
-4. **`DEVNOTES.md`** — last 90 days of session notes and validation results
+4. **`DEVNOTES.md`** — recent session notes and validation results
 5. **`docs/plan/00_ARCHITECTURE_PROGRESS.md`** — current roadmap status, completed slices, next recommended slice
 6. **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** — durable architecture rationale, invariants, anti-goals, and historical completion context
 7. **`docs/tech-debt.md`** — known debt items with priority and effort (check before starting new work)
@@ -83,8 +83,9 @@ paint_controller_ros2/
 │   │   ├── 00_ARCHITECTURE_PROGRESS.md          # Current roadmap status and next-slice tracker
 │   │   └── 01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md  # Durable architecture rationale and historical context
 │   ├── tech-debt.md               # Active tech debt tracker (living document)
-│   └── devnotes/                  # Quarterly DEVNOTES cold-storage archives
-│       └── 2026-Q1.md             # Jan–Mar 2026 session notes (archived)
+│   └── devnotes/                  # Legacy quarterly archives — frozen, no longer appended to
+│       ├── 2026-Q1.md             # Jan–Mar 2026 session notes
+│       └── 2026-Q2.md             # Apr–Jun 2026 session notes
 │
 ├── AGENTS.md                      # Workflow rules for all LLM agents (canonical)
 ├── INDEX.md                       # This file — repo map and session-start guide

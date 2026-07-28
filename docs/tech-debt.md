@@ -8,13 +8,93 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 
 ## Active Debt
 
-### TD-032 — Python Qt architecture boundary work in progress
+### TD-033 — Zero behavioral UI / NOTIFY-contract test coverage
+**Area**: Tests
+**Priority**: high
+**Effort**: medium
+**Why it matters**: ~18k QML lines have load-only smoke coverage ("component loads, no fatal warnings"); there is no input simulation anywhere in the suite. The Phase 7 shell-routing change shipped broken primary navigation — `SelectBar { shellRouter: mainWindow.shellRouter }` does not resolve context properties through a qualified id lookup, and `SelectBar.qml`'s `if (shellRouter)` guard made nav clicks silently no-op — and no gate caught it (fixed by the uncommitted `shellRouterModel`/`shellStateModel` alias change in `MainWindow.qml`). Separately, none of the new `*Status`/`*Actions` models have NOTIFY-contract tests (`QSignalSpy` is unused), and heartbeat recovery/flap is untested — only the loss path is.
+**What to do**: Extend the existing Python-driven `QQmlComponent` harness (do NOT adopt qmltestrunner) with: (1) a few interaction tests through real wiring — navigation round-trip, e-stop button → halt; (2) NOTIFY-contract tests for each QML-exposed model (mutate → exactly one emission with correct payload); (3) heartbeat recovery/flap cases in `test_heartbeat.py` / `test_safety_integration.py`.
+**Files**: `tests/startup_smoke_support.py`, `tests/test_startup_smoke_shell.py`, `tests/test_heartbeat.py`, `tests/test_safety_integration.py`, `python/paint_controller/qml/navigation/SelectBar.qml`
+
+---
+
+### TD-034 — colcon build broken; packaging gate normalized-red
+**Area**: Build / Packaging
+**Priority**: high
+**Effort**: low
+**Why it matters**: `CMakeLists.txt` installs a `resource/` directory that does not exist at repo root, so `colcon build` fails pre-existingly while `AGENTS.md` lists it as validation gate #3 — a permanently red gate trains everyone to route around gates (this is how TD-033's navigation regression shipped "validated"). `setup.py` and the ament_cmake `CMakeLists.txt` also coexist as two half-configured build systems.
+**What to do**: Remove or repair the `resource/` install stanza, resolve the `setup.py` vs `CMakeLists.txt` ambiguity, and get `colcon build` green in CI. (CMakeLists.txt / package.xml changes are stop-and-ask per AGENTS.md — confirm with the user before editing.)
+**Files**: `CMakeLists.txt`, `setup.py`, `package.xml`, `.github/workflows/ci.yml`
+
+---
+
+### TD-035 — View-authoritative toggle commands; optimistic device state never reconciled
+**Area**: State management
+**Priority**: high
+**Effort**: medium
+**Why it matters**: QML passes its binding snapshot as the toggle authority (`teensyActions.toggleStability(deviceControlTab.teensyStatus.stabilityEnabled)` at `DeviceControlTab.qml:426`, plus call sites in `PageWheel.qml` and `PageStatus.qml`); if the binding is one emission behind, the operator toggles a safety-relevant control the wrong way. The backend already owns the truth (`teensy.py` `_stability_enabled`). Additionally `_USER_CONTROLLED_FIELDS` (`teensy.py:89`) are local intent published one-way and never read back — after a firmware restart/reconnect the HMI can display "enabled" while the device is actually disabled.
+**What to do**: Change `*Actions.toggleX(current)` to `toggleX()` reading controller-owned state (or use checkable controls calling `setX(bool)`); reconcile user-controlled fields against device state on reconnect.
+**Files**: `python/paint_controller/models/teensy_actions.py`, `python/paint_controller/controllers/teensy.py`, `python/paint_controller/qml/overlays/systemcontrol/DeviceControlTab.qml`, `python/paint_controller/qml/pages/wheel/PageWheel.qml`, `python/paint_controller/qml/pages/status/PageStatus.qml`
+
+---
+
+### TD-036 — Settings persisted inside source tree; QML settings writes ungated
+**Area**: Settings / Deployment
+**Priority**: medium
+**Effort**: low
+**Why it matters**: `settings.py:316-318` resolves `settings.json` inside the repo (docstrings hardcode `~/ros2_ws/src/...`) — breaks under colcon install or read-only deployment. The QML settings UI mutates persisted machine limits via raw `settingsManager.getInt/applyFloat/setFloat` (~18 call sites) with no AdminActionGate legality check — the last unguarded machine-affecting write path. The generated per-setting Qt Properties are also unused by QML (hand-rolled `Connections` refresh instead) — two parallel APIs with the weaker one in use.
+**What to do**: Move settings to an XDG/env-overridable path; route QML settings mutations through one gated slot; pick one settings API (bind the generated Properties or drop them).
+**Files**: `python/paint_controller/core/settings.py`, `python/paint_controller/qml/pages/settings/components/ManagedSettingSpinBox.qml`, `python/paint_controller/qml/overlays/systemcontrol/components/SettingInputField.qml`
+
+---
+
+### TD-032 — QML boundary retirement program: close out honestly, then stop
+**Area**: QML UI
+**Priority**: medium
+**Effort**: low
+**Why it matters**: The 2026-07-27 multi-perspective architecture review found the program's headline metric unmet (target ~12–15 root-context properties; actual 28 in `_EXPECTED_CONTEXT_PROPERTY_NAMES`) and its explicit elimination targets still live: `deviceActionHandler` (call sites in `DeviceControlTab.qml`, `PageStatus.qml`, `PageWinch.qml`, `TeensyStatus.qml`), `stateStore` (1 QML use), `backend` (2 QML uses). The substantive win (no raw controllers in QML; gated action models) is real and done; the remaining tail is small and the program is past diminishing returns (Phases 7–8 produced the TD-033 navigation regression and net line growth).
+**What to do**: One final close-out slice: retire `deviceActionHandler`, `stateStore`, and `backend` per the board's own "remove when last consumer is gone" rule — or formally amend the 12–15 target in the plan docs. Correct the stale frozen/quarantine entries (TD-041), then declare the program closed and redirect effort to TD-033…TD-038. Do not open new boundary phases.
+**Files**: `docs/plan/00_ARCHITECTURE_PROGRESS.md`, `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`, `python/paint_controller/core/qml_context_composer.py`, `python/paint_controller/qml/overlays/systemcontrol/DeviceControlTab.qml`, `python/paint_controller/qml/pages/status/PageStatus.qml`, `python/paint_controller/qml/pages/winch/PageWinch.qml`, `python/paint_controller/qml/pages/status/components/TeensyStatus.qml`
+
+---
+
+### TD-037 — Status wrapper layer: blanket notify, stringly reads, duplicated telemetry
+**Area**: QML↔Python boundary
+**Priority**: medium
+**Effort**: high
+**Why it matters**: `qml_context_composer.py` (1191 lines, now the largest Python file) re-implements the per-property NOTIFY the controllers already have — worse: one blanket `changed` signal fans ~50 properties per wrapper (every teensy tick re-evaluates every binding), `_connect_if_signal` silently skips missing signals (a controller-side rename becomes invisible drift), `_read_object_value`'s duck-typed fallbacks exist partly to tolerate test fakes in production code, and physical values are duplicated under multiple names (battery voltage ×3 across `_VideoRuntimeTopBar`/`_TeensyStatus`/`_WinchStatus`; SSH reachability ×2). This violates the retirement program's own "no controller-shaped mirrors / no shallow wrappers" principles.
+**What to do**: Long-term: move per-property NOTIFY onto controller-owned read-only status QObjects and delete most of the composer wrapper classes; consolidate one canonical owner per physical value; keep the `*Actions`/gating models (the program's real win).
+**Files**: `python/paint_controller/core/qml_context_composer.py`, `python/paint_controller/controllers/winch.py`, `python/paint_controller/controllers/teensy.py`
+
+---
+
+### TD-038 — File-scale QML decomposition: PageWinch, EditWorkFlowTab, TeensyStatus
 **Area**: QML UI
 **Priority**: medium
 **Effort**: high
-**Why it matters**: The remaining debt is no longer a generic structural rebuild. The live problem is that the permanent app-scope QML contract is still broader than it should be, and several leaf surfaces still bypass bounded feature or status contracts. That keeps the repo harder to maintain, scale, and reason about than a more professional Qt program should be.
-**What to do**: Treat `docs/plan/00_ARCHITECTURE_PROGRESS.md` as the only live execution board and `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` as durable architecture guidance. Phases 0–8 of the QML surface retirement program are complete. Decide whether to close the program or pick a higher-leverage retirement target; revisit settings cleanup only if it produces a real surface-area reduction, keep the shell and launcher families frozen, keep the explicit quarantine list visible by file, and do not open the automation follow-on until the app-scope QML contract is materially smaller.
-**Files**: `docs/plan/00_ARCHITECTURE_PROGRESS.md`, `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`, `python/paint_controller/handlers/manual_commands.py`, `python/paint_controller/qml/core/`, `python/paint_controller/qml/navigation/`, `python/paint_controller/qml/overlays/systemcontrol/`, `python/paint_controller/qml/overlays/video/`, `python/paint_controller/qml/pages/settings/`, `python/paint_controller/ui/overlay.py`, `python/paint_controller/handlers/input.py`, `python/paint_controller/handlers/control_processor.py`, `python/paint_controller/core/app_runtime.py`
+**Why it matters**: `PageWinch.qml` is 1606 lines with zero `CommonStyle` uses, 70 hardcoded colors, two near-identical ~120-line control blocks, and two hand-rolled toggle switches despite an existing `TouchSwitch` component — one extracted control card deletes several hundred lines. `EditWorkFlowTab.qml` (1027 lines) builds and JSON-serializes the workflow document in JavaScript (`saveWorkflow()`) — business logic in the view layer. These files are the actual maintenance risk the boundary program never touched. Absorbs the worst of TD-002.
+**What to do**: Extract a reusable winch control card; move workflow JSON assembly into the Python editor model; tokenize with `CommonStyle` as files are touched.
+**Files**: `python/paint_controller/qml/pages/winch/PageWinch.qml`, `python/paint_controller/qml/overlays/systemcontrol/EditWorkFlowTab.qml`, `python/paint_controller/qml/pages/status/components/TeensyStatus.qml`
+
+---
+
+### TD-039 — Concurrency loose ends: BaseTopView race, unconsumed ROS error path, in-lock emit
+**Area**: Concurrency
+**Priority**: medium
+**Effort**: low
+**Why it matters**: (1) `base_top_view_service.py` property setters / `_reinitialize_maps()` mutate worker-thread remap tables from the main thread while the worker reads them in `cv2.remap` — torn frames exactly while the operator drags calibration sliders (the one true remaining data race). (2) `RosThread.error_occurred` has zero consumers and `_last_spin_time`/`_spin_timeout` are written but never read — ROS/network loss is invisible to the operator. (3) `steam_deck.py:544` emits `button_held` while holding a non-recursive `QMutex`, violating the repo's own emit-outside-lock rule (deadlock landmine; no current connections). (4) `CameraStream.cleanup()` writes `image_provider.image = None` without the provider mutex (`video_stream.py`), so `requestImage` can hit `None.copy()` on the render thread if the configurable-stream path is enabled.
+**What to do**: Marshal calibration mutations into the worker thread (or guard `map1`/`map2`); wire `error_occurred` to a user-visible status or delete the dead signal/bookkeeping; move the `button_held` emit outside the lock; hold the image mutex or keep a placeholder `QImage` in cleanup.
+**Files**: `python/paint_controller/services/base_top_view_service.py`, `python/paint_controller/core/ros_node.py`, `python/paint_controller/core/signal_wiring.py`, `python/paint_controller/handlers/steam_deck.py`, `python/paint_controller/services/video_stream.py`
+
+---
+
+### TD-040 — pyright allowlist excludes the riskiest modules
+**Area**: Tooling / CI
+**Priority**: medium
+**Effort**: medium
+**Why it matters**: `pyrightconfig.json` `include` cherry-picks scope; it excludes `services/` (`video_stream.py` 772 lines, `base_top_view_service.py` 783, workflow ~1270 — the threading-heaviest code), `core/app_runtime.py`, `ui/`, `widgets/`, `utils/`, and runs `basic` mode. "Pyright green" currently proves little about the whole.
+**What to do**: Widen `include` incrementally (services first), fix the fallout, keep the gate green.
+**Files**: `pyrightconfig.json`
 
 ---
 
@@ -22,7 +102,7 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 **Area**: QML UI
 **Priority**: low
 **Effort**: medium
-**Why it matters**: Hardcoded colours, spacing, and font sizes in the remaining untokenized files will diverge from the rest of the UI and make theme-wide changes expensive later, but this is no longer the architecture-driving problem.
+**Why it matters**: Hardcoded colours, spacing, and font sizes in the remaining untokenized files will diverge from the rest of the UI and make theme-wide changes expensive later, but this is no longer the architecture-driving problem. The worst single offender (`PageWinch.qml`: 0 `CommonStyle` uses, 70 hardcoded colors) is now tracked with the decomposition work in TD-038.
 **What to do**: Resume the remaining `CommonStyle` rollout only after the boundary-retirement roadmap is stable, unless the user explicitly reprioritizes it. The remaining debt is limited design-token cleanup across the residual systemcontrol, video, and page surfaces, not unresolved structural duplication.
 **Files**: `python/paint_controller/qml/overlays/systemcontrol/`, `python/paint_controller/qml/overlays/video/`, `python/paint_controller/qml/pages/home/`, `python/paint_controller/qml/pages/wheel/`, `python/paint_controller/qml/pages/winch/`, `python/paint_controller/qml/pages/tuning/`, `python/paint_controller/qml/pages/settings/`, `python/paint_controller/qml/pages/status/`
 
@@ -35,6 +115,36 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 **Why it matters**: `VideoOverlayStyle.qml` no longer owns its own tokens, but it still preserves a parallel style API for older video overlay components. That wrapper layer keeps imports stable, but it also delays a clean direct dependency on `CommonStyle`.  
 **What to do**: Retire the wrapper-only API once the remaining video overlay callers can read `CommonStyle` directly, or keep the file as a thin documented compatibility shim if import churn is intentionally deferred.  
 **Files**: `python/paint_controller/qml/overlays/video/components/VideoOverlayStyle.qml`
+
+---
+
+### TD-041 — Governance/doc hygiene: stale plan entries, KNOWLEDGE.md mis-citation
+**Area**: Docs
+**Priority**: low
+**Effort**: low
+**Why it matters**: `00_ARCHITECTURE_PROGRESS.md`'s frozen list declares route identity owned in `MainWindow.qml` in the same file that declares Phase 7 (which moved it to `ShellRouter`) complete; its quarantine list still names `PageWheel.qml`'s `baseStreamHandler` seam, which no longer exists. `KNOWLEDGE.md`'s singleton entry cites PYSIDE-2160/2310 as a "known bug family" — both are unrelated issues fixed in Qt 6.5.x and the repo runs PySide6 6.10.1; the conclusion (avoid `qmlRegisterSingletonInstance` with implicit directory imports) is defensible, but the cited reasoning blocks legitimate typed-registration options (`qmlRegisterUncreatableType`, `@QmlNamedElement`). `AGENTS.md` also references a `launch/` directory that does not exist.
+**What to do**: Correct the KNOWLEDGE.md entry (user confirmation required per KNOWLEDGE.md rules), refresh or retire the stale frozen/quarantine entries, fix the `launch/` reference.
+**Files**: `docs/plan/00_ARCHITECTURE_PROGRESS.md`, `KNOWLEDGE.md`, `AGENTS.md`
+
+---
+
+### TD-042 — Over-fitted test mirror and structural-selfie assertions
+**Area**: Tests
+**Priority**: low
+**Effort**: medium
+**Why it matters**: `startup_smoke_support.py` (1095 lines, 27 hand-maintained fake context classes) re-implements the models' QML APIs property-by-property; `FakeShellRouter` hand-copies the route registry, so a production route reorder keeps the suite green while navigation breaks; `controller_factory_runtime_support.py` (447 lines, ~107 recorder classes) largely asserts that wiring wires what it wires; per-test `fatal_warning_fragments` tuples are copy-pasted Qt warning strings (version-brittle). Correctness currently depends on a human remembering to update the mirror each phase.
+**What to do**: Derive static fake contracts from production (e.g. build `FakeShellRouter` from the real route registry), collapse warning tuples into one `assert_no_fatal_qml_warnings()` helper, keep the shutdown-order and name-parity assertions, delete the structural selfies.
+**Files**: `tests/startup_smoke_support.py`, `tests/controller_factory_runtime_support.py`, `tests/test_startup_smoke_shell.py`
+
+---
+
+### TD-043 — Dead/duplicated state and metadata layers
+**Area**: State management
+**Priority**: low
+**Effort**: medium
+**Why it matters**: `StateStore` is ~60% dead state (`left/right_joystick_control`, `*_control_mode/value` have no writers/readers; QML reads only `display_message`) while its "single source of truth" branding invites writes to the wrong place. `CapabilityCatalog` (559 lines) + metadata registry has 3 QML call sites in one popup. `SignalWiring.wire()` writes `runtime._heartbeat_status_error`, which nothing reads; uncalled "master-plan signature" convenience functions exist in `signal_wiring.py` / `qml_context_composer.py`.
+**What to do**: Delete the dead StateStore surface or make it Python-internal; reduce CapabilityCatalog to what the popup consumes (or fold legality into the gate); delete dead writes and uncalled functions.
+**Files**: `python/paint_controller/core/state_store.py`, `python/paint_controller/models/capability_catalog.py`, `python/paint_controller/core/signal_wiring.py`, `python/paint_controller/core/qml_context_composer.py`
 
 ---
 

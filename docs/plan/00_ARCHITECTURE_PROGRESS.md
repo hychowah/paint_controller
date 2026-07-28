@@ -9,7 +9,7 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 ## Current Snapshot
 
 - Overall status: in progress
-- Active architecture program: QML surface retirement per `docs/plan/MASTER_PLAN_QML_SURFACE_RETIREMENT.md`
+- Active architecture program: none — the QML surface retirement program (Phases 0–8) is closing per `docs/tech-debt.md` TD-032; the master plan doc was deleted 2026-07-27 and is recoverable from git history
 - Most recent completed slice: Phase 8 AppRuntime wiring extraction (`QmlContextComposer`, `SignalWiring`) on 2026-07-24
 - Core purpose: reduce global coupling, clarify ownership, shrink the app-scope QML contract, and make operator-visible behavior easier to trace
 - First-principles rule: success means fewer permanent app-scope QML reads and fewer equal-owner concepts, not wrapper proliferation
