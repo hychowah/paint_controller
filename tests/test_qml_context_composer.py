@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from paint_controller.core import qml_context_composer
-from paint_controller.core.qml_context_composer import QmlContextComposer
+from paint_controller.core.qml_context_composer import QmlComposePorts, QmlContextComposer
 from paint_controller.models.lidar_status import LidarStatus
 from paint_controller.models.teensy_status import TeensyStatus
 from paint_controller.models.valve_status import ValveStatus
@@ -11,7 +11,6 @@ from paint_controller.models.wheel_status import WheelStatus
 from paint_controller.models.winch_status import WinchStatus
 from tests.controller_factory_runtime_support import (
     _BaseTopViewServiceRecorder,
-    _EngineRecorder,
     _HeartbeatHandlerRecorder,
     _LidarStatusRecorder,
     _QtBridgeRecorder,
@@ -27,19 +26,9 @@ from tests.controller_factory_runtime_support import (
 )
 
 
-def _make_runtime() -> object:
-    """Return a minimal runtime-like object with the attributes composer needs."""
-    runtime = type("Runtime", (), {})()
-    runtime.state_store = object()
-    runtime.qt_bridge = _QtBridgeRecorder()
-    runtime.shell_state = object()
-    runtime.shell_router = object()
-    runtime.overlay_host = object()
-    runtime.action_legality = object()
-    runtime.settings_manager = object()
-    runtime.video_stream_handler = _VideoHandlerRecorder()
-    runtime.base_top_view_service = _BaseTopViewServiceRecorder()
-    runtime.bundle = type(
+def _make_ports(**overrides) -> QmlComposePorts:
+    """Return minimal QmlComposePorts for unit tests."""
+    bundle = type(
         "Bundle",
         (),
         {
@@ -68,7 +57,19 @@ def _make_runtime() -> object:
             "heartbeat_handler": _HeartbeatHandlerRecorder(),
         },
     )()
-    return runtime
+    fields = {
+        "bundle": bundle,
+        "video_stream_handler": _VideoHandlerRecorder(),
+        "base_top_view_service": _BaseTopViewServiceRecorder(),
+        "qt_bridge": _QtBridgeRecorder(),
+        "shell_state": object(),
+        "shell_router": object(),
+        "overlay_host": object(),
+        "action_legality": object(),
+        "settings_manager": object(),
+    }
+    fields.update(overrides)
+    return QmlComposePorts(**fields)
 
 
 class _ControlProcessorRecorderForComposer:
@@ -97,14 +98,14 @@ class _SignalRecorderForComposer:
 
 
 def test_expected_names_match_composed_keys() -> None:
-    runtime = _make_runtime()
-    properties = QmlContextComposer(runtime).compose()
+    ports = _make_ports()
+    properties = QmlContextComposer(ports).compose()
     assert set(properties) == set(qml_context_composer._EXPECTED_CONTEXT_PROPERTY_NAMES)
 
 
 def test_composer_creates_status_wrappers() -> None:
-    runtime = _make_runtime()
-    properties = QmlContextComposer(runtime).compose()
+    ports = _make_ports()
+    properties = QmlContextComposer(ports).compose()
 
     assert properties["videoRuntime"] is not None
     assert properties["recordingStatus"] is not None
@@ -126,37 +127,37 @@ def test_composer_creates_status_wrappers() -> None:
 
 
 def test_composer_reuses_bundle_action_models() -> None:
-    runtime = _make_runtime()
-    properties = QmlContextComposer(runtime).compose()
+    ports = _make_ports()
+    properties = QmlContextComposer(ports).compose()
 
-    assert properties["recordingActions"] is runtime.bundle.recording_actions
-    assert properties["teensyActions"] is runtime.bundle.teensy_actions
-    assert properties["systemActions"] is runtime.bundle.system_actions
-    assert properties["wheelActions"] is runtime.bundle.wheel_actions
-    assert properties["winchActions"] is runtime.bundle.winch_actions
-    assert properties["tuningActions"] is runtime.bundle.tuning_actions
-    assert properties["baseTopViewActions"] is runtime.bundle.base_top_view_actions
+    assert properties["recordingActions"] is ports.bundle.recording_actions
+    assert properties["teensyActions"] is ports.bundle.teensy_actions
+    assert properties["systemActions"] is ports.bundle.system_actions
+    assert properties["wheelActions"] is ports.bundle.wheel_actions
+    assert properties["winchActions"] is ports.bundle.winch_actions
+    assert properties["tuningActions"] is ports.bundle.tuning_actions
+    assert properties["baseTopViewActions"] is ports.bundle.base_top_view_actions
     assert "deviceActionHandler" not in properties
-    assert properties["overlayController"] is runtime.bundle.overlay_controller
-    assert properties["warningHandler"] is runtime.bundle.warning_handler
+    assert properties["overlayController"] is ports.bundle.overlay_controller
+    assert properties["warningHandler"] is ports.bundle.warning_handler
 
 
-def test_composer_reuses_runtime_level_objects() -> None:
-    runtime = _make_runtime()
-    properties = QmlContextComposer(runtime).compose()
+def test_composer_reuses_port_level_objects() -> None:
+    ports = _make_ports()
+    properties = QmlContextComposer(ports).compose()
 
     assert "stateStore" not in properties
-    assert properties["qtBridge"] is runtime.qt_bridge
-    assert properties["shellState"] is runtime.shell_state
-    assert properties["shellRouter"] is runtime.shell_router
-    assert properties["overlayHost"] is runtime.overlay_host
-    assert properties["actionLegality"] is runtime.action_legality
-    assert properties["settingsManager"] is runtime.settings_manager
+    assert properties["qtBridge"] is ports.qt_bridge
+    assert properties["shellState"] is ports.shell_state
+    assert properties["shellRouter"] is ports.shell_router
+    assert properties["overlayHost"] is ports.overlay_host
+    assert properties["actionLegality"] is ports.action_legality
+    assert properties["settingsManager"] is ports.settings_manager
 
 
 def test_video_runtime_top_bar_reads_ssh_and_recorder() -> None:
-    runtime = _make_runtime()
-    properties = QmlContextComposer(runtime).compose()
+    ports = _make_ports()
+    properties = QmlContextComposer(ports).compose()
     top_bar = properties["videoRuntime"].topBar
 
     assert top_bar.endEffectorConnected is True
@@ -167,8 +168,8 @@ def test_video_runtime_top_bar_reads_ssh_and_recorder() -> None:
 
 
 def test_recording_status_reads_recorders() -> None:
-    runtime = _make_runtime()
-    properties = QmlContextComposer(runtime).compose()
+    ports = _make_ports()
+    properties = QmlContextComposer(ports).compose()
     status = properties["recordingStatus"]
 
     assert status.endEffectorRecording is True
@@ -181,8 +182,8 @@ def test_recording_status_reads_recorders() -> None:
 
 
 def test_teensy_status_exposes_all_status_fields() -> None:
-    runtime = _make_runtime()
-    properties = QmlContextComposer(runtime).compose()
+    ports = _make_ports()
+    properties = QmlContextComposer(ports).compose()
     teensy = properties["teensyStatus"]
 
     assert teensy.imuPitch == 1.5
@@ -192,10 +193,9 @@ def test_teensy_status_exposes_all_status_fields() -> None:
 
 
 def test_compose_without_bundle_raises() -> None:
-    runtime = _make_runtime()
-    runtime.bundle = None
+    ports = _make_ports(bundle=None)
     try:
-        QmlContextComposer(runtime).compose()
+        QmlContextComposer(ports).compose()
         assert False, "compose() should require a bundle"
     except RuntimeError as exc:
         assert "ControllerBundle is required" in str(exc)

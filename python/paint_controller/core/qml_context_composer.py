@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from dataclasses import dataclass
+from typing import Any
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
@@ -14,9 +15,6 @@ from paint_controller.models.teensy_status import TeensyStatus
 from paint_controller.models.valve_status import ValveStatus
 from paint_controller.models.wheel_status import WheelStatus
 from paint_controller.models.winch_status import WinchStatus
-
-if TYPE_CHECKING:
-    from paint_controller.core.app_runtime import AppRuntime
 
 logger = logging.getLogger(__name__)
 
@@ -649,16 +647,31 @@ class _BaseTopViewStatus(QObject):
         return _read_object_value(self._service, "sourcePoints", default=[])
 
 
+@dataclass(frozen=True)
+class QmlComposePorts:
+    """Dependencies QmlContextComposer needs — no AppRuntime service locator (TD-047)."""
+
+    bundle: Any
+    video_stream_handler: Any
+    base_top_view_service: Any
+    qt_bridge: Any
+    shell_state: Any
+    shell_router: Any
+    overlay_host: Any
+    action_legality: Any
+    settings_manager: Any
+
+
 class QmlContextComposer:
     """Builds the QML root-context property dict and the status wrappers it contains."""
 
-    def __init__(self, runtime: AppRuntime) -> None:
-        self._runtime = runtime
+    def __init__(self, ports: QmlComposePorts) -> None:
+        self._ports = ports
 
     def compose(self) -> dict[str, object]:
         """Create status wrappers and return the full context-property mapping."""
-        runtime = self._runtime
-        bundle = runtime.bundle
+        ports = self._ports
+        bundle = ports.bundle
         if bundle is None:
             raise RuntimeError("ControllerBundle is required before composing QML context properties")
 
@@ -669,7 +682,7 @@ class QmlContextComposer:
         )
         video_runtime = _VideoRuntime(
             control_processor=bundle.control_processor,
-            video_stream_handler=runtime.video_stream_handler,
+            video_stream_handler=ports.video_stream_handler,
             ssh_controller=bundle.ssh_controller,
             screen_recorder=bundle.screen_recorder,
             system_monitor=bundle.system_monitor,
@@ -677,7 +690,7 @@ class QmlContextComposer:
             winch_controller=bundle.winch_controller,
         )
         recording_status = _RecordingStatus(
-            video_stream_handler=runtime.video_stream_handler,
+            video_stream_handler=ports.video_stream_handler,
             screen_recorder=bundle.screen_recorder,
             ros_bag_recorder=bundle.ros_bag_recorder,
         )
@@ -686,7 +699,7 @@ class QmlContextComposer:
         teensy_status = TeensyStatus(bundle.teensy_controller)
         valve_status = ValveStatus(bundle.esp32_valve_controller)
         lidar_status = LidarStatus(bundle.lidar_controller)
-        base_top_view_status = _BaseTopViewStatus(runtime.base_top_view_service)
+        base_top_view_status = _BaseTopViewStatus(ports.base_top_view_service)
         shell_connectivity_status = _ShellConnectivityStatus(
             ssh_controller=bundle.ssh_controller,
             heartbeat_handler=bundle.heartbeat_handler,
@@ -697,10 +710,10 @@ class QmlContextComposer:
         launcher_admin = _LauncherAdmin(bundle.ssh_controller)
 
         return {
-            "qtBridge": runtime.qt_bridge,
-            "shellState": runtime.shell_state,
-            "overlayHost": runtime.overlay_host,
-            "actionLegality": runtime.action_legality,
+            "qtBridge": ports.qt_bridge,
+            "shellState": ports.shell_state,
+            "overlayHost": ports.overlay_host,
+            "actionLegality": ports.action_legality,
             "systemControlServices": system_control_services,
             "videoRuntime": video_runtime,
             "recordingStatus": recording_status,
@@ -721,11 +734,6 @@ class QmlContextComposer:
             "tuningActions": bundle.tuning_actions,
             "baseTopViewActions": bundle.base_top_view_actions,
             "baseTopViewStatus": base_top_view_status,
-            "shellRouter": runtime.shell_router,
-            "settingsManager": runtime.settings_manager,
+            "shellRouter": ports.shell_router,
+            "settingsManager": ports.settings_manager,
         }
-
-
-def compose_context_properties(runtime: AppRuntime) -> dict[str, object]:
-    """Convenience entry point matching the master-plan function signature."""
-    return QmlContextComposer(runtime).compose()

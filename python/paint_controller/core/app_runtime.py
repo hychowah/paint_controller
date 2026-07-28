@@ -6,7 +6,6 @@ import logging
 import os
 import time
 from collections.abc import Callable
-from typing import Any
 
 import rclpy
 from PySide6.QtCore import QCoreApplication, QEvent, QTimer, QUrl
@@ -15,18 +14,14 @@ from PySide6.QtWidgets import QApplication
 
 from paint_controller.core import qml_context_composer
 from paint_controller.core.config import RuntimeDefaults
+from paint_controller.core.qml_context_composer import QmlComposePorts, QmlContextComposer
 from paint_controller.core.ros_node import RosThread
 from paint_controller.core.settings import SettingsManager
-from paint_controller.core.signal_wiring import SignalWiring
+from paint_controller.core.signal_wiring import SignalWiring, SignalWiringPorts
 from paint_controller.handlers.steam_deck import SteamDeckHandler
 from paint_controller.models.action_legality_model import ActionLegalityModel
 from paint_controller.models.capability_catalog import CapabilityCatalog
-from paint_controller.models.recording_actions import RecordingActions
 from paint_controller.models.shell_router import ShellRouter
-from paint_controller.models.system_actions import SystemActions
-from paint_controller.models.teensy_actions import TeensyActions
-from paint_controller.models.tuning_actions import TuningActions
-from paint_controller.models.wheel_actions import WheelActions
 from paint_controller.services.base_top_view_service import BaseTopViewService
 from paint_controller.services.video_stream import VideoStreamHandler
 from paint_controller.utils.qt_env import ensure_pyside6_windows_dll_path
@@ -79,8 +74,9 @@ class AppRuntime:
         self.config = RuntimeDefaults()
         self._startup_t0 = time.perf_counter()
         self._shutdown_started = False
+        # Sole home for QML façades after compose (TD-047): do not mirror context
+        # keys back onto self.* — consumers use this map, ControllerBundle, or shell.
         self._context_properties: dict[str, object] = {}
-        self._heartbeat_status_error: Any | None = None
 
         self.app: QApplication | None = None
         self.state_store = None
@@ -94,32 +90,15 @@ class AppRuntime:
         self.engine: QQmlApplicationEngine | None = None
         self.qt_bridge = None
         self.bundle = None
-        self.system_control_services = None
-        self.video_runtime: Any | None = None
-        self.recording_status = None
-        self.recording_actions: RecordingActions | None = None
-        self.teensy_actions: TeensyActions | None = None
-        self.system_actions: SystemActions | None = None
-        self.wheel_status = None
-        self.wheel_actions: WheelActions | None = None
-        self.winch_status = None
-        self.winch_actions = None
-        self.teensy_status = None
-        self.valve_status = None
-        self.lidar_status = None
-        self.shell_connectivity_status = None
-        self.launcher_admin = None
+        # Shell / policy created on the composition root (not context mirrors).
         self.shell_state = None
         self.shell_router: ShellRouter | None = None
         self.overlay_host = None
         self.action_legality = None
-        self.base_top_view_status = None
-        self.base_top_view_actions = None
-        self.tuning_actions: TuningActions | None = None
         self.status_timer: QTimer | None = None
         self.qml_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'qml')
 
-        self._composer: qml_context_composer.QmlContextComposer | None = None
+        self._composer: QmlContextComposer | None = None
         self._signal_wiring: SignalWiring | None = None
 
         try:
@@ -160,11 +139,12 @@ class AppRuntime:
         self._create_controller_bundle()
         self._activate_default_video_overlay()
 
-        self._signal_wiring = SignalWiring(self)
+        video_runtime = self._context_properties.get("videoRuntime")
+        self._signal_wiring = SignalWiring(self._build_signal_wiring_ports(video_runtime))
         self._signal_wiring.wire()
         self._register_context_properties()
         self._load_qml()
-        self._signal_wiring.start_timers()
+        self.status_timer = self._signal_wiring.start_timers()
 
     def _setup_core_objects(self) -> None:
         from paint_controller.core.ros_node import PaintRosNode
@@ -253,27 +233,40 @@ class AppRuntime:
             capability_catalog=self.capability_catalog,
         )
 
-        self._composer = qml_context_composer.QmlContextComposer(self)
+        self._composer = QmlContextComposer(self._build_compose_ports())
+        # Façades stay in this map only (TD-047); QML registration and SignalWiring
+        # read from here / bundle rather than AppRuntime attribute mirrors.
         self._context_properties = self._composer.compose()
 
-        self.system_control_services = self._context_properties["systemControlServices"]
-        self.video_runtime = self._context_properties["videoRuntime"]
-        self.recording_status = self._context_properties["recordingStatus"]
-        self.recording_actions = self._context_properties["recordingActions"]
-        self.teensy_actions = self._context_properties["teensyActions"]
-        self.system_actions = self._context_properties["systemActions"]
-        self.wheel_status = self._context_properties["wheelStatus"]
-        self.wheel_actions = self._context_properties["wheelActions"]
-        self.winch_status = self._context_properties["winchStatus"]
-        self.winch_actions = self._context_properties["winchActions"]
-        self.tuning_actions = self._context_properties["tuningActions"]
-        self.teensy_status = self._context_properties["teensyStatus"]
-        self.valve_status = self._context_properties["valveStatus"]
-        self.lidar_status = self._context_properties["lidarStatus"]
-        self.base_top_view_status = self._context_properties["baseTopViewStatus"]
-        self.base_top_view_actions = self._context_properties["baseTopViewActions"]
-        self.shell_connectivity_status = self._context_properties["shellConnectivityStatus"]
-        self.launcher_admin = self._context_properties["launcherAdmin"]
+    def _build_compose_ports(self) -> QmlComposePorts:
+        """Explicit ports for the context composer — not the whole AppRuntime."""
+        return QmlComposePorts(
+            bundle=self.bundle,
+            video_stream_handler=self.video_stream_handler,
+            base_top_view_service=self.base_top_view_service,
+            qt_bridge=self.qt_bridge,
+            shell_state=self.shell_state,
+            shell_router=self.shell_router,
+            overlay_host=self.overlay_host,
+            action_legality=self.action_legality,
+            settings_manager=self.settings_manager,
+        )
+
+    def _build_signal_wiring_ports(self, video_runtime: object) -> SignalWiringPorts:
+        """Explicit ports for signal wiring — not the whole AppRuntime."""
+        return SignalWiringPorts(
+            bundle=self.bundle,
+            node=self.node,
+            state_store=self.state_store,
+            qt_bridge=self.qt_bridge,
+            video_stream_handler=self.video_stream_handler,
+            steam_deck_handler=self.steam_deck_handler,
+            overlay_host=self.overlay_host,
+            video_runtime=video_runtime,
+            update_rate=self.config.update_rate,
+            deferred_video_startup=self._deferred_video_startup,
+            ros_thread=self.ros_thread,
+        )
 
     def _activate_default_video_overlay(self) -> None:
         """Show the fullscreen video overlay on startup with the current control-mode source."""

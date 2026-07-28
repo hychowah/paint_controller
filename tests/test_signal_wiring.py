@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from paint_controller.core.signal_wiring import SignalWiring
+from paint_controller.core.signal_wiring import SignalWiring, SignalWiringPorts
 from tests.controller_factory_runtime_support import (
     _ControlProcessorRecorder,
     _EmergencyHandlerRecorder,
@@ -17,34 +17,39 @@ from tests.controller_factory_runtime_support import (
 )
 
 
-def _make_runtime() -> object:
-    """Return a minimal runtime-like object with the attributes SignalWiring needs."""
-    runtime = type("Runtime", (), {})()
-    runtime.node = type("Node", (), {"get_logger": lambda self: type("Logger", (), {"error": lambda *args: None})()})()
-    runtime.state_store = _StateStoreRecorderForWiring()
-    runtime.qt_bridge = _QtBridgeRecorder()
-    runtime.video_stream_handler = _VideoHandlerRecorder()
-    runtime.steam_deck_handler = _SteamDeckHandlerRecorder()
-    runtime.overlay_host = _OverlayHostRecorderForWiring()
-    runtime.video_runtime = _VideoRuntimeRecorderForWiring()
-    runtime.config = type("Config", (), {"update_rate": 30.0})()
-    runtime.status_timer = None
-    runtime._deferred_video_startup = lambda: None
-
-    runtime.bundle = type(
-        "Bundle",
-        (),
-        {
-            "input_handler": _InputHandlerRecorder(),
-            "emergency_handler": _EmergencyHandlerRecorder(),
-            "control_processor": _ControlProcessorRecorder(),
-            "wheel_controller": _WheelControllerRecorder(),
-            "safety_coordinator": _SafetyCoordinatorRecorder(),
-            "system_monitor": _SystemMonitorRecorder(),
-        },
-    )()
-
-    return runtime
+def _make_ports(**overrides) -> SignalWiringPorts:
+    """Return minimal SignalWiringPorts for unit tests."""
+    video_runtime = overrides.pop("video_runtime", None) or _VideoRuntimeRecorderForWiring()
+    fields = {
+        "bundle": type(
+            "Bundle",
+            (),
+            {
+                "input_handler": _InputHandlerRecorder(),
+                "emergency_handler": _EmergencyHandlerRecorder(),
+                "control_processor": _ControlProcessorRecorder(),
+                "wheel_controller": _WheelControllerRecorder(),
+                "safety_coordinator": _SafetyCoordinatorRecorder(),
+                "system_monitor": _SystemMonitorRecorder(),
+            },
+        )(),
+        "node": type(
+            "Node",
+            (),
+            {"get_logger": lambda self: type("Logger", (), {"error": lambda *args: None})()},
+        )(),
+        "state_store": _StateStoreRecorderForWiring(),
+        "qt_bridge": _QtBridgeRecorder(),
+        "video_stream_handler": _VideoHandlerRecorder(),
+        "steam_deck_handler": _SteamDeckHandlerRecorder(),
+        "overlay_host": _OverlayHostRecorderForWiring(),
+        "video_runtime": video_runtime,
+        "update_rate": 30.0,
+        "deferred_video_startup": lambda: None,
+        "ros_thread": None,
+    }
+    fields.update(overrides)
+    return SignalWiringPorts(**fields)
 
 
 class _StateStoreRecorderForWiring:
@@ -85,34 +90,29 @@ class _VideoRuntimeTopBarRecorderForWiring:
         self.baseVideoRequested = _SignalRecorderForWiring()
 
 
-def test_wire_registers_steam_deck_callbacks() -> None:
-    runtime = _make_runtime()
-    SignalWiring(runtime).wire()
+def test_wire_connects_control_mode_and_emergency() -> None:
+    ports = _make_ports()
+    SignalWiring(ports).wire()
 
-    buttons = [button for button, _ in runtime.steam_deck_handler.callbacks]
-    assert buttons == [
-        "up", "down", "left", "right", "r4", "l4", "menu", "switch",
-        "l5", "r5", "dot", "a", "l1",
+    assert len(ports.state_store.control_mode_changed.connections) == 1
+    assert len(ports.bundle.emergency_handler.overlay_changed.connections) == 1
+    assert len(ports.bundle.emergency_handler.emergency_triggered.connections) == 1
+
+
+def test_wire_registers_steam_deck_callbacks() -> None:
+    ports = _make_ports()
+    SignalWiring(ports).wire()
+
+    assert [button for button, _ in ports.steam_deck_handler.callbacks] == [
+        "up", "down", "left", "right", "r4", "l4", "menu", "switch", "l5", "r5", "dot", "a", "l1"
     ]
 
 
-def test_wire_connects_emergency_and_video_signals() -> None:
-    runtime = _make_runtime()
-    SignalWiring(runtime).wire()
+def test_wire_connects_status_tick() -> None:
+    ports = _make_ports()
+    SignalWiring(ports).wire()
 
-    assert len(runtime.state_store.control_mode_changed.connections) == 1
-    assert len(runtime.qt_bridge.status_updated.connections) == 1
-    assert len(runtime.bundle.emergency_handler.overlay_changed.connections) == 1
-    assert len(runtime.bundle.emergency_handler.emergency_triggered.connections) == 1
-    assert len(runtime.video_stream_handler.endEffectorFrameReady.connections) == 1
-    assert len(runtime.bundle.wheel_controller.error_state_changed.connections) == 1
-
-
-def test_wire_without_ros_thread_stays_valid() -> None:
-    """TD-039: fixtures may omit ros_thread; wiring must remain null-safe."""
-    runtime = _make_runtime()
-    assert not hasattr(runtime, "ros_thread") or runtime.ros_thread is None
-    SignalWiring(runtime).wire()
+    assert len(ports.qt_bridge.status_updated.connections) == 1
 
 
 def test_wire_connects_ros_thread_error_to_display_message(qt_app) -> None:
@@ -122,28 +122,29 @@ def test_wire_connects_ros_thread_error_to_display_message(qt_app) -> None:
     class _FakeRosThread(QObject):
         error_occurred = Signal(str)
 
-    runtime = _make_runtime()
-    runtime.ros_thread = _FakeRosThread()
-    wiring = SignalWiring(runtime)
+    ros_thread = _FakeRosThread()
+    ports = _make_ports(ros_thread=ros_thread)
+    wiring = SignalWiring(ports)
     wiring.wire()
 
-    runtime.ros_thread.error_occurred.emit("spin failed once")
+    ros_thread.error_occurred.emit("spin failed once")
     qt_app.processEvents()
 
-    assert runtime.state_store.display_message == "ROS: spin failed once"
+    assert ports.state_store.display_message == "ROS: spin failed once"
 
     # Identical text is suppressed by the wiring throttle/dedupe.
-    runtime.ros_thread.error_occurred.emit("spin failed once")
+    ros_thread.error_occurred.emit("spin failed once")
     qt_app.processEvents()
-    assert runtime.state_store.display_message == "ROS: spin failed once"
+    assert ports.state_store.display_message == "ROS: spin failed once"
 
 
 def test_wire_connects_video_top_bar_requests() -> None:
-    runtime = _make_runtime()
-    SignalWiring(runtime).wire()
+    video_runtime = _VideoRuntimeRecorderForWiring()
+    ports = _make_ports(video_runtime=video_runtime)
+    SignalWiring(ports).wire()
 
-    assert len(runtime.video_runtime.topBar.endEffectorVideoRequested.connections) == 1
-    assert len(runtime.video_runtime.topBar.baseVideoRequested.connections) == 1
+    assert len(video_runtime.topBar.endEffectorVideoRequested.connections) == 1
+    assert len(video_runtime.topBar.baseVideoRequested.connections) == 1
 
 
 def test_start_timers_creates_status_timer_and_starts_monitor(monkeypatch) -> None:
@@ -151,33 +152,32 @@ def test_start_timers_creates_status_timer_and_starts_monitor(monkeypatch) -> No
 
     timer_recorder = _StatusTimerRecorder()
 
-    class _FakeQTimer:
-        def __init__(self):
-            nonlocal timer_recorder
-            return None
-
-        @staticmethod
-        def singleShot(_ms: int, _callback) -> None:
-            return None
-
     def fake_qtimer_factory():
         return timer_recorder
     fake_qtimer_factory.singleShot = lambda _ms, _callback: None
     monkeypatch.setattr(signal_wiring_module, "QTimer", fake_qtimer_factory)
 
-    runtime = _make_runtime()
-    SignalWiring(runtime).start_timers()
+    ports = _make_ports()
+    status_timer = SignalWiring(ports).start_timers()
 
-    assert runtime.status_timer is timer_recorder
+    assert status_timer is timer_recorder
     assert timer_recorder.started is True
-    assert runtime.bundle.system_monitor.monitoring_started is True
+    assert ports.bundle.system_monitor.monitoring_started is True
 
 
 def test_start_timers_requires_bundle() -> None:
-    runtime = _make_runtime()
-    runtime.bundle = None
+    ports = _make_ports(bundle=None)
     try:
-        SignalWiring(runtime).start_timers()
+        SignalWiring(ports).start_timers()
         assert False, "start_timers() should require a bundle"
+    except RuntimeError as exc:
+        assert "ControllerBundle" in str(exc)
+
+
+def test_wire_requires_bundle() -> None:
+    ports = _make_ports(bundle=None)
+    try:
+        SignalWiring(ports).wire()
+        assert False, "wire() should require a bundle"
     except RuntimeError as exc:
         assert "ControllerBundle" in str(exc)

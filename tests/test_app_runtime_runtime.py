@@ -106,8 +106,9 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     monkeypatch.setitem(importlib.import_module("sys").modules, "paint_controller.core.controller_factory", fake_factory)
 
     runtime._create_controller_bundle()
+    props = runtime._context_properties
     runtime._register_context_properties()
-    SignalWiring(runtime).wire()
+    SignalWiring(runtime._build_signal_wiring_ports(props["videoRuntime"])).wire()
 
     assert create_calls[0]["show_popup_fn"] == runtime.qt_bridge.show_popup
     assert create_calls[0]["close_popup_fn"] == runtime.qt_bridge.close_popup
@@ -117,155 +118,162 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert runtime.qt_bridge.base_top_view_service is runtime.base_top_view_service
     assert runtime.qt_bridge.input_handler is runtime.bundle.input_handler
     assert runtime.action_legality is not None
-    assert runtime.system_control_services is not None
-    assert runtime.video_runtime is not None
-    assert runtime.recording_status is not None
-    assert runtime.wheel_status is not None
-    assert runtime.winch_status is not None
-    assert runtime.teensy_status is not None
-    assert runtime.valve_status is not None
-    assert runtime.lidar_status is not None
-    assert runtime.base_top_view_status is not None
-    assert runtime.base_top_view_actions is not None
-    assert runtime.shell_connectivity_status is not None
-    assert runtime.launcher_admin is not None
     assert runtime.shell_router is not None
-    assert runtime.engine.context.properties["actionLegality"] is runtime.action_legality
-    assert runtime.engine.context.properties["systemControlServices"] is runtime.system_control_services
-    assert runtime.engine.context.properties["videoRuntime"] is runtime.video_runtime
-    assert runtime.engine.context.properties["recordingStatus"] is runtime.recording_status
-    assert runtime.engine.context.properties["wheelStatus"] is runtime.wheel_status
-    assert runtime.engine.context.properties["winchStatus"] is runtime.winch_status
-    assert runtime.engine.context.properties["teensyStatus"] is runtime.teensy_status
-    assert runtime.engine.context.properties["valveStatus"] is runtime.valve_status
-    assert runtime.engine.context.properties["lidarStatus"] is runtime.lidar_status
-    assert runtime.engine.context.properties["shellConnectivityStatus"] is runtime.shell_connectivity_status
-    assert runtime.engine.context.properties["launcherAdmin"] is runtime.launcher_admin
-    assert runtime.engine.context.properties["wheelActions"] is runtime.bundle.wheel_actions
-    assert runtime.engine.context.properties["winchActions"] is runtime.bundle.winch_actions
-    assert runtime.engine.context.properties["tuningActions"] is runtime.bundle.tuning_actions
-    assert runtime.engine.context.properties["recordingActions"] is runtime.bundle.recording_actions
-    assert runtime.engine.context.properties["teensyActions"] is runtime.bundle.teensy_actions
-    assert runtime.engine.context.properties["systemActions"] is runtime.bundle.system_actions
-    assert runtime.engine.context.properties["baseTopViewActions"] is runtime.bundle.base_top_view_actions
-    assert runtime.engine.context.properties["baseTopViewStatus"] is runtime.base_top_view_status
-    assert runtime.engine.context.properties["shellRouter"] is runtime.shell_router
-    assert "baseTopViewAdminHandler" not in runtime.engine.context.properties
-    assert "baseTopViewController" not in runtime.engine.context.properties
-    assert "deviceOperationsHandler" not in runtime.engine.context.properties
-    assert "teensyController" not in runtime.engine.context.properties
-    assert "esp32ValveController" not in runtime.engine.context.properties
-    assert "lidarController" not in runtime.engine.context.properties
-    assert "controlProcessor" not in runtime.engine.context.properties
-    assert "systemMonitor" not in runtime.engine.context.properties
-    assert "screenRecorder" not in runtime.engine.context.properties
-    assert "rosBagRecorder" not in runtime.engine.context.properties
-    assert "baseStreamHandler" not in runtime.engine.context.properties
-    assert "screenManager" not in runtime.engine.context.properties
-    assert "winchController" not in runtime.engine.context.properties
-    assert runtime.system_control_services.manualCommandHandler is runtime.bundle.manual_command_handler
-    assert runtime.video_runtime.controls.leftMode == "None"
-    assert runtime.video_runtime.topBar.systemBatteryPercent == 100
-    assert runtime.video_runtime.topBar.endEffectorConnected is True
-    assert runtime.video_runtime.topBar.baseConnected is True
-    assert runtime.recording_status.endEffectorRecording is True
-    assert runtime.recording_status.baseRecording is False
-    assert runtime.recording_status.screenRecording is False
-    assert runtime.recording_status.screenRecordingDuration == 120
-    assert runtime.recording_status.screenFreeSpaceGb == 8.5
-    assert runtime.recording_status.rosBagRecording is True
-    assert runtime.recording_status.rosBagRecordingDuration == 33
-    assert runtime.recording_status.rosBagCompressing is False
-    assert runtime.recording_status.rosBagStatusMessage == "Remote EF ready"
-    assert runtime.wheel_status.available is True
-    assert runtime.wheel_status.enabled is True
-    assert runtime.wheel_status.leftMotorAvailable is True
-    assert runtime.wheel_status.rightMotorAvailable is False
-    assert runtime.wheel_status.leftWheelSpeed == 1.5
-    assert runtime.wheel_status.rightWheelCurrent == 4.0
-    assert runtime.wheel_status.leftWheelPosition == 125.0
-    assert runtime.winch_status.available is True
-    assert runtime.winch_status.loadDetectionEnabled is True
-    assert runtime.winch_status.cableLength == 1200.0
-    assert runtime.teensy_status.imuPitch == 1.5
-    assert runtime.teensy_status.imuRoll == -0.5
-    assert runtime.teensy_status.imuYaw == 3.0
-    assert runtime.teensy_status.yawCommand == 5.0
-    assert runtime.teensy_status.yawPidP == 0.1
-    assert runtime.teensy_status.yawPidI == 0.2
-    assert runtime.teensy_status.yawPidD == 0.3
-    assert runtime.teensy_status.armExtensionDist == 320.0
-    assert runtime.teensy_status.gimbalPitchMotorAngle == -4.5
-    assert runtime.teensy_status.topRailPosition == 100.0
-    assert runtime.teensy_status.topRailSpeed == 5.0
-    assert runtime.teensy_status.topRailCurrent == 2.0
-    assert runtime.teensy_status.armRailPosition == 200.0
-    assert runtime.teensy_status.armRailSpeed == 3.0
-    assert runtime.teensy_status.armRailCurrent == 40.0
-    assert runtime.teensy_status.armSensorDist == 150.0
-    assert runtime.teensy_status.leftPropPosition == 10.0
-    assert runtime.teensy_status.rightPropPosition == 20.0
-    assert runtime.teensy_status.leftPropPwm == 1200
-    assert runtime.teensy_status.rightPropPwm == 1300
-    assert runtime.teensy_status.sprayGunPitch == 45.0
-    assert runtime.teensy_status.gimbalPitchMotorCurrent == 20.0
-    assert runtime.teensy_status.gimbalPitchMotorTemp == 35.0
-    assert runtime.teensy_status.gimbalRollMotorAngle == 5.0
-    assert runtime.teensy_status.gimbalRollMotorCurrent == 15.0
-    assert runtime.teensy_status.gimbalRollMotorTemp == 36.0
-    assert runtime.teensy_status.sprayGunTrigger is True
-    assert runtime.valve_status.valvePosition == 42.0
-    assert runtime.valve_status.valveMotorConnected is True
-    assert runtime.lidar_status.distance == 1.25
-    assert runtime.lidar_status.angle == -3.5
-    assert runtime.base_top_view_status.enabled is True
-    assert runtime.base_top_view_status.editMode is False
-    assert runtime.base_top_view_status.zoom == 0.51
-    assert runtime.base_top_view_status.offsetX == 0.026
-    assert runtime.base_top_view_status.offsetY == 0.474
-    assert runtime.base_top_view_status.cropEnabled is True
-    assert runtime.base_top_view_status.cropWidthRatio == 0.9
-    assert runtime.base_top_view_status.cropCenterX == 0.5
-    assert runtime.base_top_view_status.k1 == -0.389
-    assert runtime.base_top_view_status.k2 == 0.142
-    assert runtime.base_top_view_status.k3 == 0.0
-    assert runtime.base_top_view_status.k4 == 0.0
-    assert runtime.teensy_status.enabled is True
-    assert runtime.teensy_status.relayOn is False
-    assert runtime.teensy_status.loopTime == 450.0
-    assert runtime.teensy_status.stabilityEnabled is True
-    assert runtime.teensy_status.yawEnabled is True
-    assert runtime.teensy_status.autoCorrectionEnabled is False
-    assert runtime.teensy_status.sprayGunLevelingEnabled is True
-    assert runtime.teensy_status.rollerSteeringEnabled is False
-    assert runtime.teensy_status.swingDampingEnabled is True
-    assert runtime.teensy_status.sprayGunLedOn is False
-    assert runtime.shell_connectivity_status.winchAvailable is True
-    assert runtime.shell_connectivity_status.wheelAvailable is True
-    assert runtime.shell_connectivity_status.baseReachable is True
-    assert runtime.shell_connectivity_status.endEffectorReachable is True
-    assert runtime.shell_connectivity_status.endEffectorAvailable is True
-    assert runtime.shell_connectivity_status.baseOnline is True
-    assert runtime.shell_connectivity_status.baseStatus == 0x01
-    assert runtime.shell_connectivity_status.endEffectorOnline is False
-    assert runtime.shell_connectivity_status.endEffectorStatus == 0x02
-    assert runtime.shell_connectivity_status.baseIpAddress == "10.0.0.2"
-    assert runtime.shell_connectivity_status.endEffectorIpAddress == "10.0.0.3"
-    assert json.loads(runtime.launcher_admin.getDeviceConfig("BASE")) == {
+    # TD-047: façades live in the context map / bundle only — not AppRuntime mirrors.
+    assert not hasattr(runtime, "wheel_status")
+    assert not hasattr(runtime, "wheel_actions")
+    assert not hasattr(runtime, "video_runtime")
+    assert not hasattr(runtime, "recording_actions")
+    assert props["systemControlServices"] is not None
+    assert props["videoRuntime"] is not None
+    assert props["recordingStatus"] is not None
+    assert props["wheelStatus"] is not None
+    assert props["winchStatus"] is not None
+    assert props["teensyStatus"] is not None
+    assert props["valveStatus"] is not None
+    assert props["lidarStatus"] is not None
+    assert props["baseTopViewStatus"] is not None
+    assert props["baseTopViewActions"] is runtime.bundle.base_top_view_actions
+    assert props["shellConnectivityStatus"] is not None
+    assert props["launcherAdmin"] is not None
+    engine_props = runtime.engine.context.properties
+    assert engine_props["actionLegality"] is runtime.action_legality
+    assert engine_props["systemControlServices"] is props["systemControlServices"]
+    assert engine_props["videoRuntime"] is props["videoRuntime"]
+    assert engine_props["recordingStatus"] is props["recordingStatus"]
+    assert engine_props["wheelStatus"] is props["wheelStatus"]
+    assert engine_props["winchStatus"] is props["winchStatus"]
+    assert engine_props["teensyStatus"] is props["teensyStatus"]
+    assert engine_props["valveStatus"] is props["valveStatus"]
+    assert engine_props["lidarStatus"] is props["lidarStatus"]
+    assert engine_props["shellConnectivityStatus"] is props["shellConnectivityStatus"]
+    assert engine_props["launcherAdmin"] is props["launcherAdmin"]
+    assert engine_props["wheelActions"] is runtime.bundle.wheel_actions
+    assert engine_props["winchActions"] is runtime.bundle.winch_actions
+    assert engine_props["tuningActions"] is runtime.bundle.tuning_actions
+    assert engine_props["recordingActions"] is runtime.bundle.recording_actions
+    assert engine_props["teensyActions"] is runtime.bundle.teensy_actions
+    assert engine_props["systemActions"] is runtime.bundle.system_actions
+    assert engine_props["baseTopViewActions"] is runtime.bundle.base_top_view_actions
+    assert engine_props["baseTopViewStatus"] is props["baseTopViewStatus"]
+    assert engine_props["shellRouter"] is runtime.shell_router
+    assert "baseTopViewAdminHandler" not in engine_props
+    assert "baseTopViewController" not in engine_props
+    assert "deviceOperationsHandler" not in engine_props
+    assert "teensyController" not in engine_props
+    assert "esp32ValveController" not in engine_props
+    assert "lidarController" not in engine_props
+    assert "controlProcessor" not in engine_props
+    assert "systemMonitor" not in engine_props
+    assert "screenRecorder" not in engine_props
+    assert "rosBagRecorder" not in engine_props
+    assert "baseStreamHandler" not in engine_props
+    assert "screenManager" not in engine_props
+    assert "winchController" not in engine_props
+    assert props["systemControlServices"].manualCommandHandler is runtime.bundle.manual_command_handler
+    assert props["videoRuntime"].controls.leftMode == "None"
+    assert props["videoRuntime"].topBar.systemBatteryPercent == 100
+    assert props["videoRuntime"].topBar.endEffectorConnected is True
+    assert props["videoRuntime"].topBar.baseConnected is True
+    assert props["recordingStatus"].endEffectorRecording is True
+    assert props["recordingStatus"].baseRecording is False
+    assert props["recordingStatus"].screenRecording is False
+    assert props["recordingStatus"].screenRecordingDuration == 120
+    assert props["recordingStatus"].screenFreeSpaceGb == 8.5
+    assert props["recordingStatus"].rosBagRecording is True
+    assert props["recordingStatus"].rosBagRecordingDuration == 33
+    assert props["recordingStatus"].rosBagCompressing is False
+    assert props["recordingStatus"].rosBagStatusMessage == "Remote EF ready"
+    assert props["wheelStatus"].available is True
+    assert props["wheelStatus"].enabled is True
+    assert props["wheelStatus"].leftMotorAvailable is True
+    assert props["wheelStatus"].rightMotorAvailable is False
+    assert props["wheelStatus"].leftWheelSpeed == 1.5
+    assert props["wheelStatus"].rightWheelCurrent == 4.0
+    assert props["wheelStatus"].leftWheelPosition == 125.0
+    assert props["winchStatus"].available is True
+    assert props["winchStatus"].loadDetectionEnabled is True
+    assert props["winchStatus"].cableLength == 1200.0
+    assert props["teensyStatus"].imuPitch == 1.5
+    assert props["teensyStatus"].imuRoll == -0.5
+    assert props["teensyStatus"].imuYaw == 3.0
+    assert props["teensyStatus"].yawCommand == 5.0
+    assert props["teensyStatus"].yawPidP == 0.1
+    assert props["teensyStatus"].yawPidI == 0.2
+    assert props["teensyStatus"].yawPidD == 0.3
+    assert props["teensyStatus"].armExtensionDist == 320.0
+    assert props["teensyStatus"].gimbalPitchMotorAngle == -4.5
+    assert props["teensyStatus"].topRailPosition == 100.0
+    assert props["teensyStatus"].topRailSpeed == 5.0
+    assert props["teensyStatus"].topRailCurrent == 2.0
+    assert props["teensyStatus"].armRailPosition == 200.0
+    assert props["teensyStatus"].armRailSpeed == 3.0
+    assert props["teensyStatus"].armRailCurrent == 40.0
+    assert props["teensyStatus"].armSensorDist == 150.0
+    assert props["teensyStatus"].leftPropPosition == 10.0
+    assert props["teensyStatus"].rightPropPosition == 20.0
+    assert props["teensyStatus"].leftPropPwm == 1200
+    assert props["teensyStatus"].rightPropPwm == 1300
+    assert props["teensyStatus"].sprayGunPitch == 45.0
+    assert props["teensyStatus"].gimbalPitchMotorCurrent == 20.0
+    assert props["teensyStatus"].gimbalPitchMotorTemp == 35.0
+    assert props["teensyStatus"].gimbalRollMotorAngle == 5.0
+    assert props["teensyStatus"].gimbalRollMotorCurrent == 15.0
+    assert props["teensyStatus"].gimbalRollMotorTemp == 36.0
+    assert props["teensyStatus"].sprayGunTrigger is True
+    assert props["valveStatus"].valvePosition == 42.0
+    assert props["valveStatus"].valveMotorConnected is True
+    assert props["lidarStatus"].distance == 1.25
+    assert props["lidarStatus"].angle == -3.5
+    assert props["baseTopViewStatus"].enabled is True
+    assert props["baseTopViewStatus"].editMode is False
+    assert props["baseTopViewStatus"].zoom == 0.51
+    assert props["baseTopViewStatus"].offsetX == 0.026
+    assert props["baseTopViewStatus"].offsetY == 0.474
+    assert props["baseTopViewStatus"].cropEnabled is True
+    assert props["baseTopViewStatus"].cropWidthRatio == 0.9
+    assert props["baseTopViewStatus"].cropCenterX == 0.5
+    assert props["baseTopViewStatus"].k1 == -0.389
+    assert props["baseTopViewStatus"].k2 == 0.142
+    assert props["baseTopViewStatus"].k3 == 0.0
+    assert props["baseTopViewStatus"].k4 == 0.0
+    assert props["teensyStatus"].enabled is True
+    assert props["teensyStatus"].relayOn is False
+    assert props["teensyStatus"].loopTime == 450.0
+    assert props["teensyStatus"].stabilityEnabled is True
+    assert props["teensyStatus"].yawEnabled is True
+    assert props["teensyStatus"].autoCorrectionEnabled is False
+    assert props["teensyStatus"].sprayGunLevelingEnabled is True
+    assert props["teensyStatus"].rollerSteeringEnabled is False
+    assert props["teensyStatus"].swingDampingEnabled is True
+    assert props["teensyStatus"].sprayGunLedOn is False
+    assert props["shellConnectivityStatus"].winchAvailable is True
+    assert props["shellConnectivityStatus"].wheelAvailable is True
+    assert props["shellConnectivityStatus"].baseReachable is True
+    assert props["shellConnectivityStatus"].endEffectorReachable is True
+    assert props["shellConnectivityStatus"].endEffectorAvailable is True
+    assert props["shellConnectivityStatus"].baseOnline is True
+    assert props["shellConnectivityStatus"].baseStatus == 0x01
+    assert props["shellConnectivityStatus"].endEffectorOnline is False
+    assert props["shellConnectivityStatus"].endEffectorStatus == 0x02
+    assert props["shellConnectivityStatus"].baseIpAddress == "10.0.0.2"
+    assert props["shellConnectivityStatus"].endEffectorIpAddress == "10.0.0.3"
+    launcher_admin = props["launcherAdmin"]
+    assert json.loads(launcher_admin.getDeviceConfig("BASE")) == {
         "ip": "10.0.0.2",
         "port": "22",
         "username": "deck",
         "key_path": "~/.ssh/id_base",
     }
-    assert runtime.launcher_admin.updateDeviceConfig("BASE", "10.0.0.20", "2200", "operator", "~/.ssh/id_new") is True
-    runtime.launcher_admin.handleDeviceCommand("BASE", "Wheel", "start")
+    assert launcher_admin.updateDeviceConfig("BASE", "10.0.0.20", "2200", "operator", "~/.ssh/id_new") is True
+    launcher_admin.handleDeviceCommand("BASE", "Wheel", "start")
     assert runtime.bundle.ssh_controller.update_calls == [
         ("BASE", "10.0.0.20", "2200", "operator", "~/.ssh/id_new")
     ]
     assert runtime.bundle.ssh_controller.command_calls == [("BASE", "Wheel", "start")]
-    assert "heartbeatHandler" not in runtime.engine.context.properties
-    assert "sshHandler" not in runtime.engine.context.properties
-    assert set(runtime.engine.context.properties) == set(qml_context_composer._EXPECTED_CONTEXT_PROPERTY_NAMES)
+    assert "heartbeatHandler" not in engine_props
+    assert "sshHandler" not in engine_props
+    assert set(engine_props) == set(qml_context_composer._EXPECTED_CONTEXT_PROPERTY_NAMES)
     assert [button for button, _ in runtime.steam_deck_handler.callbacks] == [
         "up", "down", "left", "right", "r4", "l4", "menu", "switch", "l5", "r5", "dot", "a", "l1"
     ]

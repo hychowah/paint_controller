@@ -9,39 +9,107 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 
 **Architecture leverage** (optional tag on items): how much a fix improves FE↔BE program structure when doing architecture work, independent of ship-blocking urgency.
 
-Last multi-perspective re-validation: **2026-07-28** (program-side FE+BE focus; UI/UX and industrial HMI deferred). Diagnoses from the 2026-07-27 review largely reconfirmed; priorities and gaps below were adjusted from that pass.
+Last multi-perspective re-validation: **2026-07-28** (deep software-only pass: composition/DI, QML contract injection, QML modules/kit, ports/domain modularity, test/CI control plane). Industrial HMI and operator-UX product work are **out of scope** for this tracker update. Prior 2026-07-27/28 program diagnoses reconfirmed; new TDs **048–053** added from evidence-backed research.
+
+**Research non-goals (do not invent debt for):** mega-`Backend` object; reopening TD-032 name-retirement mega-program; full URI QML module rewrite as a program; universal visual skin unification; HMI safety/legality ship defaults; `qmlRegisterSingletonInstance`.
 
 ---
 
 ## Program-track recommended order
 
-When the goal is **frontend + backend program architecture** (not UI chrome, not HMI product semantics), prefer this order over raw ID order:
+When the goal is **software architecture toward a professional Qt program** (not UI chrome, not HMI product semantics), prefer this order over raw ID order:
 
 | Rank | ID | Why |
 |---|---|---|
-| 1 | **TD-047** | AppRuntime façade surface (low effort after TD-046) |
-| 2 | **TD-044 + TD-045**, then **TD-040** | Make CI/types real control planes |
-| 3 | **TD-042 / TD-043 / TD-041** | Hygiene |
-| — | **TD-002 / TD-016** | Out of scope for a pure program track |
-| — | **TD-046** | Resolved 2026-07-28 (docs + winch/wheel teleop extract; residual EF stick mass / post-halt product) |
+| 1 | **TD-044 + TD-045**, then **TD-040** | Make CI/types real control planes |
+| 2 | **TD-048** | QML injection depth: *Actions / legality / settings via `required property` |
+| 3 | **TD-050** | Late-injection / finalize-ports hygiene (public API only) |
+| 4 | **TD-049** | Shared device ports beyond the workflow island |
+| 5 | **TD-042 / TD-043 / TD-051 / TD-041** | Hygiene (tests, dead state, cleanup inventory, docs) |
+| — | **TD-052 / TD-053** | When touching tuning/commands or dual-surface overlays |
+| — | **TD-002 / TD-016** | Opportunistic chrome only; out of pure program track |
+| — | **TD-047** | Resolved 2026-07-28 (façade demirror + wiring/composer ports) |
+| — | **TD-046** | Resolved 2026-07-28 (docs + winch/wheel teleop extract; residual EF stick mass) |
 | — | **TD-037** | Resolved 2026-07-28 (residual: videoRuntime multi-home only) |
-| — | **TD-038** | Resolved 2026-07-28 |
-| — | **TD-032** | Resolved 2026-07-28 |
-| — | **TD-036** | Resolved 2026-07-28 |
-| — | **TD-039** | Resolved 2026-07-28 |
+| — | **TD-038 / TD-032 / TD-036 / TD-039** | Resolved 2026-07-28 |
 
 ---
 
 ## Active Debt
 
-### TD-047 — AppRuntime service-locator attribute surface
+### TD-048 — QML feature/page injection depth incomplete (status yes, commands ambient)
+**Area**: QML ↔ Python contract
+**Priority**: medium
+**Effort**: medium (page/feature slices)
+**Architecture leverage**: high
+**Why it matters**: Deep research 2026-07-28. TD-032 correctly froze the root bag (~26 names) and started **status** injection via `required property`. Greps show **zero** `required property` for any `*Actions`, `actionLegality`, `settingsManager`, `overlayController`, or `qtBridge`. Result: feature roots advertise a bounded status contract while leaves ambient-call write/legality/settings — **false progress** if slices only rename access. Worst cases: `DeviceControlTab` ambient-calls five action models + `actionLegality`; `PageTuning` / `PageSettings` have empty constructors; `PageWheel` injects `wheelStatus` but ambient-reads `wheelActions` + `videoRuntime` (quarantine remainder). Dual-surface status injection is aligned; command injection is not.
+**What to do**: Injection-first, retirement-last (do **not** shrink `_EXPECTED_CONTEXT_PROPERTY_NAMES` until the last consumer dies):
+1. Smallest slices: `PageWheel` (`wheelActions` + `videoRuntime`); `PageWinch` promote `winchActions` to `required`; `PageTuning` inject status+actions.
+2. Highest leverage: `SystemControlWorkspace` requires the action models + `actionLegality` used by `DeviceControlTab`; wire both Main + MultiScreenListUI.
+3. Settings: inject `settingsManager` at page/tab roots; thread into leaves.
+4. Optional: inject `overlayController` (or hide/toggle callbacks) into feature roots only.
+**Acceptance**: Touched page/feature trees name domain deps only via `required property`; dual surfaces inject the same command/legality set; smoke fixtures provide inject path; root name freeze still respected.
+**Files**: `qml/core/MainWindow.qml`, `qml/overlays/MultiScreenListUI.qml`, `qml/features/**`, `qml/pages/wheel|winch|status|tuning|settings/**`, `qml/overlays/systemcontrol/DeviceControlTab.qml`, startup smoke fixtures
+
+---
+
+### TD-049 — Device ports exist only for workflow; teleop/actions/safety bypass them
+**Area**: Backend / modularity
+**Priority**: medium
+**Effort**: medium–high (family-by-family)
+**Architecture leverage**: high
+**Why it matters**: Package import DAG is healthy (controllers stay leaf-like; models do not import controller modules). Interior contracts are uneven: `services/workflow/hardware.py` defines real ABCs + adapters (`ITeensyController` / `IWinchController`), but `*Actions` use `Any`, `SafetyCoordinator` binds concrete TYPE_CHECKING types, and `ControlProcessor` both calls controller methods **and** reaches raw Teensy publishers (`prop_*_pub`, `ef_*_pub`). Faking hardware or sharing halt/teleop/command surfaces requires three shapes.
+**What to do**: Promote a small shared ports module (or expand workflow ports into a shared location) covering halt + teleop + discrete command surfaces; adapters wrap existing controllers; migrate `ControlProcessor` off raw pubs first; keep `*Actions` as thin QObject shells over the same ports. Do **not** invent a mega-Backend or full Clean Architecture rewrite.
+**Acceptance**: At least one primary effector family (prefer Teensy teleop + halt) is consumed via a Protocol/ABC by both workflow adapters and teleop/safety; unit tests can fake that port without full Qt controller graphs; no new raw-pub reach from handlers.
+**Files**: `python/paint_controller/services/workflow/hardware.py`, `handlers/control_processor.py`, `handlers/safety_coordinator.py`, `models/*_actions.py`, `core/controller_factory.py`
+
+---
+
+### TD-050 — Two-phase collaborator injection and private-field wiring
 **Area**: Backend / composition
 **Priority**: medium
+**Effort**: low–medium
+**Architecture leverage**: medium
+**Why it matters**: Bootstrap order is real (settings before bridge before gate/controllers), but late wiring is ad hoc: `settings_manager._show_popup_fn = …` private field poke; `QtBridge.set_base_top_view_service` / `set_input_handler` after factory; `set_admin_action_gate` via soft `getattr`; `workflow_editor.attach_runtime(...)`. Between phases, collaborators are optionally `None` — a “partially wired” window with no single finalize assert before QML load.
+**What to do**: Public setters only (e.g. `SettingsManager.set_show_popup_fn`); document one `finalize_ui_ports(...)` (or equivalent) that runs before QML load and asserts required ports non-None; collapse QtBridge optional deps into an explicit ports set-once API.
+**Acceptance**: No private-field assignment from `AppRuntime`; production path has non-None UI ports before QML load; unit test covers settings mutation after gate inject.
+**Files**: `python/paint_controller/core/app_runtime.py`, `core/settings.py`, `core/qt_bridge.py`, optionally `controller_factory.py`
+
+---
+
+### TD-051 — Bundle cleanup string-list drift and unparented composition timers
+**Area**: Backend / lifecycle
+**Priority**: low
 **Effort**: low
 **Architecture leverage**: medium
-**Why it matters**: Surfaced 2026-07-28. `AppRuntime` is correctly the composition root, but after Phase 8 extraction it still re-exports a large set of optional façades as `self.*` (status objects, action models, etc.) so wiring/tests can poke them. Composition roots may know everything; **mirroring every context key on the instance** blurs ownership and makes the class a god-object at the type level. Lower urgency than TD-037 (composer) but compounds mental load when adding devices.
-**What to do**: Prefer `ControllerBundle` + a small ports/composer-output object; stop growing new `self.<facade>` fields when a local wire variable or bundle field suffices. No behavior change required for a first pass — reduce new surface and shrink when a touched family allows it.
-**Files**: `python/paint_controller/core/app_runtime.py`, `python/paint_controller/core/qml_context_composer.py`, `python/paint_controller/core/controller_factory.py`
+**Why it matters**: Explicit `cleanup()` for hardware is intentional and proven (TD-019/022/025/029). Residual software debt: `ControllerBundle.cleanup_order` is a **string list parallel** to dataclass fields (includes names with no `cleanup`; omits documenting non-cleanup members); `status_timer = QTimer()` is unparented and only `stop()`’d; `JoystickSelectionModel` is shared in the factory graph but **not on the bundle**. Composer/status QObjects are unparented process-lifetime objects (acceptable if documented).
+**What to do**: Derive cleanup from typed field metadata or a `SupportsCleanup` registry that fails if a new cleanup method is forgotten; parent `status_timer` to a long-lived owner and `deleteLater` on shutdown; add `selection_model` to the bundle when touching the factory.
+**Acceptance**: Cleanup list cannot drift silently from bundle fields; shutdown test asserts status timer does not fire after cleanup; selection model identity is on the bundle.
+**Files**: `python/paint_controller/core/controller_factory.py`, `core/signal_wiring.py`, `core/app_runtime.py`
+
+---
+
+### TD-052 — Command/tuning parameter schemas still owned in QML
+**Area**: QML ↔ Python boundary
+**Priority**: low–medium
+**Effort**: medium
+**Architecture leverage**: medium
+**Why it matters**: Post-TD-038, workflow **document** load/save is Python-owned, but `PageTuning.qml` still embeds large `parameterSetDefinitions` (names, units, getters, send functions → `tuningActions.*`) and `CommandTab.qml` embeds `commandDefinitions` schemas. That is untyped view-owned schema/policy: adding a PID set or command requires editing QML, not config/Python.
+**What to do**: Move definition tables to Python models (list/map APIs); QML renders generic forms and calls one send API — same pattern as workflow document ownership. Do not reopen EditWorkFlowTab LOC vanity; residual type→form routing there is acceptable.
+**Acceptance**: No command/PID parameter schema literals in QML (layout metadata only); adding a set is a Python/config change; focused smokes green.
+**Files**: `qml/pages/tuning/PageTuning.qml`, `qml/overlays/systemcontrol/CommandTab.qml`, corresponding Python action/handler modules
+
+---
+
+### TD-053 — Dual-surface overlay composition duplication
+**Area**: QML shell composition
+**Priority**: low
+**Effort**: medium
+**Architecture leverage**: medium *for shell contracts*
+**Why it matters**: `MainWindow.qml` and `MultiScreenListUI.qml` each instantiate `SystemControlWorkspace`, `JoystickOverlay`, `VideoFullscreenWorkspace`, and `EmergencyOverlay` with parallel prop lists. `OverlayHostPolicy` / `ShellState` correctly own visibility and z; composition wiring is dual-maintained. Adding a required property (pairs with TD-048) is a two-file change with silent drift risk. Shell contracts are otherwise frozen — do not schedule as active program work unless a multi-surface change forces dual edits.
+**What to do**: Extract `ShellOverlayStack.qml` (or similar) taking surface/policy flags + models; both hosts become thin. Visibility remains driven by `overlayHost` flags.
+**Acceptance**: Overlay types appear once in composition QML; shell + multiscreen smokes green; status/command inject props not copy-pasted across hosts.
+**Files**: `qml/core/MainWindow.qml`, `qml/overlays/MultiScreenListUI.qml`, optional new stack QML under `qml/core/` or `qml/overlays/`
 
 ---
 
@@ -50,8 +118,8 @@ When the goal is **frontend + backend program architecture** (not UI chrome, not
 **Priority**: medium
 **Effort**: medium
 **Architecture leverage**: medium
-**Why it matters**: `pyrightconfig.json` `include` cherry-picks scope; it excludes `services/` (`video_stream.py`, `base_top_view_service.py`, workflow — the threading-heaviest code), `core/app_runtime.py`, `ui/`, `widgets/`, `utils/`, and runs `basic` mode. "Pyright green" currently proves little about the whole.
-**What to do**: Widen `include` incrementally (services first), fix the fallout, keep the gate green.
+**Why it matters**: `pyrightconfig.json` `include` cherry-picks scope; it excludes `services/` (`video_stream.py`, `base_top_view_service.py`, workflow — the threading-heaviest code), `core/app_runtime.py`, `ui/`, `widgets/`, much of `utils/`, and several models (`shell_state`, `admin_action_gate`, `capability_catalog`, …). Mode is `basic`. Some `strict` entries (e.g. `core/config.py`) sit outside `include` and are likely no-ops. "Pyright green" currently proves little about composition or concurrency risk.
+**What to do**: Widen `include` incrementally (services first, then `app_runtime`, then remaining models); fix fallout; ensure `strict` ⊆ `include`; keep the gate green.
 **Files**: `pyrightconfig.json`
 
 ---
@@ -61,7 +129,7 @@ When the goal is **frontend + backend program architecture** (not UI chrome, not
 **Priority**: medium
 **Effort**: medium
 **Architecture leverage**: high *for process* (until green, remote gates are theater)
-**Why it matters**: Surfaced 2026-07-27 by TD-034: the CI `lint` job (ruff check + ruff format --check on `python/` and `tests/`) is red on `dev` — 1965 check errors (mostly W293 blank-line-with-whitespace, UP006, W292, I001, F401) and 111 files failing the format check. It was invisible because CI never ran on `dev`. Until fixed, the lint job is normalized-red and `typecheck`/`test` stay blocked behind `needs: lint`.
+**Why it matters**: Surfaced 2026-07-27 by TD-034: the CI `lint` job (ruff check + ruff format --check on `python/` and `tests/`) is red on `dev` — 1965 check errors (mostly W293 blank-line-with-whitespace, UP006, W292, I001, F401) and 111 files failing the format check (counts from 2026-07-27; re-measure when fixing). With `dev` CI triggers, lint is **normalized-red** and `typecheck`/`test` stay blocked behind `needs: lint`.
 **What to do**: Bulk-fix mechanically (`ruff check --fix` + `ruff format`) in one dedicated commit with no behavior changes, then keep the job green. Coordinate with open branches to avoid merge pain. Pair with TD-045.
 **Files**: `pyproject.toml` (ruff config), `python/`, `tests/`, `.github/workflows/ci.yml`
 
@@ -72,31 +140,32 @@ When the goal is **frontend + backend program architecture** (not UI chrome, not
 **Priority**: medium
 **Effort**: low
 **Architecture leverage**: high *for process* (with TD-044)
-**Why it matters**: Surfaced 2026-07-27 by TD-034: the CI `test` and `typecheck` jobs pip-install `python/paint_controller/requirements.txt`, which includes `PyGObject` — source-only (no binary wheels), needing girepository/cairo dev headers the runner lacks; PySide6 also needs Qt runtime libs (`libegl1`, `libxkbcommon`, …). The jobs have zero apt steps, so they will fail on a clean runner now that CI triggers on `dev`.
-**What to do**: Add an apt step (girepository/cairo dev headers, Qt runtime libs) to both jobs, or trim `requirements.txt` for CI; verify green on a real runner.
+**Why it matters**: Surfaced 2026-07-27 by TD-034; reconfirmed 2026-07-28 workflow read. CI `test` and `typecheck` pip-install full `requirements.txt` (PyGObject, PySide6, vtk, …) with **zero apt** steps for girepository/cairo/Qt runtime libs, while `qmllint`/`build` jobs do use apt. Clean `ubuntu-latest` runners remain install-fragile even after lint goes green.
+**What to do**: Add an apt step (girepository/cairo dev headers, Qt runtime libs) to both jobs, or trim CI deps; verify green on a real runner.
 **Files**: `.github/workflows/ci.yml`, `python/paint_controller/requirements.txt`
 
 ---
 
-### TD-002 — Design system incomplete (systemcontrol/video remainder, pages)
+### TD-002 — Design-token adoption incomplete on page/admin islands
 **Area**: QML UI
 **Priority**: low
 **Effort**: medium
 **Architecture leverage**: low (UI chrome)
-**Why it matters**: Hardcoded colours, spacing, and font sizes in the remaining untokenized files will diverge from the rest of the UI and make theme-wide changes expensive later, but this is not the architecture-driving problem. PageWinch/TeensyStatus structure was fixed under TD-038; token cleanup there remains deferrable UI chrome.
-**What to do**: Resume remaining `CommonStyle` rollout only after program-track structure work is stable, or when a file is already open for TD-038. Not feature-blocking.
-**Files**: `python/paint_controller/qml/overlays/systemcontrol/`, `python/paint_controller/qml/overlays/video/`, `python/paint_controller/qml/pages/home/`, `python/paint_controller/qml/pages/wheel/`, `python/paint_controller/qml/pages/winch/`, `python/paint_controller/qml/pages/tuning/`, `python/paint_controller/qml/pages/settings/`, `python/paint_controller/qml/pages/status/`
+**Why it matters**: Shell, navigation, features, and global `components/` are largely token-clean via `CommonStyle`. Page families (home/wheel/winch/settings/tuning) and systemcontrol tabs still use **local Material/dark hex islands** (including winch components redeclaring local palettes). Dual skins may be product-intentional; the software cost is theme-wide change archaeology, not FE↔BE structure. Not program-track.
+**What to do**: Opportunistic only when a page family is already open — bind `CommonStyle` or one page-level palette object; stop redeclaring Material `primaryColor`/`dangerColor` per winch component. Do not schedule a global “one skin” program.
+**Files**: `qml/pages/home|wheel|winch|settings|status|tuning/`, `qml/overlays/systemcontrol/` tabs, `qml/theme/CommonStyle.qml`
 
 ---
 
-### TD-016 — `VideoOverlayStyle.qml` compatibility-wrapper cleanup
+### TD-016 — Dead `VideoOverlayStyle.qml` façade
 **Area**: QML UI
 **Priority**: low
-**Effort**: low
+**Effort**: very low
 **Architecture leverage**: low
-**Why it matters**: `VideoOverlayStyle.qml` no longer owns its own tokens, but it still preserves a parallel style API for older video overlay components. That wrapper layer keeps imports stable, but it also delays a clean direct dependency on `CommonStyle`.
-**What to do**: Retire the wrapper-only API once the remaining video overlay callers can read `CommonStyle` directly, or keep the file as a thin documented compatibility shim if import churn is intentionally deferred.
-**Files**: `python/paint_controller/qml/overlays/video/components/VideoOverlayStyle.qml`
+**Why it matters**: Research 2026-07-28: `VideoOverlayStyle.qml` only aliases `CommonStyle` and has **zero runtime callers** (qmldir only). Multi-step “migrate callers” framing is obsolete. Optional: prune unused legacy aliases on `CommonStyle` (`primaryColor`, `fontSizeNormal`, …) after a reference check.
+**What to do**: Delete `VideoOverlayStyle.qml` + qmldir entry when any video file is touched; optional orphan-alias prune on `CommonStyle`.
+**Acceptance**: No type named `VideoOverlayStyle` in the tree; `tests/test_qml_imports.py` / relevant smokes green.
+**Files**: `qml/overlays/video/components/VideoOverlayStyle.qml`, video `qmldir`, optionally `qml/theme/CommonStyle.qml`
 
 ---
 
@@ -106,7 +175,7 @@ When the goal is **frontend + backend program architecture** (not UI chrome, not
 **Effort**: low
 **Architecture leverage**: low
 **Why it matters**: `00_ARCHITECTURE_PROGRESS.md`'s frozen list declares route identity owned in `MainWindow.qml` in the same file that declares Phase 7 (which moved it to `ShellRouter`) complete; its quarantine list still names `PageWheel.qml`'s `baseStreamHandler` seam, which no longer exists. `KNOWLEDGE.md`'s singleton entry cites PYSIDE-2160/2310 as a "known bug family" — both are unrelated issues fixed in Qt 6.5.x and the repo runs PySide6 6.10.1; the conclusion (avoid `qmlRegisterSingletonInstance` with implicit directory imports) is defensible, but the cited reasoning blocks legitimate typed-registration options (`qmlRegisterUncreatableType`, `@QmlNamedElement`). `AGENTS.md` also references a `launch/` directory that does not exist. Progress board "Next" still soft-offers more retirement targets; TD-032 is firmer: close the program, then stop.
-**What to do**: Correct the KNOWLEDGE.md entry (user confirmation required per KNOWLEDGE.md rules), refresh or retire the stale frozen/quarantine entries, align progress-board "Next" with TD-032 close-out, fix the `launch/` reference.
+**What to do**: Correct the KNOWLEDGE.md entry (user confirmation required per KNOWLEDGE.md rules), refresh or retire the stale frozen/quarantine entries, align progress-board "Next" with TD-032 close-out and this tech-debt program-track table, fix the `launch/` reference.
 **Files**: `docs/plan/00_ARCHITECTURE_PROGRESS.md`, `KNOWLEDGE.md`, `AGENTS.md`
 
 ---
@@ -116,9 +185,9 @@ When the goal is **frontend + backend program architecture** (not UI chrome, not
 **Priority**: low
 **Effort**: medium
 **Architecture leverage**: medium
-**Why it matters**: `startup_smoke_support.py` (~1095 lines, 27 hand-maintained fake context classes) re-implements the models' QML APIs property-by-property; `FakeShellRouter` hand-copies the route registry, so a production route reorder keeps the suite green while navigation breaks; `controller_factory_runtime_support.py` (~447 lines, ~107 recorder classes) largely asserts that wiring wires what it wires; per-test `fatal_warning_fragments` tuples are copy-pasted Qt warning strings (version-brittle). Correctness depends on a human remembering to update the mirror each phase — dual source of truth next to `_EXPECTED_CONTEXT_PROPERTY_NAMES`.
-**What to do**: Derive static fake contracts from production (e.g. build `FakeShellRouter` from the real route registry), collapse warning tuples into one `assert_no_fatal_qml_warnings()` helper, keep the shutdown-order and name-parity assertions, delete the structural selfies.
-**Files**: `tests/startup_smoke_support.py`, `tests/controller_factory_runtime_support.py`, `tests/test_startup_smoke_shell.py`
+**Why it matters**: Root **name** dual-source is already gated (`_EXPECTED_CONTEXT_PROPERTY_NAMES` ↔ composer ↔ smoke fixture key parity tests). Residual dual-source is **shape/registry/warnings**: `startup_smoke_support.py` (~1114 LOC, ~26 hand-maintained `Fake*` classes) re-implements Property/Slot surfaces by hand; `FakeShellRouter` hand-copies the production route list (content currently matches, but NOTIFY/validation already differ from `ShellRouter`); `controller_factory_runtime_support.py` (~455 LOC, ~25 recorder classes) often asserts that wiring wired what wiring wires; `fatal_warning_fragments` tuples are copy-pasted per smoke test (version-brittle). Expensive smoke optimizes for loadability against a hand mirror, not production-derived contracts.
+**What to do**: Prefer production `ShellRouter` (or shared pure registry data) for smoke; collapse warning fragments into one `assert_no_fatal_qml_warnings()` helper; prefer real lightweight QObjects over property-by-property fakes where construction is cheap; keep name-parity and shutdown-order tests; reduce structural selfies.
+**Files**: `tests/startup_smoke_support.py`, `tests/controller_factory_runtime_support.py`, `tests/test_startup_smoke*.py`, `models/shell_router.py`
 
 ---
 
@@ -127,9 +196,10 @@ When the goal is **frontend + backend program architecture** (not UI chrome, not
 **Priority**: low
 **Effort**: medium
 **Architecture leverage**: low–medium
-**Why it matters**: `StateStore` is ~60% dead state (`left/right_joystick_control`, `*_control_mode/value` have no writers/readers; QML reads only `display_message`) while its "single source of truth" branding invites writes to the wrong place. `CapabilityCatalog` (~559 lines) + metadata registry has 3 QML call sites in one popup. `SignalWiring.wire()` writes `runtime._heartbeat_status_error`, which nothing reads; uncalled convenience functions exist in `signal_wiring.py` / `qml_context_composer.py`.
-**What to do**: Delete the dead StateStore surface or make it Python-internal (pairs with TD-032 `stateStore` retirement); reduce CapabilityCatalog to what the popup consumes (or fold legality into the gate); delete dead writes and uncalled functions.
-**Files**: `python/paint_controller/core/state_store.py`, `python/paint_controller/models/capability_catalog.py`, `python/paint_controller/core/signal_wiring.py`, `python/paint_controller/core/qml_context_composer.py`
+**Why it matters**: `StateStore` is ~60% dead state (`left/right_joystick_control`, `*_control_mode/value` have no writers/readers; QML reads only `display_message`) while its "single source of truth" branding invites writes to the wrong place. `CapabilityCatalog` (~560 lines) + metadata registry has few QML call sites.
+**Partial (2026-07-28 with TD-047 slice 1)**: dead `_heartbeat_status_error` write and uncalled free `wire`/`start_timers`/`compose_context_properties` removed.
+**What to do**: Delete the dead StateStore surface or make it Python-internal; reduce CapabilityCatalog to what consumers need (or fold legality into the gate when touching legality — do not open vanity catalog work alone).
+**Files**: `python/paint_controller/core/state_store.py`, `python/paint_controller/models/capability_catalog.py`
 
 ---
 
@@ -137,6 +207,7 @@ When the goal is **frontend + backend program architecture** (not UI chrome, not
 
 | ID | Title | Resolved | Notes |
 |---|---|---|---|
+| TD-047 | AppRuntime service-locator façades + wiring/composer whole-runtime coupling | 2026-07-28 | Slice 1: removed ~18 context-key mirrors; façades only in `_context_properties`; dead `_heartbeat_status_error` + free wrappers gone. Slice 2: `SignalWiringPorts` / `QmlComposePorts` frozen dataclasses; `SignalWiring`/`QmlContextComposer` no longer take `AppRuntime`; `start_timers()` returns timer for root ownership. Full suite green |
 | TD-046 | ControlProcessor teleop monolith; second command path undocumented | 2026-07-28 | Docs: module policy + ARCHITECTURE §7 table/do-not + AdminActionGate discrete-only note. Structure: high-state winch + wheel-travel helpers (`handlers/winch_teleop.py`, `wheel_travel_teleop.py`) behind stable `ControlProcessor` façade/`process_input` entry. Residual: EF stick modes still in façade; post-halt teleop latch is product policy (not done). Full suite green |
 | TD-037 | Status wrapper layer: blanket notify, stringly reads, duplicated telemetry | 2026-07-28 | Device status honesty: `models.{Winch,Wheel,Teensy,Valve,Lidar}Status` with per-property or fine-grained NOTIFY + `connect_required`; composer thinned (~1191→~730 LOC); shellConnectivity rewired to `wheel.availableChanged`; QML lidar Connections retargeted off blanket `changed`. Residual: videoRuntime/topBar multi-home voltages/SSH; recording multi-home; aggregator wrappers (recording/video/baseTopView); TD-033 soft pins. Full suite green |
 | TD-038 | File-scale QML decomposition: PageWinch, EditWorkFlowTab, TeensyStatus | 2026-07-28 | A1: `WorkflowEditor.load_document`/`save_document`, no QML JSON document assembly. B: PageWinch ~1606→~213 LOC + `winch/components/*`. C: TeensyStatus ~831→~103 LOC + `status/components/teensy/*` tabs. D: workflow param forms under `systemcontrol/components/` (EditWorkFlowTab ~1027→~715). Tokens remain TD-002. Focused band green (workflow editor, winch/status smokes, qml imports) |

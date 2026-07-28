@@ -1,15 +1,14 @@
-"""Centralize signal connections and timer wiring for AppRuntime."""
+"""Centralize signal connections and timer wiring via explicit ports (TD-047)."""
 
 from __future__ import annotations
 
 import logging
 import time
-from typing import TYPE_CHECKING, Any
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 from PySide6.QtCore import QTimer, Qt
-
-if TYPE_CHECKING:
-    from paint_controller.core.app_runtime import AppRuntime
 
 logger = logging.getLogger(__name__)
 
@@ -17,30 +16,45 @@ logger = logging.getLogger(__name__)
 _ROS_ERROR_DISPLAY_INTERVAL_S = 2.0
 
 
+@dataclass(frozen=True)
+class SignalWiringPorts:
+    """Dependencies SignalWiring needs — no AppRuntime service locator."""
+
+    bundle: Any
+    node: Any
+    state_store: Any
+    qt_bridge: Any
+    video_stream_handler: Any
+    steam_deck_handler: Any
+    overlay_host: Any
+    video_runtime: Any
+    update_rate: float
+    deferred_video_startup: Callable[[], None]
+    ros_thread: Any | None = None
+
+
 class SignalWiring:
     """Owns Steam Deck callbacks, Qt signal routing, and timer startup."""
 
-    def __init__(self, runtime: AppRuntime) -> None:
-        self._runtime = runtime
+    def __init__(self, ports: SignalWiringPorts) -> None:
+        self._ports = ports
         self._last_ros_error_display_at = 0.0
         self._last_ros_error_message = ""
 
     def wire(self) -> None:
         """Connect all runtime signals and Steam Deck button callbacks."""
-        from paint_controller.utils.constants import HeartbeatStatus
-
-        runtime = self._runtime
-        bundle = runtime.bundle
+        ports = self._ports
+        bundle = ports.bundle
         if bundle is None:
             raise RuntimeError("ControllerBundle is required before wiring signals")
 
-        node = runtime.node
-        state_store = runtime.state_store
-        qt_bridge = runtime.qt_bridge
-        video_stream_handler = runtime.video_stream_handler
-        steam_deck_handler = runtime.steam_deck_handler
-        overlay_host = runtime.overlay_host
-        video_runtime = runtime.video_runtime
+        node = ports.node
+        state_store = ports.state_store
+        qt_bridge = ports.qt_bridge
+        video_stream_handler = ports.video_stream_handler
+        steam_deck_handler = ports.steam_deck_handler
+        overlay_host = ports.overlay_host
+        video_runtime = ports.video_runtime
 
         if node is None:
             raise RuntimeError("ROS node is required before wiring signals")
@@ -57,7 +71,6 @@ class SignalWiring:
         if video_runtime is None:
             raise RuntimeError("VideoRuntime is required before wiring signals")
 
-        runtime._heartbeat_status_error = HeartbeatStatus.ERROR
         state_store.control_mode_changed.connect(qt_bridge.update_fullscreen_video_source)
         bundle.emergency_handler.overlay_changed.connect(qt_bridge.emergency_overlay_changed.emit)
         bundle.emergency_handler.emergency_triggered.connect(qt_bridge.emergency_triggered.emit)
@@ -68,7 +81,7 @@ class SignalWiring:
         )
         qt_bridge.status_updated.connect(self._on_status_tick)
 
-        ros_thread = getattr(runtime, "ros_thread", None)
+        ros_thread = ports.ros_thread
         if ros_thread is not None and hasattr(ros_thread, "error_occurred"):
             ros_thread.error_occurred.connect(
                 self._on_ros_thread_error,
@@ -103,8 +116,7 @@ class SignalWiring:
         if (now - self._last_ros_error_display_at) < _ROS_ERROR_DISPLAY_INTERVAL_S:
             return
 
-        runtime = self._runtime
-        state_store = runtime.state_store
+        state_store = self._ports.state_store
         if state_store is None:
             return
 
@@ -113,10 +125,10 @@ class SignalWiring:
         state_store.display_message = f"ROS: {text}"
 
     def _wire_steam_deck_callbacks(self) -> None:
-        runtime = self._runtime
-        bundle = runtime.bundle
-        steam_deck_handler = runtime.steam_deck_handler
-        qt_bridge = runtime.qt_bridge
+        ports = self._ports
+        bundle = ports.bundle
+        steam_deck_handler = ports.steam_deck_handler
+        qt_bridge = ports.qt_bridge
 
         if bundle is None or steam_deck_handler is None or qt_bridge is None:
             return
@@ -140,10 +152,10 @@ class SignalWiring:
         if not has_error:
             return
 
-        runtime = self._runtime
-        bundle = runtime.bundle
-        node = runtime.node
-        qt_bridge = runtime.qt_bridge
+        ports = self._ports
+        bundle = ports.bundle
+        node = ports.node
+        qt_bridge = ports.qt_bridge
 
         if bundle is None or node is None or qt_bridge is None:
             return
@@ -159,9 +171,9 @@ class SignalWiring:
         qt_bridge.emergency_triggered.emit()
 
     def _on_status_tick(self) -> None:
-        runtime = self._runtime
-        bundle = runtime.bundle
-        steam_deck_handler = runtime.steam_deck_handler
+        ports = self._ports
+        bundle = ports.bundle
+        steam_deck_handler = ports.steam_deck_handler
 
         if bundle is None or steam_deck_handler is None:
             return
@@ -170,30 +182,23 @@ class SignalWiring:
         bundle.control_processor.process_input(input_state)
         bundle.emergency_handler.check_emergency_button(input_state.get('buttons', {}))
 
-    def start_timers(self) -> None:
-        """Create and start the status timer and system monitor."""
-        runtime = self._runtime
-        bundle = runtime.bundle
-        qt_bridge = runtime.qt_bridge
+    def start_timers(self) -> QTimer:
+        """Create and start the status timer and system monitor.
+
+        Returns the status timer so the composition root owns lifetime assignment.
+        """
+        ports = self._ports
+        bundle = ports.bundle
+        qt_bridge = ports.qt_bridge
 
         if bundle is None or qt_bridge is None:
             raise RuntimeError("ControllerBundle and QtBridge are required before starting timers")
 
-        runtime.status_timer = QTimer()
-        assert runtime.status_timer is not None
-        runtime.status_timer.timeout.connect(qt_bridge.status_updated.emit)
-        runtime.status_timer.start(int(1000 / runtime.config.update_rate))
+        status_timer = QTimer()
+        status_timer.timeout.connect(qt_bridge.status_updated.emit)
+        status_timer.start(int(1000 / ports.update_rate))
 
         bundle.system_monitor.start_monitoring(interval_ms=1000)
 
-        QTimer.singleShot(200, runtime._deferred_video_startup)
-
-
-def wire(runtime: AppRuntime) -> None:
-    """Convenience entry point matching the master-plan function signature."""
-    SignalWiring(runtime).wire()
-
-
-def start_timers(runtime: AppRuntime) -> None:
-    """Convenience entry point matching the master-plan function signature."""
-    SignalWiring(runtime).start_timers()
+        QTimer.singleShot(200, ports.deferred_video_startup)
+        return status_timer

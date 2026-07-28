@@ -1,6 +1,22 @@
 # Development Notes
 
 ---
+### 2026-07-28 - TD-047 resolved (façade demirror + ports)
+
+**Goal**: Close AppRuntime service-locator debt: demirror façades, then ports for wiring/composer.
+**Tried**: Slice 1: removed ~18 context-key mirrors; façades only in `_context_properties`; dead free wrappers/`_heartbeat_status_error` gone. Slice 2: `SignalWiringPorts` + `QmlComposePorts` frozen dataclasses; `SignalWiring`/`QmlContextComposer` no longer take `AppRuntime`; `start_timers()` returns timer; tests construct ports only.
+**Result**: ✅ Full suite **434 passed**. TD-047 moved to Resolved.
+**Files**: `app_runtime.py`, `signal_wiring.py`, `qml_context_composer.py`, runtime tests, tech-debt, progress board
+
+---
+### 2026-07-28 - Software architecture research → tech-debt refresh
+
+**Goal**: Multi-agent deep research on software-only professional Qt gaps; update debt board (no HMI product work, no code refactors).
+**Tried**: Five parallel explore agents — composition/DI/lifecycle, QML contract injection, QML modules/tokens/kit, ports/domain modularity, test/CI control plane. Cross-checked against existing TD-032…047.
+**Result**: ✅ `docs/tech-debt.md` program-track refreshed. New **TD-048–053** (injection depth, device ports, late injection, cleanup inventory, QML schemas, dual overlay stack). Reworded TD-047/040/042/002/016 from evidence. Progress board Next aligned. Explicit non-goals: mega-Backend, TD-032 reopen, HMI safety track.
+**Files**: `docs/tech-debt.md`, `docs/plan/00_ARCHITECTURE_PROGRESS.md`, `DEVNOTES.md`
+
+---
 ### 2026-07-28 - TD-046 resolved (teleop docs + selective structure)
 
 **Goal**: Document dual command paths (gate vs continuous teleop); extract high-state winch/wheel teleop without product UX latch.
