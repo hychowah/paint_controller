@@ -9,6 +9,7 @@ from tests.fakes import FakeLogger
 class FakeWinch:
     def __init__(self, result: bool = True) -> None:
         self.result = result
+        self.load_detection_enabled = False
         self.increment_calls: list[tuple[int, int]] = []
         self.absolute_calls: list[tuple[int, int]] = []
         self.load_detection_calls: list[bool] = []
@@ -23,6 +24,7 @@ class FakeWinch:
 
     def setLoadDetectionEnabled(self, enabled: bool) -> bool:
         self.load_detection_calls.append(enabled)
+        self.load_detection_enabled = enabled
         return self.result
 
 
@@ -100,9 +102,9 @@ def test_load_detection_set_dispatches_desired_state() -> None:
     actions, winch, admin_action_gate, logger, results = _build_actions()
 
     assert actions.setLoadDetectionEnabled(True) is True
-    assert actions.toggleLoadDetection(False) is True
+    assert actions.toggleLoadDetection() is True
 
-    assert winch.load_detection_calls == [True, True]
+    assert winch.load_detection_calls == [True, False]
     assert admin_action_gate.calls == ["winch.load_detection", "winch.load_detection"]
     assert results[-1] == (True, "Load detection requested")
     assert logger.records[-1].message == "Load detection requested"
@@ -121,7 +123,7 @@ def test_load_detection_gate_denial_blocks_backend_call() -> None:
 def test_load_detection_backend_rejection_is_reported() -> None:
     actions, winch, _gate, _logger, results = _build_actions(result=False)
 
-    assert actions.toggleLoadDetection(True) is False
+    assert actions.toggleLoadDetection() is False
 
-    assert winch.load_detection_calls == [False]
+    assert winch.load_detection_calls == [True]
     assert results[-1] == (False, "Load detection was rejected by the backend")

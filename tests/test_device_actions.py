@@ -10,16 +10,22 @@ from tests.fakes import FakeLogger
 
 class FakeTeensy:
     def __init__(self) -> None:
+        self._status = {"relay_on": False, "enabled": False}
         self.relay_calls: list[bool] = []
         self.enable_calls: list[bool] = []
         self.home_top_calls: list[bool] = []
         self.home_arm_calls: list[bool] = []
 
+    def get_status(self) -> dict:
+        return dict(self._status)
+
     def setRelayEnabled(self, enabled: bool) -> None:
         self.relay_calls.append(enabled)
+        self._status["relay_on"] = enabled
 
     def setEnabled(self, enabled: bool) -> None:
         self.enable_calls.append(enabled)
+        self._status["enabled"] = enabled
 
     def homeTopRail(self, home: bool) -> None:
         self.home_top_calls.append(home)
@@ -31,10 +37,12 @@ class FakeTeensy:
 class FakeWinch:
     def __init__(self, result: bool = True) -> None:
         self.result = result
+        self.enabled = False
         self.enable_calls: list[bool] = []
 
     def setEnabled(self, enabled: bool) -> bool:
         self.enable_calls.append(enabled)
+        self.enabled = enabled
         return self.result
 
 
@@ -67,16 +75,16 @@ def _build_handler(winch_result: bool = True) -> tuple[DeviceActionHandler, Fake
     return handler, teensy, winch, admin_action_gate, logger, results
 
 
-def test_toggle_methods_invert_current_enabled_state() -> None:
+def test_toggle_methods_negate_backend_state() -> None:
     handler, teensy, winch, admin_action_gate, logger, results = _build_handler()
 
-    assert handler.toggleTeensyRelay(True) is True
-    assert handler.toggleTeensyEnable(False) is True
-    assert handler.toggleWinchEnable(True) is True
+    assert handler.toggleTeensyRelay() is True
+    assert handler.toggleTeensyEnable() is True
+    assert handler.toggleWinchEnable() is True
 
-    assert teensy.relay_calls == [False]
+    assert teensy.relay_calls == [True]
     assert teensy.enable_calls == [True]
-    assert winch.enable_calls == [False]
+    assert winch.enable_calls == [True]
     assert admin_action_gate.calls == [
         "status.teensy_relay",
         "status.teensy_enable",
@@ -88,6 +96,15 @@ def test_toggle_methods_invert_current_enabled_state() -> None:
         "Winch enable requested",
     ]
     assert logger.records[-1].message == "Winch enable requested"
+
+    # State-driven inversion: a second toggle flips back
+    assert handler.toggleTeensyRelay() is True
+    assert handler.toggleTeensyEnable() is True
+    assert handler.toggleWinchEnable() is True
+
+    assert teensy.relay_calls == [True, False]
+    assert teensy.enable_calls == [True, False]
+    assert winch.enable_calls == [True, False]
 
 
 def test_explicit_enable_request_methods_dispatch_desired_state() -> None:
@@ -126,7 +143,7 @@ def test_home_actions_dispatch_to_backend() -> None:
 def test_backend_rejection_is_reported() -> None:
     handler, _teensy, winch, _gate, logger, results = _build_handler(winch_result=False)
 
-    assert handler.toggleWinchEnable(False) is False
+    assert handler.toggleWinchEnable() is False
 
     assert winch.enable_calls == [True]
     assert results[-1] == (False, "Winch enable was rejected by the backend")

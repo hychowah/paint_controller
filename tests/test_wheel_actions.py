@@ -10,11 +10,13 @@ class FakeWheel:
     def __init__(self, enabled_result: bool = True, reset_result: bool = True) -> None:
         self.enabled_result = enabled_result
         self.reset_result = reset_result
+        self.enabled = False
         self.enable_calls: list[bool] = []
         self.reset_calls = 0
 
     def setEnabled(self, enabled: bool) -> bool:
         self.enable_calls.append(enabled)
+        self.enabled = enabled
         return self.enabled_result
 
     def resetWheelPosition(self) -> bool:
@@ -64,13 +66,13 @@ def test_set_enabled_dispatches_desired_state() -> None:
     assert logger.records[-1].message == "Wheel enable requested"
 
 
-def test_toggle_enabled_inverts_current_state() -> None:
+def test_toggle_enabled_negates_backend_intent() -> None:
     actions, wheel, _gate, _logger, _results = _build_actions()
 
-    assert actions.toggleEnabled(True) is True
-    assert actions.toggleEnabled(False) is True
+    assert actions.toggleEnabled() is True
+    assert actions.toggleEnabled() is True
 
-    assert wheel.enable_calls == [False, True]
+    assert wheel.enable_calls == [True, False]
 
 
 def test_reset_position_dispatches_to_backend() -> None:

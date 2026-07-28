@@ -26,17 +26,17 @@ class DeviceActionHandler(QObject):
         self._admin_action_gate = admin_action_gate
         self._logger = logger
 
-    @Slot(bool, result=bool)
-    def toggleTeensyRelay(self, current_enabled: bool) -> bool:
-        return self.requestTeensyRelayEnabled(not current_enabled)
+    @Slot(result=bool)
+    def toggleTeensyRelay(self) -> bool:
+        return self.requestTeensyRelayEnabled(not self._teensy_status_flag("relay_on"))
 
-    @Slot(bool, result=bool)
-    def toggleTeensyEnable(self, current_enabled: bool) -> bool:
-        return self.requestTeensyEnabled(not current_enabled)
+    @Slot(result=bool)
+    def toggleTeensyEnable(self) -> bool:
+        return self.requestTeensyEnabled(not self._teensy_status_flag("enabled"))
 
-    @Slot(bool, result=bool)
-    def toggleWinchEnable(self, current_enabled: bool) -> bool:
-        return self.requestWinchEnabled(not current_enabled)
+    @Slot(result=bool)
+    def toggleWinchEnable(self) -> bool:
+        return self.requestWinchEnabled(not self._winch_echo("enabled"))
 
     @Slot(bool, result=bool)
     def requestTeensyRelayEnabled(self, enabled: bool) -> bool:
@@ -86,20 +86,17 @@ class DeviceActionHandler(QObject):
             args=(True,),
         )
 
-    def _run_toggle(
-        self,
-        *,
-        name: str,
-        controller: Any,
-        method_name: str,
-        next_enabled: bool,
-    ) -> bool:
-        return self._run_action(
-            name=name,
-            controller=controller,
-            method_name=method_name,
-            args=(next_enabled,),
-        )
+    def _teensy_status_flag(self, key: str) -> bool:
+        """Read a firmware-echoed Teensy status flag (False when missing)."""
+        if self._teensy is None:
+            return False
+        return bool(self._teensy.get_status().get(key, False))
+
+    def _winch_echo(self, attribute: str) -> bool:
+        """Read an echo-driven winch state attribute (False when missing)."""
+        if self._winch is None:
+            return False
+        return bool(getattr(self._winch, attribute, False))
 
     def _run_action(
         self,

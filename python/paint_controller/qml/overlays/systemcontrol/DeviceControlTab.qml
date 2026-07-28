@@ -77,7 +77,7 @@ Item {
                         actionKey: "status.teensy_relay"
                         legalityModel: actionLegality
                         
-                        onClicked: deviceActionHandler.toggleTeensyRelay(deviceControlTab.teensyStatus.relayOn)
+                        onClicked: deviceActionHandler.toggleTeensyRelay()
                     }
                     
                     // Teensy Enable Control
@@ -91,7 +91,7 @@ Item {
                         actionKey: "status.teensy_enable"
                         legalityModel: actionLegality
                         
-                        onClicked: deviceActionHandler.toggleTeensyEnable(deviceControlTab.teensyStatus.enabled)
+                        onClicked: deviceActionHandler.toggleTeensyEnable()
                     }
                 }
             }
@@ -152,7 +152,7 @@ Item {
                         actionKey: "status.winch_enable"
                         legalityModel: actionLegality
                         
-                        onClicked: deviceActionHandler.toggleWinchEnable(deviceControlTab.winchStatus.enabled)
+                        onClicked: deviceActionHandler.toggleWinchEnable()
                     }
                     
                     // Winch Load Detection Control
@@ -166,7 +166,7 @@ Item {
                         actionKey: "winch.load_detection"
                         legalityModel: actionLegality
                         
-                        onClicked: winchActions.toggleLoadDetection(deviceControlTab.winchStatus.loadDetectionEnabled)
+                        onClicked: winchActions.toggleLoadDetection()
                     }
                 }
             }
@@ -227,7 +227,7 @@ Item {
                         actionKey: "wheel.enable"
                         legalityModel: actionLegality
                         
-                        onClicked: wheelActions.setEnabled(!deviceControlTab.wheelStatus.enabled)
+                        onClicked: wheelActions.toggleEnabled()
                     }
                     
                     // Wheel Reset Position Button
@@ -423,7 +423,7 @@ Item {
                         enabledState: deviceControlTab.teensyStatus.stabilityEnabled
                         iconText: "SC"
                         
-                        onClicked: teensyActions.toggleStability(deviceControlTab.teensyStatus.stabilityEnabled)
+                        onClicked: teensyActions.toggleStability()
                     }
 
                     // Yaw Control
@@ -435,7 +435,7 @@ Item {
                         enabledState: deviceControlTab.teensyStatus.yawEnabled
                         iconText: "Y"
                         
-                        onClicked: teensyActions.toggleYaw(deviceControlTab.teensyStatus.yawEnabled)
+                        onClicked: teensyActions.toggleYaw()
                     }
 
                     // Auto Correction Control
@@ -447,7 +447,7 @@ Item {
                         enabledState: deviceControlTab.teensyStatus.autoCorrectionEnabled
                         iconText: "AC"
                         
-                        onClicked: teensyActions.toggleAutoCorrection(deviceControlTab.teensyStatus.autoCorrectionEnabled)
+                        onClicked: teensyActions.toggleAutoCorrection()
                     }
 
                     // SprayGun Levelling
@@ -459,7 +459,7 @@ Item {
                         enabledState: deviceControlTab.teensyStatus.sprayGunLevelingEnabled
                         iconText: "SL"
 
-                        onClicked: teensyActions.toggleSprayGunLeveling(deviceControlTab.teensyStatus.sprayGunLevelingEnabled)
+                        onClicked: teensyActions.toggleSprayGunLeveling()
                     }
 
                     // Roller Steering Control
@@ -471,7 +471,7 @@ Item {
                         enabledState: deviceControlTab.teensyStatus.rollerSteeringEnabled
                         iconText: "RS"
                         
-                        onClicked: teensyActions.toggleRollerSteering(deviceControlTab.teensyStatus.rollerSteeringEnabled)
+                        onClicked: teensyActions.toggleRollerSteering()
                     }
 
                     // Swing Damping Control
@@ -483,7 +483,7 @@ Item {
                         enabledState: deviceControlTab.teensyStatus.swingDampingEnabled
                         iconText: "SD"
                         
-                        onClicked: teensyActions.toggleSwingDamping(deviceControlTab.teensyStatus.swingDampingEnabled)
+                        onClicked: teensyActions.toggleSwingDamping()
                     }
                 }
             }
@@ -542,7 +542,7 @@ Item {
                         enabledState: deviceControlTab.teensyStatus.sprayGunLedOn
                         iconText: "LED"
                         
-                        onClicked: teensyActions.toggleSprayGunLed(deviceControlTab.teensyStatus.sprayGunLedOn)
+                        onClicked: teensyActions.toggleSprayGunLed()
                     }
 
                     ControlPanel {

@@ -83,9 +83,15 @@ class WinchActions(QObject):
             args=(enabled,),
         )
 
-    @Slot(bool, result=bool)
-    def toggleLoadDetection(self, current_enabled: bool) -> bool:
-        return self.setLoadDetectionEnabled(not current_enabled)
+    @Slot(result=bool)
+    def toggleLoadDetection(self) -> bool:
+        return self.setLoadDetectionEnabled(not self._winch_echo("load_detection_enabled"))
+
+    def _winch_echo(self, attribute: str) -> bool:
+        """Read an echo-driven winch state attribute (False when missing)."""
+        if self._winch is None:
+            return False
+        return bool(getattr(self._winch, attribute, False))
 
     def _run_action(
         self,

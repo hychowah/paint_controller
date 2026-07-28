@@ -200,7 +200,7 @@ Rectangle {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                wheelActions.setEnabled(!page1Rect.wheelStatus.enabled)
+                                wheelActions.toggleEnabled()
                             }
                         }
                         

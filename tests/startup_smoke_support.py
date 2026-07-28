@@ -587,8 +587,8 @@ class FakeWheelActions(QObject):
     def setEnabled(self, _enabled: bool) -> bool:
         return True
 
-    @Slot(bool, result=bool)
-    def toggleEnabled(self, _current_enabled: bool) -> bool:
+    @Slot(result=bool)
+    def toggleEnabled(self) -> bool:
         return True
 
     @Slot(result=bool)
@@ -597,12 +597,12 @@ class FakeWheelActions(QObject):
 
 
 class FakeDeviceActionHandler(QObject):
-    @Slot(bool, result=bool)
-    def toggleTeensyRelay(self, _current_enabled: bool) -> bool:
+    @Slot(result=bool)
+    def toggleTeensyRelay(self) -> bool:
         return True
 
-    @Slot(bool, result=bool)
-    def toggleTeensyEnable(self, _current_enabled: bool) -> bool:
+    @Slot(result=bool)
+    def toggleTeensyEnable(self) -> bool:
         return True
 
     @Slot(bool, result=bool)
@@ -613,8 +613,8 @@ class FakeDeviceActionHandler(QObject):
     def requestTeensyEnabled(self, _enabled: bool) -> bool:
         return True
 
-    @Slot(bool, result=bool)
-    def toggleWinchEnable(self, _current_enabled: bool) -> bool:
+    @Slot(result=bool)
+    def toggleWinchEnable(self) -> bool:
         return True
 
     @Slot(bool, result=bool)
@@ -649,32 +649,32 @@ class FakeRecordingActions(QObject):
 
 
 class FakeTeensyActions(QObject):
-    @Slot(bool, result=bool)
-    def toggleStability(self, _current_enabled: bool) -> bool:
+    @Slot(result=bool)
+    def toggleStability(self) -> bool:
         return True
 
-    @Slot(bool, result=bool)
-    def toggleYaw(self, _current_enabled: bool) -> bool:
+    @Slot(result=bool)
+    def toggleYaw(self) -> bool:
         return True
 
-    @Slot(bool, result=bool)
-    def toggleAutoCorrection(self, _current_enabled: bool) -> bool:
+    @Slot(result=bool)
+    def toggleAutoCorrection(self) -> bool:
         return True
 
-    @Slot(bool, result=bool)
-    def toggleSprayGunLeveling(self, _current_enabled: bool) -> bool:
+    @Slot(result=bool)
+    def toggleSprayGunLeveling(self) -> bool:
         return True
 
-    @Slot(bool, result=bool)
-    def toggleRollerSteering(self, _current_enabled: bool) -> bool:
+    @Slot(result=bool)
+    def toggleRollerSteering(self) -> bool:
         return True
 
-    @Slot(bool, result=bool)
-    def toggleSwingDamping(self, _current_enabled: bool) -> bool:
+    @Slot(result=bool)
+    def toggleSwingDamping(self) -> bool:
         return True
 
-    @Slot(bool, result=bool)
-    def toggleSprayGunLed(self, _current_enabled: bool) -> bool:
+    @Slot(result=bool)
+    def toggleSprayGunLed(self) -> bool:
         return True
 
     @Slot(bool, result=bool)
@@ -763,8 +763,8 @@ class FakeWinchActions(QObject):
     def setLoadDetectionEnabled(self, _enabled: bool) -> bool:
         return True
 
-    @Slot(bool, result=bool)
-    def toggleLoadDetection(self, _current_enabled: bool) -> bool:
+    @Slot(result=bool)
+    def toggleLoadDetection(self) -> bool:
         return True
 
 

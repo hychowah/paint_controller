@@ -231,9 +231,9 @@ Item {
                                 MouseArea {
                                     anchors.fill: parent
                                     onClicked: {
-                                        var desiredEnabled = !winchPageRoot.winchStatus.enabled;
-                                        if (deviceActionHandler.requestWinchEnabled(desiredEnabled)) {
-                                            notificationPopup.show(desiredEnabled ?
+                                        var requestedEnabled = !winchPageRoot.winchStatus.enabled;
+                                        if (deviceActionHandler.toggleWinchEnable()) {
+                                            notificationPopup.show(requestedEnabled ?
                                                 "Winch power enabled" : "Winch power disabled", 2000);
                                         } else {
                                             notificationPopup.show("Winch power change rejected", 2000);
@@ -347,9 +347,9 @@ Item {
                                 MouseArea {
                                     anchors.fill: parent
                                     onClicked: {
-                                        var desiredLoadDetection = !winchPageRoot.winchStatus.loadDetectionEnabled;
-                                        if (winchActions.setLoadDetectionEnabled(desiredLoadDetection)) {
-                                            notificationPopup.show(desiredLoadDetection ?
+                                        var requestedLoadDetection = !winchPageRoot.winchStatus.loadDetectionEnabled;
+                                        if (winchActions.toggleLoadDetection()) {
+                                            notificationPopup.show(requestedLoadDetection ?
                                                 "Load detection enabled" :
                                                 "Load detection disabled", 2000);
                                         } else {

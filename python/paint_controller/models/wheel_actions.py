@@ -38,9 +38,10 @@ class WheelActions(QObject):
             args=(enabled,),
         )
 
-    @Slot(bool, result=bool)
-    def toggleEnabled(self, current_enabled: bool) -> bool:
-        return self.setEnabled(not current_enabled)
+    @Slot(result=bool)
+    def toggleEnabled(self) -> bool:
+        current = self._wheel is not None and bool(getattr(self._wheel, "enabled", False))
+        return self.setEnabled(not current)
 
     @Slot(result=bool)
     def resetPosition(self) -> bool:

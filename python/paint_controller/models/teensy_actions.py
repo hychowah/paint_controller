@@ -28,33 +28,33 @@ class TeensyActions(QObject):
         self._teensy = teensy
         self._logger = logger
 
-    @Slot(bool, result=bool)
-    def toggleStability(self, current_enabled: bool) -> bool:
-        return self._run_toggle("Stability controller", "setStabilityEnabled", current_enabled)
+    @Slot(result=bool)
+    def toggleStability(self) -> bool:
+        return self._run_toggle("Stability controller", "setStabilityEnabled", not self._teensy_intent("stability_enabled"))
 
-    @Slot(bool, result=bool)
-    def toggleYaw(self, current_enabled: bool) -> bool:
-        return self._run_toggle("Yaw control", "setYawEnabled", current_enabled)
+    @Slot(result=bool)
+    def toggleYaw(self) -> bool:
+        return self._run_toggle("Yaw control", "setYawEnabled", not self._teensy_status_flag("yaw_enabled"))
 
-    @Slot(bool, result=bool)
-    def toggleAutoCorrection(self, current_enabled: bool) -> bool:
-        return self._run_toggle("Auto correction", "setAutoCorrectonEnabled", current_enabled)
+    @Slot(result=bool)
+    def toggleAutoCorrection(self) -> bool:
+        return self._run_toggle("Auto correction", "setAutoCorrectonEnabled", not self._teensy_intent("auto_correction_enabled"))
 
-    @Slot(bool, result=bool)
-    def toggleSprayGunLeveling(self, current_enabled: bool) -> bool:
-        return self._run_toggle("Spray gun leveling", "setSprayGunLevelingEnabled", current_enabled)
+    @Slot(result=bool)
+    def toggleSprayGunLeveling(self) -> bool:
+        return self._run_toggle("Spray gun leveling", "setSprayGunLevelingEnabled", not self._teensy_intent("spray_gun_leveling_enabled"))
 
-    @Slot(bool, result=bool)
-    def toggleRollerSteering(self, current_enabled: bool) -> bool:
-        return self._run_toggle("Roller steering", "setRollerSteeringEnabled", current_enabled)
+    @Slot(result=bool)
+    def toggleRollerSteering(self) -> bool:
+        return self._run_toggle("Roller steering", "setRollerSteeringEnabled", not self._teensy_intent("roller_steering_enabled"))
 
-    @Slot(bool, result=bool)
-    def toggleSwingDamping(self, current_enabled: bool) -> bool:
-        return self._run_toggle("Swing damping", "setSwingDampingEnabled", current_enabled)
+    @Slot(result=bool)
+    def toggleSwingDamping(self) -> bool:
+        return self._run_toggle("Swing damping", "setSwingDampingEnabled", not self._teensy_intent("swing_damping_enabled"))
 
-    @Slot(bool, result=bool)
-    def toggleSprayGunLed(self, current_enabled: bool) -> bool:
-        return self._run_toggle("Spray gun LED", "setSprayGunLED", current_enabled)
+    @Slot(result=bool)
+    def toggleSprayGunLed(self) -> bool:
+        return self._run_toggle("Spray gun LED", "setSprayGunLED", not self._teensy_intent("spray_gun_led_on"))
 
     @Slot(bool, result=bool)
     def setLidarPower(self, enabled: bool) -> bool:
@@ -65,17 +65,29 @@ class TeensyActions(QObject):
             args=(enabled,),
         )
 
+    def _teensy_intent(self, attribute: str) -> bool:
+        """Read a controller intent member (False when the controller is missing)."""
+        if self._teensy is None:
+            return False
+        return bool(getattr(self._teensy, attribute, False))
+
+    def _teensy_status_flag(self, key: str) -> bool:
+        """Read a firmware-echoed status flag (False when the controller is missing)."""
+        if self._teensy is None:
+            return False
+        return bool(self._teensy.get_status().get(key, False))
+
     def _run_toggle(
         self,
         name: str,
         method_name: str,
-        current_enabled: bool,
+        next_enabled: bool,
     ) -> bool:
         return self._run_action(
             name=name,
             controller=self._teensy,
             method_name=method_name,
-            args=(not current_enabled,),
+            args=(next_enabled,),
         )
 
     def _run_action(
