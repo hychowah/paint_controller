@@ -353,6 +353,9 @@ class WheelController(RosStatusController):
         Args:
             enabled (bool): True to enable, False to disable
         """
+        # Record operator intent (the wire protocol is inverted: we publish
+        # `not enabled` to wheel/disable/cmd — publish semantics unchanged).
+        self.set_enabled(enabled)
         msg = Bool()
         msg.data = not enabled
         self._disable_pub.publish(msg)

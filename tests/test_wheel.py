@@ -64,6 +64,22 @@ def test_status_callback_updates_availability_and_properties(qt_app, fake_node):
     assert controller.right_wheel_position == 175.0
 
 
+def test_set_enabled_records_intent_and_publishes_inverted(qt_app, fake_node):
+    controller = _wheel_controller_class()(fake_node)
+
+    assert controller.enabled is False
+
+    controller.setEnabled(True)
+    assert controller.enabled is True
+    disable_msg = fake_node.publishers[2].published_messages[-1]
+    assert disable_msg.data is False
+
+    controller.setEnabled(False)
+    assert controller.enabled is False
+    disable_msg = fake_node.publishers[2].published_messages[-1]
+    assert disable_msg.data is True
+
+
 def test_error_signal_emits_once_per_transition(qt_app, fake_node):
     controller = _wheel_controller_class()(fake_node)
     received = []
