@@ -8,36 +8,6 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 
 ## Active Debt
 
-### TD-033 — Zero behavioral UI / NOTIFY-contract test coverage
-**Area**: Tests
-**Priority**: high
-**Effort**: medium
-**Why it matters**: ~18k QML lines have load-only smoke coverage ("component loads, no fatal warnings"); there is no input simulation anywhere in the suite. The Phase 7 shell-routing change shipped broken primary navigation — `SelectBar { shellRouter: mainWindow.shellRouter }` does not resolve context properties through a qualified id lookup, and `SelectBar.qml`'s `if (shellRouter)` guard made nav clicks silently no-op — and no gate caught it (fixed by the uncommitted `shellRouterModel`/`shellStateModel` alias change in `MainWindow.qml`). Separately, none of the new `*Status`/`*Actions` models have NOTIFY-contract tests (`QSignalSpy` is unused), and heartbeat recovery/flap is untested — only the loss path is.
-**What to do**: Extend the existing Python-driven `QQmlComponent` harness (do NOT adopt qmltestrunner) with: (1) a few interaction tests through real wiring — navigation round-trip, e-stop button → halt; (2) NOTIFY-contract tests for each QML-exposed model (mutate → exactly one emission with correct payload); (3) heartbeat recovery/flap cases in `test_heartbeat.py` / `test_safety_integration.py`.
-**Files**: `tests/startup_smoke_support.py`, `tests/test_startup_smoke_shell.py`, `tests/test_heartbeat.py`, `tests/test_safety_integration.py`, `python/paint_controller/qml/navigation/SelectBar.qml`
-
----
-
-### TD-034 — colcon build broken; packaging gate normalized-red
-**Area**: Build / Packaging
-**Priority**: high
-**Effort**: low
-**Why it matters**: `CMakeLists.txt` installs a `resource/` directory that does not exist at repo root, so `colcon build` fails pre-existingly while `AGENTS.md` lists it as validation gate #3 — a permanently red gate trains everyone to route around gates (this is how TD-033's navigation regression shipped "validated"). `setup.py` and the ament_cmake `CMakeLists.txt` also coexist as two half-configured build systems.
-**What to do**: Remove or repair the `resource/` install stanza, resolve the `setup.py` vs `CMakeLists.txt` ambiguity, and get `colcon build` green in CI. (CMakeLists.txt / package.xml changes are stop-and-ask per AGENTS.md — confirm with the user before editing.)
-**Files**: `CMakeLists.txt`, `setup.py`, `package.xml`, `.github/workflows/ci.yml`
-
----
-
-### TD-035 — View-authoritative toggle commands; optimistic device state never reconciled
-**Area**: State management
-**Priority**: high
-**Effort**: medium
-**Why it matters**: QML passes its binding snapshot as the toggle authority (`teensyActions.toggleStability(deviceControlTab.teensyStatus.stabilityEnabled)` at `DeviceControlTab.qml:426`, plus call sites in `PageWheel.qml` and `PageStatus.qml`); if the binding is one emission behind, the operator toggles a safety-relevant control the wrong way. The backend already owns the truth (`teensy.py` `_stability_enabled`). Additionally `_USER_CONTROLLED_FIELDS` (`teensy.py:89`) are local intent published one-way and never read back — after a firmware restart/reconnect the HMI can display "enabled" while the device is actually disabled.
-**What to do**: Change `*Actions.toggleX(current)` to `toggleX()` reading controller-owned state (or use checkable controls calling `setX(bool)`); reconcile user-controlled fields against device state on reconnect.
-**Files**: `python/paint_controller/models/teensy_actions.py`, `python/paint_controller/controllers/teensy.py`, `python/paint_controller/qml/overlays/systemcontrol/DeviceControlTab.qml`, `python/paint_controller/qml/pages/wheel/PageWheel.qml`, `python/paint_controller/qml/pages/status/PageStatus.qml`
-
----
-
 ### TD-036 — Settings persisted inside source tree; QML settings writes ungated
 **Area**: Settings / Deployment
 **Priority**: medium
@@ -172,6 +142,7 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 
 | ID | Title | Resolved | Notes |
 |---|---|---|---|
+| TD-035 | View-authoritative toggle commands; optimistic device state never reconciled | 2026-07-28 | Arg-less backend-authoritative toggles in 5 commits (`b84346f`..`19aa335`): relay/enable negate firmware echo, six un-echoed fields negate controller intent, wheel intent tracking, TouchSwitch request-only binding fix, typo rename, lidar backend state. Hardware-validated on the live rig; suite 373 passed, pyright green. Reconnect reconciliation deliberately not built — pending the operator's firmware echo of the six user-controlled fields |
 | TD-033 | Zero behavioral UI / NOTIFY-contract test coverage | 2026-07-27 | `tests/test_notify_contracts.py` (48 tests: ShellState/OverlayHostPolicy/ShellRouter + composer-wrapper connection-completeness and fan-in, mutation-checked), 7 heartbeat recovery/flap tests incl. coordinator variants, and the first real input-simulation test (`QTest.mouseClick` nav click through real `MainWindow.qml` wiring — fails on reintroduced SelectBar bug). Suite at 369 passed |
 | TD-034 | colcon build broken; packaging gate normalized-red | 2026-07-27 | Removed both dead install stanzas from `CMakeLists.txt` (app runs from source tree; zero install-space consumers, verified workspace-wide), deleted stale `setup.cfg`, added `dev` CI trigger, decoupled `build` job from red `lint`; colcon build green locally (2 packages finished) |
 | TD-031 | Narrowed QML structural rebuild | 2026-04-24 | Completed with an explicit page registry, dedicated `qml/features/systemcontrol/` and `qml/features/video/` roots, and canonical `qml/theme/CommonStyle.qml` ownership. Focused smoke coverage now includes the shell, multiscreen window, navigation contract, systemcontrol feature root, and video feature root. Compatibility wrappers remain intentionally at the old overlay/core paths to keep imports stable while low-priority cleanup stays backlog-only |
