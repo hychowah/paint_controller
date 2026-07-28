@@ -368,7 +368,7 @@ ApplicationWindow {
 
     // Bridge signals from Python backend to QML UI elements
     Connections {
-        target: backend
+        target: qtBridge
 
         function onShowPopupRequested(title, message, popupType, delay) {
             messagePopup.messageTitle = title

@@ -9,3 +9,9 @@ venv/
 .venv/
 python/paint_controller/venv/
 PLANNING.md
+
+# Test / coverage artifacts
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/

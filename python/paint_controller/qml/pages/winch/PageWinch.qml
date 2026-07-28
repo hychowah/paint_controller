@@ -232,7 +232,7 @@ Item {
                                     anchors.fill: parent
                                     onClicked: {
                                         var requestedEnabled = !winchPageRoot.winchStatus.enabled;
-                                        if (deviceActionHandler.toggleWinchEnable()) {
+                                        if (winchActions.toggleWinchEnable()) {
                                             notificationPopup.show(requestedEnabled ?
                                                 "Winch power enabled" : "Winch power disabled", 2000);
                                         } else {

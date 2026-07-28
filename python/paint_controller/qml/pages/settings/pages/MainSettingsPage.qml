@@ -90,8 +90,8 @@ ScrollView {
             subtitle: "Test multi-screen display support"
             
             onClicked: {
-                if (backend) {
-                    backend.toggle_multiscreen_window()
+                if (qtBridge) {
+                    qtBridge.toggle_multiscreen_window()
                 }
             }
         }

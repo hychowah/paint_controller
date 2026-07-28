@@ -552,7 +552,7 @@ Item {
         let sendFunc = parameterSetDefinitions[selectedParameterSet].sendFunction
         if (sendFunc) {
             let success = sendFunc(parameterValues)
-            backend.show_popup(
+            qtBridge.show_popup(
                 success ? "TUNING" : "TUNING BLOCKED",
                 success ? (selectedParameterSet + " request sent") : (selectedParameterSet + " request rejected"),
                 success ? "info" : "error",

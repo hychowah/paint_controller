@@ -40,7 +40,7 @@ Rectangle {
                 onToggled: {
                     // No revert needed: the switch never self-assigns,
                     // so a rejected request leaves the binding intact.
-                    deviceActionHandler.requestTeensyEnabled(checked)
+                    teensyActions.requestTeensyEnabled(checked)
                 }
             }
 
@@ -52,7 +52,7 @@ Rectangle {
                 onToggled: {
                     // No revert needed: the switch never self-assigns,
                     // so a rejected request leaves the binding intact.
-                    deviceActionHandler.requestTeensyRelayEnabled(checked)
+                    teensyActions.requestTeensyRelayEnabled(checked)
                 }
             }
         }

@@ -87,6 +87,20 @@ class WinchActions(QObject):
     def toggleLoadDetection(self) -> bool:
         return self.setLoadDetectionEnabled(not self._winch_echo("load_detection_enabled"))
 
+    @Slot(bool, result=bool)
+    def setEnabled(self, enabled: bool) -> bool:
+        """Enable/disable winch (was deviceActionHandler.requestWinchEnabled)."""
+        return self._run_action(
+            action_key="status.winch_enable",
+            name="Winch enable",
+            method_name="setEnabled",
+            args=(enabled,),
+        )
+
+    @Slot(result=bool)
+    def toggleWinchEnable(self) -> bool:
+        return self.setEnabled(not self._winch_echo("enabled"))
+
     def _winch_echo(self, attribute: str) -> bool:
         """Read an echo-driven winch state attribute (False when missing)."""
         if self._winch is None:

@@ -213,7 +213,7 @@ Rough groups (names as exposed to QML):
 | Legality | `actionLegality` | UI can query whether an action is allowed |
 | Admin / launcher | `launcherAdmin` | Launcher-side admin actions |
 | Settings | `settingsManager` | Schema-backed settings (also used for writes today) |
-| Misc / residual | `stateStore`, `backend`, `deviceActionHandler`, `overlayController`, `warningHandler` | Shared state, thin UI bridge, older device-action surface |
+| Misc | `qtBridge`, `overlayController`, `warningHandler` | UI bridge (popups/status line), overlay controller, warnings |
 
 ### Rules that keep the contract honest
 
@@ -234,7 +234,7 @@ Understanding these two paths avoids putting code in the wrong place.
 
 ```
 QML slot call
-  → models/*Actions  (or residual deviceActionHandler)
+  → models/*Actions
   → AdminActionGate.check_action(...)
   → controller / service method
   → ROS / hardware

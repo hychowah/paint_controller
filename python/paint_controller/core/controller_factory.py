@@ -14,7 +14,6 @@ from paint_controller.controllers.wheel import WheelController
 from paint_controller.controllers.winch import WinchController
 from paint_controller.controllers.wind_monitor import WindMonitor
 from paint_controller.handlers.control_processor import ControlProcessor
-from paint_controller.handlers.device_actions import DeviceActionHandler
 from paint_controller.handlers.emergency import EmergencyButtonHandler
 from paint_controller.handlers.heartbeat import UIHeartbeatHandler
 from paint_controller.handlers.input import UIInputHandler
@@ -64,7 +63,6 @@ class ControllerBundle:
     control_processor: ControlProcessor
     admin_action_gate: AdminActionGate
     manual_command_handler: ManualCommandHandler
-    device_action_handler: DeviceActionHandler
     recording_actions: RecordingActions
     teensy_actions: TeensyActions
     system_actions: SystemActions
@@ -186,13 +184,6 @@ def create_controllers(
         logger=logger,
     )
 
-    device_action_handler = DeviceActionHandler(
-        teensy=teensy,
-        winch=winch,
-        admin_action_gate=admin_action_gate,
-        logger=logger,
-    )
-
     hardware = cast(Any, HardwareControllers).from_controllers(teensy, winch, esp32_valve)
     workflow_catalog = WorkflowCatalog(logger=logger)
     workflow_editor = WorkflowEditor(catalog=workflow_catalog, logger=logger)
@@ -240,6 +231,7 @@ def create_controllers(
     teensy_actions = TeensyActions(
         teensy=teensy,
         logger=logger,
+        admin_action_gate=admin_action_gate,
     )
 
     system_actions = SystemActions(
@@ -288,7 +280,6 @@ def create_controllers(
         control_processor=control_processor,
         admin_action_gate=admin_action_gate,
         manual_command_handler=manual_command_handler,
-        device_action_handler=device_action_handler,
         recording_actions=recording_actions,
         teensy_actions=teensy_actions,
         system_actions=system_actions,

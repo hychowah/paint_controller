@@ -21,12 +21,12 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 
 ### Now
 
-- Phase 8 is complete. No active architecture slice.
+- Phase 8 is complete. **QML surface retirement program closed** (TD-032, 2026-07-28).
 
 ### Next
 
-- Close the QML surface retirement program per `docs/tech-debt.md` TD-032 (retire residual globals or formally freeze the real root-contract count; do not open new boundary phases).
-- Program-track order for remaining work lives in `docs/tech-debt.md` (TD-032 close-out → TD-038 structural → TD-037 …). TD-039 and TD-036 resolved 2026-07-28.
+- Program-track order for remaining work lives in `docs/tech-debt.md` (TD-038 structural → TD-037 …). TD-032, TD-036, TD-039 resolved 2026-07-28.
+- Root context contract is frozen at the post-TD-032 list in `qml_context_composer._EXPECTED_CONTEXT_PROPERTY_NAMES` (~26 names). Do not open new boundary phases; amend count only when retiring a last consumer.
 
 ### Later
 

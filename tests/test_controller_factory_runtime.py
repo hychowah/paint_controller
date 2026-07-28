@@ -35,7 +35,6 @@ def test_controller_bundle_cleanup_runs_reverse_order_and_logs_errors() -> None:
         control_processor=cleanup_factory("control_processor"),
         admin_action_gate=object(),
         manual_command_handler=object(),
-        device_action_handler=object(),
         recording_actions=object(),
         teensy_actions=object(),
         system_actions=object(),
@@ -115,7 +114,6 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     monkeypatch.setattr(module, "ControlProcessor", record("ControlProcessor"))
     monkeypatch.setattr(module, "AdminActionGate", record("AdminActionGate"))
     monkeypatch.setattr(module, "ManualCommandHandler", record("ManualCommandHandler"))
-    monkeypatch.setattr(module, "DeviceActionHandler", record("DeviceActionHandler"))
     monkeypatch.setattr(module, "RecordingActions", record("RecordingActions"))
     monkeypatch.setattr(module, "TeensyActions", record("TeensyActions"))
     monkeypatch.setattr(module, "SystemActions", record("SystemActions"))
@@ -173,17 +171,14 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     assert bundle.manual_command_handler.kwargs["teensy"] is bundle.teensy_controller
     assert bundle.manual_command_handler.kwargs["winch"] is bundle.winch_controller
     assert bundle.manual_command_handler.kwargs["logger"] is node.get_logger()
-    assert bundle.device_action_handler.kwargs["teensy"] is bundle.teensy_controller
-    assert bundle.device_action_handler.kwargs["winch"] is bundle.winch_controller
-    assert "wheel" not in bundle.device_action_handler.kwargs
-    assert bundle.device_action_handler.kwargs["admin_action_gate"] is bundle.admin_action_gate
-    assert bundle.device_action_handler.kwargs["logger"] is node.get_logger()
+    assert not hasattr(bundle, "device_action_handler")
     assert bundle.recording_actions.kwargs["video_stream_handler"] is video_stream_handler
     assert bundle.recording_actions.kwargs["screen_recorder"] is bundle.screen_recorder
     assert bundle.recording_actions.kwargs["ros_bag_recorder"] is bundle.ros_bag_recorder
     assert bundle.recording_actions.kwargs["logger"] is node.get_logger()
     assert bundle.teensy_actions.kwargs["teensy"] is bundle.teensy_controller
     assert bundle.teensy_actions.kwargs["logger"] is node.get_logger()
+    assert bundle.teensy_actions.kwargs["admin_action_gate"] is bundle.admin_action_gate
     assert bundle.system_actions.kwargs["heartbeat_handler"] is bundle.heartbeat_handler
     assert bundle.system_actions.kwargs["logger"] is node.get_logger()
     assert bundle.wheel_actions.kwargs["wheel"] is bundle.wheel_controller
@@ -225,9 +220,12 @@ def test_admin_action_gate_evaluates_idle_default_and_live_exceptions() -> None:
             return mapping.get(key, {})
 
     state_store = type("StateStore", (), {"controller_heartbeat_state": 1})()
+    # Force enforcement on (dev default is off).
+    settings = type("Settings", (), {"get": lambda self, k, d=None: True})()
     gate = gate_module.AdminActionGate(
         capability_catalog=FakeCapabilityCatalog(),
         state_store=state_store,
+        settings_manager=settings,
     )
 
     tuning_eval = gate.evaluate("tuning.short_yaw_pid")
@@ -235,6 +233,7 @@ def test_admin_action_gate_evaluates_idle_default_and_live_exceptions() -> None:
 
     assert tuning_eval["allowed"] is False
     assert tuning_eval["reason"] == "Short Yaw PID requires the system to be idle"
+    # status-admin toggles allowed in any heartbeat when enforced.
     assert status_eval["allowed"] is True
 
 

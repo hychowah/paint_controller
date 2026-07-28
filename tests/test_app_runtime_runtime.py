@@ -74,7 +74,6 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
             "control_processor": _ControlProcessorRecorder(),
             "admin_action_gate": object(),
             "manual_command_handler": object(),
-            "device_action_handler": object(),
             "recording_actions": object(),
             "teensy_actions": object(),
             "system_actions": object(),

@@ -77,7 +77,7 @@ Item {
                         actionKey: "status.teensy_relay"
                         legalityModel: actionLegality
                         
-                        onClicked: deviceActionHandler.toggleTeensyRelay()
+                        onClicked: teensyActions.toggleTeensyRelay()
                     }
                     
                     // Teensy Enable Control
@@ -91,7 +91,7 @@ Item {
                         actionKey: "status.teensy_enable"
                         legalityModel: actionLegality
                         
-                        onClicked: deviceActionHandler.toggleTeensyEnable()
+                        onClicked: teensyActions.toggleTeensyEnable()
                     }
                 }
             }
@@ -152,7 +152,7 @@ Item {
                         actionKey: "status.winch_enable"
                         legalityModel: actionLegality
                         
-                        onClicked: deviceActionHandler.toggleWinchEnable()
+                        onClicked: winchActions.toggleWinchEnable()
                     }
                     
                     // Winch Load Detection Control
@@ -563,7 +563,7 @@ Item {
                         iconType: "reset"
                         
                         onClicked: {
-                            if (deviceActionHandler.homeTopRail()) {
+                            if (teensyActions.homeTopRail()) {
                                 showFeedback()
                             }
                         }
@@ -577,7 +577,7 @@ Item {
                         iconType: "reset"
 
                         onClicked: {
-                            if (deviceActionHandler.homeArm()) {
+                            if (teensyActions.homeArm()) {
                                 showFeedback()
                             }
                         }

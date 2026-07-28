@@ -11,7 +11,6 @@ from PySide6.QtQml import QQmlComponent
 from PySide6.QtQuick import QQuickImageProvider
 
 from paint_controller.core.settings import SettingsManager
-from paint_controller.core.state_store import StateStore
 
 
 class DynamicObject(QObject):
@@ -135,6 +134,7 @@ class FakeLauncherAdmin(QObject):
 
 
 class FakeBackend(QObject):
+    """Smoke stand-in for QtBridge (registered as qtBridge)."""
     showPopupRequested = Signal(str, str, str, int)
     closePopupRequested = Signal()
     toggleSidebarRequested = Signal()
@@ -144,6 +144,15 @@ class FakeBackend(QObject):
     emergency_triggered = Signal()
     frame_ready = Signal()
     status_updated = Signal()
+    display_message_changed = Signal(str)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._display_message = ""
+
+    @Property(str, notify=display_message_changed)
+    def display_message(self) -> str:
+        return self._display_message
 
 
 class FakeStreamHandler(QObject):
@@ -596,39 +605,6 @@ class FakeWheelActions(QObject):
         return True
 
 
-class FakeDeviceActionHandler(QObject):
-    @Slot(result=bool)
-    def toggleTeensyRelay(self) -> bool:
-        return True
-
-    @Slot(result=bool)
-    def toggleTeensyEnable(self) -> bool:
-        return True
-
-    @Slot(bool, result=bool)
-    def requestTeensyRelayEnabled(self, _enabled: bool) -> bool:
-        return True
-
-    @Slot(bool, result=bool)
-    def requestTeensyEnabled(self, _enabled: bool) -> bool:
-        return True
-
-    @Slot(result=bool)
-    def toggleWinchEnable(self) -> bool:
-        return True
-
-    @Slot(bool, result=bool)
-    def requestWinchEnabled(self, _enabled: bool) -> bool:
-        return True
-
-    @Slot(result=bool)
-    def homeTopRail(self) -> bool:
-        return True
-
-    @Slot(result=bool)
-    def homeArm(self) -> bool:
-        return True
-
 
 class FakeRecordingActions(QObject):
     @Slot(result=bool)
@@ -649,6 +625,30 @@ class FakeRecordingActions(QObject):
 
 
 class FakeTeensyActions(QObject):
+    @Slot(bool, result=bool)
+    def requestTeensyRelayEnabled(self, _enabled: bool) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def toggleTeensyRelay(self) -> bool:
+        return True
+
+    @Slot(bool, result=bool)
+    def requestTeensyEnabled(self, _enabled: bool) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def toggleTeensyEnable(self) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def homeTopRail(self) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def homeArm(self) -> bool:
+        return True
+
     @Slot(result=bool)
     def toggleStability(self) -> bool:
         return True
@@ -743,6 +743,14 @@ class FakeBaseTopViewActions(QObject):
 
 
 class FakeWinchActions(QObject):
+    @Slot(bool, result=bool)
+    def setEnabled(self, _enabled: bool) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def toggleWinchEnable(self) -> bool:
+        return True
+
     @Slot(int, int, result=bool)
     def moveIncrement(self, _length_mm: int, _speed_mm_s: int) -> bool:
         return True
@@ -1062,8 +1070,7 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
     )
 
     return {
-        "stateStore": StateStore(),
-        "backend": FakeBackend(),
+        "qtBridge": FakeBackend(),
         "shellState": FakeShellState(),
         "overlayHost": FakeOverlayHost(
             video_fullscreen_active=True,
@@ -1087,7 +1094,6 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
         "warningHandler": DynamicObject(active_warning=""),
         "wheelActions": FakeWheelActions(),
         "winchActions": FakeWinchActions(),
-        "deviceActionHandler": FakeDeviceActionHandler(),
         "recordingActions": FakeRecordingActions(),
         "teensyActions": FakeTeensyActions(),
         "systemActions": FakeSystemActions(),

@@ -72,7 +72,7 @@ Rectangle {
                                 onToggled: {
                                     // No revert needed: the switch never self-assigns,
                                     // so a rejected request leaves the binding intact.
-                                    deviceActionHandler.requestWinchEnabled(checked)
+                                    winchActions.setEnabled(checked)
                                 }
                         }
                     }

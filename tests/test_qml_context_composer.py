@@ -43,7 +43,6 @@ def _make_runtime() -> object:
             "workflow_editor": object(),
             "manual_command_handler": object(),
             "warning_handler": object(),
-            "device_action_handler": object(),
             "recording_actions": object(),
             "teensy_actions": object(),
             "system_actions": object(),
@@ -126,7 +125,7 @@ def test_composer_reuses_bundle_action_models() -> None:
     assert properties["winchActions"] is runtime.bundle.winch_actions
     assert properties["tuningActions"] is runtime.bundle.tuning_actions
     assert properties["baseTopViewActions"] is runtime.bundle.base_top_view_actions
-    assert properties["deviceActionHandler"] is runtime.bundle.device_action_handler
+    assert "deviceActionHandler" not in properties
     assert properties["overlayController"] is runtime.bundle.overlay_controller
     assert properties["warningHandler"] is runtime.bundle.warning_handler
 
@@ -135,8 +134,8 @@ def test_composer_reuses_runtime_level_objects() -> None:
     runtime = _make_runtime()
     properties = QmlContextComposer(runtime).compose()
 
-    assert properties["stateStore"] is runtime.state_store
-    assert properties["backend"] is runtime.qt_bridge
+    assert "stateStore" not in properties
+    assert properties["qtBridge"] is runtime.qt_bridge
     assert properties["shellState"] is runtime.shell_state
     assert properties["shellRouter"] is runtime.shell_router
     assert properties["overlayHost"] is runtime.overlay_host

@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-07-28 - TD-032 QML boundary close-out
+
+**Goal**: Close boundary retirement program — retire dual-owner `deviceActionHandler`, drop residual root globals, freeze contract.
+**Tried**: Folded power enable/relay/home into `teensyActions` / winch enable into `winchActions` (home stays ungated); QML call sites updated; deleted `device_actions.py`; `qtBridge.display_message` forwards StateStore; renamed context `backend`→`qtBridge`; removed `stateStore` root; smoke/factory/composer/catalog tests updated.
+**Result**: ✅ 62 passed focused band (device power, teensy actions, composer, catalog, factory, app_runtime, startup smokes, qml imports). Root expected names ~26. Program closed.
+**Files**: teensy/winch actions, controller_factory, qml_context_composer, qt_bridge, QML pages/overlays, tests, tech-debt, progress board, ARCHITECTURE.md
+
+---
 ### 2026-07-28 - System-control toggles unblocked; legality default off in dev
 
 **Goal**: System control menu toggles must work regardless of heartbeat; keep legality enforcement off by default until development finishes.

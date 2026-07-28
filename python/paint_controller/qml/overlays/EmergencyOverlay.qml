@@ -27,7 +27,7 @@ Item {
     
     // Connect to the backend signal with better state management
     Connections {
-        target: backend
+        target: qtBridge
         function onEmergency_overlay_changed(visible, currentDuration, targetDuration) {
             // Only change visibility if it's actually different
             if (visible !== root.shouldBeVisible) {

@@ -65,7 +65,7 @@ def test_capability_catalog_inventories_known_admin_mutators(monkeypatch, tmp_pa
     assert tuning["immediateRuntimeSideEffect"] is True
     assert tuning["legalStateClass"] == "tuning-calibration"
 
-    assert relay["authority"] == "deviceActionHandler.requestTeensyRelayEnabled"
+    assert relay["authority"] == "teensyActions.requestTeensyRelayEnabled"
     assert relay["primarySurface"] == "page:status"
 
     assert wheel_reset["authority"] == "wheelActions.resetPosition"

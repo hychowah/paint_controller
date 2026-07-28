@@ -35,7 +35,7 @@ Rectangle {
         
         // App message with improved typography
         Text {
-            text: stateStore.display_message || ""
+            text: qtBridge.display_message || ""
             color: CommonStyle.textPrimary
             font.family: CommonStyle.fontSans
             font.pixelSize: CommonStyle.shellMessageFont

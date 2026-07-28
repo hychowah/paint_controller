@@ -15,8 +15,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _EXPECTED_CONTEXT_PROPERTY_NAMES: tuple[str, ...] = (
-    "stateStore",
-    "backend",
+    "qtBridge",
     "shellState",
     "overlayHost",
     "actionLegality",
@@ -41,7 +40,6 @@ _EXPECTED_CONTEXT_PROPERTY_NAMES: tuple[str, ...] = (
     "baseTopViewActions",
     "baseTopViewStatus",
     "shellRouter",
-    "deviceActionHandler",
     "settingsManager",
 )
 
@@ -1159,8 +1157,7 @@ class QmlContextComposer:
         launcher_admin = _LauncherAdmin(bundle.ssh_controller)
 
         return {
-            "stateStore": runtime.state_store,
-            "backend": runtime.qt_bridge,
+            "qtBridge": runtime.qt_bridge,
             "shellState": runtime.shell_state,
             "overlayHost": runtime.overlay_host,
             "actionLegality": runtime.action_legality,
@@ -1180,7 +1177,6 @@ class QmlContextComposer:
             "launcherAdmin": launcher_admin,
             "overlayController": bundle.overlay_controller,
             "warningHandler": bundle.warning_handler,
-            "deviceActionHandler": bundle.device_action_handler,
             "winchActions": bundle.winch_actions,
             "tuningActions": bundle.tuning_actions,
             "baseTopViewActions": bundle.base_top_view_actions,

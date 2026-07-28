@@ -1,4 +1,4 @@
-"""Python-owned, feature-root action boundary for Teensy toggles."""
+"""Python-owned, feature-root action boundary for Teensy toggles and power."""
 
 from __future__ import annotations
 
@@ -8,12 +8,11 @@ from PySide6.QtCore import QObject, Signal, Slot
 
 
 class TeensyActions(QObject):
-    """Own Teensy feature toggles initiated from QML.
+    """Own Teensy feature toggles and power/home actions initiated from QML.
 
-    This model absorbs the Teensy toggle policy previously held by
-    ``DeviceOperationsHandler`` so that QML accesses stability, yaw, leveling,
-    and LED/lidar controls through a single feature-root object rather than a
-    handler-shaped global.
+    Feature toggles (stability, yaw, LED, …) stay ungated as today.
+    Power enable/relay use AdminActionGate (TD-032, absorbed from DeviceActionHandler).
+    Home rails stay ungated for field parity with the former handler.
     """
 
     operation_result = Signal(bool, str)
@@ -22,11 +21,65 @@ class TeensyActions(QObject):
         self,
         teensy: Any,
         logger: Any,
+        admin_action_gate: Any = None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._teensy = teensy
         self._logger = logger
+        self._admin_action_gate = admin_action_gate
+
+    # --- Power / enable (gated) ---
+
+    @Slot(bool, result=bool)
+    def requestTeensyRelayEnabled(self, enabled: bool) -> bool:
+        return self._run_action(
+            action_key="status.teensy_relay",
+            name="Teensy relay",
+            controller=self._teensy,
+            method_name="setRelayEnabled",
+            args=(enabled,),
+        )
+
+    @Slot(result=bool)
+    def toggleTeensyRelay(self) -> bool:
+        return self.requestTeensyRelayEnabled(not self._teensy_status_flag("relay_on"))
+
+    @Slot(bool, result=bool)
+    def requestTeensyEnabled(self, enabled: bool) -> bool:
+        return self._run_action(
+            action_key="status.teensy_enable",
+            name="Teensy enable",
+            controller=self._teensy,
+            method_name="setEnabled",
+            args=(enabled,),
+        )
+
+    @Slot(result=bool)
+    def toggleTeensyEnable(self) -> bool:
+        return self.requestTeensyEnabled(not self._teensy_status_flag("enabled"))
+
+    # --- Home rails (ungated; field parity with DeviceActionHandler) ---
+
+    @Slot(result=bool)
+    def homeTopRail(self) -> bool:
+        return self._run_action(
+            name="Home top rail",
+            controller=self._teensy,
+            method_name="homeTopRail",
+            args=(True,),
+        )
+
+    @Slot(result=bool)
+    def homeArm(self) -> bool:
+        return self._run_action(
+            name="Home arm rail",
+            controller=self._teensy,
+            method_name="homeArm",
+            args=(True,),
+        )
+
+    # --- Feature toggles (ungated) ---
 
     @Slot(result=bool)
     def toggleStability(self) -> bool:
@@ -101,7 +154,15 @@ class TeensyActions(QObject):
         controller: Any,
         method_name: str,
         args: tuple[Any, ...] = (),
+        action_key: str | None = None,
     ) -> bool:
+        if action_key is not None:
+            if self._admin_action_gate is None:
+                return self._fail(f"{name} gate is unavailable")
+            allowed, reason = self._admin_action_gate.check_action(action_key)
+            if not allowed:
+                return self._fail(reason)
+
         if controller is None:
             return self._fail(f"{name} is unavailable")
 

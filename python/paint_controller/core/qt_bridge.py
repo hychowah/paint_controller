@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import QMetaObject, QObject, Signal, Slot
+from PySide6.QtCore import Property, QMetaObject, QObject, Signal, Slot
 
 
 class QtBridge(QObject):
@@ -14,6 +14,7 @@ class QtBridge(QObject):
     emergency_overlay_changed = Signal(bool, float, float)  # visible, current_duration, target_duration
     emergency_triggered = Signal()
     status_updated = Signal()
+    display_message_changed = Signal(str)
 
     # QML-bound signals (consumed by Connections {} in MainWindow.qml)
     showPopupRequested = Signal(str, str, str, int)  # title, message, type, delay
@@ -35,6 +36,14 @@ class QtBridge(QObject):
         self._logger = logger
         self._base_top_view_service: Any | None = None
         self._input_handler: Any | None = None
+        # Forward StateStore status line for TopBar (TD-032: retire stateStore root).
+        store_signal = getattr(state_store, "display_message_changed", None)
+        if callable(getattr(store_signal, "connect", None)):
+            store_signal.connect(self.display_message_changed.emit)
+
+    @Property(str, notify=display_message_changed)
+    def display_message(self) -> str:
+        return str(getattr(self._state_store, "display_message", "") or "")
 
     def set_base_top_view_service(self, service: Any) -> None:
         """Set after factory creates controllers (deferred wiring)."""
