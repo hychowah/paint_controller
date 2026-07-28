@@ -16,6 +16,7 @@ ROS 2 + PySide6/QML control application for the paint robot.
 - Latest verified local validation on 2026-07-23 is green at `269 passed` via `python/paint_controller/venv/bin/python -m pytest tests -q`.
 - Most recent focused validation is green at `10 passed` for `tests/test_startup_smoke_home.py`, `tests/test_startup_smoke_shell.py`, and `tests/test_qml_imports.py`, with the workflow-editor import follow-up green at `2 passed` for `tests/test_startup_smoke_workflow_editor.py` and `tests/test_qml_imports.py`.
 - For authority and session-start order: use `INDEX.md` first, prefer `DEVNOTES.md` for the latest verified runtime state, use `docs/plan/00_ARCHITECTURE_PROGRESS.md` for live next-step guidance, and use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable rationale.
+- For a human-oriented map of packages, ownership, and the QML↔Python contract: see [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ## Prerequisites
 

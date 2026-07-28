@@ -21,12 +21,13 @@ ROS2 node with PySide6/QML UI for robotic paint control on a Steam Deck. The liv
 Read in this order at the start of any session:
 
 1. **`INDEX.md`** (this file) — repo map and orientation
-2. **`AGENTS.md`** — workflow rules, planning process, stop-and-ask triggers, and the Kimi CLI tool mapping (when to use plan mode, `TodoList`, subagents, etc.)
-3. **`KNOWLEDGE.md`** — gotchas, patterns, anti-patterns. Check before debugging.
-4. **`DEVNOTES.md`** — recent session notes and validation results
-5. **`docs/plan/00_ARCHITECTURE_PROGRESS.md`** — current roadmap status, completed slices, next recommended slice
-6. **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** — durable architecture rationale, invariants, anti-goals, and historical completion context
-7. **`docs/tech-debt.md`** — known debt items with priority and effort (check before starting new work)
+2. **`ARCHITECTURE.md`** — human-oriented program structure (packages, ownership, QML↔Python contract, how to extend)
+3. **`AGENTS.md`** — workflow rules, planning process, stop-and-ask triggers, and the Kimi CLI tool mapping (when to use plan mode, `TodoList`, subagents, etc.)
+4. **`KNOWLEDGE.md`** — gotchas, patterns, anti-patterns. Check before debugging.
+5. **`DEVNOTES.md`** — recent session notes and validation results
+6. **`docs/plan/00_ARCHITECTURE_PROGRESS.md`** — current roadmap status, completed slices, next recommended slice
+7. **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** — durable architecture rationale, invariants, anti-goals, and historical completion context
+8. **`docs/tech-debt.md`** — known debt items with priority and effort (check before starting new work)
 
 ---
 
@@ -40,8 +41,9 @@ When two files disagree, prefer the file higher in this list:
 | 2 | `docs/plan/00_ARCHITECTURE_PROGRESS.md` | Current live architecture board and execution order |
 | 3 | `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` | Durable architecture rationale and historical context |
 | 4 | `docs/tech-debt.md` | Known debt items, priorities, effort |
-| 5 | `KNOWLEDGE.md` | Reusable patterns and gotchas |
-| 6 | `README.md` | Operator/developer entry point |
+| 5 | `ARCHITECTURE.md` | Human map of program structure and ownership (describe reality; not the live execution board) |
+| 6 | `KNOWLEDGE.md` | Reusable patterns and gotchas |
+| 7 | `README.md` | Operator/developer entry point |
 
 ---
 
@@ -50,6 +52,7 @@ When two files disagree, prefer the file higher in this list:
 ```
 paint_controller_ros2/
 │
+├── ARCHITECTURE.md                # Human-oriented program structure guide
 ├── python/paint_controller/       # Main Python application
 │   ├── core/                      # Application bootstrap, ROS node, Qt bridge, state, settings
 │   ├── controllers/               # Hardware controllers (ESP32, Teensy, winch, wheel, etc.)
@@ -89,6 +92,7 @@ paint_controller_ros2/
 │
 ├── AGENTS.md                      # Workflow rules for all LLM agents (canonical)
 ├── INDEX.md                       # This file — repo map and session-start guide
+├── ARCHITECTURE.md                # Program structure: packages, contracts, how to extend
 ├── KNOWLEDGE.md                   # Extracted reusable patterns and gotchas
 ├── DEVNOTES.md                    # Rolling 90-day session notes
 ├── PLANNING.md                    # Active task scratch (temporary, delete before merge)
