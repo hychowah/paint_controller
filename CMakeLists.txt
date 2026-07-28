@@ -4,16 +4,9 @@ project(paint_controller_ros2)
 # find dependencies
 find_package(ament_cmake REQUIRED)
 
-# Install directories
-install(DIRECTORY
-  python/paint_controller/qml/
-  DESTINATION share/${PROJECT_NAME}/qml
-)
-
-install(DIRECTORY
-  resource/
-  DESTINATION share/${PROJECT_NAME}/resource
-)
+# Intentionally installs no payload: the app runs from the source tree
+# (bash launcher + venv), and nothing reads share/${PROJECT_NAME}/.
+# Do not re-add install() stanzas without a real install-space consumer.
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

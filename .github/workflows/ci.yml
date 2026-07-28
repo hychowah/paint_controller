@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [refactor, dev-cpp, main]
+    branches: [dev, refactor, dev-cpp, main]
   pull_request:
-    branches: [refactor, dev-cpp, main]
+    branches: [dev, refactor, dev-cpp, main]
 
 jobs:
   lint:
@@ -86,7 +86,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: osrf/ros:jazzy-desktop
-    needs: lint
+    # No `needs:` — the colcon gate must run even while lint is red (TD-034).
     steps:
       - uses: actions/checkout@v4
         with:

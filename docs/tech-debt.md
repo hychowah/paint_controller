@@ -98,6 +98,26 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 
 ---
 
+### TD-044 — Ruff lint debt on `dev` (1965 check errors, 111 format failures)
+**Area**: Tooling / CI
+**Priority**: medium
+**Effort**: medium
+**Why it matters**: Surfaced 2026-07-27 by TD-034: the CI `lint` job (ruff check + ruff format --check on `python/` and `tests/`) is red on `dev` — 1965 check errors (mostly W293 blank-line-with-whitespace, UP006, W292, I001, F401) and 111 files failing the format check. It was invisible because CI never ran on `dev`. Until fixed, the lint job is normalized-red and `typecheck`/`test` stay blocked behind `needs: lint`.
+**What to do**: Bulk-fix mechanically (`ruff check --fix` + `ruff format`) in one dedicated commit with no behavior changes, then keep the job green. Coordinate with open branches to avoid merge pain.
+**Files**: `pyproject.toml` (ruff config), `python/`, `tests/`, `.github/workflows/ci.yml`
+
+---
+
+### TD-045 — CI test/typecheck jobs missing system dependencies
+**Area**: Tooling / CI
+**Priority**: medium
+**Effort**: low
+**Why it matters**: Surfaced 2026-07-27 by TD-034: the CI `test` and `typecheck` jobs pip-install `python/paint_controller/requirements.txt`, which includes `PyGObject` — source-only (no binary wheels), needing girepository/cairo dev headers the runner lacks; PySide6 also needs Qt runtime libs (`libegl1`, `libxkbcommon`, …). The jobs have zero apt steps, so they will fail on a clean runner now that CI triggers on `dev`.
+**What to do**: Add an apt step (girepository/cairo dev headers, Qt runtime libs) to both jobs, or trim `requirements.txt` for CI; verify green on a real runner.
+**Files**: `.github/workflows/ci.yml`, `python/paint_controller/requirements.txt`
+
+---
+
 ### TD-002 — Design system incomplete (systemcontrol/video remainder, pages)
 **Area**: QML UI
 **Priority**: low
@@ -152,6 +172,7 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 
 | ID | Title | Resolved | Notes |
 |---|---|---|---|
+| TD-034 | colcon build broken; packaging gate normalized-red | 2026-07-27 | Removed both dead install stanzas from `CMakeLists.txt` (app runs from source tree; zero install-space consumers, verified workspace-wide), deleted stale `setup.cfg`, added `dev` CI trigger, decoupled `build` job from red `lint`; colcon build green locally (2 packages finished) |
 | TD-031 | Narrowed QML structural rebuild | 2026-04-24 | Completed with an explicit page registry, dedicated `qml/features/systemcontrol/` and `qml/features/video/` roots, and canonical `qml/theme/CommonStyle.qml` ownership. Focused smoke coverage now includes the shell, multiscreen window, navigation contract, systemcontrol feature root, and video feature root. Compatibility wrappers remain intentionally at the old overlay/core paths to keep imports stable while low-priority cleanup stays backlog-only |
 | TD-001 | QML structural flatten + `required` properties not enforced | 2026-04-22 | Stage 1 complete: verified-dead QML deleted, false shared folders flattened, constructor-driven surfaces hardened with `required` / `readonly`, startup smoke now covers the `MultiScreenListUI` path through `tests/test_startup_smoke_shell.py`, and warn-only `qmllint` CI was added. Remaining no-`required` files were classified as global-context, imperative, style-singleton, or otherwise non-constructor-driven surfaces rather than unfinished Stage 1 work |
 | — | `qmlRegisterSingletonInstance` crashes | 2026-04-17 | Replaced with `setContextProperty` — see KNOWLEDGE.md |
