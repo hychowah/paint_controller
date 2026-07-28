@@ -177,6 +177,7 @@ def create_controllers(
     admin_action_gate = AdminActionGate(
         capability_catalog=capability_catalog,
         state_store=state_store,
+        settings_manager=settings_manager,
     )
 
     manual_command_handler = ManualCommandHandler(

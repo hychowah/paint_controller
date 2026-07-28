@@ -73,14 +73,25 @@ class AdminActionGate(QObject):
 
     gate_state_changed = Signal()
 
-    def __init__(self, capability_catalog: Any, state_store: Any, parent: QObject | None = None) -> None:
+    def __init__(
+        self,
+        capability_catalog: Any,
+        state_store: Any,
+        settings_manager: Any = None,
+        parent: QObject | None = None,
+    ) -> None:
         super().__init__(parent)
         self._capability_catalog = capability_catalog
         self._state_store = state_store
+        self._settings_manager = settings_manager
 
         state_signal = getattr(state_store, "controller_heartbeat_state_changed", None)
         if callable(getattr(state_signal, "connect", None)):
             state_signal.connect(lambda *_args, **_kwargs: self.gate_state_changed.emit())
+
+        enforcement_signal = getattr(settings_manager, "action_legality_enforced_changed", None)
+        if callable(getattr(enforcement_signal, "connect", None)):
+            enforcement_signal.connect(lambda *_args, **_kwargs: self.gate_state_changed.emit())
 
     @Property(int, notify=gate_state_changed)
     def heartbeatState(self) -> int:
@@ -99,6 +110,20 @@ class AdminActionGate(QObject):
             (HeartbeatStatus.IDLE.value,),
         )
         heartbeat_state = self._heartbeat_state()
+
+        if not self._enforcement_enabled():
+            # Development bypass (settings action_legality_enforced=false):
+            # everything is allowed; the heartbeat state is still reported.
+            return {
+                "actionKey": action_key,
+                "allowed": True,
+                "reason": "",
+                "heartbeatState": heartbeat_state,
+                "title": metadata.get("title", action_key),
+                "legalStateClass": legal_state_class,
+                "allowedHeartbeatStates": list(allowed_states),
+            }
+
         allowed = heartbeat_state in allowed_states
 
         evaluation = {
@@ -118,6 +143,12 @@ class AdminActionGate(QObject):
 
     def _heartbeat_state(self) -> int:
         return int(getattr(self._state_store, "controller_heartbeat_state", HeartbeatStatus.IDLE.value))
+
+    def _enforcement_enabled(self) -> bool:
+        """Read the development bypass flag (enforced unless explicitly disabled)."""
+        if self._settings_manager is None:
+            return True
+        return bool(self._settings_manager.get("action_legality_enforced", True))
 
     def _action_metadata(self, action_key: str) -> dict[str, Any]:
         metadata: dict[str, Any] = {}

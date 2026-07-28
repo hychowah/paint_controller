@@ -242,6 +242,12 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "type": "list",
         "requires_restart": False,
         "description": "Base top view source trapezoid points (normalized coordinates)"
+    },
+    "action_legality_enforced": {
+        "default": True,
+        "type": "bool",
+        "requires_restart": False,
+        "description": "Enforce heartbeat-state action legality gate (set false only for development testing)"
     }
 }
 
@@ -301,6 +307,7 @@ class SettingsManager(QObject):
     base_top_view_k3_changed, base_top_view_k3 = _make_setting_pair("base_top_view_k3")
     base_top_view_k4_changed, base_top_view_k4 = _make_setting_pair("base_top_view_k4")
     base_top_view_src_points_changed, base_top_view_src_points = _make_setting_pair("base_top_view_src_points")
+    action_legality_enforced_changed, action_legality_enforced = _make_setting_pair("action_legality_enforced")
 
     # Generic signals
     setting_changed = Signal(str, object)
