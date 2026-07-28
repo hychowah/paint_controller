@@ -49,11 +49,33 @@ class ImageProvider(QQuickImageProvider):
     def __init__(self, camera_type: CameraType, width: int = 640, height: int = 480):
         super().__init__(QQuickImageProvider.Image)
         self.camera_type = camera_type
-        self.image = QImage(width, height, QImage.Format_RGB888)
+        self._default_width = max(int(width), 1)
+        self._default_height = max(int(height), 1)
+        self.image = QImage(self._default_width, self._default_height, QImage.Format_RGB888)
+        self.image.fill(0)
         self._image_lock = QMutex()  # ✅ Thread-safe Qt mutex for concurrent access
+
+    def _black_placeholder(self) -> QImage:
+        """Return a non-null black frame safe for QML requestImage."""
+        width = self._default_width
+        height = self._default_height
+        if self.image is not None and not self.image.isNull():
+            width = max(self.image.width(), 1)
+            height = max(self.image.height(), 1)
+        placeholder = QImage(width, height, QImage.Format_RGB888)
+        placeholder.fill(0)
+        return placeholder
+
+    def clear_to_placeholder(self) -> None:
+        """Replace the current frame with a black placeholder under the provider lock."""
+        locker = QMutexLocker(self._image_lock)
+        self.image = self._black_placeholder()
 
     def requestImage(self, id, size, requestedSize):
         locker = QMutexLocker(self._image_lock)
+        # Never return None: render thread may call during stream cleanup.
+        if self.image is None or self.image.isNull():
+            return self._black_placeholder()
         # Return a deep copy to prevent external modifications
         return self.image.copy()
 
@@ -211,8 +233,9 @@ class CameraStream(QObject):
                     pass
                 self.pipeline = None
             
-            if self.image_provider:
-                self.image_provider.image = None
+            if self.image_provider is not None:
+                # Keep a locked black placeholder so requestImage never hits None.copy().
+                self.image_provider.clear_to_placeholder()
             
             logger.info("Cleaned up stream for %s", self.config.name)
             

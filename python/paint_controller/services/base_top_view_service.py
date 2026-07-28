@@ -7,7 +7,17 @@ import cv2
 import numpy as np
 import json
 import os
-from PySide6.QtCore import QObject, Signal, QMutex, QMutexLocker, QThread, Slot, Property
+from PySide6.QtCore import (
+    QObject,
+    Signal,
+    QMutex,
+    QMutexLocker,
+    QThread,
+    QTimer,
+    Qt,
+    Slot,
+    Property,
+)
 from PySide6.QtGui import QImage
 from PySide6.QtQuick import QQuickImageProvider
 from typing import Optional, List
@@ -342,6 +352,18 @@ class BaseTopViewWorker(QObject):
         self._initialized = False
         self.logger = logging.getLogger(__name__)
     
+    @Slot()
+    def recompute_maps(self) -> None:
+        """Recompute undistortion maps on the worker thread only (TD-039)."""
+        if not self._initialized:
+            return
+        if getattr(self.transformer, "_input_width", 0) <= 0:
+            return
+        try:
+            self.transformer._compute_remap_tables()
+        except Exception as e:
+            self.logger.error(f"Error recomputing distortion maps: {e}")
+    
     @Slot(object, QImage)
     def process_frame(self, camera_type: CameraType, qimage: QImage):
         """
@@ -409,6 +431,8 @@ class BaseTopViewService(QObject):
     """Main service for base top view integration"""
     
     frameReady = Signal()
+    # Internal: service (GUI) → worker (queued) map recompute request.
+    mapsRecomputeRequested = Signal()
     
     # Parameter change signals
     zoomChanged = Signal(float)
@@ -445,6 +469,11 @@ class BaseTopViewService(QObject):
         
         # Connect signals
         self.worker.frameReady.connect(self.frameReady.emit)
+        # GUI → worker: queue map recompute so map1/map2 writes never race remap.
+        self.mapsRecomputeRequested.connect(
+            self.worker.recompute_maps,
+            Qt.QueuedConnection,
+        )
         
         # Store reference to BASE_TOP camera stream but don't connect yet
         self._base_top_stream = video_handler.camera_streams.get(CameraType.BASE_TOP)
@@ -452,6 +481,11 @@ class BaseTopViewService(QObject):
             self.logger.info("Base top view service found BASE_TOP camera stream")
         else:
             self.logger.warning("BASE_TOP camera stream not found")
+        
+        # Coalesce rapid calibration slider updates onto one queued worker recompute.
+        self._map_recompute_timer = QTimer(self)
+        self._map_recompute_timer.setSingleShot(True)
+        self._map_recompute_timer.timeout.connect(self._flush_map_recompute)
         
         # Start thread
         self.worker_thread.start()
@@ -514,6 +548,8 @@ class BaseTopViewService(QObject):
         try:
             self.logger.info("Stopping base top view worker thread...")
             self._enabled = False
+            if hasattr(self, "_map_recompute_timer") and self._map_recompute_timer is not None:
+                self._map_recompute_timer.stop()
             if self._base_top_stream is not None and self._frame_ready_connected:
                 try:
                     self._base_top_stream.frameReady.disconnect(self.worker.process_frame)
@@ -600,10 +636,9 @@ class BaseTopViewService(QObject):
     @k1.setter
     def k1(self, value: float):
         if self.worker.transformer.k1 != value:
+            # Only update the scalar; worker recompute rebuilds dist_coeffs/maps.
             self.worker.transformer.k1 = value
-            # Reinitialize distortion maps with new k1
             if self.worker._initialized:
-                self.worker.transformer.dist_coeffs[0] = value
                 self._reinitialize_maps()
             self.k1Changed.emit(value)
     
@@ -615,9 +650,7 @@ class BaseTopViewService(QObject):
     def k2(self, value: float):
         if self.worker.transformer.k2 != value:
             self.worker.transformer.k2 = value
-            # Reinitialize distortion maps with new k2
             if self.worker._initialized:
-                self.worker.transformer.dist_coeffs[1] = value
                 self._reinitialize_maps()
             self.k2Changed.emit(value)
     
@@ -629,9 +662,7 @@ class BaseTopViewService(QObject):
     def k3(self, value: float):
         if self.worker.transformer.k3 != value:
             self.worker.transformer.k3 = value
-            # Reinitialize distortion maps with new k3
             if self.worker._initialized:
-                self.worker.transformer.dist_coeffs[2] = value
                 self._reinitialize_maps()
             self.k3Changed.emit(value)
     
@@ -643,20 +674,25 @@ class BaseTopViewService(QObject):
     def k4(self, value: float):
         if self.worker.transformer.k4 != value:
             self.worker.transformer.k4 = value
-            # Reinitialize distortion maps with new k4
             if self.worker._initialized:
-                self.worker.transformer.dist_coeffs[3] = value
                 self._reinitialize_maps()
             self.k4Changed.emit(value)
     
     def _reinitialize_maps(self):
-        """Reinitialize undistortion maps when distortion coefficients change"""
+        """Coalesce and queue undistortion-map recompute onto the worker (TD-039).
+
+        Never calls ``_compute_remap_tables`` on the GUI thread — the worker
+        owns map1/map2 writes so they never race with ``cv2.remap``.
+        """
+        # Restarting a 0ms single-shot timer collapses rapid slider events.
+        self._map_recompute_timer.start(0)
+
+    def _flush_map_recompute(self) -> None:
+        """Emit the queued worker recompute after coalescing."""
         try:
-            transformer = self.worker.transformer
-            if hasattr(transformer, '_input_width'):
-                transformer._compute_remap_tables()
+            self.mapsRecomputeRequested.emit()
         except Exception as e:
-            self.logger.error(f"Error reinitializing distortion maps: {e}")
+            self.logger.error(f"Error requesting distortion map recompute: {e}")
     
     @Slot()
     def resetToDefaults(self):

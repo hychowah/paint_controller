@@ -51,6 +51,7 @@ class _StateStoreRecorderForWiring:
     def __init__(self) -> None:
         self.control_mode_changed = _SignalRecorderForWiring()
         self.control_mode = "ef"
+        self.display_message = ""
 
 
 class _SignalRecorderForWiring:
@@ -105,6 +106,36 @@ def test_wire_connects_emergency_and_video_signals() -> None:
     assert len(runtime.bundle.emergency_handler.emergency_triggered.connections) == 1
     assert len(runtime.video_stream_handler.endEffectorFrameReady.connections) == 1
     assert len(runtime.bundle.wheel_controller.error_state_changed.connections) == 1
+
+
+def test_wire_without_ros_thread_stays_valid() -> None:
+    """TD-039: fixtures may omit ros_thread; wiring must remain null-safe."""
+    runtime = _make_runtime()
+    assert not hasattr(runtime, "ros_thread") or runtime.ros_thread is None
+    SignalWiring(runtime).wire()
+
+
+def test_wire_connects_ros_thread_error_to_display_message(qt_app) -> None:
+    """TD-039: RosThread.error_occurred surfaces on StateStore.display_message."""
+    from PySide6.QtCore import QObject, Signal
+
+    class _FakeRosThread(QObject):
+        error_occurred = Signal(str)
+
+    runtime = _make_runtime()
+    runtime.ros_thread = _FakeRosThread()
+    wiring = SignalWiring(runtime)
+    wiring.wire()
+
+    runtime.ros_thread.error_occurred.emit("spin failed once")
+    qt_app.processEvents()
+
+    assert runtime.state_store.display_message == "ROS: spin failed once"
+
+    # Identical text is suppressed by the wiring throttle/dedupe.
+    runtime.ros_thread.error_occurred.emit("spin failed once")
+    qt_app.processEvents()
+    assert runtime.state_store.display_message == "ROS: spin failed once"
 
 
 def test_wire_connects_video_top_bar_requests() -> None:

@@ -1,6 +1,24 @@
 # Development Notes
 
 ---
+### 2026-07-28 - TD-039 concurrency loose ends
+
+**Goal**: Close the four TD-039 concurrency items (BaseTopView map race, ROS error consumer, Steam Deck in-lock emit, CameraStream null image cleanup).
+**Issues**: GUI `_reinitialize_maps` wrote `map1`/`map2` while worker `cv2.remap` ran; k setters also wrote `dist_coeffs` in-place from GUI; `CameraStream.cleanup` set `image=None` unlocked; `button_held` emitted under non-recursive mutex; `RosThread.error_occurred` unwired and spin bookkeeping dead.
+**Tried**: Worker-owned recompute via service `mapsRecomputeRequested` → `QueuedConnection` to `worker.recompute_maps`, coalesced with 0ms single-shot `QTimer`; k setters only set floats; image provider black placeholder under lock + defensive `requestImage`; hold signals collected then emitted after unlock; ROS errors → throttled `display_message`; deleted `_last_spin_time`/`_spin_timeout`.
+**Result**: ✅ Focused band 19 passed: `tests/test_video_stream.py tests/test_base_top_view_service.py tests/test_steam_deck_handler.py tests/test_signal_wiring.py`. Residual accepted: GUI scalar float writes while worker reads (low risk vs map tables).
+**Files**: `python/paint_controller/services/base_top_view_service.py`, `python/paint_controller/services/video_stream.py`, `python/paint_controller/handlers/steam_deck.py`, `python/paint_controller/core/ros_node.py`, `python/paint_controller/core/signal_wiring.py`, `tests/test_video_stream.py`, `tests/test_base_top_view_service.py`, `tests/test_steam_deck_handler.py`, `tests/test_signal_wiring.py`, `docs/tech-debt.md`
+
+---
+### 2026-07-28 - Tech debt re-prioritisation (program-side architecture review)
+
+**Goal**: Fold multi-perspective architecture review insights into `docs/tech-debt.md` for a program-side FE+BE track (UI/UX and industrial HMI deferred).
+**Issues**: Active TDs were accurate but mostly `medium`; TD-032 still pointed at resolved TD-033; backend module-shape gaps (ControlProcessor, AppRuntime bag) and legality ship default were untracked; progress board "Next" soft-offered more retirement work past diminishing returns.
+**Tried**: Revalidated diagnoses against the live tree; rewrote Active Debt with priority definition + architecture-leverage tags; program-track recommended order; TD-039 and TD-036 → high; TD-038 split into program-first vs UI-later; added TD-046 (teleop monolith / second command path) and TD-047 (AppRuntime service-locator surface); legality default folded into TD-036; fixed TD-032 close-out redirect; aligned `00_ARCHITECTURE_PROGRESS.md` Next/snapshot.
+**Result**: Docs only — no code or tests run. Tracker is the control plane for the next program slices.
+**Files**: `docs/tech-debt.md`, `docs/plan/00_ARCHITECTURE_PROGRESS.md`, `DEVNOTES.md`
+
+---
 ### 2026-07-24 22:30 - Phase 8: AppRuntime Wiring Extraction
 
 **Goal**: Execute Phase 8 of `docs/plan/MASTER_PLAN_QML_SURFACE_RETIREMENT.md`: keep `AppRuntime` as a thin composition root by moving QML context-property construction and signal wiring into focused helpers.

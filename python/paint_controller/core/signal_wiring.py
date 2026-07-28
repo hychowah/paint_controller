@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import TYPE_CHECKING, Any
 
 from PySide6.QtCore import QTimer, Qt
@@ -12,12 +13,17 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Throttle ROS thread error messages so varying spin errors do not thrash TopBar.
+_ROS_ERROR_DISPLAY_INTERVAL_S = 2.0
+
 
 class SignalWiring:
     """Owns Steam Deck callbacks, Qt signal routing, and timer startup."""
 
     def __init__(self, runtime: AppRuntime) -> None:
         self._runtime = runtime
+        self._last_ros_error_display_at = 0.0
+        self._last_ros_error_message = ""
 
     def wire(self) -> None:
         """Connect all runtime signals and Steam Deck button callbacks."""
@@ -62,6 +68,13 @@ class SignalWiring:
         )
         qt_bridge.status_updated.connect(self._on_status_tick)
 
+        ros_thread = getattr(runtime, "ros_thread", None)
+        if ros_thread is not None and hasattr(ros_thread, "error_occurred"):
+            ros_thread.error_occurred.connect(
+                self._on_ros_thread_error,
+                Qt.QueuedConnection,
+            )
+
         video_runtime.topBar.endEffectorVideoRequested.connect(
             lambda: overlay_host.set_video_fullscreen_source("image://ef_live/frame")
         )
@@ -76,6 +89,28 @@ class SignalWiring:
         )
 
         self._wire_steam_deck_callbacks()
+
+    def _on_ros_thread_error(self, message: str) -> None:
+        """Surface ROS spin/context failures without flooding the status bar."""
+        text = str(message or "").strip() or "unknown ROS error"
+        logger.error("ROS thread error: %s", text)
+
+        now = time.monotonic()
+        # Same text: StateStore also dedupes; skip re-entry noise.
+        if text == self._last_ros_error_message:
+            return
+        # Varying spin errors: throttle TopBar updates.
+        if (now - self._last_ros_error_display_at) < _ROS_ERROR_DISPLAY_INTERVAL_S:
+            return
+
+        runtime = self._runtime
+        state_store = runtime.state_store
+        if state_store is None:
+            return
+
+        self._last_ros_error_message = text
+        self._last_ros_error_display_at = now
+        state_store.display_message = f"ROS: {text}"
 
     def _wire_steam_deck_callbacks(self) -> None:
         runtime = self._runtime

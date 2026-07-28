@@ -521,6 +521,7 @@ class SteamDeckHandler(QObject):
             # Check hold callbacks
             hold_callbacks_to_execute = []
             progress_signals_to_emit = []
+            held_signals_to_emit = []
             
             for button, timing in self._button_state_timing.items():
                 current_state = self._input_state.get('buttons', {}).get(button, False)
@@ -540,8 +541,8 @@ class SteamDeckHandler(QObject):
                             if not self._button_hold_triggered[button].get(callback_id, False):
                                 hold_callbacks_to_execute.append((button, hold_callback, hold_duration))
                                 self._button_hold_triggered[button][callback_id] = True
-                                # Emit held signal
-                                self.button_held.emit(button, hold_duration)
+                                # Emit after unlock (emit-outside-lock / TD-039).
+                                held_signals_to_emit.append((button, hold_duration))
                             
                             # Check for progress updates
                             if hold_callback['update_during_hold']:
@@ -567,7 +568,10 @@ class SteamDeckHandler(QObject):
             except Exception as e:
                 logger.error("Error in hold callback for %s: %s", button, e)
         
-        # Emit progress signals
+        # Emit held/progress signals outside the mutex
+        for button, hold_duration in held_signals_to_emit:
+            self.button_held.emit(button, hold_duration)
+
         for button, current_duration, target_duration in progress_signals_to_emit:
             self.button_hold_progress.emit(button, current_duration, target_duration)
                 

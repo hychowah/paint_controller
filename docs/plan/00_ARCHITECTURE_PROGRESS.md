@@ -11,6 +11,7 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 - Overall status: in progress
 - Active architecture program: none — the QML surface retirement program (Phases 0–8) is closing per `docs/tech-debt.md` TD-032; the master plan doc was deleted 2026-07-27 and is recoverable from git history
 - Most recent completed slice: Phase 8 AppRuntime wiring extraction (`QmlContextComposer`, `SignalWiring`) on 2026-07-24
+- Debt tracker re-validated 2026-07-28 (program-side FE+BE review): priorities and gaps updated in `docs/tech-debt.md` (TD-039/TD-036 → high; TD-046/TD-047 added; program-track order published)
 - Core purpose: reduce global coupling, clarify ownership, shrink the app-scope QML contract, and make operator-visible behavior easier to trace
 - First-principles rule: success means fewer permanent app-scope QML reads and fewer equal-owner concepts, not wrapper proliferation
 - Last focused validation: `58 passed` for `tests/test_app_runtime_runtime.py tests/test_controller_factory_runtime.py tests/test_startup_smoke.py tests/test_startup_smoke_shell.py tests/test_startup_smoke_home.py tests/test_qml_imports.py tests/test_shell_router.py tests/test_qml_context_composer.py tests/test_signal_wiring.py` on 2026-07-24
@@ -24,7 +25,8 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 
 ### Next
 
-- Pick a higher-leverage retirement target or close the QML surface retirement program.
+- Close the QML surface retirement program per `docs/tech-debt.md` TD-032 (retire residual globals or formally freeze the real root-contract count; do not open new boundary phases).
+- Program-track order for remaining work lives in `docs/tech-debt.md` (TD-036 → TD-032 close-out → TD-038 structural → TD-037 …). TD-039 resolved 2026-07-28.
 
 ### Later
 

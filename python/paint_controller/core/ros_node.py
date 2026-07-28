@@ -60,8 +60,6 @@ class RosThread(QThread):
         self._running = False
         self._shutdown_requested = False
         self._lock = Lock()
-        self._last_spin_time = 0.0
-        self._spin_timeout = 5.0
 
     def run(self) -> None:
         try:
@@ -81,7 +79,6 @@ class RosThread(QThread):
                     continue
 
                 try:
-                    self._last_spin_time = time.time()
                     rclpy.spin_once(self.node, timeout_sec=0.05)
                 except Exception as spin_error:
                     self.error_occurred.emit(
