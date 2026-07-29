@@ -28,6 +28,7 @@
     "python/paint_controller/core/state_store.py",
     "python/paint_controller/models",
     "python/paint_controller/services/workflow",
+    "python/paint_controller/ports",
     "python/paint_controller/utils/steam_deck_hid.py"
   ]
 }

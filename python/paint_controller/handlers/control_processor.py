@@ -19,27 +19,27 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from PySide6.QtCore import Property, QObject, Signal
-from std_msgs.msg import Float32, Int32
 
 from paint_controller.handlers import wheel_travel_teleop, winch_teleop
 from paint_controller.utils.input import DeadzoneTracker
 
 if TYPE_CHECKING:
     from paint_controller.controllers.esp32_valve import ESP32ValveController
-    from paint_controller.controllers.teensy import TeensyController
     from paint_controller.controllers.wheel import WheelController
     from paint_controller.controllers.winch import WinchController
     from paint_controller.core.settings import SettingsManager
     from paint_controller.core.state_store import StateStore
     from paint_controller.handlers.heartbeat import UIHeartbeatHandler
     from paint_controller.models.joystick_selection import JoystickSelectionModel
+    from paint_controller.ports.teensy import SupportsTeensyTeleop
 
 logger = logging.getLogger(__name__)
 
-ControlMessageType = type[Float32] | type[Int32]
+# Value cast for EF stick modes (was ROS msg type on raw publishers).
+ValueCast = Literal["float", "int"]
 DisplayValue = str | float | tuple[float, float]
 
 
@@ -50,7 +50,7 @@ class ControlConfig:
     offset: float = 0
     min_value: float = float("-inf")
     max_value: float = float("inf")
-    msg_type: ControlMessageType = Float32
+    value_cast: ValueCast = "float"
     bidirectional: bool = False  # True for controls that support negative values (e.g., winch speed)
 
 
@@ -67,7 +67,7 @@ class ControlProcessor(QObject):
         self,
         wheel: WheelController,
         winch: WinchController,
-        teensy: TeensyController,
+        teensy: SupportsTeensyTeleop,
         esp32_valve: ESP32ValveController,
         selection_model: JoystickSelectionModel,
         heartbeat_handler: UIHeartbeatHandler,
@@ -222,7 +222,7 @@ class ControlProcessor(QObject):
                 min_interval=self.EF_TRIGGER_UPDATE_INTERVAL,
                 offset=self.EF_TRIGGER_OFFSET,
                 min_value=self.EF_TRIGGER_MIN_VALUE,
-                msg_type=Int32,
+                value_cast="int",
             ),
             "EF top rail": ControlConfig(scale=self.EF_RAIL_SCALE, min_interval=self.EF_RAIL_UPDATE_INTERVAL),
             "EF prop pwm": ControlConfig(
@@ -230,10 +230,10 @@ class ControlProcessor(QObject):
                 min_interval=self.EF_PWM_UPDATE_INTERVAL,
                 offset=self.EF_PWM_OFFSET,
                 min_value=self.EF_PWM_MIN_VALUE,
-                msg_type=Int32,
+                value_cast="int",
             ),
             "EF spray pitch": ControlConfig(
-                scale=self.EF_PITCH_SCALE, min_interval=self.EF_PITCH_UPDATE_INTERVAL, msg_type=Int32
+                scale=self.EF_PITCH_SCALE, min_interval=self.EF_PITCH_UPDATE_INTERVAL, value_cast="int"
             ),
             "EF Yaw Angle": ControlConfig(scale=self.EF_YAW_SCALE, min_interval=self.EF_YAW_UPDATE_INTERVAL),
             "EF Force": ControlConfig(scale=self.EF_FORCE_SCALE, min_interval=self.EF_FORCE_UPDATE_INTERVAL),
@@ -461,13 +461,12 @@ class ControlProcessor(QObject):
             logger.error("Error commanding track control (%s): %s", mode, e)
 
     def _process_joint_control(self, input_state: dict[str, Any], mode: str, stick: str) -> None:
-        """Handle prop joint specific control"""
+        """Handle prop joint specific control (left = +angle, right = −angle)."""
         config = self.controls[mode]
         command_angle = input_state[f"{stick}_stick"]["x"] * config.scale
-        msg = Float32(data=command_angle)
-        neg_msg = Float32(data=-command_angle)
-        self._teensy.prop_left_joint_pub.publish(msg)
-        self._teensy.prop_right_joint_pub.publish(neg_msg)
+        # TD-049: method ports only — preserve dual opposite-sign joint semantics.
+        self._teensy.setLeftPropJoint(command_angle)
+        self._teensy.setRightPropJoint(-command_angle)
 
         # Update current values
         if stick == "left":
@@ -516,13 +515,6 @@ class ControlProcessor(QObject):
         else:
             self.current_values["right_mode"] = mode
             self.current_values["right_value"] = command_angle
-
-    def _publish_value(self, value: float, publisher: Any, config: ControlConfig) -> None:
-        """Publish a value with proper typing"""
-        if config.msg_type == Int32:
-            value = int(value)
-        msg = config.msg_type(data=value)
-        publisher.publish(msg)
 
     def _process_valve_turn(self, input_state: dict[str, Any]) -> None:
         """Handle valve turn control using right analog trigger
@@ -632,21 +624,24 @@ class ControlProcessor(QObject):
             self.current_values["right_value"] = value
 
         if value >= config.min_value:
-            # Map modes to their publishers
-            publishers = {
-                "EF arm": self._teensy.ef_move_arm_rail_speed_pub,
-                "EF spray trigger": self._teensy.ef_spray_trigger_pub,
-                "EF top rail": self._teensy.ef_move_top_rail_speed_pub,
-                "EF prop pwm": [self._teensy.prop_left_pwm_pub, self._teensy.prop_right_pwm_pub],
-                "EF spray pitch": self._teensy.ef_spray_pitch_speed_pub,
-            }
+            # TD-049: Teensy method ports only (no raw *_pub from handlers).
+            if config.value_cast == "int":
+                command: float | int = int(value)
+            else:
+                command = float(value)
 
-            if publisher := publishers.get(mode):
-                if isinstance(publisher, list):
-                    for pub in publisher:
-                        self._publish_value(value, pub, config)
-                else:
-                    self._publish_value(value, publisher, config)
+            if mode == "EF arm":
+                self._teensy.setArmRailSpeed(float(command))
+            elif mode == "EF spray trigger":
+                self._teensy.setSprayTrigger(int(command))
+            elif mode == "EF top rail":
+                self._teensy.setTopRailSpeed(float(command))
+            elif mode == "EF prop pwm":
+                pwm = int(command)
+                self._teensy.setLeftPropPWM(pwm)
+                self._teensy.setRightPropPWM(pwm)
+            elif mode == "EF spray pitch":
+                self._teensy.setSprayPitchSpeed(int(command))
 
     def _process_control_with_dispatch(self, input_state: dict[str, Any], mode: str, stick: str) -> None:
         """Process control input using dispatch table

@@ -21,12 +21,12 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 | Rank | ID | Why |
 |---|---|---|
-| 1 | **TD-049** | Shared device ports beyond the workflow island |
-| 2 | **TD-042 / TD-043 / TD-051 / TD-041** | Hygiene (tests, dead state, cleanup inventory, docs) |
+| 1 | **TD-042 / TD-043 / TD-051 / TD-041** | Hygiene (tests, dead state, cleanup inventory, docs) |
 | — | **TD-054** | Runtime integrity: concurrent ROS publish + spin (schedule when touching ROS/teleop, or as a dedicated slice) |
 | — | **TD-052 / TD-053** | When touching tuning/commands or dual-surface overlays |
 | — | **TD-002 / TD-016** | Opportunistic chrome only; out of pure program track |
 | — | **TD-040 residual** | Optional: `video_stream` / `base_top_view_service` pyright include (deferred 2026-07-29) |
+| — | **TD-049** | Resolved 2026-07-29 (shared ports Teensy teleop+halt+workflow body; residual *Actions Any) |
 | — | **TD-050** | Resolved 2026-07-29 (public setters + require_ui_ports finalize; set-once not enforced) |
 | — | **TD-048** | Resolved 2026-07-29 (page/feature inject for actions/legality/settings/chrome) |
 | — | **TD-044 / TD-045 / TD-040** | Resolved 2026-07-29 (CI control plane) |
@@ -38,18 +38,6 @@ When the goal is **software architecture toward a professional Qt program** (not
 ---
 
 ## Active Debt
-
-### TD-049 — Device ports exist only for workflow; teleop/actions/safety bypass them
-**Area**: Backend / modularity
-**Priority**: medium
-**Effort**: medium–high (family-by-family)
-**Architecture leverage**: high
-**Why it matters**: Package import DAG is healthy (controllers stay leaf-like; models do not import controller modules). Interior contracts are uneven: `services/workflow/hardware.py` defines real ABCs + adapters (`ITeensyController` / `IWinchController`), but `*Actions` use `Any`, `SafetyCoordinator` binds concrete TYPE_CHECKING types, and `ControlProcessor` both calls controller methods **and** reaches raw Teensy publishers (`prop_*_pub`, `ef_*_pub`). Faking hardware or sharing halt/teleop/command surfaces requires three shapes.
-**What to do**: Promote a small shared ports module (or expand workflow ports into a shared location) covering halt + teleop + discrete command surfaces; adapters wrap existing controllers; migrate `ControlProcessor` off raw pubs first; keep `*Actions` as thin QObject shells over the same ports. Do **not** invent a mega-Backend or full Clean Architecture rewrite.
-**Acceptance**: At least one primary effector family (prefer Teensy teleop + halt) is consumed via a Protocol/ABC by both workflow adapters and teleop/safety; unit tests can fake that port without full Qt controller graphs; no new raw-pub reach from handlers.
-**Files**: `python/paint_controller/services/workflow/hardware.py`, `handlers/control_processor.py`, `handlers/safety_coordinator.py`, `models/*_actions.py`, `core/controller_factory.py`
-
----
 
 ### TD-051 — Bundle cleanup string-list drift and unparented composition timers
 **Area**: Backend / lifecycle
@@ -160,6 +148,7 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 | ID | Title | Resolved | Notes |
 |---|---|---|---|
+| TD-049 | Device ports exist only for workflow; teleop/actions/safety bypass them | 2026-07-29 | Shared `ports/` Protocols (Teensy teleop+halt+status+workflow body; winch/wheel/valve halt). ControlProcessor off raw Teensy pubs (method dispatch; dual-sign joints; int casts). SafetyCoordinator halt Protocols. Workflow adapter types body as `SupportsTeensyWorkflowBody` + gimbal→`setSprayGunPitchAngle`. FakeTeensy method-only + new EF mode tests. Residual: `*Actions` still `Any`+getattr; not TD-054 |
 | TD-050 | Two-phase collaborator injection and private-field wiring | 2026-07-29 | Public `SettingsManager.set_show_popup_fn` + `require_ui_ports`; `QtBridge.require_ui_ports`; `AppRuntime._finalize_ui_ports` before QML load; direct gate inject (no soft getattr); direct `workflow_editor.attach_runtime` (no hasattr). Set-once **not** enforced — overwrite-allowed setters + finalize non-None. Focused band green |
 | TD-048 | QML feature/page injection depth incomplete | 2026-07-29 | Inject-first for *Actions/legality/settings/chrome: PageWheel/Winch/Status/Tuning/Settings; SystemControl+DeviceControl dual-surface; VideoFullscreen base-top write path; TopBar/Emergency/Joystick/overlayController. Root bag still 26 names (retire last-consumer later). Smoke harnesses inject. Full suite 434 passed |
 | TD-044 | Ruff lint/format debt blocking CI | 2026-07-29 | `ruff format` + `ruff check --fix` + residual manual fixes; N815 ignored for Qt Signal/Property; ruff pinned `<0.17` in requirements-dev + CI. Local: check 0, format clean |

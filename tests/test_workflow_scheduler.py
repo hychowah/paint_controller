@@ -20,12 +20,14 @@ class StubValveController:
 
 
 class StubTeensyController:
+    """Implements SupportsTeensyWorkflowBody (production pitch-angle name)."""
+
     def __init__(self) -> None:
         self.gimbal_calls: list[tuple[float, float]] = []
         self.arm_distances: list[int] = []
         self.force_calls: list[tuple[float, float]] = []
 
-    def setSprayGunGimbalAngle(self, angle: float, speed: float) -> None:
+    def setSprayGunPitchAngle(self, angle: float, speed: float) -> None:
         self.gimbal_calls.append((angle, speed))
 
     def extendArm(self, distance: int) -> None:

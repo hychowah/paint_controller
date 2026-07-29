@@ -311,6 +311,69 @@ def test_process_input_reseeds_yaw_offset_when_selection_changes_but_yaw_remains
     assert teensy.yaw_commands == [21.0]
 
 
+# ---------------------------------------------------------------------------
+# EF teleop method ports (TD-049 — was raw Teensy pubs)
+# ---------------------------------------------------------------------------
+
+
+def test_joint_control_sends_opposite_signed_angles(qt_app) -> None:
+    """Left joint = +angle, right joint = −angle (hardware dual-sign semantics)."""
+    teensy = FakeTeensy()
+    cp = _make_cp(teensy=teensy)
+    stick_x = JOYSTICK_MAX * 0.5
+    cp._process_joint_control(_stick_state(lx=stick_x), "EF prop joint", "left")
+    expected = stick_x * cp.controls["EF prop joint"].scale
+    assert len(teensy.left_joint_commands) == 1
+    assert len(teensy.right_joint_commands) == 1
+    assert math.isclose(teensy.left_joint_commands[0], expected, rel_tol=1e-9)
+    assert math.isclose(teensy.right_joint_commands[0], -expected, rel_tol=1e-9)
+
+
+def test_ef_arm_stick_commands_arm_rail_speed(qt_app) -> None:
+    teensy = FakeTeensy()
+    cp = _make_cp(teensy=teensy)
+    cp._process_standard_control(_stick_state(ly=JOYSTICK_MAX), "EF arm", "left")
+    assert len(teensy.rail_speed_commands) == 1
+    assert teensy.rail_speed_commands[0] > 0
+
+
+def test_ef_top_rail_commands_top_rail_speed(qt_app) -> None:
+    teensy = FakeTeensy()
+    cp = _make_cp(teensy=teensy)
+    cp._process_standard_control(_stick_state(ly=JOYSTICK_MAX), "EF top rail", "left")
+    assert len(teensy.top_rail_speed_commands) == 1
+    assert teensy.top_rail_speed_commands[0] > 0
+
+
+def test_ef_spray_trigger_sends_int_trigger(qt_app) -> None:
+    teensy = FakeTeensy()
+    cp = _make_cp(teensy=teensy)
+    # value = y * scale + offset(1000); full stick clears min_value 1000
+    cp._process_standard_control(_stick_state(ly=JOYSTICK_MAX), "EF spray trigger", "left")
+    assert len(teensy.trigger_values) == 1
+    assert isinstance(teensy.trigger_values[0], int)
+    assert teensy.trigger_values[0] >= 1000
+
+
+def test_ef_prop_pwm_sends_same_int_to_both_props(qt_app) -> None:
+    teensy = FakeTeensy()
+    cp = _make_cp(teensy=teensy)
+    cp._process_standard_control(_stick_state(ly=JOYSTICK_MAX), "EF prop pwm", "left")
+    assert len(teensy.left_pwm_commands) == 1
+    assert len(teensy.right_pwm_commands) == 1
+    assert teensy.left_pwm_commands[0] == teensy.right_pwm_commands[0]
+    assert isinstance(teensy.left_pwm_commands[0], int)
+    assert teensy.left_pwm_commands[0] >= 1000
+
+
+def test_ef_spray_pitch_sends_int_pitch_speed(qt_app) -> None:
+    teensy = FakeTeensy()
+    cp = _make_cp(teensy=teensy)
+    cp._process_standard_control(_stick_state(ly=JOYSTICK_MAX), "EF spray pitch", "left")
+    assert len(teensy.pitch_speed_commands) == 1
+    assert isinstance(teensy.pitch_speed_commands[0], int)
+
+
 def test_winch_activation_gate_blocks_until_joystick_moved(qt_app) -> None:
     """Winch must NOT send commands until the joystick has been moved outside
     the deadzone at least once (prevents spurious commands on mode switch)."""

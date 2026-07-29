@@ -219,32 +219,22 @@ class FakeWinch:
         self.rpm_commands.append(value)
 
 
-class FakeTeensyPublisher:
-    """Minimal publisher double for Teensy topic publishers."""
-
-    def __init__(self) -> None:
-        self.published: list[Any] = []
-
-    def publish(self, msg: Any) -> None:
-        self.published.append(msg)
-
-
 class FakeTeensy:
-    """Minimal TeensyController double tracking every command."""
+    """Method-only TeensyController double for SupportsTeensyTeleop / halt (TD-049)."""
 
     def __init__(self) -> None:
-        self.prop_left_joint_pub = FakeTeensyPublisher()
-        self.prop_right_joint_pub = FakeTeensyPublisher()
-        self.ef_move_arm_rail_speed_pub = FakeTeensyPublisher()
-        self.ef_spray_trigger_pub = FakeTeensyPublisher()
-        self.ef_move_top_rail_speed_pub = FakeTeensyPublisher()
-        self.prop_left_pwm_pub = FakeTeensyPublisher()
-        self.prop_right_pwm_pub = FakeTeensyPublisher()
-        self.ef_spray_pitch_speed_pub = FakeTeensyPublisher()
         self.yaw_commands: list[float] = []
         self.rail_speed_commands: list[float] = []
+        self.top_rail_speed_commands: list[float] = []
         self.force_commands: list[tuple] = []
         self.trigger_values: list[int] = []
+        self.left_joint_commands: list[float] = []
+        self.right_joint_commands: list[float] = []
+        self.left_pwm_commands: list[int] = []
+        self.right_pwm_commands: list[int] = []
+        self.pitch_speed_commands: list[int] = []
+        self.pitch_angle_commands: list[tuple[float, float]] = []
+        self.arm_extend_distances: list[int] = []
         self._imu_yaw: float = 0.0
 
     def setYawAngle(self, angle: float) -> None:
@@ -252,6 +242,30 @@ class FakeTeensy:
 
     def setArmRailSpeed(self, value: float) -> None:
         self.rail_speed_commands.append(value)
+
+    def setTopRailSpeed(self, value: float) -> None:
+        self.top_rail_speed_commands.append(value)
+
+    def setLeftPropJoint(self, position: float) -> None:
+        self.left_joint_commands.append(position)
+
+    def setRightPropJoint(self, position: float) -> None:
+        self.right_joint_commands.append(position)
+
+    def setLeftPropPWM(self, pwm: int) -> None:
+        self.left_pwm_commands.append(pwm)
+
+    def setRightPropPWM(self, pwm: int) -> None:
+        self.right_pwm_commands.append(pwm)
+
+    def setSprayPitchSpeed(self, speed: int) -> None:
+        self.pitch_speed_commands.append(speed)
+
+    def setSprayGunPitchAngle(self, angle: float, speed: float) -> None:
+        self.pitch_angle_commands.append((angle, speed))
+
+    def extendArm(self, dist: int) -> None:
+        self.arm_extend_distances.append(dist)
 
     def set_ef_force(self, fx: float, fy: float) -> None:
         self.force_commands.append((fx, fy))
