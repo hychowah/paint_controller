@@ -145,7 +145,7 @@ When reviewing or implementing backend structure work, **reject**:
 - New `show_popup_fn` / peer-device orchestration dependencies on device controllers
 - Pass-through-only types that do not hide a real decision (Ousterhout: prefer deep modules)
 
-Program plan: `docs/plan/02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md`.
+TD-055 Wave 1+2 is landed; residual only in `docs/tech-debt.md` (plan retired to git history).
 
 ---
 

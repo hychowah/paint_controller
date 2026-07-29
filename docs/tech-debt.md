@@ -9,7 +9,7 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 
 **Architecture leverage** (optional tag on items): how much a fix improves FE↔BE program structure when doing architecture work, independent of ship-blocking urgency.
 
-Last multi-perspective re-validation: **2026-07-28** (deep software-only pass: composition/DI, QML contract injection, QML modules/kit, ports/domain modularity, test/CI control plane). Industrial HMI and operator-UX product work are **out of scope** for this tracker update. Prior 2026-07-27/28 program diagnoses reconfirmed; new TDs **048–053** added from evidence-backed research. **2026-07-29**: added **TD-054** (concurrent ROS publish + spin) from architecture concurrency review; added **TD-055** (layer responsibility depth / Problem 2) with plan `docs/plan/02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md`.
+Last multi-perspective re-validation: **2026-07-28** (deep software-only pass: composition/DI, QML contract injection, QML modules/kit, ports/domain modularity, test/CI control plane). Industrial HMI and operator-UX product work are **out of scope** for this tracker update. Prior 2026-07-27/28 program diagnoses reconfirmed; new TDs **048–053** added from evidence-backed research. **2026-07-29**: added **TD-054** (concurrent ROS publish + spin); **TD-055** (layer responsibility depth / Problem 2) Wave 1+2 landed (execution plan deleted; recoverable from git history).
 
 **Research non-goals (do not invent debt for):** mega-`Backend` object; reopening TD-032 name-retirement mega-program; full URI QML module rewrite as a program; universal visual skin unification; HMI safety/legality ship defaults; `qmlRegisterSingletonInstance`.
 
@@ -21,8 +21,8 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 | Rank | ID | Why |
 |---|---|---|
-| 1 | **TD-055** | Problem 2 Wave 2 (Phases 6–10): finish half-migrations → Actions invoke family → teleop engine → device/dialect → composition — plan `docs/plan/02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md` |
-| 2 | **TD-054** | Runtime integrity: concurrent ROS publish + spin (schedule when touching ROS/teleop, or as a dedicated slice; do not expand multi-thread publish while open) |
+| 1 | **TD-054** | Runtime integrity: concurrent ROS publish + spin (schedule when touching ROS/teleop, or as a dedicated slice; do not expand multi-thread publish while open) |
+| — | **TD-055** | Landed Wave 1+2; residual only (see Active Debt). Not the primary next program track. |
 | — | **TD-052 / TD-053** | When touching tuning/commands or dual-surface overlays |
 | — | **TD-002 / TD-016** | Opportunistic chrome only; out of pure program track |
 | — | **TD-040 residual** | Optional: `video_stream` / `base_top_view_service` pyright include (deferred 2026-07-29) |
@@ -45,13 +45,12 @@ When the goal is **software architecture toward a professional Qt program** (not
 **Priority**: medium (maintainability / long-term structure; program track #1 for architecture)  
 **Effort**: high (phased; not one PR)  
 **Architecture leverage**: high  
-**Status**: **Wave 1+2 landed** 2026-07-29 on `td-055/layer-responsibility-depth` (Phases 0–3 + 6–10). Optional 4′/5′ deferred.  
+**Status**: **Wave 1+2 landed** 2026-07-29 on `td-055/layer-responsibility-depth`. Execution plan deleted (git history is archive). Optional 4′/5′ rehome deferred.  
 **Why it matters**: Layer/responsibility depth (Problem 2).  
-**What landed (Wave 2)**: scaler production use; ContinuousTeleopEngine; Actions invoke (teensy/tuning/recording/system); wheel port `command_position`; factory subsystem builders; workflow port-name dialect; Teensy format helper off-device.  
-**Residual**: Phase 4′ status deepen / 5′ rehome only if needed; SignalWiring still takes whole bundle; CP test-compat proxies over engine remain.  
-**Acceptance**: Wave 2 §11 metrics met (see plan + tests/test_layer_responsibility_depth.py).  
-**Files**: `ports/*`, `handlers/continuous_teleop_engine.py`, `handlers/control_processor.py`, `models/*_actions.py`, `core/controller_factory.py`, `services/workflow/*`  
-**Plan**: `docs/plan/02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md`
+**What landed**: dual HAL collapse; ContinuousTeleopEngine; Actions invoke family; wheel port honesty; factory subsystem builders; workflow port dialect; Teensy format off-device.  
+**Residual**: SignalWiring still takes whole bundle; CP test-compat proxies over engine remain; package rehome not done.  
+**Acceptance**: Structural coverage in `tests/test_layer_responsibility_depth.py`; full suite green at land.  
+**Files**: `ports/*`, `handlers/continuous_teleop_engine.py`, `handlers/control_processor.py`, `models/*_actions.py`, `core/controller_factory.py`, `services/workflow/*`
 
 ---
 

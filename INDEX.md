@@ -5,7 +5,7 @@ ROS2 node with PySide6/QML UI for robotic paint control on a Steam Deck. The liv
 ## Current Strategy
 
 - This branch is **refactor-first**. Runtime/workflow/service hardening, the QML flattening pass, the feature-root pass, and the completed ownership work through Workstream D are historical record now.
-- The current architecture control plane is intentionally split: **`docs/plan/00_ARCHITECTURE_PROGRESS.md`** is the live execution board; **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** is the durable Qt architecture guide; **`docs/plan/02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md`** is the Problem 2 (layer/module depth) execution plan (**TD-055**).
+- The current architecture control plane is intentionally split: **`docs/plan/00_ARCHITECTURE_PROGRESS.md`** is the live execution board, and **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** is the durable Qt architecture guide. TD-055 Problem 2 (layer depth) Wave 1+2 is landed; residual notes live in `docs/tech-debt.md`.
 - The unfinished tail is no longer a generic structural cleanup. It is a family-by-family boundary retirement program focused on shrinking the permanent QML runtime surface.
 - The current live next direction is settings cleanup, followed by bounded `app_runtime.py` and handler decomposition only where they preserve the current contracts and materially reduce ambient reads.
 - Shell and launcher boundary work is treated as frozen unless a future slice proves a real retirement win that cannot be achieved inside the current contract.
@@ -27,8 +27,7 @@ Read in this order at the start of any session:
 5. **`DEVNOTES.md`** — recent session notes and validation results
 6. **`docs/plan/00_ARCHITECTURE_PROGRESS.md`** — current roadmap status, completed slices, next recommended slice
 7. **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** — durable architecture rationale, invariants, anti-goals, and historical completion context
-8. **`docs/plan/02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md`** — Problem 2 layer responsibility depth program (TD-055; deep modules / one HAL vocabulary)
-9. **`docs/tech-debt.md`** — known debt items with priority and effort (check before starting new work)
+8. **`docs/tech-debt.md`** — known debt items with priority and effort (check before starting new work)
 
 ---
 
@@ -40,12 +39,11 @@ When two files disagree, prefer the file higher in this list:
 |---|---|---|
 | 1 | `DEVNOTES.md` | Most recent verified runtime state |
 | 2 | `docs/plan/00_ARCHITECTURE_PROGRESS.md` | Current live architecture board and execution order |
-| 3 | `docs/plan/02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md` | Active Problem 2 (layer depth) program plan when TD-055 is in flight |
-| 4 | `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` | Durable architecture rationale and historical context |
-| 5 | `docs/tech-debt.md` | Known debt items, priorities, effort |
-| 6 | `ARCHITECTURE.md` | Human map of program structure and ownership (describe reality; not the live execution board) |
-| 7 | `KNOWLEDGE.md` | Reusable patterns and gotchas |
-| 8 | `README.md` | Operator/developer entry point |
+| 3 | `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` | Durable architecture rationale and historical context |
+| 4 | `docs/tech-debt.md` | Known debt items, priorities, effort |
+| 5 | `ARCHITECTURE.md` | Human map of program structure and ownership (describe reality; not the live execution board) |
+| 6 | `KNOWLEDGE.md` | Reusable patterns and gotchas |
+| 7 | `README.md` | Operator/developer entry point |
 
 ---
 
@@ -86,8 +84,7 @@ paint_controller_ros2/
 ├── docs/
 │   ├── plan/                      # Modernization plan tracker docs
 │   │   ├── 00_ARCHITECTURE_PROGRESS.md          # Current roadmap status and next-slice tracker
-│   │   ├── 01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md  # Durable architecture rationale and historical context
-│   │   └── 02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md   # Problem 2 layer/module depth program (TD-055)
+│   │   └── 01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md  # Durable architecture rationale and historical context
 │   ├── tech-debt.md               # Active tech debt tracker (living document)
 │   └── devnotes/                  # Legacy quarterly archives — frozen, no longer appended to
 │       ├── 2026-Q1.md             # Jan–Mar 2026 session notes

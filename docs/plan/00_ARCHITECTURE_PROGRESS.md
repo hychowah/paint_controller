@@ -9,7 +9,7 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 ## Current Snapshot
 
 - Overall status: in progress
-- Active architecture program: **Problem 2 TD-055 Wave 1+2 landed** (`docs/plan/02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md`). Optional 4′/5′ deferred. QML surface retirement closed (TD-032).
+- Active architecture program: none — **TD-055 Problem 2 Wave 1+2 landed** (execution plan deleted; residual in `docs/tech-debt.md`). QML surface retirement closed (TD-032).
 - Most recent completed slice: **TD-055 Wave 2 Phases 6–10** (2026-07-29) on `td-055/layer-responsibility-depth`
 - Debt tracker: TD-055 residual only optional 4′/5′; **TD-054** when scheduled; opportunistic TD-052/053 — see `docs/tech-debt.md`
 - Core purpose: reduce global coupling, clarify ownership, shrink ambient QML *usage* (injection depth), and make composition/ports closer to a professional Qt program — without reopening TD-032 name-retirement. Problem 2 Wave 2: **finish half-migrations**, **Actions family consistency**, **teleop engine depth**, then device/composition (Ousterhout depth over renames)
@@ -102,8 +102,8 @@ These files are allowed to keep temporary raw-global reads until their named fam
 
 ## Next Session Checklist
 
-1. Keep this file as the live unfinished-work board; durable Qt rationale stays in `01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`; **Problem 2 execution plan** is `02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md`.
-2. For layering/depth work: follow **TD-055 Wave 2** in `02_…` (6 half-migrations → 7 Actions → 8 teleop engine → 9 device/dialect → 10 composition → optional 4′/5′). Wave 1 (0–3) is complete. For ROS I/O integrity: **TD-054** when scheduled.
+1. Keep this file as the live unfinished-work board; durable Qt rationale stays in `01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`.
+2. TD-055 Problem 2 depth program is complete (plan retired to git history). Residual only in `docs/tech-debt.md`. For ROS I/O integrity: **TD-054** when scheduled.
 3. Preserve frozen shell and launcher contracts.
 4. Keep quarantined remainder explicit by file (currently none).
 5. Do not open automation follow-on until there is a clear product need separate from ambient QML cleanup.
