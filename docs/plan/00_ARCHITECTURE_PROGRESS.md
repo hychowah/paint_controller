@@ -10,8 +10,8 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 
 - Overall status: in progress
 - Active architecture program: none — the QML surface retirement program (Phases 0–8) is closing per `docs/tech-debt.md` TD-032; the master plan doc was deleted 2026-07-27 and is recoverable from git history
-- Most recent completed slice: **TD-047 resolved** — façade demirror + `SignalWiringPorts` / `QmlComposePorts` (2026-07-28)
-- Debt tracker: software program track active; next **TD-044/045/040** or **TD-048** per `docs/tech-debt.md`
+- Most recent completed slice: **TD-044 + TD-045 + TD-040** — CI control plane (2026-07-29); TD-047 composition ports prior
+- Debt tracker: next program-track **TD-048** (QML injection depth) per `docs/tech-debt.md`
 - Core purpose: reduce global coupling, clarify ownership, shrink ambient QML *usage* (injection depth), and make composition/ports closer to a professional Qt program — without reopening TD-032 name-retirement
 - First-principles rule: success means fewer ambient leaf reads, thinner composition export, and real CI/type control planes — not wrapper proliferation or mega-Backend
 - Last focused validation: `58 passed` for `tests/test_app_runtime_runtime.py tests/test_controller_factory_runtime.py tests/test_startup_smoke.py tests/test_startup_smoke_shell.py tests/test_startup_smoke_home.py tests/test_qml_imports.py tests/test_shell_router.py tests/test_qml_context_composer.py tests/test_signal_wiring.py` on 2026-07-24
@@ -25,8 +25,8 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 
 ### Next
 
-- **TD-047 fully resolved** (2026-07-28): façade demirror + ports for wiring/composer.
-- **Software program track** (canonical order in `docs/tech-debt.md`): **TD-044/045/040** → **TD-048** (injection depth) → **TD-050** → **TD-049** (device ports) → hygiene (**TD-042/043/051**).
+- **TD-044/045/040 resolved** (2026-07-29): ruff green, CI deps (`requirements-ci.txt` + apt), pyright widened (residual: video services).
+- **Software program track** (canonical order in `docs/tech-debt.md`): **TD-048** (injection depth) → **TD-050** → **TD-049** (device ports) → hygiene (**TD-042/043/051**).
 - Root context contract remains frozen at `_EXPECTED_CONTEXT_PROPERTY_NAMES` (~26 names). Prefer **inject then retire last consumer**; do not open a new boundary-retirement mega-program.
 - Industrial HMI / operator-UX product work is **out of scope** for this architecture track unless explicitly reprioritized.
 

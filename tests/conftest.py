@@ -5,11 +5,11 @@ dependencies. We import them *directly* by pre-loading the utils subpackage
 before paint_controller/__init__.py can trigger PySide6/ROS2 imports.
 """
 
+import importlib
 import os
 import sys
-import importlib
-from pathlib import Path
 import types
+from pathlib import Path
 
 import pytest
 
@@ -430,6 +430,7 @@ def _flush_qt_events(request):
     # Only flush if a Qt application exists (skips pure-Python tests)
     try:
         from PySide6.QtWidgets import QApplication
+
         app = QApplication.instance()
         if app is not None:
             app.processEvents()
@@ -440,4 +441,3 @@ def _flush_qt_events(request):
 @pytest.fixture
 def fake_node() -> FakeNode:
     return FakeNode()
-

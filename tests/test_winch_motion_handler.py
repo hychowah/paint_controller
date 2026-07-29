@@ -41,7 +41,9 @@ class FakeAdminActionGate:
         return self.results.get(action_key, (True, ""))
 
 
-def _build_actions(result: bool = True) -> tuple[WinchActions, FakeWinch, FakeAdminActionGate, FakeLogger, list[tuple[bool, str]]]:
+def _build_actions(
+    result: bool = True,
+) -> tuple[WinchActions, FakeWinch, FakeAdminActionGate, FakeLogger, list[tuple[bool, str]]]:
     winch = FakeWinch(result=result)
     admin_action_gate = FakeAdminActionGate()
     logger = FakeLogger()
@@ -112,7 +114,9 @@ def test_load_detection_set_dispatches_desired_state() -> None:
 
 def test_load_detection_gate_denial_blocks_backend_call() -> None:
     actions, winch, admin_action_gate, _logger, results = _build_actions()
-    admin_action_gate.set_result("winch.load_detection", False, "Load Detection Toggle is blocked while the controller heartbeat is in WARNING")
+    admin_action_gate.set_result(
+        "winch.load_detection", False, "Load Detection Toggle is blocked while the controller heartbeat is in WARNING"
+    )
 
     assert actions.setLoadDetectionEnabled(True) is False
 

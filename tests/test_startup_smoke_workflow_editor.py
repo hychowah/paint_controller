@@ -61,7 +61,9 @@ Item {{
             "failed to create",
             "failed to load component",
         )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+            warnings
+        )
     finally:
         if root is not None:
             root.deleteLater()

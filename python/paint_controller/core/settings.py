@@ -7,14 +7,15 @@ Machine settings live under XDG config by default
 is a ship template used for first-run migration only.
 """
 
-import os
 import json
 import logging
+import os
 import tempfile
 import threading
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
-from PySide6.QtCore import QObject, Signal, Slot, Property
+from typing import Any
+
+from PySide6.QtCore import Property, QObject, Signal, Slot
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +38,10 @@ def _fsync_parent_directory(path: Path) -> None:
         os.close(directory_fd)
 
 
-def _atomic_write_json(path: Path, payload: Dict[str, Any], *, indent: int) -> None:
+def _atomic_write_json(path: Path, payload: dict[str, Any], *, indent: int) -> None:
     """Write JSON atomically so a failed write cannot corrupt the last good file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    temp_path: Optional[Path] = None
+    temp_path: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
             mode="w",
@@ -62,15 +63,16 @@ def _atomic_write_json(path: Path, payload: Dict[str, Any], *, indent: int) -> N
             temp_path.unlink(missing_ok=True)
         raise
 
+
 # Settings schema — defines metadata for all settings (default, min, max, type, etc.)
-_SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
+_SETTINGS_SCHEMA: dict[str, dict[str, Any]] = {
     "winch_max_speed_mmps": {
         "default": 200.0,
         "min": 0.0,
         "max": 400.0,
         "type": "float",
         "requires_restart": False,
-        "description": "Maximum winch speed limit (mm/s)"
+        "description": "Maximum winch speed limit (mm/s)",
     },
     "track_max_speed": {
         "default": 500.0,
@@ -78,7 +80,7 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "max": 500.0,
         "type": "float",
         "requires_restart": False,
-        "description": "Maximum track/wheel speed"
+        "description": "Maximum track/wheel speed",
     },
     "track_min_speed": {
         "default": 50.0,
@@ -86,7 +88,7 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "max": 50.0,
         "type": "float",
         "requires_restart": False,
-        "description": "Minimum track speed to overcome friction"
+        "description": "Minimum track speed to overcome friction",
     },
     "thrust_force": {
         "default": -1.0,
@@ -94,7 +96,7 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "max": 1.5,
         "type": "float",
         "requires_restart": False,
-        "description": "Thrust force for vertical movement"
+        "description": "Thrust force for vertical movement",
     },
     "thrust_ramp_rate": {
         "default": 1.0,
@@ -102,7 +104,7 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "max": 10.0,
         "type": "float",
         "requires_restart": False,
-        "description": "Thrust force ramp rate (thrust/second)"
+        "description": "Thrust force ramp rate (thrust/second)",
     },
     "valve_turn_max": {
         "default": 6.0,
@@ -110,7 +112,7 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "max": 10.0,
         "type": "float",
         "requires_restart": False,
-        "description": "Maximum valve turn value"
+        "description": "Maximum valve turn value",
     },
     "arm_retract_length": {
         "default": 250,
@@ -118,7 +120,7 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "max": 1000,
         "type": "int",
         "requires_restart": False,
-        "description": "Arm retracted position preset"
+        "description": "Arm retracted position preset",
     },
     "arm_extend_length": {
         "default": 800,
@@ -126,7 +128,7 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "max": 1500,
         "type": "int",
         "requires_restart": False,
-        "description": "Arm extended position preset"
+        "description": "Arm extended position preset",
     },
     "wheel_travel_max": {
         "default": 500.0,
@@ -134,7 +136,7 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "max": 1000.0,
         "type": "float",
         "requires_restart": False,
-        "description": "Maximum wheel travel distance (mm)"
+        "description": "Maximum wheel travel distance (mm)",
     },
     "wheel_travel_rate": {
         "default": 100.0,
@@ -142,7 +144,7 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "max": 500.0,
         "type": "float",
         "requires_restart": False,
-        "description": "Wheel travel adjustment rate (mm/sec)"
+        "description": "Wheel travel adjustment rate (mm/sec)",
     },
     "wheel_travel_rpm": {
         "default": 300,
@@ -150,7 +152,7 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "max": 600,
         "type": "int",
         "requires_restart": False,
-        "description": "Fixed RPM for wheel travel commands"
+        "description": "Fixed RPM for wheel travel commands",
     },
     "emergency_hold_duration_s": {
         "default": 1.0,
@@ -158,13 +160,13 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "max": 2.0,
         "type": "float",
         "requires_restart": False,
-        "description": "Hold duration required to trigger emergency stop (seconds)"
+        "description": "Hold duration required to trigger emergency stop (seconds)",
     },
     "ui_section_states": {
         "default": {},
         "type": "dict",
         "requires_restart": False,
-        "description": "Collapsed/expanded state of UI sections"
+        "description": "Collapsed/expanded state of UI sections",
     },
     "base_top_view_zoom": {
         "default": 0.51,
@@ -172,7 +174,7 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "max": 2.0,
         "type": "float",
         "requires_restart": False,
-        "description": "Base top view zoom factor"
+        "description": "Base top view zoom factor",
     },
     "base_top_view_offset_x": {
         "default": 0.026,
@@ -180,7 +182,7 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "max": 1.0,
         "type": "float",
         "requires_restart": False,
-        "description": "Base top view horizontal offset"
+        "description": "Base top view horizontal offset",
     },
     "base_top_view_offset_y": {
         "default": 0.474,
@@ -188,13 +190,13 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "max": 1.0,
         "type": "float",
         "requires_restart": False,
-        "description": "Base top view vertical offset"
+        "description": "Base top view vertical offset",
     },
     "base_top_view_crop_enabled": {
         "default": True,
         "type": "bool",
         "requires_restart": False,
-        "description": "Enable base top view cropping"
+        "description": "Enable base top view cropping",
     },
     "base_top_view_crop_width_ratio": {
         "default": 0.9,
@@ -202,7 +204,7 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "max": 1.0,
         "type": "float",
         "requires_restart": False,
-        "description": "Base top view crop width ratio"
+        "description": "Base top view crop width ratio",
     },
     "base_top_view_crop_center_x": {
         "default": 0.5,
@@ -210,7 +212,7 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "max": 1.0,
         "type": "float",
         "requires_restart": False,
-        "description": "Base top view crop center X position"
+        "description": "Base top view crop center X position",
     },
     "base_top_view_k1": {
         "default": -0.389,
@@ -218,7 +220,7 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "max": 2.0,
         "type": "float",
         "requires_restart": False,
-        "description": "Base top view fisheye distortion coefficient k1"
+        "description": "Base top view fisheye distortion coefficient k1",
     },
     "base_top_view_k2": {
         "default": 0.142,
@@ -226,7 +228,7 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "max": 2.0,
         "type": "float",
         "requires_restart": False,
-        "description": "Base top view fisheye distortion coefficient k2"
+        "description": "Base top view fisheye distortion coefficient k2",
     },
     "base_top_view_k3": {
         "default": 0.0,
@@ -234,7 +236,7 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "max": 2.0,
         "type": "float",
         "requires_restart": False,
-        "description": "Base top view fisheye distortion coefficient k3"
+        "description": "Base top view fisheye distortion coefficient k3",
     },
     "base_top_view_k4": {
         "default": 0.0,
@@ -242,13 +244,13 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "max": 2.0,
         "type": "float",
         "requires_restart": False,
-        "description": "Base top view fisheye distortion coefficient k4"
+        "description": "Base top view fisheye distortion coefficient k4",
     },
     "base_top_view_src_points": {
         "default": [[0.012, 1.0], [0.988, 1.0], [0.837, 0.727], [0.372, 0.727]],
         "type": "list",
         "requires_restart": False,
-        "description": "Base top view source trapezoid points (normalized coordinates)"
+        "description": "Base top view source trapezoid points (normalized coordinates)",
     },
     "action_legality_enforced": {
         # Development default: off until field hardening is complete.
@@ -256,8 +258,8 @@ _SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "default": False,
         "type": "bool",
         "requires_restart": False,
-        "description": "Enforce heartbeat-state action legality gate (not QML-writable; force via PAINT_ACTION_LEGALITY_ENFORCED env)"
-    }
+        "description": "Enforce heartbeat-state action legality gate (not QML-writable; force via PAINT_ACTION_LEGALITY_ENFORCED env)",
+    },
 }
 
 _SIGNAL_TYPES = {"float": float, "int": int, "bool": bool, "list": object}
@@ -308,7 +310,7 @@ class SettingsManager(QObject):
     Live file: ``resolve_settings_path()`` (env / XDG). Package config is template only.
     QML mutations go through apply*/set* slots and are AdminActionGate-checked (TD-036).
     """
-    
+
     _settings_schema = _SETTINGS_SCHEMA
 
     # Setting signals and properties (auto-generated from schema via _make_setting_pair)
@@ -328,7 +330,9 @@ class SettingsManager(QObject):
     base_top_view_offset_x_changed, base_top_view_offset_x = _make_setting_pair("base_top_view_offset_x")
     base_top_view_offset_y_changed, base_top_view_offset_y = _make_setting_pair("base_top_view_offset_y")
     base_top_view_crop_enabled_changed, base_top_view_crop_enabled = _make_setting_pair("base_top_view_crop_enabled")
-    base_top_view_crop_width_ratio_changed, base_top_view_crop_width_ratio = _make_setting_pair("base_top_view_crop_width_ratio")
+    base_top_view_crop_width_ratio_changed, base_top_view_crop_width_ratio = _make_setting_pair(
+        "base_top_view_crop_width_ratio"
+    )
     base_top_view_crop_center_x_changed, base_top_view_crop_center_x = _make_setting_pair("base_top_view_crop_center_x")
     base_top_view_k1_changed, base_top_view_k1 = _make_setting_pair("base_top_view_k1")
     base_top_view_k2_changed, base_top_view_k2 = _make_setting_pair("base_top_view_k2")
@@ -341,13 +345,13 @@ class SettingsManager(QObject):
     setting_changed = Signal(str, object)
     operation_result = Signal(bool, str)
     setting_saved = Signal(str, object, str)
-    
+
     def __init__(self, parent=None, show_popup_fn=None, admin_action_gate=None):
         super().__init__(parent)
         self._show_popup_fn = show_popup_fn
         self._admin_action_gate = admin_action_gate
         self._gate_missing_warned = False
-        self._values: Dict[str, Any] = {}
+        self._values: dict[str, Any] = {}
         self._values_lock = threading.Lock()
 
         self._package_template_path = package_settings_template_path()
@@ -357,7 +361,7 @@ class SettingsManager(QObject):
     def set_admin_action_gate(self, gate) -> None:
         """Inject AdminActionGate after construction (gate is created later in AppRuntime)."""
         self._admin_action_gate = gate
-    
+
     def _get_config_path(self) -> Path:
         """Live configuration file path; creates only the live parent directory."""
         self._config_file.parent.mkdir(parents=True, exist_ok=True)
@@ -370,12 +374,12 @@ class SettingsManager(QObject):
                     validated = self._validate_value(key, value)
                     if validated is not None:
                         self._values[key] = validated
-    
+
     def load(self) -> bool:
         """
         Load settings from the live config file. If missing, migrate from the
         package template once, otherwise use schema defaults.
-        
+
         Returns:
             bool: True if loaded from disk (live or migrated), False if pure defaults
         """
@@ -383,22 +387,18 @@ class SettingsManager(QObject):
         with self._values_lock:
             for key, schema in self._settings_schema.items():
                 self._values[key] = schema["default"]
-        
+
         config_path = self._get_config_path()
-        
+
         if not config_path.exists():
             # Migrate package template only for the real live path (not test overrides
             # that monkeypatch `_get_config_path` to a temporary file).
             live_path = Path(self._config_file).resolve()
             using_live_path = config_path.resolve() == live_path
             template = self._package_template_path
-            if (
-                using_live_path
-                and template.exists()
-                and template.resolve() != config_path.resolve()
-            ):
+            if using_live_path and template.exists() and template.resolve() != config_path.resolve():
                 try:
-                    with open(template, "r", encoding="utf-8") as f:
+                    with open(template, encoding="utf-8") as f:
                         saved_values = json.load(f)
                     if isinstance(saved_values, dict):
                         self._merge_saved_values(saved_values)
@@ -415,11 +415,11 @@ class SettingsManager(QObject):
                     logger.warning("Failed to migrate settings template: %s", e)
             logger.info("No config file found at %s, using defaults", config_path)
             return False
-        
+
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path) as f:
                 saved_values = json.load(f)
-            
+
             if not isinstance(saved_values, dict):
                 logger.warning("Invalid settings file (not an object): %s", config_path)
                 return False
@@ -428,30 +428,30 @@ class SettingsManager(QObject):
             self._merge_saved_values(saved_values)
             logger.info("Loaded settings from %s", config_path)
             return True
-            
+
         except json.JSONDecodeError as e:
             logger.error("Error parsing config file: %s", e)
             return False
         except Exception as e:
             logger.error("Error loading config: %s", e)
             return False
-    
-    def _validate_value(self, key: str, value: Any) -> Optional[Any]:
+
+    def _validate_value(self, key: str, value: Any) -> Any | None:
         """
         Validate and convert a value according to its schema.
-        
+
         Args:
             key: Setting key
             value: Value to validate
-            
+
         Returns:
             Validated and typed value, or None if invalid
         """
         if key not in self._settings_schema:
             return None
-        
+
         schema = self._settings_schema[key]
-        
+
         try:
             # Type conversion
             if schema["type"] == "float":
@@ -475,67 +475,66 @@ class SettingsManager(QObject):
                     return None
             else:
                 typed_value = value
-            
+
             # Clamp to min/max range
-            min_val = schema.get("min", float('-inf'))
-            max_val = schema.get("max", float('inf'))
+            min_val = schema.get("min", float("-inf"))
+            max_val = schema.get("max", float("inf"))
             typed_value = max(min_val, min(max_val, typed_value))
-            
+
             return typed_value
-            
+
         except (ValueError, TypeError) as e:
             logger.warning("Validation error for %s: %s", key, e)
             return None
-    
+
     def get(self, key: str, default: Any = None) -> Any:
         """
         Get a setting value.
-        
+
         Args:
             key: Setting key
             default: Default value if key doesn't exist
-            
+
         Returns:
             Setting value or default if key doesn't exist
         """
         with self._values_lock:
             return self._values.get(key, default)
-    
-    def set(self, key: str, value: Any) -> Tuple[bool, str]:
+
+    def set(self, key: str, value: Any) -> tuple[bool, str]:
         """
         Set a setting value (in memory only, does not save to file).
-        
+
         Args:
             key: Setting key
             value: New value
-            
+
         Returns:
             Tuple of (success, message)
         """
         if key not in self._settings_schema:
             return (False, f"Unknown setting: {key}")
-        
+
         validated = self._validate_value(key, value)
         if validated is None:
             return (False, f"Invalid value for {key}: {value}")
-        
+
         with self._values_lock:
-            old_value = self._values.get(key)
             self._values[key] = validated
-        
+
         # Emit signals OUTSIDE lock to prevent deadlock
         self._emit_setting_signal(key, validated)
         self.setting_changed.emit(key, validated)
-        
+
         return (True, f"Setting {key} updated to {validated}")
-    
+
     def _emit_setting_signal(self, key: str, value: Any):
         """Emit the specific signal for a setting change"""
         signal = getattr(self, f"{key}_changed", None)
         if signal is not None:
             signal.emit(value)
-    
-    def _check_qml_mutation(self, key: str) -> Tuple[bool, str]:
+
+    def _check_qml_mutation(self, key: str) -> tuple[bool, str]:
         """Gate QML-facing mutations (TD-036). Internal set()/load stay open."""
         if key == _LEGALITY_SETTING_KEY:
             return (
@@ -549,25 +548,26 @@ class SettingsManager(QObject):
         gate = self._admin_action_gate
         if gate is None:
             if not self._gate_missing_warned:
-                logger.warning(
-                    "SettingsManager QML write without admin_action_gate; allowing"
-                )
+                logger.warning("SettingsManager QML write without admin_action_gate; allowing")
                 self._gate_missing_warned = True
             return True, ""
 
         check = getattr(gate, "check_action", None)
         if not callable(check):
             return True, ""
-        return check(key)
+        result = check(key)
+        if isinstance(result, tuple) and len(result) >= 2:
+            return bool(result[0]), str(result[1])
+        return True, ""
 
     @Slot(str, result=bool)
     def saveSetting(self, key: str) -> bool:
         """
         Save a single setting to file (QML callable).
-        
+
         Args:
             key: Setting key to save
-            
+
         Returns:
             bool: True if successful
         """
@@ -578,73 +578,73 @@ class SettingsManager(QObject):
 
         success, message = self.save_setting(key)
         self.operation_result.emit(success, message)
-        
+
         # Show popup notification if save was successful
         if success and key in self._settings_schema:
             value = self._values.get(key)
             description = self._settings_schema[key].get("description", key)
             self.setting_saved.emit(key, value, description)
-            
+
             # Show popup
             if self._show_popup_fn:
                 popup_message = f"{description}: {value}"
                 self._show_popup_fn("Setting Saved", popup_message, "info", 2000)
-        
+
         return success
-    
-    def save_setting(self, key: str) -> Tuple[bool, str]:
+
+    def save_setting(self, key: str) -> tuple[bool, str]:
         """
         Save a single setting to the config file.
-        
+
         Args:
             key: Setting key to save
-            
+
         Returns:
             Tuple of (success, message)
         """
         if key not in self._settings_schema:
             return (False, f"Unknown setting: {key}")
-        
+
         return self.save_all()
-    
-    def save_all(self) -> Tuple[bool, str]:
+
+    def save_all(self) -> tuple[bool, str]:
         """
         Save all current settings to file.
-        
+
         Returns:
             Tuple of (success, message)
         """
         config_path = self._get_config_path()
-        
+
         try:
             with self._values_lock:
                 values_snapshot = self._values.copy()
 
             _atomic_write_json(config_path, values_snapshot, indent=2)
-            
+
             logger.info("Saved settings to %s", config_path)
             return (True, "Settings saved successfully")
-            
+
         except Exception as e:
             error_msg = f"Failed to save settings: {e}"
             logger.error("%s", error_msg)
             return (False, error_msg)
 
-    def apply_value(self, key: str, value: Any) -> Tuple[bool, str]:
+    def apply_value(self, key: str, value: Any) -> tuple[bool, str]:
         """Set a value in memory and persist it without UI-specific popup behavior."""
         success, message = self.set(key, value)
         if not success:
             return (False, message)
         return self.save_all()
-    
+
     @Slot(str, result=bool)
     def resetSetting(self, key: str) -> bool:
         """
         Reset a single setting to its default value (QML callable).
-        
+
         Args:
             key: Setting key to reset
-            
+
         Returns:
             bool: True if successful
         """
@@ -655,35 +655,35 @@ class SettingsManager(QObject):
         success, message = self.reset_setting(key)
         self.operation_result.emit(success, message)
         return success
-    
-    def reset_setting(self, key: str) -> Tuple[bool, str]:
+
+    def reset_setting(self, key: str) -> tuple[bool, str]:
         """
         Reset a single setting to its default value.
-        
+
         Args:
             key: Setting key to reset
-            
+
         Returns:
             Tuple of (success, message)
         """
         if key not in self._settings_schema:
             return (False, f"Unknown setting: {key}")
-        
+
         default_value = self._settings_schema[key]["default"]
         with self._values_lock:
             self._values[key] = default_value
-        
+
         # Emit signals outside lock
         self._emit_setting_signal(key, default_value)
         self.setting_changed.emit(key, default_value)
-        
+
         # Save to file
         return self.save_all()
-    
-    def reset_to_defaults(self) -> Tuple[bool, str]:
+
+    def reset_to_defaults(self) -> tuple[bool, str]:
         """
         Reset all settings to their default values.
-        
+
         Returns:
             Tuple of (success, message)
         """
@@ -692,34 +692,34 @@ class SettingsManager(QObject):
             for key, schema in self._settings_schema.items():
                 self._values[key] = schema["default"]
                 defaults[key] = schema["default"]
-        
+
         # Emit signals outside lock
         for key, value in defaults.items():
             self._emit_setting_signal(key, value)
             self.setting_changed.emit(key, value)
-        
+
         return self.save_all()
-    
-    def get_schema(self, key: str) -> Optional[Dict[str, Any]]:
+
+    def get_schema(self, key: str) -> dict[str, Any] | None:
         """
         Get the schema for a setting (includes min, max, default, etc.)
-        
+
         Args:
             key: Setting key
-            
+
         Returns:
             Schema dict or None if key doesn't exist
         """
         return self._settings_schema.get(key)
-    
-    def get_all_schemas(self) -> Dict[str, Dict[str, Any]]:
+
+    def get_all_schemas(self) -> dict[str, dict[str, Any]]:
         """Get all setting schemas"""
         return self._settings_schema.copy()
-    
+
     # =====================================================
     # QML Slots for setting values with key
     # =====================================================
-    
+
     @Slot(str, float, result=bool)
     def setFloat(self, key: str, value: float) -> bool:
         """Set a float setting value from QML (gated; prefer applyFloat)."""
@@ -729,7 +729,7 @@ class SettingsManager(QObject):
             return False
         success, _ = self.set(key, value)
         return success
-    
+
     @Slot(str, int, result=bool)
     def setInt(self, key: str, value: int) -> bool:
         """Set an int setting value from QML (gated; prefer applyInt)."""
@@ -772,35 +772,35 @@ class SettingsManager(QObject):
         success, message = self.apply_value(key, value)
         self.operation_result.emit(success, message)
         return success
-    
+
     @Slot(str, result=float)
     def getFloat(self, key: str) -> float:
         """Get a float setting value from QML"""
         return float(self.get(key) or 0.0)
-    
+
     @Slot(str, result=int)
     def getInt(self, key: str) -> int:
         """Get an int setting value from QML"""
         return int(self.get(key) or 0)
-    
+
     @Slot(str, result=float)
     def getMin(self, key: str) -> float:
         """Get the minimum value for a setting from QML"""
         schema = self.get_schema(key)
         return float(schema.get("min", 0)) if schema else 0.0
-    
+
     @Slot(str, result=float)
     def getMax(self, key: str) -> float:
         """Get the maximum value for a setting from QML"""
         schema = self.get_schema(key)
         return float(schema.get("max", 100)) if schema else 100.0
-    
+
     @Slot(str, result=float)
     def getDefault(self, key: str) -> float:
         """Get the default value for a setting from QML"""
         schema = self.get_schema(key)
         return float(schema.get("default", 0)) if schema else 0.0
-    
+
     @Slot(str, result=str)
     def getDescription(self, key: str) -> str:
         """Get the description for a setting from QML"""
@@ -818,15 +818,9 @@ class SettingsManager(QObject):
                 f"travel max: {self.getFloat('wheel_travel_max'):.0f} mm"
             )
         if route_key == "camera":
-            return (
-                f"Base-top zoom: {self.getFloat('base_top_view_zoom'):.2f}; "
-                "full calibration remains overlay-primary"
-            )
+            return f"Base-top zoom: {self.getFloat('base_top_view_zoom'):.2f}; full calibration remains overlay-primary"
         if route_key == "arm":
-            return (
-                f"Retract: {self.getInt('arm_retract_length')} mm, "
-                f"extend: {self.getInt('arm_extend_length')} mm"
-            )
+            return f"Retract: {self.getInt('arm_retract_length')} mm, extend: {self.getInt('arm_extend_length')} mm"
         return ""
 
     @Slot(result=str)
@@ -837,17 +831,17 @@ class SettingsManager(QObject):
             f"Saved zoom {self.getFloat('base_top_view_zoom'):.2f}, "
             f"crop {crop_state}. Full calibration remains overlay-primary."
         )
-    
+
     @Slot(str, result=bool)
     def requiresRestart(self, key: str) -> bool:
         """Check if a setting requires restart from QML"""
         schema = self.get_schema(key)
         return schema.get("requires_restart", False) if schema else False
-    
+
     # =====================================================
     # UI Section State Persistence (for collapsible sections)
     # =====================================================
-    
+
     @Slot(str, bool)
     def setSectionExpanded(self, sectionId: str, expanded: bool):
         """Save the expanded state of a UI section (QML callable)"""
@@ -858,7 +852,7 @@ class SettingsManager(QObject):
             states[sectionId] = expanded
             self._values["ui_section_states"] = states
         self.save_all()
-    
+
     @Slot(str, result=bool)
     def getSectionExpanded(self, sectionId: str) -> bool:
         """Get the expanded state of a UI section (QML callable). Returns True by default."""

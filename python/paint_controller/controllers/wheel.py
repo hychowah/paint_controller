@@ -5,14 +5,15 @@ from __future__ import annotations
 import logging
 import time
 
+from paint_interfaces.msg import MoveVehiclePos, MoveVehicleSpd, VehicleStatus
+from PySide6.QtCore import Property, Signal, Slot
 from rclpy.node import Node
 from std_msgs.msg import Bool
-from paint_interfaces.msg import MoveVehicleSpd, MoveVehiclePos, VehicleStatus
-from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 
 from paint_controller.controllers._base import RosStatusController
 
 logger = logging.getLogger(__name__)
+
 
 class WheelController(RosStatusController):
     # Signals for property changed notifications
@@ -24,19 +25,19 @@ class WheelController(RosStatusController):
     right_wheel_position_changed = Signal()
     available_changed = Signal()
     enabled_changed = Signal()
-    
+
     # New signals for motor error and availability
     left_error_changed = Signal()
     right_error_changed = Signal()
     left_motor_available_changed = Signal()
     right_motor_available_changed = Signal()
-    
+
     # Error signal for emergency overlay (has_error: bool, message: str)
     error_state_changed = Signal(bool, str)
 
     def __init__(self, node: Node) -> None:
         super().__init__(node)
-        
+
         # Initialize property values
         self._left_wheel_speed = 0.0
         self._right_wheel_speed = 0.0
@@ -44,47 +45,42 @@ class WheelController(RosStatusController):
         self._right_wheel_current = 0.0
         self._left_wheel_position = 0.0
         self._right_wheel_position = 0.0
-        
+
         # Motor error and availability states
         self._left_error = False
         self._right_error = False
         self._left_motor_available = False
         self._right_motor_available = False
-        
+
         # Track last commanded speeds for unified command
         self._last_left_rpm = 0
         self._last_right_rpm = 0
-        
+
         # Connection status
         self._enabled = False
         self._last_command_time = time.time()
-        
+
         # Throttle variables
         self._last_update_time = 0
         self._min_update_interval = 0.05  # 50ms minimum between UI updates
-        
+
         # Setup publishers and subscribers
         self._setup_publishers()
         self._setup_subscribers()
-        
+
         # Create availability check timer
         self._start_availability_timer()
 
     def _setup_publishers(self) -> None:
         """Setup ROS publishers for vehicle control"""
-        self._speed_cmd_pub = self._node.create_publisher(MoveVehicleSpd, 'vehicle/speed/cmd', 1)
-        self._pos_cmd_pub = self._node.create_publisher(MoveVehiclePos, 'vehicle/position/cmd', 1)
-        self._disable_pub = self._node.create_publisher(Bool, 'wheel/disable/cmd', 1)
-        self._set_zero_pub = self._node.create_publisher(Bool, 'wheel/set_zero/cmd', 1)
+        self._speed_cmd_pub = self._node.create_publisher(MoveVehicleSpd, "vehicle/speed/cmd", 1)
+        self._pos_cmd_pub = self._node.create_publisher(MoveVehiclePos, "vehicle/position/cmd", 1)
+        self._disable_pub = self._node.create_publisher(Bool, "wheel/disable/cmd", 1)
+        self._set_zero_pub = self._node.create_publisher(Bool, "wheel/set_zero/cmd", 1)
 
     def _setup_subscribers(self) -> None:
         """Setup ROS subscribers for vehicle status"""
-        self._status_sub = self._node.create_subscription(
-            VehicleStatus,
-            'vehicle/status',  
-            self._status_callback,
-            10  
-        )
+        self._status_sub = self._node.create_subscription(VehicleStatus, "vehicle/status", self._status_callback, 10)
         logger.info("Vehicle status subscriber set up on topic 'vehicle/status'")
 
     def _check_availability(self) -> None:
@@ -94,80 +90,86 @@ class WheelController(RosStatusController):
         This runs on a timer to ensure we detect disconnections even when no new messages arrive.
         """
         current_time = time.time()
-        
+
         # Calculate time since last status update
         time_since_last_update = self._time_since_last_status(current_time)
-        
+
         # Determine if available: must have recent messages AND both motors available
         is_connected = time_since_last_update <= self._connection_timeout
         motors_available = self._left_motor_available and self._right_motor_available
         new_available = is_connected and motors_available
-        
+
         # Only emit if there's a change in availability
         if self.set_available(new_available):
             self.available_changed.emit()
             if not new_available:
                 if not is_connected:
-                    logger.warning("Wheel controller considered disconnected: %.1fs since last message", time_since_last_update)
+                    logger.warning(
+                        "Wheel controller considered disconnected: %.1fs since last message", time_since_last_update
+                    )
                 elif not motors_available:
-                    logger.warning("Wheel controller unavailable: left_available=%s, right_available=%s", self._left_motor_available, self._right_motor_available)
+                    logger.warning(
+                        "Wheel controller unavailable: left_available=%s, right_available=%s",
+                        self._left_motor_available,
+                        self._right_motor_available,
+                    )
 
     def _status_callback(self, msg: VehicleStatus) -> None:
         """Callback function for vehicle status messages"""
         try:
             # Update the last status time when any message is received
             self._record_status_update()
-            
+
             # Process motor availability states
             self._update_motor_availability(msg.left_available, msg.right_available)
-            
+
             # Process motor error states
             self._update_error_states(bool(msg.left_error), bool(msg.right_error))
-            
+
             # Check overall availability based on connection + motor states
             motors_available = self._left_motor_available and self._right_motor_available
             new_available = motors_available
-            
+
             if self.set_available(new_available):
                 self.available_changed.emit()
                 if new_available:
                     logger.info("Wheel controller connection restored")
-            
+
             # Process the status update
             self.update_status(msg)
         except Exception as e:
             logger.error("Error in vehicle status callback: %s", e)
-    
+
     def _update_motor_availability(self, left_available: bool, right_available: bool) -> None:
         """Update motor availability states and emit signals if changed"""
         if self._left_motor_available != left_available:
             self._left_motor_available = left_available
             self.left_motor_available_changed.emit()
-        
+
         if self._right_motor_available != right_available:
             self._right_motor_available = right_available
             self.right_motor_available_changed.emit()
-    
+
     def _update_error_states(self, left_error: bool, right_error: bool) -> None:
         """Update motor error states and trigger emergency signal if errors detected"""
         prev_left_error = self._left_error
         prev_right_error = self._right_error
-        
+
         if self._left_error != left_error:
             self._left_error = left_error
             self.left_error_changed.emit()
-        
+
         if self._right_error != right_error:
             self._right_error = right_error
             self.right_error_changed.emit()
-        
+
         # Emit error_state_changed signal when error transitions to True
         new_errors = []
         if left_error and not prev_left_error:
             new_errors.append("Left")
         if right_error and not prev_right_error:
             new_errors.append("Right")
-        
+
         if new_errors:
             if len(new_errors) == 2:
                 error_msg = "Both track motors error"
@@ -178,11 +180,11 @@ class WheelController(RosStatusController):
     def command_speed(self, left_rpm: int, right_rpm: int) -> bool:
         """
         Command vehicle speed using unified MoveVehicleSpd message.
-        
+
         Args:
             left_rpm: Left track RPM command
             right_rpm: Right track RPM command
-        
+
         Returns:
             True if command was published
         """
@@ -194,17 +196,17 @@ class WheelController(RosStatusController):
         self._last_left_rpm = int(left_rpm)
         self._last_right_rpm = int(right_rpm)
         return True
-    
+
     def command_position(self, left_mm: int, right_mm: int, rpm_limit: int, relative: bool = True) -> bool:
         """
         Command vehicle position using MoveVehiclePos message.
-        
+
         Args:
             left_mm: Left track travel distance in mm
             right_mm: Right track travel distance in mm
             rpm_limit: Maximum RPM limit for the movement
             relative: If True, distances are relative to current position
-        
+
         Returns:
             True if command was published
         """
@@ -220,10 +222,10 @@ class WheelController(RosStatusController):
     def command_left_wheel_speed(self, speed: float) -> bool:
         """
         Command left wheel speed. Uses unified command_speed internally.
-        
+
         Args:
             speed: Left wheel RPM command
-        
+
         Returns:
             True if command was published
         """
@@ -233,10 +235,10 @@ class WheelController(RosStatusController):
     def command_right_wheel_speed(self, speed: float) -> bool:
         """
         Command right wheel speed. Uses unified command_speed internally.
-        
+
         Args:
             speed: Right wheel RPM command
-        
+
         Returns:
             True if command was published
         """
@@ -250,7 +252,7 @@ class WheelController(RosStatusController):
         current_time = time.time()
         if current_time - self._last_update_time >= self._min_update_interval:
             self._last_update_time = current_time
-            
+
             # Update property values from VehicleStatus
             self.set_left_wheel_speed(float(msg.left_speed))
             self.set_right_wheel_speed(float(msg.right_speed))
@@ -262,94 +264,102 @@ class WheelController(RosStatusController):
     # Property getters and setters
     def get_left_wheel_speed(self) -> float:
         return self._left_wheel_speed
-        
+
     def set_left_wheel_speed(self, value: float) -> None:
         if self._left_wheel_speed != value:
             self._left_wheel_speed = value
             self.left_wheel_speed_changed.emit()
-            
+
     def get_right_wheel_speed(self) -> float:
         return self._right_wheel_speed
-        
+
     def set_right_wheel_speed(self, value: float) -> None:
         if self._right_wheel_speed != value:
             self._right_wheel_speed = value
             self.right_wheel_speed_changed.emit()
-            
+
     def get_left_wheel_current(self) -> float:
         return self._left_wheel_current
-        
+
     def set_left_wheel_current(self, value: float) -> None:
         if self._left_wheel_current != value:
             self._left_wheel_current = value
             self.left_wheel_current_changed.emit()
-            
+
     def get_right_wheel_current(self) -> float:
         return self._right_wheel_current
-        
+
     def set_right_wheel_current(self, value: float) -> None:
         if self._right_wheel_current != value:
             self._right_wheel_current = value
             self.right_wheel_current_changed.emit()
-            
+
     def get_left_wheel_position(self) -> float:
         return self._left_wheel_position
-        
+
     def set_left_wheel_position(self, value: float) -> None:
         if self._left_wheel_position != value:
             self._left_wheel_position = value
             self.left_wheel_position_changed.emit()
-            
+
     def get_right_wheel_position(self) -> float:
         return self._right_wheel_position
-        
+
     def set_right_wheel_position(self, value: float) -> None:
         if self._right_wheel_position != value:
             self._right_wheel_position = value
             self.right_wheel_position_changed.emit()
-            
+
     def get_enabled(self) -> bool:
         return self._enabled
-    
+
     def set_enabled(self, value: bool) -> None:
         if self._enabled != value:
             self._enabled = value
             self.enabled_changed.emit()
-    
+
     # Getters for new error and motor availability states
     def get_left_error(self) -> bool:
         return self._left_error
-    
+
     def get_right_error(self) -> bool:
         return self._right_error
-    
+
     def get_left_motor_available(self) -> bool:
         return self._left_motor_available
-    
+
     def get_right_motor_available(self) -> bool:
         return self._right_motor_available
-    
+
     # Define Qt properties
     left_wheel_speed = Property(float, get_left_wheel_speed, set_left_wheel_speed, notify=left_wheel_speed_changed)
     right_wheel_speed = Property(float, get_right_wheel_speed, set_right_wheel_speed, notify=right_wheel_speed_changed)
-    left_wheel_current = Property(float, get_left_wheel_current, set_left_wheel_current, notify=left_wheel_current_changed)
-    right_wheel_current = Property(float, get_right_wheel_current, set_right_wheel_current, notify=right_wheel_current_changed)
-    left_wheel_position = Property(float, get_left_wheel_position, set_left_wheel_position, notify=left_wheel_position_changed)
-    right_wheel_position = Property(float, get_right_wheel_position, set_right_wheel_position, notify=right_wheel_position_changed)
+    left_wheel_current = Property(
+        float, get_left_wheel_current, set_left_wheel_current, notify=left_wheel_current_changed
+    )
+    right_wheel_current = Property(
+        float, get_right_wheel_current, set_right_wheel_current, notify=right_wheel_current_changed
+    )
+    left_wheel_position = Property(
+        float, get_left_wheel_position, set_left_wheel_position, notify=left_wheel_position_changed
+    )
+    right_wheel_position = Property(
+        float, get_right_wheel_position, set_right_wheel_position, notify=right_wheel_position_changed
+    )
     available = Property(bool, RosStatusController.get_available, notify=available_changed)
     enabled = Property(bool, get_enabled, set_enabled, notify=enabled_changed)
-    
+
     # New Qt properties for error and motor availability
     left_error = Property(bool, get_left_error, notify=left_error_changed)
     right_error = Property(bool, get_right_error, notify=right_error_changed)
     left_motor_available = Property(bool, get_left_motor_available, notify=left_motor_available_changed)
     right_motor_available = Property(bool, get_right_motor_available, notify=right_motor_available_changed)
-    
+
     @Slot(bool)
     def setEnabled(self, enabled: bool) -> None:
         """
         Enable or disable wheel control
-        
+
         Args:
             enabled (bool): True to enable, False to disable
         """
@@ -359,34 +369,34 @@ class WheelController(RosStatusController):
         msg = Bool()
         msg.data = not enabled
         self._disable_pub.publish(msg)
-        logger.info('Wheel controller %s', 'enabled' if enabled else 'disabled')
-        
+        logger.info("Wheel controller %s", "enabled" if enabled else "disabled")
+
     @Slot(float)
     def setLeftSpeed(self, speed: float) -> bool:
         """Set left wheel speed from QML"""
         return self.command_left_wheel_speed(speed)
-    
+
     @Slot(float)
     def setRightSpeed(self, speed: float) -> bool:
         """Set right wheel speed from QML"""
         return self.command_right_wheel_speed(speed)
-    
+
     @Slot(int, int)
     def setSpeed(self, left_rpm: int, right_rpm: int) -> bool:
         """Set both wheel speeds from QML using unified command"""
         return self.command_speed(left_rpm, right_rpm)
-    
+
     @Slot(int, int, int, bool)
     def setPosition(self, left_mm: int, right_mm: int, rpm_limit: int, relative: bool) -> bool:
         """Command position from QML"""
         return self.command_position(left_mm, right_mm, rpm_limit, relative)
-    
+
     @Slot()
     def emergency_stop(self) -> None:
         """Emergency stop - immediately set both wheels to zero speed"""
         self.command_speed(0, 0)
-        logger.info('Wheel controller emergency stop activated')
-    
+        logger.info("Wheel controller emergency stop activated")
+
     @Slot()
     def resetWheelPosition(self) -> None:
         """
@@ -395,8 +405,8 @@ class WheelController(RosStatusController):
         msg = Bool()
         msg.data = True
         self._set_zero_pub.publish(msg)
-        logger.info('Wheel positions reset to zero')
-        
+        logger.info("Wheel positions reset to zero")
+
     def cleanup(self) -> None:
         """Clean up resources when shutting down"""
         super().cleanup()

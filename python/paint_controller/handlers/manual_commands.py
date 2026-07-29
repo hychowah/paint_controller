@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from PySide6.QtCore import QObject, Signal, Slot
 
@@ -64,15 +65,11 @@ class ManualCommandHandler(QObject):
                 executor=self._execute_frequency_tap,
             ),
             "Tap Once": _CommandSpec(
-                parameters=(
-                    _ParameterSpec("Power", self._to_float),
-                ),
+                parameters=(_ParameterSpec("Power", self._to_float),),
                 executor=self._execute_tap_once,
             ),
             "Extend Arm": _CommandSpec(
-                parameters=(
-                    _ParameterSpec("Length", self._to_int),
-                ),
+                parameters=(_ParameterSpec("Length", self._to_int),),
                 executor=self._execute_extend_arm,
             ),
         }

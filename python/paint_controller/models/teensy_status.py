@@ -68,8 +68,7 @@ _TEENS_CONTROLLER_BOOL_FIELDS: tuple[tuple[str, str, str], ...] = (
 )
 
 TEENS_STATUS_PROPERTY_NAMES: tuple[str, ...] = tuple(
-    [name for _, name, _ in _TEENS_DICT_FIELDS]
-    + [name for _, name, _ in _TEENS_CONTROLLER_BOOL_FIELDS]
+    [name for _, name, _ in _TEENS_DICT_FIELDS] + [name for _, name, _ in _TEENS_CONTROLLER_BOOL_FIELDS]
 )
 
 

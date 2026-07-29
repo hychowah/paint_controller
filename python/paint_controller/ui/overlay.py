@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-from PySide6.QtCore import QTimer, QObject, Slot, Property, Signal
 import logging
+
+from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 from paint_controller.models.joystick_selection import JoystickSelectionModel
 
@@ -10,13 +11,13 @@ logger = logging.getLogger(__name__)
 
 class OverlayController(QObject):
     """Controller class for managing dual joystick menu state"""
-    
+
     leftSelectedIndexChanged = Signal(int)
     rightSelectedIndexChanged = Signal(int)
     overlayChanged = Signal(bool)
     controlOptionsChanged = Signal(list)
     activeMenuChanged = Signal(str)
-    
+
     def __init__(self, selection_model: JoystickSelectionModel, teensy=None):
         super().__init__()
         self._selection_model = selection_model
@@ -29,7 +30,7 @@ class OverlayController(QObject):
         self._selection_model.committed_right_index_changed.connect(self._on_committed_right_index_changed)
         self._selection_model.temporary_left_index_changed.connect(self._on_temporary_left_index_changed)
         self._selection_model.temporary_right_index_changed.connect(self._on_temporary_right_index_changed)
-        
+
         # Initialize timer
         self._input_timer = QTimer()
         self._input_timer.setInterval(100)
@@ -63,19 +64,19 @@ class OverlayController(QObject):
     @Property(list, notify=controlOptionsChanged)
     def control_options(self):
         return self._selection_model.control_options
-        
+
     @Property(int, notify=leftSelectedIndexChanged)
     def left_selected_index(self):
         return self._selection_model.display_left_index(self._show_overlay)
-        
+
     @Property(int, notify=rightSelectedIndexChanged)
     def right_selected_index(self):
         return self._selection_model.display_right_index(self._show_overlay)
-        
+
     @Property(bool, notify=overlayChanged)
     def show_overlay(self):
         return self._show_overlay
-        
+
     @Property(str, notify=activeMenuChanged)
     def active_menu(self):
         return self._active_menu
@@ -100,12 +101,12 @@ class OverlayController(QObject):
             self._selection_model.initialize_temporary_selection()
 
         self.show_menu()
-    
+
     @Slot()
     def toggle_system_menu(self):
         """Toggle the system menu"""
         self._toggle_menu("system")
-    
+
     @Slot()
     def toggle_left_menu(self):
         """Toggle the left joystick menu"""
@@ -162,7 +163,7 @@ class OverlayController(QObject):
         """Show the menu overlay"""
         self._show_overlay = True
         self.overlayChanged.emit(True)
-    
+
     @Slot()
     def hide_menu(self):
         """Hide the menu overlay and apply selections"""
@@ -186,35 +187,35 @@ class OverlayController(QObject):
         if not self._show_overlay or self._input_locked:
             return
         self._selection_model.move_selection_up(self._active_menu)
-                
+
         self._input_locked = True
         self._input_timer.start()
-            
+
     @Slot()
     def move_down(self):
         """Move selection down in the active menu"""
         if not self._show_overlay or self._input_locked:
             return
         self._selection_model.move_selection_down(self._active_menu)
-                
+
         self._input_locked = True
         self._input_timer.start()
 
     @Slot(result=str)
     def get_left_selected_option(self):
         return self._selection_model.get_left_selected_option()
-    
+
     @Slot(result=str)
     def get_right_selected_option(self):
         return self._selection_model.get_right_selected_option()
-    
+
     @Slot()
     def move_to_first(self):
         """Move selection to the first available item in the active menu"""
         if not self._show_overlay or self._input_locked:
             return
         self._selection_model.move_selection_to_first(self._active_menu)
-                
+
         self._input_locked = True
         self._input_timer.start()
 
@@ -224,7 +225,7 @@ class OverlayController(QObject):
         if not self._show_overlay or self._input_locked:
             return
         self._selection_model.move_selection_to_last(self._active_menu)
-                
+
         self._input_locked = True
         self._input_timer.start()
 

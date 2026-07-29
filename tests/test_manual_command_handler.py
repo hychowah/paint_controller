@@ -47,7 +47,9 @@ class FakeWinch:
         return self.result
 
 
-def _build_handler(winch_result: bool = True) -> tuple[ManualCommandHandler, FakeTeensy, FakeWinch, FakeLogger, list[tuple[bool, str]]]:
+def _build_handler(
+    winch_result: bool = True,
+) -> tuple[ManualCommandHandler, FakeTeensy, FakeWinch, FakeLogger, list[tuple[bool, str]]]:
     teensy = FakeTeensy()
     winch = FakeWinch(result=winch_result)
     logger = FakeLogger()

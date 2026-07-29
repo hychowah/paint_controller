@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import time
-
+from PySide6.QtCore import Property, QObject, Signal
 from rclpy.node import Node
 from std_msgs.msg import Float32
-from PySide6.QtCore import QObject, Signal, Property
 
 
 class WindMonitor(QObject):
@@ -30,17 +28,17 @@ class WindMonitor(QObject):
 
     def get_speed(self) -> float:
         return self._speed
-    
+
     def get_direction(self) -> float:
         return self._direction
-    
+
     def _setup_subscribers(self) -> None:
-        self._node.create_subscription(Float32, '/wind/speed', self._speed_callback, 10)
-        self._node.create_subscription(Float32, '/wind/direction', self._direction_callback, 10)
+        self._node.create_subscription(Float32, "/wind/speed", self._speed_callback, 10)
+        self._node.create_subscription(Float32, "/wind/direction", self._direction_callback, 10)
 
     windSpeed = Property(float, get_speed, notify=windSpeedChanged)
     windDirection = Property(float, get_direction, notify=windDirectionChanged)
-    
+
     def cleanup(self) -> None:
         """Clean up wind monitor resources"""
         # No specific cleanup needed for this component

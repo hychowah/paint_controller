@@ -84,7 +84,9 @@ Item {{
             "cannot read property 'basestreamhandler' of undefined",
             "referenceerror",
         )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+            warnings
+        )
     finally:
         if root is not None:
             root.deleteLater()

@@ -13,7 +13,7 @@ def test_single_byte_produces_byte_sized_checksum() -> None:
 
 
 def test_same_input_is_deterministic() -> None:
-    data = b"\xAA\x00\x01\x02\x03\x04"
+    data = b"\xaa\x00\x01\x02\x03\x04"
     assert crc8(data) == crc8(data)
 
 
@@ -30,14 +30,14 @@ def test_known_esp32_message_crc_validates_trailing_checksum() -> None:
 
 
 def test_custom_polynomial_changes_crc_value() -> None:
-    data = b"\xAA\x55"
+    data = b"\xaa\x55"
     default_crc = crc8(data)
     custom_crc = crc8(data, polynomial=0x1D)
     assert default_crc != custom_crc
 
 
 def test_custom_init_changes_crc_value() -> None:
-    data = b"\xAA\x55"
+    data = b"\xaa\x55"
     default_crc = crc8(data)
     custom_crc = crc8(data, init=0x00)
     assert default_crc != custom_crc

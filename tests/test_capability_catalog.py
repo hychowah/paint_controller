@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from paint_controller.core.settings import SettingsManager, _SETTINGS_SCHEMA
+from paint_controller.core.settings import _SETTINGS_SCHEMA, SettingsManager
 from paint_controller.models.capability_catalog import (
-    CapabilityCatalog,
     _SETTING_CAPABILITIES,
+    CapabilityCatalog,
 )
 
 
@@ -96,11 +96,7 @@ def test_capability_catalog_inventories_known_admin_mutators(monkeypatch, tmp_pa
 def test_machine_schema_keys_have_setting_capabilities() -> None:
     """TD-036: QML-writable machine settings must have catalog legal metadata."""
     skip = {"ui_section_states", "action_legality_enforced"}
-    missing = [
-        key
-        for key in _SETTINGS_SCHEMA
-        if key not in skip and key not in _SETTING_CAPABILITIES
-    ]
+    missing = [key for key in _SETTINGS_SCHEMA if key not in skip and key not in _SETTING_CAPABILITIES]
     assert missing == [], f"schema keys missing _SETTING_CAPABILITIES: {missing}"
 
 

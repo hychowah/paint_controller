@@ -54,24 +54,14 @@ class WheelStatus(QObject):
         self._c = wheel_controller
         connect_required(wheel_controller, "available_changed", self.availableChanged.emit)
         connect_required(wheel_controller, "enabled_changed", self.enabledChanged.emit)
-        connect_required(
-            wheel_controller, "left_motor_available_changed", self.leftMotorAvailableChanged.emit
-        )
-        connect_required(
-            wheel_controller, "right_motor_available_changed", self.rightMotorAvailableChanged.emit
-        )
+        connect_required(wheel_controller, "left_motor_available_changed", self.leftMotorAvailableChanged.emit)
+        connect_required(wheel_controller, "right_motor_available_changed", self.rightMotorAvailableChanged.emit)
         connect_required(wheel_controller, "left_wheel_speed_changed", self.leftWheelSpeedChanged.emit)
         connect_required(wheel_controller, "right_wheel_speed_changed", self.rightWheelSpeedChanged.emit)
         connect_required(wheel_controller, "left_wheel_current_changed", self.leftWheelCurrentChanged.emit)
-        connect_required(
-            wheel_controller, "right_wheel_current_changed", self.rightWheelCurrentChanged.emit
-        )
-        connect_required(
-            wheel_controller, "left_wheel_position_changed", self.leftWheelPositionChanged.emit
-        )
-        connect_required(
-            wheel_controller, "right_wheel_position_changed", self.rightWheelPositionChanged.emit
-        )
+        connect_required(wheel_controller, "right_wheel_current_changed", self.rightWheelCurrentChanged.emit)
+        connect_required(wheel_controller, "left_wheel_position_changed", self.leftWheelPositionChanged.emit)
+        connect_required(wheel_controller, "right_wheel_position_changed", self.rightWheelPositionChanged.emit)
 
     def _bool(self, name: str, default: bool = False) -> bool:
         return bool(getattr(self._c, name, default))

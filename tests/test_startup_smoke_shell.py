@@ -11,7 +11,6 @@ from PySide6.QtTest import QTest
 from paint_controller.core.application import _teardown_qml_runtime
 from tests.startup_smoke_support import (
     BlankImageProvider,
-    DynamicObject,
     FakeLauncherAdmin,
     FakeOverlayHost,
     _assert_component_ready,
@@ -58,11 +57,13 @@ def test_main_window_loads_offscreen_with_context_properties(monkeypatch, tmp_pa
         "cannot read property 'feeds' of undefined",
         "cannot read property 'topbar' of undefined",
         "referenceerror: workflowrunner is not defined",
-        "detected function \"onendeffectorframeready\"",
-        "detected function \"onbasefrontframeready\"",
-        "detected function \"onbaserearframeready\"",
+        'detected function "onendeffectorframeready"',
+        'detected function "onbasefrontframeready"',
+        'detected function "onbaserearframeready"',
     )
-    assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+        warnings
+    )
 
 
 def test_main_window_video_overlay_is_active_by_default(monkeypatch, tmp_path, qt_app):
@@ -103,7 +104,9 @@ def test_main_window_video_overlay_is_active_by_default(monkeypatch, tmp_path, q
         "cannot read property 'feeds' of undefined",
         "cannot read property 'topbar' of undefined",
     )
-    assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+        warnings
+    )
 
 
 def test_main_window_video_overlay_hides_when_navigating_away(monkeypatch, tmp_path, qt_app, qtbot):
@@ -170,7 +173,9 @@ MainWindow {{
             "no such file or directory",
             "is not a type",
         )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+            warnings
+        )
     finally:
         if root is not None:
             root.deleteLater()
@@ -241,7 +246,9 @@ MainWindow {{
             "no such file or directory",
             "is not a type",
         )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+            warnings
+        )
     finally:
         if root is not None:
             root.deleteLater()
@@ -386,7 +393,9 @@ def test_main_window_select_bar_click_navigates_to_base_route(monkeypatch, tmp_p
         "no such file or directory",
         "is not a type",
     )
-    assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+        warnings
+    )
 
 
 def test_main_window_teardown_does_not_emit_null_binding_warnings(monkeypatch, tmp_path, qt_app):
@@ -460,7 +469,9 @@ def test_multi_screen_monitor_window_loads_offscreen(monkeypatch, tmp_path, qt_a
         "cannot read property 'distance'",
         "cannot read property 'angle'",
     )
-    assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+        warnings
+    )
 
 
 def test_multi_screen_monitor_window_consumes_overlay_host_matrix(monkeypatch, tmp_path, qt_app):
@@ -705,7 +716,9 @@ Item {{
             "cannot read property",
             "referenceerror",
         )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+            warnings
+        )
     finally:
         if root is not None:
             root.deleteLater()

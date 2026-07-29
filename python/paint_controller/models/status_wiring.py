@@ -15,7 +15,5 @@ def connect_required(owner: Any, signal_name: str, callback: Callable[..., None]
     signal = getattr(owner, signal_name, None)
     if signal is None or not hasattr(signal, "connect"):
         owner_name = type(owner).__name__
-        raise AttributeError(
-            f"Required signal {owner_name}.{signal_name} is missing or not connectable"
-        )
+        raise AttributeError(f"Required signal {owner_name}.{signal_name} is missing or not connectable")
     signal.connect(lambda *_args, **_kwargs: callback())

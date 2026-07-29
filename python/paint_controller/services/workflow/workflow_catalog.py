@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import List
 
-from PySide6.QtCore import QFileSystemWatcher, QObject, Property, Signal, Slot
+from PySide6.QtCore import Property, QFileSystemWatcher, QObject, Signal, Slot
 
 
 class WorkflowCatalog(QObject):
@@ -17,7 +16,7 @@ class WorkflowCatalog(QObject):
     def __init__(self, workflows_dir: str | None = None, logger=None, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self.logger = logger
-        self._workflow_list: List[str] = []
+        self._workflow_list: list[str] = []
         self._workflows_dir = workflows_dir or self._find_workflows_dir()
 
         self._file_watcher = QFileSystemWatcher(self)
@@ -30,9 +29,7 @@ class WorkflowCatalog(QObject):
         """Find workflows directory relative to package."""
         possible_paths = [
             os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "resource", "workflows"),
-            os.path.join(
-                os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "resource", "workflows"
-            ),
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "resource", "workflows"),
             "./workflows",
         ]
 
@@ -42,16 +39,14 @@ class WorkflowCatalog(QObject):
                     self.logger.info(f"Found workflows directory: {path}")
                 return path
 
-        default_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "..", "resource", "workflows"
-        )
+        default_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "resource", "workflows")
         os.makedirs(default_path, exist_ok=True)
         if self.logger is not None:
             self.logger.warning(f"Created workflows directory: {default_path}")
         return default_path
 
     @Property(list, notify=workflow_list_changed)
-    def workflow_list(self) -> List[str]:
+    def workflow_list(self) -> list[str]:
         """Get list of available workflow names."""
         return self._workflow_list
 

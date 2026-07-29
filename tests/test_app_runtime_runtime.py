@@ -8,21 +8,20 @@ import json
 from paint_controller.core import qml_context_composer
 from paint_controller.core.signal_wiring import SignalWiring
 from tests.controller_factory_runtime_support import (
-    FakeNode,
-    _SignalRecorder,
     _BaseTopViewServiceRecorder,
     _CleanupRecorder,
     _ControlProcessorRecorder,
-    _EngineRecorder,
     _EmergencyHandlerRecorder,
+    _EngineRecorder,
     _HeartbeatHandlerRecorder,
     _InputHandlerRecorder,
     _LidarStatusRecorder,
     _QtBridgeRecorder,
     _RosBagRecorderRecorder,
-    _ScreenRecorderRecorder,
+    _runtime_without_bootstrap,
     _SafetyCoordinatorRecorder,
     _ScreenRecorderRecorder,
+    _SignalRecorder,
     _SshControllerRecorder,
     _StatusTimerRecorder,
     _SteamDeckHandlerRecorder,
@@ -33,8 +32,8 @@ from tests.controller_factory_runtime_support import (
     _WaitableRecorder,
     _WheelControllerRecorder,
     _WinchStatusRecorder,
-    _runtime_without_bootstrap,
 )
+from tests.fakes import FakeNode
 
 
 def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) -> None:
@@ -65,9 +64,9 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
             "workflow_runner": object(),
             "warning_handler": object(),
             "wheel_controller": _WheelControllerRecorder(),
-            "winch_controller": object(),
+            "winch_controller": _WinchStatusRecorder(),
             "wind_monitor": object(),
-            "teensy_controller": object(),
+            "teensy_controller": _TeensyControllerRecorder(),
             "esp32_valve_controller": _ValveStatusRecorder(),
             "lidar_controller": _LidarStatusRecorder(),
             "heartbeat_handler": _HeartbeatHandlerRecorder(),
@@ -90,8 +89,6 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
             "input_handler": _InputHandlerRecorder(),
             "emergency_handler": _EmergencyHandlerRecorder(),
             "safety_coordinator": _SafetyCoordinatorRecorder(),
-            "teensy_controller": _TeensyControllerRecorder(),
-            "winch_controller": _WinchStatusRecorder(),
         },
     )()
     runtime.video_stream_handler = _VideoHandlerRecorder()
@@ -103,7 +100,9 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
         return runtime.bundle
 
     fake_factory = type("FactoryModule", (), {"create_controllers": staticmethod(fake_create_controllers)})
-    monkeypatch.setitem(importlib.import_module("sys").modules, "paint_controller.core.controller_factory", fake_factory)
+    monkeypatch.setitem(
+        importlib.import_module("sys").modules, "paint_controller.core.controller_factory", fake_factory
+    )
 
     runtime._create_controller_bundle()
     props = runtime._context_properties
@@ -267,15 +266,25 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     }
     assert launcher_admin.updateDeviceConfig("BASE", "10.0.0.20", "2200", "operator", "~/.ssh/id_new") is True
     launcher_admin.handleDeviceCommand("BASE", "Wheel", "start")
-    assert runtime.bundle.ssh_controller.update_calls == [
-        ("BASE", "10.0.0.20", "2200", "operator", "~/.ssh/id_new")
-    ]
+    assert runtime.bundle.ssh_controller.update_calls == [("BASE", "10.0.0.20", "2200", "operator", "~/.ssh/id_new")]
     assert runtime.bundle.ssh_controller.command_calls == [("BASE", "Wheel", "start")]
     assert "heartbeatHandler" not in engine_props
     assert "sshHandler" not in engine_props
     assert set(engine_props) == set(qml_context_composer._EXPECTED_CONTEXT_PROPERTY_NAMES)
     assert [button for button, _ in runtime.steam_deck_handler.callbacks] == [
-        "up", "down", "left", "right", "r4", "l4", "menu", "switch", "l5", "r5", "dot", "a", "l1"
+        "up",
+        "down",
+        "left",
+        "right",
+        "r4",
+        "l4",
+        "menu",
+        "switch",
+        "l5",
+        "r5",
+        "dot",
+        "a",
+        "l1",
     ]
 
 
@@ -346,6 +355,7 @@ def test_app_runtime_init_shuts_down_when_bootstrap_fails(monkeypatch) -> None:
         assert False, "AppRuntime constructor should re-raise bootstrap errors"
 
     assert len(shutdown_calls) == 1
+
 
 def test_expected_context_properties_match_startup_smoke_fixture(monkeypatch, tmp_path) -> None:
     """Smoke fixture context objects must match AppRuntime's expected contract exactly."""

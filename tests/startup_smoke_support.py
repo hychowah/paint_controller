@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from PySide6.QtCore import Property, QObject, QSize, Signal, Slot, QUrl
+from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 from PySide6.QtGui import QColor, QImage
 from PySide6.QtQml import QQmlComponent
 from PySide6.QtQuick import QQuickImageProvider
@@ -70,10 +70,34 @@ class FakeShellRouter(QObject):
             {"key": "home", "title": "Home", "iconSource": "../../resource/homepage.svg", "iconScale": 0.7, "order": 0},
             {"key": "base", "title": "Base", "iconSource": "../../resource/base.png", "iconScale": 0.7, "order": 1},
             {"key": "winch", "title": "Winch", "iconSource": "../../resource/winch.png", "iconScale": 0.6, "order": 2},
-            {"key": "monitor", "title": "Monitor", "iconSource": "../../resource/monitor.svg", "iconScale": 0.6, "order": 3},
-            {"key": "tuning", "title": "Tuning", "iconSource": "../../resource/icon-pid.png", "iconScale": 0.6, "order": 4},
-            {"key": "launcher", "title": "Launcher", "iconSource": "../../resource/launcher.svg", "iconScale": 0.7, "order": 5},
-            {"key": "settings", "title": "Settings", "iconSource": "../../resource/setting.svg", "iconScale": 0.6, "order": 6},
+            {
+                "key": "monitor",
+                "title": "Monitor",
+                "iconSource": "../../resource/monitor.svg",
+                "iconScale": 0.6,
+                "order": 3,
+            },
+            {
+                "key": "tuning",
+                "title": "Tuning",
+                "iconSource": "../../resource/icon-pid.png",
+                "iconScale": 0.6,
+                "order": 4,
+            },
+            {
+                "key": "launcher",
+                "title": "Launcher",
+                "iconSource": "../../resource/launcher.svg",
+                "iconScale": 0.7,
+                "order": 5,
+            },
+            {
+                "key": "settings",
+                "title": "Settings",
+                "iconSource": "../../resource/setting.svg",
+                "iconScale": 0.6,
+                "order": 6,
+            },
         ]
 
     @Property(list, constant=True)
@@ -135,6 +159,7 @@ class FakeLauncherAdmin(QObject):
 
 class FakeBackend(QObject):
     """Smoke stand-in for QtBridge (registered as qtBridge)."""
+
     showPopupRequested = Signal(str, str, str, int)
     closePopupRequested = Signal()
     toggleSidebarRequested = Signal()
@@ -603,7 +628,6 @@ class FakeWheelActions(QObject):
     @Slot(result=bool)
     def resetPosition(self) -> bool:
         return True
-
 
 
 class FakeRecordingActions(QObject):

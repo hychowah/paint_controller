@@ -136,9 +136,7 @@ def test_setting_key_uses_setting_capability_metadata(qt_app) -> None:
 def test_mixed_admin_route_and_safety_admin_are_registered() -> None:
     assert "mixed-admin-route" in _LEGAL_STATE_ALLOWED_HEARTBEAT_STATES
     assert "safety-admin" in _LEGAL_STATE_ALLOWED_HEARTBEAT_STATES
-    assert _LEGAL_STATE_ALLOWED_HEARTBEAT_STATES["mixed-admin-route"] == (
-        HeartbeatStatus.IDLE.value,
-    )
+    assert _LEGAL_STATE_ALLOWED_HEARTBEAT_STATES["mixed-admin-route"] == (HeartbeatStatus.IDLE.value,)
 
 
 def test_env_forces_enforcement_off_despite_settings_true(monkeypatch, qt_app) -> None:

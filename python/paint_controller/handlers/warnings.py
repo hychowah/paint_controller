@@ -1,7 +1,7 @@
-from PySide6.QtCore import QObject, Property, Signal, Slot
+from PySide6.QtCore import Property, QObject, Signal, Slot
+
 
 class WarningHandler(QObject):
-
     warningChanged = Signal()
 
     def __init__(self) -> None:

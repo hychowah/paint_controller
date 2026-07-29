@@ -168,7 +168,9 @@ def test_workflow_executor_publishes_original_workflow_action_index(monkeypatch)
     ]
 
     monkeypatch.setattr(module.time, "sleep", lambda _seconds: None)
-    monkeypatch.setattr(executor, "_execute_action", lambda scheduled: published_indices.append(executor.current_action_index))
+    monkeypatch.setattr(
+        executor, "_execute_action", lambda scheduled: published_indices.append(executor.current_action_index)
+    )
     monkeypatch.setattr(executor, "_wait_with_pause", lambda *args, **kwargs: None)
     monkeypatch.setattr(executor, "_wait_for_must_complete_actions", lambda *args, **kwargs: None)
 
@@ -201,7 +203,9 @@ def test_workflow_executor_publishes_original_index_for_position_trigger(monkeyp
     )
 
     executor._active_position_triggers = {"triggered_action": (trigger, 50.0)}
-    monkeypatch.setattr(executor, "_execute_action", lambda scheduled: published_indices.append(executor.current_action_index))
+    monkeypatch.setattr(
+        executor, "_execute_action", lambda scheduled: published_indices.append(executor.current_action_index)
+    )
 
     executor._check_position_triggers()
 

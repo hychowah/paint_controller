@@ -135,9 +135,7 @@ def test_k_setters_do_not_write_dist_coeffs_on_gui(qt_app, monkeypatch) -> None:
     service.worker.transformer._input_height = 240
     service.worker._initialized = True
     # Seed dist_coeffs so we can detect in-place GUI writes.
-    service.worker.transformer.dist_coeffs = __import__("numpy").array(
-        [[0.0], [0.0], [0.0], [0.0]], dtype="float64"
-    )
+    service.worker.transformer.dist_coeffs = __import__("numpy").array([[0.0], [0.0], [0.0], [0.0]], dtype="float64")
     dist_before = service.worker.transformer.dist_coeffs.copy()
 
     # Block the real recompute so only the setter side effects run synchronously.

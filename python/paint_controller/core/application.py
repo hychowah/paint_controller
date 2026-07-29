@@ -6,26 +6,27 @@ import logging
 import os
 import signal
 import sys
-
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # Force Qt to use X11 backend for VTK compatibility (Wayland issues)
-if 'QT_QPA_PLATFORM' not in os.environ:
-    os.environ['QT_QPA_PLATFORM'] = 'xcb'
+if "QT_QPA_PLATFORM" not in os.environ:
+    os.environ["QT_QPA_PLATFORM"] = "xcb"
 
 # Disable Linux native virtual keyboard (on-screen keyboard) for text input fields
-os.environ['QT_IM_MODULE'] = 'none'
+os.environ["QT_IM_MODULE"] = "none"
 
 # Global reference for signal handler
 _app_instance = None
 _shutdown_requested = False
 
+
 def _teardown_qml_runtime(engine: Any, app: Any, log_shutdown) -> None:
     from paint_controller.core.app_runtime import teardown_qml_runtime
 
     teardown_qml_runtime(engine, app, log_shutdown)
+
 
 def signal_handler(signum, frame):
     """Handle SIGINT (Ctrl+C) gracefully and force-exit on repeat."""
@@ -76,5 +77,6 @@ def main():
         if runtime is not None:
             runtime.shutdown()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

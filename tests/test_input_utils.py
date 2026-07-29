@@ -2,7 +2,7 @@
 
 from unittest.mock import patch
 
-from paint_controller.utils.input import DoublePressDetector, DeadzoneTracker
+from paint_controller.utils.input import DeadzoneTracker, DoublePressDetector
 
 
 def test_first_press_is_not_double() -> None:

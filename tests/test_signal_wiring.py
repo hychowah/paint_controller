@@ -104,7 +104,19 @@ def test_wire_registers_steam_deck_callbacks() -> None:
     SignalWiring(ports).wire()
 
     assert [button for button, _ in ports.steam_deck_handler.callbacks] == [
-        "up", "down", "left", "right", "r4", "l4", "menu", "switch", "l5", "r5", "dot", "a", "l1"
+        "up",
+        "down",
+        "left",
+        "right",
+        "r4",
+        "l4",
+        "menu",
+        "switch",
+        "l5",
+        "r5",
+        "dot",
+        "a",
+        "l1",
     ]
 
 
@@ -154,6 +166,7 @@ def test_start_timers_creates_status_timer_and_starts_monitor(monkeypatch) -> No
 
     def fake_qtimer_factory():
         return timer_recorder
+
     fake_qtimer_factory.singleShot = lambda _ms, _callback: None
     monkeypatch.setattr(signal_wiring_module, "QTimer", fake_qtimer_factory)
 

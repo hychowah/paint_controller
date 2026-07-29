@@ -3,5 +3,5 @@
 from .vtk_pointcloud import VTKPointCloudWidget
 
 __all__ = [
-    'VTKPointCloudWidget',
+    "VTKPointCloudWidget",
 ]

@@ -16,10 +16,9 @@ from tests.fakes import (
     FakeOverlay,
     FakeStateStore,
     FakeTeensy,
-    FakeWinch,
     FakeWheel,
+    FakeWinch,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -72,6 +71,7 @@ def _stick_state(ly: float = 0.0, lx: float = 0.0, ry: float = 0.0, rx: float = 
 # Settings defaults
 # ---------------------------------------------------------------------------
 
+
 def test_settings_manager_none_uses_hardcoded_defaults(qt_app) -> None:
     """When no settings_manager is provided, safe hardcoded defaults are used."""
     cp = _make_cp()
@@ -84,6 +84,7 @@ def test_settings_manager_none_uses_hardcoded_defaults(qt_app) -> None:
 # ---------------------------------------------------------------------------
 # Nonlinear curve (_apply_nonlinear_curve)
 # ---------------------------------------------------------------------------
+
 
 def test_nonlinear_curve_zero_returns_zero(qt_app) -> None:
     cp = _make_cp()
@@ -132,6 +133,7 @@ def test_nonlinear_curve_monotonically_increasing_magnitude(qt_app) -> None:
 # ---------------------------------------------------------------------------
 # Track control (_process_track_control)
 # ---------------------------------------------------------------------------
+
 
 def test_track_left_joystick_in_deadzone_sends_no_command(qt_app) -> None:
     """Joystick at exactly 0 (center) must not command wheel motion."""
@@ -182,14 +184,13 @@ def test_track_nonlinear_result_less_than_linear_at_half_deflection(qt_app) -> N
     cp._process_track_control(_stick_state(ly=half_joystick), "Track Control Left", "left")
     commanded = wheel.left_speed_commands[0]
     linear_half = TRACK_MAX_SPEED * 0.5
-    assert commanded < linear_half, (
-        f"Expected nonlinear speed ({commanded:.1f}) < linear half ({linear_half:.1f})"
-    )
+    assert commanded < linear_half, f"Expected nonlinear speed ({commanded:.1f}) < linear half ({linear_half:.1f})"
 
 
 # ---------------------------------------------------------------------------
 # Winch speed (_process_winch_speed)
 # ---------------------------------------------------------------------------
+
 
 def _full_winch_input() -> dict:
     """Input state with joystick at maximum (produces value ≈ max_speed)."""
@@ -343,6 +344,7 @@ def test_reset_winch_activation_clears_gate_and_deadzone(qt_app) -> None:
 # Wheel travel (_process_wheel_travel)
 # ---------------------------------------------------------------------------
 
+
 def _small_joystick_state(y_fraction: float = 1.0) -> dict:
     return _stick_state(ly=JOYSTICK_MAX * y_fraction)
 
@@ -392,6 +394,7 @@ def test_wheel_travel_does_not_send_command(qt_app) -> None:
 # send_wheel_travel_command
 # ---------------------------------------------------------------------------
 
+
 def test_send_wheel_travel_command_calls_position_command(qt_app) -> None:
     wheel = FakeWheel()
     cp = _make_cp(wheel=wheel)
@@ -418,6 +421,7 @@ def test_send_wheel_travel_command_uses_configured_rpm(qt_app) -> None:
 # ---------------------------------------------------------------------------
 # process_input dispatch (via overlay mode)
 # ---------------------------------------------------------------------------
+
 
 def test_process_input_dispatches_track_left_to_left_wheel(qt_app) -> None:
     """process_input with Track Control Left overlay must call left wheel speed."""

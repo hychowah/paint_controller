@@ -132,15 +132,11 @@ class _VideoRuntimeControls(QObject):
 
     @Property(str, notify=changed)
     def leftModeDisplay(self) -> str:
-        return str(
-            _read_object_value(self._control_processor, "left_control_mode_display", default="")
-        )
+        return str(_read_object_value(self._control_processor, "left_control_mode_display", default=""))
 
     @Property(str, notify=changed)
     def rightModeDisplay(self) -> str:
-        return str(
-            _read_object_value(self._control_processor, "right_control_mode_display", default="")
-        )
+        return str(_read_object_value(self._control_processor, "right_control_mode_display", default=""))
 
 
 class _VideoRuntimeFeeds(QObject):
@@ -178,11 +174,14 @@ class _VideoRuntimeTopBar(QObject):
         for owner, signal_names in (
             (ssh_controller, ("deviceAvailabilityChanged",)),
             (screen_recorder, ("is_recording_changed", "recording_duration_changed")),
-            (system_monitor, (
-                "battery_level_changed",
-                "battery_remaining_time_changed",
-                "cpu_temperature_changed",
-            )),
+            (
+                system_monitor,
+                (
+                    "battery_level_changed",
+                    "battery_remaining_time_changed",
+                    "cpu_temperature_changed",
+                ),
+            ),
             (teensy_controller, ("status_changed",)),
             (winch_controller, ("motor_voltage_changed",)),
         ):
@@ -338,12 +337,15 @@ class _RecordingStatus(QObject):
         for owner, signal_names in (
             (video_stream_handler, ("recordingStatusChanged", "baseRecordingStatusChanged")),
             (screen_recorder, ("is_recording_changed", "recording_duration_changed", "free_space_gb_changed")),
-            (ros_bag_recorder, (
-                "is_bag_recording_changed",
-                "bag_recording_duration_changed",
-                "is_compressing_changed",
-                "bag_status_message_changed",
-            )),
+            (
+                ros_bag_recorder,
+                (
+                    "is_bag_recording_changed",
+                    "bag_recording_duration_changed",
+                    "is_compressing_changed",
+                    "bag_status_message_changed",
+                ),
+            ),
         ):
             for signal_name in signal_names:
                 _connect_if_signal(owner, signal_name, self.changed.emit)
@@ -418,12 +420,15 @@ class _ShellConnectivityStatus(QObject):
 
         for owner, signal_names in (
             (ssh_controller, ("deviceAvailabilityChanged", "configUpdated")),
-            (heartbeat_handler, (
-                "base_online_changed",
-                "base_status_changed",
-                "ef_online_changed",
-                "ef_status_changed",
-            )),
+            (
+                heartbeat_handler,
+                (
+                    "base_online_changed",
+                    "base_status_changed",
+                    "ef_online_changed",
+                    "ef_status_changed",
+                ),
+            ),
             (winch_controller, ("available_changed",)),
             # WheelStatus (TD-037) uses per-property notifies; availability is the shell need.
             (wheel_status, ("availableChanged",)),

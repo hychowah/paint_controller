@@ -184,7 +184,12 @@ def test_workflow_runner_controls_execution_and_emergency_shutdown(qt_app, monke
         assert runner.resume() is True
         assert runner.stop() is True
 
-        assert state_events == [ExecutionState.RUNNING.value, ExecutionState.PAUSED.value, ExecutionState.RUNNING.value, ExecutionState.IDLE.value]
+        assert state_events == [
+            ExecutionState.RUNNING.value,
+            ExecutionState.PAUSED.value,
+            ExecutionState.RUNNING.value,
+            ExecutionState.IDLE.value,
+        ]
         assert runner.executor.play_calls == 1
         assert runner.executor.pause_calls == 1
         assert runner.executor.resume_calls == 1

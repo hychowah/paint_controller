@@ -7,7 +7,7 @@ import tempfile
 from typing import TYPE_CHECKING, Any
 
 import yaml
-from PySide6.QtCore import QObject, Property, Signal, Slot
+from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from .workflow_catalog import WorkflowCatalog
 
@@ -34,7 +34,8 @@ class WorkflowEditor(QObject):
 
     @Property(list, notify=workflow_list_changed)
     def workflow_list(self) -> list[str]:
-        return self._catalog.workflow_list
+        names = self._catalog.workflow_list
+        return list(names) if not callable(names) else list(names())
 
     @Slot()
     def refresh_workflow_list(self) -> None:
@@ -61,7 +62,7 @@ class WorkflowEditor(QObject):
             return {}
 
         try:
-            with open(workflow_path, "r", encoding="utf-8") as handle:
+            with open(workflow_path, encoding="utf-8") as handle:
                 workflow_data = yaml.safe_load(handle)
             return self._document_for_edit(workflow_name, workflow_data)
         except Exception as exc:

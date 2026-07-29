@@ -43,7 +43,9 @@ class FakeAdminActionGate:
         return self.results.get(action_key, (True, ""))
 
 
-def _build_actions() -> tuple[BaseTopViewActions, FakeBaseTopViewService, FakeAdminActionGate, FakeLogger, list[tuple[bool, str]]]:
+def _build_actions() -> tuple[
+    BaseTopViewActions, FakeBaseTopViewService, FakeAdminActionGate, FakeLogger, list[tuple[bool, str]]
+]:
     service = FakeBaseTopViewService()
     admin_action_gate = FakeAdminActionGate()
     logger = FakeLogger()

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import time
 from threading import Lock
-from typing import Optional
 
 import rclpy
 from PySide6.QtCore import QThread, Signal
@@ -14,13 +13,14 @@ from std_msgs.msg import UInt8
 from paint_controller.core.state_store import StateStore
 from paint_controller.utils.constants import HeartbeatStatus
 
+
 class PaintRosNode(Node):
     """ROS2 node for the paint controller. Owns heartbeat publisher."""
 
-    def __init__(self, state_store: Optional[StateStore] = None, node_name: str = 'robot_controller'):
+    def __init__(self, state_store: StateStore | None = None, node_name: str = "robot_controller"):
         super().__init__(node_name)
         self._state_store = state_store
-        self.heartbeat_pub = self.create_publisher(UInt8, '/controller/heartbeat', 10)
+        self.heartbeat_pub = self.create_publisher(UInt8, "/controller/heartbeat", 10)
         self._heartbeat_timer = self.create_timer(0.5, self.publish_heartbeat)
         self._cleanup_done = False
 
@@ -42,9 +42,9 @@ class PaintRosNode(Node):
         try:
             self.destroy_timer(self._heartbeat_timer)
             self.destroy_publisher(self.heartbeat_pub)
-            self.get_logger().info('PaintRosNode cleanup complete')
+            self.get_logger().info("PaintRosNode cleanup complete")
         except Exception as e:
-            self.get_logger().error(f'Error during PaintRosNode cleanup: {e}')
+            self.get_logger().error(f"Error during PaintRosNode cleanup: {e}")
 
 
 class RosThread(QThread):
@@ -71,19 +71,16 @@ class RosThread(QThread):
                     if self._shutdown_requested:
                         break
 
-                if not rclpy.ok():
-                    self.error_occurred.emit(
-                        "ROS context is not valid - network may be disconnected"
-                    )
+                # rclpy.ok() is public at runtime; stubs often omit it.
+                if not getattr(rclpy, "ok", lambda: False)():
+                    self.error_occurred.emit("ROS context is not valid - network may be disconnected")
                     time.sleep(0.5)
                     continue
 
                 try:
                     rclpy.spin_once(self.node, timeout_sec=0.05)
                 except Exception as spin_error:
-                    self.error_occurred.emit(
-                        f"ROS spin error (likely network): {spin_error}"
-                    )
+                    self.error_occurred.emit(f"ROS spin error (likely network): {spin_error}")
                     time.sleep(0.1)
 
             self._cleanup()
@@ -100,6 +97,6 @@ class RosThread(QThread):
 
     def _cleanup(self) -> None:
         try:
-            self.node.get_logger().info('ROS thread spin loop exited')
+            self.node.get_logger().info("ROS thread spin loop exited")
         except Exception as error:
-            self.node.get_logger().error(f'Error during ROS thread cleanup: {error}')
+            self.node.get_logger().error(f"Error during ROS thread cleanup: {error}")

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import copy
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, List
+from typing import Any
 
 
 @dataclass
@@ -15,7 +16,7 @@ class FakeLogRecord:
 
 @dataclass
 class FakeLogger:
-    records: List[FakeLogRecord] = field(default_factory=list)
+    records: list[FakeLogRecord] = field(default_factory=list)
 
     @staticmethod
     def _format(message: str, *args: Any) -> str:
@@ -41,15 +42,14 @@ class FakePublisher:
     msg_type: Any
     topic: str
     qos: int
-    bus: "FakeRosBus | None" = None
-    published_messages: List[Any] = field(default_factory=list)
+    bus: FakeRosBus | None = None
+    published_messages: list[Any] = field(default_factory=list)
 
     def publish(self, message: Any) -> None:
         # Validate message type matches the declared publisher type, just as
         # real DDS would reject a type mismatch at the middleware boundary.
         assert isinstance(message, self.msg_type), (
-            f"FakePublisher({self.topic}): expected {self.msg_type.__name__}, "
-            f"got {type(message).__name__}"
+            f"FakePublisher({self.topic}): expected {self.msg_type.__name__}, got {type(message).__name__}"
         )
         self.published_messages.append(message)
         if self.bus is not None:
@@ -66,7 +66,7 @@ class FakeSubscription:
 
 @dataclass
 class FakeRosBus:
-    subscriptions_by_topic: dict[str, List[FakeSubscription]] = field(default_factory=dict)
+    subscriptions_by_topic: dict[str, list[FakeSubscription]] = field(default_factory=dict)
 
     def register_subscription(self, subscription: FakeSubscription) -> None:
         self.subscriptions_by_topic.setdefault(subscription.topic, []).append(subscription)
@@ -108,12 +108,12 @@ class FakeNode:
     def __init__(self, bus: FakeRosBus | None = None) -> None:
         self.bus = bus
         self.logger = FakeLogger()
-        self.publishers: List[FakePublisher] = []
-        self.subscriptions: List[FakeSubscription] = []
-        self.timers: List[FakeTimer] = []
-        self.destroyed_publishers: List[FakePublisher] = []
-        self.destroyed_subscriptions: List[FakeSubscription] = []
-        self.destroyed_timers: List[FakeTimer] = []
+        self.publishers: list[FakePublisher] = []
+        self.subscriptions: list[FakeSubscription] = []
+        self.timers: list[FakeTimer] = []
+        self.destroyed_publishers: list[FakePublisher] = []
+        self.destroyed_subscriptions: list[FakeSubscription] = []
+        self.destroyed_timers: list[FakeTimer] = []
         self.destroyed = False
 
     def get_logger(self) -> FakeLogger:
@@ -173,13 +173,14 @@ class FakeNode:
 # Controller fakes for ControlProcessor tests
 # ---------------------------------------------------------------------------
 
+
 class FakeWheel:
     """Minimal WheelController double tracking every speed/position command."""
 
     def __init__(self) -> None:
-        self.left_speed_commands: List[float] = []
-        self.right_speed_commands: List[float] = []
-        self.position_commands: List[tuple] = []
+        self.left_speed_commands: list[float] = []
+        self.right_speed_commands: list[float] = []
+        self.position_commands: list[tuple] = []
         self.emergency_stop_calls = 0
 
     def command_left_wheel_speed(self, speed: float) -> None:
@@ -202,8 +203,8 @@ class FakeWinch:
     def __init__(self, available: bool = True, motor_brake: bool = False) -> None:
         self._available = available
         self._motor_brake = motor_brake
-        self.speed_commands: List[float] = []
-        self.rpm_commands: List[float] = []
+        self.speed_commands: list[float] = []
+        self.rpm_commands: list[float] = []
 
     def get_available(self) -> bool:
         return self._available
@@ -222,7 +223,7 @@ class FakeTeensyPublisher:
     """Minimal publisher double for Teensy topic publishers."""
 
     def __init__(self) -> None:
-        self.published: List[Any] = []
+        self.published: list[Any] = []
 
     def publish(self, msg: Any) -> None:
         self.published.append(msg)
@@ -240,10 +241,10 @@ class FakeTeensy:
         self.prop_left_pwm_pub = FakeTeensyPublisher()
         self.prop_right_pwm_pub = FakeTeensyPublisher()
         self.ef_spray_pitch_speed_pub = FakeTeensyPublisher()
-        self.yaw_commands: List[float] = []
-        self.rail_speed_commands: List[float] = []
-        self.force_commands: List[tuple] = []
-        self.trigger_values: List[int] = []
+        self.yaw_commands: list[float] = []
+        self.rail_speed_commands: list[float] = []
+        self.force_commands: list[tuple] = []
+        self.trigger_values: list[int] = []
         self._imu_yaw: float = 0.0
 
     def setYawAngle(self, angle: float) -> None:
@@ -268,7 +269,7 @@ class FakeEsp32Valve:
     """Minimal ESP32ValveController double."""
 
     def __init__(self) -> None:
-        self.valve_turn_commands: List[float] = []
+        self.valve_turn_commands: list[float] = []
 
     def setValveTurn(self, value: float) -> None:
         self.valve_turn_commands.append(value)

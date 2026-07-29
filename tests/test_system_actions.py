@@ -16,7 +16,9 @@ class FakeHeartbeatHandler:
         return self.result
 
 
-def _build_actions(result: bool = True) -> tuple[SystemActions, FakeHeartbeatHandler, FakeLogger, list[tuple[bool, str]]]:
+def _build_actions(
+    result: bool = True,
+) -> tuple[SystemActions, FakeHeartbeatHandler, FakeLogger, list[tuple[bool, str]]]:
     heartbeat_handler = FakeHeartbeatHandler(result=result)
     logger = FakeLogger()
     actions = SystemActions(

@@ -37,7 +37,9 @@ class FakeAdminActionGate:
         return self.results.get(action_key, (True, ""))
 
 
-def _build_actions(enabled_result: bool = True, reset_result: bool = True) -> tuple[WheelActions, FakeWheel, FakeAdminActionGate, FakeLogger, list[tuple[bool, str]]]:
+def _build_actions(
+    enabled_result: bool = True, reset_result: bool = True
+) -> tuple[WheelActions, FakeWheel, FakeAdminActionGate, FakeLogger, list[tuple[bool, str]]]:
     wheel = FakeWheel(enabled_result=enabled_result, reset_result=reset_result)
     admin_action_gate = FakeAdminActionGate()
     logger = FakeLogger()

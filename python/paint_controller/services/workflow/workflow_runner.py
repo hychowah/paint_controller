@@ -2,13 +2,13 @@
 """QML-facing runtime boundary for workflow execution and status."""
 
 import time
-from typing import Any, List
+from typing import Any
 
-from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer
+from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
-from .workflow_executor import WorkFlowExecutor, ExecutionState
 from .hardware import HardwareControllers
 from .workflow_catalog import WorkflowCatalog
+from .workflow_executor import ExecutionState, WorkFlowExecutor
 
 
 class WorkFlowRunner(QObject):
@@ -52,7 +52,7 @@ class WorkFlowRunner(QObject):
         self._owns_catalog = catalog is None
         self._catalog.workflow_list_changed.connect(self.workflow_list_changed.emit)
         self._current_workflow_name = ""
-        self._workflow_actions: List[dict[str, Any]] = []
+        self._workflow_actions: list[dict[str, Any]] = []
         self._current_action_index = -1
         self._last_execution_state = -1  # Track last emitted state
         self._last_loop_iteration = 0  # Track last emitted loop iteration
@@ -66,9 +66,10 @@ class WorkFlowRunner(QObject):
         self._monitor_timer.start(100)  # Update every 100ms
 
     @Property(list, notify=workflow_list_changed)
-    def workflow_list(self) -> List[str]:
+    def workflow_list(self) -> list[str]:
         """Get list of available workflow names."""
-        return self._catalog.workflow_list
+        names = self._catalog.workflow_list
+        return list(names) if not callable(names) else list(names())
 
     @Property(str, notify=current_workflow_changed)
     def current_workflow(self) -> str:
@@ -96,7 +97,7 @@ class WorkFlowRunner(QObject):
         return self._workflow_runtime_seconds
 
     @Property(list, notify=workflow_actions_changed)
-    def workflow_actions(self) -> List[dict]:
+    def workflow_actions(self) -> list[dict]:
         """Get cached workflow action summaries in workflow order."""
         return self._workflow_actions
 
@@ -154,9 +155,7 @@ class WorkFlowRunner(QObject):
             True if loaded successfully, False otherwise
         """
         if self.executor.current_state in (ExecutionState.RUNNING, ExecutionState.PAUSED):
-            error_msg = (
-                "Cannot load a new workflow while execution is active; stop the current workflow first"
-            )
+            error_msg = "Cannot load a new workflow while execution is active; stop the current workflow first"
             self.logger.error(error_msg)
             self.error_occurred.emit(error_msg)
             return False
@@ -195,7 +194,7 @@ class WorkFlowRunner(QObject):
         return success
 
     @Slot(result=list)
-    def get_current_workflow_actions(self) -> List[dict]:
+    def get_current_workflow_actions(self) -> list[dict]:
         """
         Compatibility wrapper for the deprecated direct action-summary read path.
         """
@@ -219,10 +218,7 @@ class WorkFlowRunner(QObject):
         if workflow_name != self._current_workflow_name:
             return True, None
 
-        return False, (
-            f"Cannot delete workflow '{workflow_name}' while it is loaded; "
-            "load a different workflow first"
-        )
+        return False, (f"Cannot delete workflow '{workflow_name}' while it is loaded; load a different workflow first")
 
     def mark_workflow_document_saved(self, workflow_name: str) -> None:
         """Mark the loaded workflow snapshot stale after an editor save."""
@@ -281,66 +277,66 @@ class WorkFlowRunner(QObject):
             return
         self._loaded_workflow_needs_reload = needs_reload
         self.loaded_workflow_reload_state_changed.emit(needs_reload)
-    
+
     def _generate_action_description(self, action_type: str, params: dict, action: dict) -> str:
         """
         Generate human-readable description from action parameters.
-        
+
         Args:
             action_type: Type of action
             params: Action parameters
             action: Full action config (for additional fields)
-            
+
         Returns:
             Formatted description string with timing information
         """
         # Use explicit description if provided
         base_desc = action.get("description", "")
-        
+
         if not base_desc:
             # Generate description based on action type
             if action_type in ("winch_absolute", "winch_move_absolute"):
                 length = params.get("length", 0)
                 speed = params.get("speed", 1)
                 base_desc = f"Move to {length}mm at {speed}mm/s"
-            
+
             elif action_type == "winch_increment":
                 length = params.get("length", 0)
                 speed = params.get("speed", 1)
                 direction = "up" if length < 0 else "down"
                 base_desc = f"Move {abs(length)}mm {direction} at {speed}mm/s"
-            
+
             elif action_type == "valve_turn":
                 turn_value = params.get("turn_value", 0.0)
                 if turn_value == 0.0:
                     base_desc = "Close valve"
                 else:
                     base_desc = f"Open valve to {turn_value:.1f}"
-            
+
             elif action_type in ("spray_gimbal", "teensy_gimbal"):
                 angle = params.get("angle", 0)
                 speed = params.get("speed", 10)
                 base_desc = f"Gimbal to {angle}° at {speed}°/s"
-            
+
             elif action_type in ("arm_extend", "teensy_arm_extend"):
                 distance = params.get("distance", 0)
                 base_desc = f"Extend arm to {distance}mm"
-            
+
             elif action_type == "ef_force":
                 fx = params.get("fx", 0.0)
                 fy = params.get("fy", 0.0)
                 base_desc = f"Set force Fx={fx:.1f}, Fy={fy:.1f}"
-            
+
             # Default: show all parameters
             elif params:
                 param_str = ", ".join([f"{k}={v}" for k, v in params.items()])
                 base_desc = param_str
             else:
                 base_desc = "No parameters"
-        
+
         # Add timing information
         timing_parts = []
-        
+
         # Add estimated duration if present
         estimated_duration = action.get("estimated_duration")
         if estimated_duration is not None:
@@ -349,14 +345,14 @@ class WorkFlowRunner(QObject):
                 timing_parts.append(f"~{estimated_duration}ms")
             else:
                 timing_parts.append(f"~{duration_sec:.1f}s")
-        
+
         # Add trigger/offset information if present
         trigger = action.get("trigger")
         if trigger:
             ref_action = trigger.get("reference_action", "?")
             timing_mode = trigger.get("timing_mode", "after_start")
             offset_ms = trigger.get("offset_ms", 0)
-            
+
             # Build timing description
             if timing_mode == "before_complete":
                 offset_sec = offset_ms / 1000.0
@@ -382,11 +378,11 @@ class WorkFlowRunner(QObject):
                         timing_parts.append(f"{offset_sec:.1f}s after '{ref_action}' starts")
                 else:
                     timing_parts.append(f"with '{ref_action}'")
-        
+
         # Combine base description with timing information
         if timing_parts:
             return f"{base_desc} ({', '.join(timing_parts)})"
-        
+
         return base_desc
 
     @Slot()
@@ -454,10 +450,10 @@ class WorkFlowRunner(QObject):
             self.error_occurred.emit(error_msg)
 
         return success
-    
+
     def _emergency_shutdown(self) -> None:
         """Perform emergency shutdown of critical systems.
-        
+
         Each controller is stopped independently so a failure in one
         does not prevent the others from being stopped.
         """
@@ -470,7 +466,7 @@ class WorkFlowRunner(QObject):
                 self.logger.info("Emergency stop: Winch moving to retracted position")
         except Exception as e:
             self.logger.error(f"Emergency stop: Failed to stop winch: {e}")
-        
+
         # Close valve immediately
         try:
             if hardware.teensy:
@@ -489,19 +485,19 @@ class WorkFlowRunner(QObject):
         # Update action index
         new_index = self.executor.current_action_index
         self._set_current_action_index(new_index)
-        
+
         # Update loop iteration
         new_loop_iteration = self.executor.get_loop_iteration()
         if new_loop_iteration != self._last_loop_iteration:
             self._last_loop_iteration = new_loop_iteration
             self.loop_iteration_changed.emit(new_loop_iteration)
-        
+
         # Update execution state
         current_state = self.executor.current_state.value
         if current_state != self._last_execution_state:
             self._last_execution_state = current_state
             self.execution_state_changed.emit(current_state)
-            
+
             # Log state transitions
             state_names = {0: "Idle", 1: "Running", 2: "Paused", 3: "Completed", 4: "Error"}
             state_name = state_names.get(current_state, "Unknown")

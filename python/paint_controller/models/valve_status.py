@@ -46,15 +46,9 @@ class ValveStatus(QObject):
         connect_required(valve_controller, "valve_position_changed", self.valvePositionChanged.emit)
         connect_required(valve_controller, "valve_rate_changed", self.valveRateChanged.emit)
         connect_required(valve_controller, "total_volume_changed", self.totalVolumeChanged.emit)
-        connect_required(
-            valve_controller, "valve_motor_current_changed", self.valveMotorCurrentChanged.emit
-        )
-        connect_required(
-            valve_controller, "valve_motor_connected_changed", self.valveMotorConnectedChanged.emit
-        )
-        connect_required(
-            valve_controller, "flow_meter_connected_changed", self.flowMeterConnectedChanged.emit
-        )
+        connect_required(valve_controller, "valve_motor_current_changed", self.valveMotorCurrentChanged.emit)
+        connect_required(valve_controller, "valve_motor_connected_changed", self.valveMotorConnectedChanged.emit)
+        connect_required(valve_controller, "flow_meter_connected_changed", self.flowMeterConnectedChanged.emit)
         connect_required(valve_controller, "esp32_connected_changed", self.connectedChanged.emit)
 
     def _bool(self, name: str, default: bool = False) -> bool:

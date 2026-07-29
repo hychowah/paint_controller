@@ -5,7 +5,6 @@ from __future__ import annotations
 import struct
 from typing import TypedDict
 
-
 _REPORT_LENGTH = 64
 
 
@@ -64,7 +63,7 @@ class ParsedHidFrame(TypedDict):
 
 
 def _read_int16_le(data: bytes, offset: int) -> int:
-    return struct.unpack("<h", data[offset:offset + 2])[0]
+    return struct.unpack("<h", data[offset : offset + 2])[0]
 
 
 def parse_hid_frame(data: bytes) -> ParsedHidFrame | None:

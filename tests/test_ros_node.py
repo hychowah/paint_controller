@@ -53,6 +53,7 @@ class FakeNode:
 
 def _ros_node_module(monkeypatch):
     import rclpy.node
+
     import paint_controller.core.ros_node as ros_node_module
 
     monkeypatch.setattr(rclpy.node, "Node", FakeNode)

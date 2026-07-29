@@ -98,4 +98,4 @@ class SafetyCoordinator:
                     f"Safety halt for {reason} completed with {len(failures)} failure(s): {'; '.join(failures)}"
                 )
             else:
-                self._logger.warning(f'Safety halt executed: {reason}')
+                self._logger.warning(f"Safety halt executed: {reason}")

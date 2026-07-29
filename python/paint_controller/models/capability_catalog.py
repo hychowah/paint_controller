@@ -3,8 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from PySide6.QtCore import QObject, Property, Slot
-
+from PySide6.QtCore import Property, QObject, Slot
 
 _SETTINGS_ROUTE_PAGES: tuple[dict[str, Any], ...] = (
     {
@@ -501,7 +500,7 @@ class CapabilityCatalog(QObject):
         if not metadata and not schema:
             return {}
 
-        capability = {"key": key}
+        capability: dict[str, Any] = {"key": key}
         capability.update(schema)
         capability.update(metadata)
         capability.setdefault("surfaceKeys", [])

@@ -65,9 +65,7 @@ class WinchStatus(QObject):
         connect_required(winch_controller, "motor_temperature_changed", self.motorTemperatureChanged.emit)
         connect_required(winch_controller, "motor_voltage_changed", self.motorVoltageChanged.emit)
         connect_required(winch_controller, "motor_brake_changed", self.motorBrakeChanged.emit)
-        connect_required(
-            winch_controller, "unusual_load_detected_changed", self.unusualLoadDetectedChanged.emit
-        )
+        connect_required(winch_controller, "unusual_load_detected_changed", self.unusualLoadDetectedChanged.emit)
 
     def _bool(self, name: str, default: bool = False) -> bool:
         return bool(getattr(self._c, name, default))

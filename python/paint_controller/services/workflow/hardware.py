@@ -6,16 +6,17 @@ Provides clean interface to hardware controllers with error handling and validat
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 
 class ControllerError(Exception):
     """Base exception for controller errors."""
+
     pass
 
 
-class ControllerNotAvailable(ControllerError):
+class ControllerNotAvailable(ControllerError):  # noqa: N818 — public workflow exception name
     """Raised when controller is not available."""
+
     pass
 
 
@@ -68,7 +69,7 @@ class TeensyControllerAdapter(ITeensyController):
     def __init__(self, teensy_controller, valve_controller=None):
         """
         Initialize adapter.
-        
+
         Args:
             teensy_controller: Actual Teensy controller instance
             valve_controller: Valve controller instance (ESP32ValveController)
@@ -107,7 +108,7 @@ class WinchControllerAdapter(IWinchController):
     def __init__(self, controller):
         """
         Initialize adapter.
-        
+
         Args:
             controller: Actual Winch controller instance
         """
@@ -136,13 +137,11 @@ class HardwareControllers:
     """Container for hardware controller instances."""
 
     def __init__(
-        self,
-        teensy_controller: Optional[ITeensyController] = None,
-        winch_controller: Optional[IWinchController] = None
+        self, teensy_controller: ITeensyController | None = None, winch_controller: IWinchController | None = None
     ):
         """
         Initialize hardware controllers.
-        
+
         Args:
             teensy_controller: Teensy controller instance
             winch_controller: Winch controller instance
@@ -154,21 +153,21 @@ class HardwareControllers:
     def from_robot_controller(cls, robot_controller):
         """
         Create HardwareControllers from robot controller instance.
-        
+
         Args:
             robot_controller: ROS2 robot controller with teensy_controller, esp32_valve_controller, and winch_controller
-            
+
         Returns:
             HardwareControllers instance
         """
         teensy = None
         winch = None
 
-        if hasattr(robot_controller, 'teensy_controller') and robot_controller.teensy_controller:
-            valve_controller = getattr(robot_controller, 'esp32_valve_controller', None)
+        if hasattr(robot_controller, "teensy_controller") and robot_controller.teensy_controller:
+            valve_controller = getattr(robot_controller, "esp32_valve_controller", None)
             teensy = TeensyControllerAdapter(robot_controller.teensy_controller, valve_controller)
 
-        if hasattr(robot_controller, 'winch_controller') and robot_controller.winch_controller:
+        if hasattr(robot_controller, "winch_controller") and robot_controller.winch_controller:
             winch = WinchControllerAdapter(robot_controller.winch_controller)
 
         return cls(teensy_controller=teensy, winch_controller=winch)

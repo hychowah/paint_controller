@@ -3,7 +3,6 @@
 import ast
 from pathlib import Path
 
-
 _SETTINGS_PATH = Path(__file__).parent.parent / "python" / "paint_controller" / "core" / "settings.py"
 
 

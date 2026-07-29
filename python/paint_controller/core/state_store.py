@@ -5,7 +5,8 @@
 from __future__ import annotations
 
 import threading
-from PySide6.QtCore import QObject, Signal, Property
+
+from PySide6.QtCore import Property, QObject, Signal
 
 from paint_controller.utils.constants import HeartbeatStatus
 
@@ -22,8 +23,8 @@ class StateStore(QObject):
     display_message_changed = Signal(str)
     left_joystick_control_changed = Signal(str)
     right_joystick_control_changed = Signal(str)
-    left_control_info_changed = Signal(str, str)   # mode, value
-    right_control_info_changed = Signal(str, str)   # mode, value
+    left_control_info_changed = Signal(str, str)  # mode, value
+    right_control_info_changed = Signal(str, str)  # mode, value
     controller_heartbeat_state_changed = Signal(int)
 
     def __init__(self, parent: QObject | None = None) -> None:

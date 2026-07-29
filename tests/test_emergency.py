@@ -77,7 +77,9 @@ class FakeStateStore:
         self.controller_heartbeat_state = HeartbeatStatus.IDLE.value
 
 
-def _build_handler(show_popup_fn=None, settings_manager=None) -> tuple[EmergencyButtonHandler, FakeWinch, FakeTeensy, FakeWheel, FakeEsp32Valve, FakeStateStore]:
+def _build_handler(
+    show_popup_fn=None, settings_manager=None
+) -> tuple[EmergencyButtonHandler, FakeWinch, FakeTeensy, FakeWheel, FakeEsp32Valve, FakeStateStore]:
     winch = FakeWinch()
     teensy = FakeTeensy()
     wheel = FakeWheel()
@@ -123,7 +125,9 @@ def test_release_before_threshold_cancels_without_trigger(qt_app):
 
 def test_hold_past_threshold_triggers_all_emergency_actions(qt_app):
     popup_calls: list[tuple[str, str, str, int]] = []
-    handler, winch, teensy, wheel, valve, state_store = _build_handler(show_popup_fn=lambda *args: popup_calls.append(args))
+    handler, winch, teensy, wheel, valve, state_store = _build_handler(
+        show_popup_fn=lambda *args: popup_calls.append(args)
+    )
     overlay_events: list[tuple[bool, float, float]] = []
     emergency_count: list[bool] = []
     handler.overlay_changed.connect(lambda visible, current, target: overlay_events.append((visible, current, target)))

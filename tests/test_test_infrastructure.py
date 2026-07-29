@@ -1,7 +1,6 @@
 """Harness validation tests for shared fake ROS/Qt test primitives."""
 
 import py_compile
-import sys
 from pathlib import Path
 
 from tests.fakes import FakeNode, FakeRosBus
@@ -62,10 +61,12 @@ def test_stub_modules_expose_expected_attributes() -> None:
     """
     # rclpy stub
     import rclpy.node as rclpy_node
+
     assert hasattr(rclpy_node, "Node"), "rclpy.node.Node missing from stub"
 
     # std_msgs stub
     import std_msgs.msg as std_msgs_msg
+
     assert hasattr(std_msgs_msg, "Float64"), "std_msgs.msg.Float64 missing from stub"
     assert hasattr(std_msgs_msg, "Bool"), "std_msgs.msg.Bool missing from stub"
     f = std_msgs_msg.Float64()
@@ -73,6 +74,7 @@ def test_stub_modules_expose_expected_attributes() -> None:
 
     # paint_interfaces stub
     import paint_interfaces.msg as paint_interfaces_msg
+
     assert hasattr(paint_interfaces_msg, "WinchStatus"), "paint_interfaces.msg.WinchStatus missing"
     assert hasattr(paint_interfaces_msg, "MoveWinchLength"), "paint_interfaces.msg.MoveWinchLength missing"
     ws = paint_interfaces_msg.WinchStatus()

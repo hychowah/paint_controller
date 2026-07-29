@@ -6,8 +6,6 @@ import importlib
 import json
 from dataclasses import dataclass
 
-from tests.fakes import FakeNode
-
 
 class _CleanupRecorder:
     def __init__(self, name: str, call_log: list[str]) -> None:
@@ -77,17 +75,38 @@ class _SteamDeckHandlerRecorder:
 
 
 class _InputHandlerRecorder:
-    def on_up_pressed(self) -> None: pass
-    def on_down_pressed(self) -> None: pass
-    def on_left_pressed(self) -> None: pass
-    def on_right_pressed(self) -> None: pass
-    def on_r4_pressed(self) -> None: pass
-    def on_l4_pressed(self) -> None: pass
-    def on_menu_pressed(self) -> None: pass
-    def on_switch_pressed(self) -> None: pass
-    def on_l5_pressed(self) -> None: pass
-    def on_r5_pressed(self) -> None: pass
-    def on_l1_pressed(self) -> None: pass
+    def on_up_pressed(self) -> None:
+        pass
+
+    def on_down_pressed(self) -> None:
+        pass
+
+    def on_left_pressed(self) -> None:
+        pass
+
+    def on_right_pressed(self) -> None:
+        pass
+
+    def on_r4_pressed(self) -> None:
+        pass
+
+    def on_l4_pressed(self) -> None:
+        pass
+
+    def on_menu_pressed(self) -> None:
+        pass
+
+    def on_switch_pressed(self) -> None:
+        pass
+
+    def on_l5_pressed(self) -> None:
+        pass
+
+    def on_r5_pressed(self) -> None:
+        pass
+
+    def on_l1_pressed(self) -> None:
+        pass
 
 
 class _QtBridgeRecorder:

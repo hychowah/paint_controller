@@ -96,7 +96,7 @@ class AppRuntime:
         self.overlay_host = None
         self.action_legality = None
         self.status_timer: QTimer | None = None
-        self.qml_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'qml')
+        self.qml_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "qml")
 
         self._composer: QmlContextComposer | None = None
         self._signal_wiring: SignalWiring | None = None
@@ -178,15 +178,16 @@ class AppRuntime:
         assert self.video_stream_handler is not None
         assert self.base_top_view_service is not None
 
-        self.engine = QQmlApplicationEngine()
-        self.engine.addImageProvider("ef_live", self.video_stream_handler.ef_image_provider)
-        self.engine.addImageProvider("base_front_live", self.video_stream_handler.front_image_provider)
-        self.engine.addImageProvider("base_rear_live", self.video_stream_handler.rear_image_provider)
-        self.engine.addImageProvider("base_top_view", self.base_top_view_service.image_provider)
+        engine = QQmlApplicationEngine()
+        self.engine = engine
+        engine.addImageProvider("ef_live", self.video_stream_handler.ef_image_provider)
+        engine.addImageProvider("base_front_live", self.video_stream_handler.front_image_provider)
+        engine.addImageProvider("base_rear_live", self.video_stream_handler.rear_image_provider)
+        engine.addImageProvider("base_top_view", self.base_top_view_service.image_provider)
         self._log_startup("QML engine and image providers ready")
 
-        self.engine.addImportPath(self.qml_dir)
-        self.qt_bridge = QtBridge(self.engine, self.state_store, logger=self.node.get_logger())
+        engine.addImportPath(self.qml_dir)
+        self.qt_bridge = QtBridge(engine, self.state_store, logger=self.node.get_logger())
         self._log_startup("Qt bridge created")
 
         assert self.settings_manager is not None
@@ -299,7 +300,7 @@ class AppRuntime:
         assert self.engine is not None
         assert self.node is not None
 
-        qml_path = os.path.join(self.qml_dir, 'core', 'MainWindow.qml')
+        qml_path = os.path.join(self.qml_dir, "core", "MainWindow.qml")
         self.engine.load(QUrl.fromLocalFile(qml_path))
         if not self.engine.rootObjects():
             raise RuntimeError(f"Failed to load QML root: {qml_path}")
@@ -383,7 +384,8 @@ class AppRuntime:
             logger.error("Error during ROS node cleanup: %s", error)
 
         try:
-            if rclpy.ok():
+            # rclpy.ok() is public at runtime; stubs often omit it.
+            if getattr(rclpy, "ok", lambda: False)():
                 rclpy.shutdown()
             log_shutdown("ROS context shutdown complete")
         except Exception as error:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QObject, Property, Signal, Slot
+from PySide6.QtCore import Property, QObject, Signal, Slot
 
 
 class JoystickSelectionModel(QObject):
@@ -77,16 +77,12 @@ class JoystickSelectionModel(QObject):
         self._set_temporary_left_index(left_index)
         self._set_temporary_right_index(right_index)
 
-    def _can_select_option(
-        self, active_menu: str, index: int, *, other_index: int | None = None
-    ) -> bool:
+    def _can_select_option(self, active_menu: str, index: int, *, other_index: int | None = None) -> bool:
         if index in (2, 3):
             return True
 
         if other_index is None:
-            other_index = (
-                self._temp_right_index if active_menu == "left" else self._temp_left_index
-            )
+            other_index = self._temp_right_index if active_menu == "left" else self._temp_left_index
         return index == 0 or index != other_index
 
     def select_left_control(self, index: int) -> bool:

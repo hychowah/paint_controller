@@ -1,11 +1,10 @@
-
-
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QObject, Slot, QTimer
+from PySide6.QtCore import QObject, QTimer, Slot
 
 from paint_controller.utils.constants import ControlMode, JoystickControl
 from paint_controller.utils.input import DoublePressDetector
@@ -47,11 +46,11 @@ class UIInputHandler(QObject):
         self._l5_double_press = DoublePressDetector(threshold=1.0)
         self._r5_double_press = DoublePressDetector(threshold=1.0)
         self._a_double_press = DoublePressDetector(threshold=1.0)
-        
+
         # Get arm extension presets from settings_manager if available
         if settings_manager is not None:
-            self._arm_retract_length = settings_manager.get('arm_retract_length') or 250
-            self._arm_extend_length = settings_manager.get('arm_extend_length') or 800
+            self._arm_retract_length = settings_manager.get("arm_retract_length") or 250
+            self._arm_extend_length = settings_manager.get("arm_extend_length") or 800
             settings_manager.arm_retract_length_changed.connect(self._on_arm_retract_length_changed)
             settings_manager.arm_extend_length_changed.connect(self._on_arm_extend_length_changed)
         else:
@@ -63,7 +62,7 @@ class UIInputHandler(QObject):
         """Handle arm_retract_length change from SettingsManager"""
         self._arm_retract_length = new_value
         logger.info("Arm retract length updated to: %s", new_value)
-    
+
     def _on_arm_extend_length_changed(self, new_value: int) -> None:
         """Handle arm_extend_length change from SettingsManager"""
         self._arm_extend_length = new_value
@@ -102,14 +101,12 @@ class UIInputHandler(QObject):
 
             left_control, right_control = remembered_controls
             self._selection_model.set_joystick_controls(left_control, right_control)
-            
+
             # Reset winch activation to prevent spurious commands from centered joystick
             self._control_processor.reset_winch_activation()
-            
+
             # Defer popup to let video overlay Loader stabilize (150ms)
-            QTimer.singleShot(150, lambda: self._show_popup_fn(
-                "Control Mode", "Switched to EF control mode", "info"
-            ))
+            QTimer.singleShot(150, lambda: self._show_popup_fn("Control Mode", "Switched to EF control mode", "info"))
         else:
             # Switch to base mode (triggers video overlay change)
             self._state_store.control_mode = ControlMode.BASE
@@ -120,11 +117,12 @@ class UIInputHandler(QObject):
 
             left_control, right_control = remembered_controls
             self._selection_model.set_joystick_controls(left_control, right_control)
-            
+
             # Defer popup to let video overlay Loader stabilize (150ms)
-            QTimer.singleShot(150, lambda: self._show_popup_fn(
-                "Control Mode", "Switched to Base control mode (Track Control)", "info"
-            ))
+            QTimer.singleShot(
+                150,
+                lambda: self._show_popup_fn("Control Mode", "Switched to Base control mode (Track Control)", "info"),
+            )
 
     @Slot()
     def on_up_pressed(self):
@@ -166,7 +164,7 @@ class UIInputHandler(QObject):
         self._teensy.set_thrust_force_enabled(new_enabled)
         status = "enabled" if new_enabled else "disabled"
         self._show_popup_fn("Thrust Force", f"Thrust force {status}", "info")
-    
+
     @Slot()
     def on_a_pressed(self):
         """Send wheel travel position command when A button is double-pressed"""

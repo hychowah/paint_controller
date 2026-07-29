@@ -6,12 +6,13 @@ Handles timing calculations and action scheduling with clean separation from exe
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Any
 from enum import Enum
+from typing import Any
 
 
 class TimingMode(Enum):
     """Timing modes for action scheduling."""
+
     AFTER_START = "after_start"
     BEFORE_COMPLETE = "before_complete"
     ON_COMPLETE = "on_complete"
@@ -21,17 +22,18 @@ class TimingMode(Enum):
 @dataclass
 class ScheduledAction:
     """Action scheduled for execution with timing information."""
+
     action_index: int
     action_id: str
-    action_config: Dict[str, Any]
+    action_config: dict[str, Any]
     scheduled_time: float  # Absolute time in seconds when action should execute (None for position triggers)
     estimated_duration: float  # Estimated duration in seconds
     # Position trigger fields (optional)
-    position_trigger_mm: Optional[float] = None  # Target position to trigger at
-    position_reference_action: Optional[str] = None  # Reference action ID for position trigger
+    position_trigger_mm: float | None = None  # Target position to trigger at
+    position_reference_action: str | None = None  # Reference action ID for position trigger
     is_position_triggered: bool = False  # True if this action uses position-based triggering
     # Winch completion tracking (optional)
-    winch_target_mm: Optional[float] = None  # Target position for winch actions
+    winch_target_mm: float | None = None  # Target position for winch actions
     is_winch_action: bool = False  # True if this is a winch movement action
     # Completion dependency tracking
     must_complete_before_workflow_end: bool = False  # True if workflow must wait for this action to complete
@@ -40,14 +42,14 @@ class ScheduledAction:
 class ActionScheduler:
     """
     Schedules actions with support for sequential and relative timing.
-    
+
     All timing internally uses seconds for consistency.
     """
 
     def __init__(self, logger=None, hardware=None):
         """
         Initialize scheduler.
-        
+
         Args:
             logger: Optional logger for diagnostic messages
             hardware: Optional HardwareControllers instance for reading current state
@@ -55,13 +57,13 @@ class ActionScheduler:
         self.logger = logger
         self.hardware = hardware
 
-    def build_schedule(self, actions: List[Dict[str, Any]]) -> List[ScheduledAction]:
+    def build_schedule(self, actions: list[dict[str, Any]]) -> list[ScheduledAction]:
         """
         Build execution schedule from action configurations.
-        
+
         Args:
             actions: List of action configurations from YAML
-            
+
         Returns:
             List of ScheduledAction sorted by execution time
         """
@@ -72,16 +74,16 @@ class ActionScheduler:
         for idx, action in enumerate(actions):
             action_id = action.get("id", f"action_{idx}")
             action_name = action.get("name", action_id)
-            
+
             # Calculate duration
             duration = self._calculate_duration(action)
-            
+
             # Calculate scheduled time and check for position triggers
             trigger = action.get("trigger")
             position_trigger_mm = None
             position_reference_action = None
             is_position_triggered = False
-            
+
             if trigger:
                 timing_mode_str = trigger.get("timing_mode", "after_start")
                 if timing_mode_str == "at_position":
@@ -90,7 +92,7 @@ class ActionScheduler:
                     position_trigger_mm = trigger.get("position_mm")
                     position_reference_action = trigger.get("reference_action")
                     scheduled_time = -1.0  # Sentinel - will be evaluated at runtime
-                    
+
                     if position_trigger_mm is None:
                         raise ValueError(f"Position trigger for '{action_id}' missing 'position_mm'")
                     if not position_reference_action:
@@ -101,9 +103,7 @@ class ActionScheduler:
                 # Sequential: check for delay_before (legacy support)
                 delay_before = action.get("delay_before", 0)
                 if delay_before != 0:
-                    scheduled_time = self._calculate_legacy_timing(
-                        delay_before, idx, scheduled, current_time
-                    )
+                    scheduled_time = self._calculate_legacy_timing(delay_before, idx, scheduled, current_time)
                 else:
                     scheduled_time = current_time
 
@@ -129,7 +129,7 @@ class ActionScheduler:
                 position_reference_action=position_reference_action,
                 is_position_triggered=is_position_triggered,
                 winch_target_mm=winch_target_mm,
-                is_winch_action=is_winch_action
+                is_winch_action=is_winch_action,
             )
 
             scheduled.append(sched)
@@ -142,8 +142,7 @@ class ActionScheduler:
 
             if self.logger:
                 self.logger.debug(
-                    f"Scheduled '{action_name}' (id={action_id}): "
-                    f"time={scheduled_time:.2f}s, duration={duration:.2f}s"
+                    f"Scheduled '{action_name}' (id={action_id}): time={scheduled_time:.2f}s, duration={duration:.2f}s"
                 )
 
         # Sort by scheduled time (important for triggered actions)
@@ -158,22 +157,22 @@ class ActionScheduler:
 
         return scheduled
 
-    def _calculate_duration(self, action: Dict[str, Any]) -> float:
+    def _calculate_duration(self, action: dict[str, Any]) -> float:
         """
         Calculate estimated duration for an action in seconds.
-        
+
         Args:
             action: Action configuration
-            
+
         Returns:
             Duration in seconds
         """
         action_type = action.get("type")
-        
+
         # Check for explicit duration
         if "estimated_duration" in action:
             return action["estimated_duration"] / 1000.0  # Convert ms to seconds
-        
+
         if "wait_after" in action:
             return action["wait_after"] / 1000.0  # Convert ms to seconds
 
@@ -183,7 +182,7 @@ class ActionScheduler:
             target_length = params.get("length", 0)
             distance = params.get("distance", 0)
             speed = params.get("speed", 1)
-            
+
             # If distance is explicitly provided, use it
             if distance > 0:
                 actual_distance = distance
@@ -202,32 +201,28 @@ class ActionScheduler:
                     except Exception as e:
                         if self.logger:
                             self.logger.warn(f"Could not get current cable length: {e}, using target as distance")
-            
+
             if speed > 0:
                 return actual_distance / speed  # Returns seconds
-        
+
         # Default duration
         return 1.0  # 1 second default
 
-    def _calculate_trigger_time(
-        self, 
-        trigger: Dict[str, Any], 
-        action_map: Dict[str, ScheduledAction]
-    ) -> float:
+    def _calculate_trigger_time(self, trigger: dict[str, Any], action_map: dict[str, ScheduledAction]) -> float:
         """
         Calculate scheduled time based on trigger configuration.
-        
+
         Args:
             trigger: Trigger configuration with reference_action, timing_mode, offset_ms
             action_map: Map of action_id to ScheduledAction
-            
+
         Returns:
             Scheduled time in seconds
         """
         ref_id = trigger.get("reference_action")
         if not ref_id or ref_id not in action_map:
             raise ValueError(f"Referenced action '{ref_id}' not found or not yet scheduled")
-        
+
         ref_action = action_map[ref_id]
         timing_mode = TimingMode(trigger.get("timing_mode", "after_start"))
         offset_seconds = trigger.get("offset_ms", 0) / 1000.0
@@ -248,21 +243,17 @@ class ActionScheduler:
             raise ValueError(f"Unknown timing mode: {timing_mode}")
 
     def _calculate_legacy_timing(
-        self,
-        delay_before: int,
-        idx: int,
-        scheduled: List[ScheduledAction],
-        current_time: float
+        self, delay_before: int, idx: int, scheduled: list[ScheduledAction], current_time: float
     ) -> float:
         """
         Calculate timing using legacy delay_before format.
-        
+
         Args:
             delay_before: Delay in milliseconds (positive=after, negative=before)
             idx: Current action index
             scheduled: List of already scheduled actions
             current_time: Current sequential time
-            
+
         Returns:
             Scheduled time in seconds
         """
@@ -275,7 +266,7 @@ class ActionScheduler:
             # Negative: before previous completes
             prev_action = scheduled[-1]
             prev_type = prev_action.action_config.get("type")
-            
+
             if prev_type in ("winch_absolute", "winch_move_absolute"):
                 # Use the already calculated duration from prev_action
                 # which now includes actual current position
@@ -287,16 +278,14 @@ class ActionScheduler:
             return current_time
 
     def _mark_must_complete_actions(
-        self,
-        scheduled: List[ScheduledAction],
-        action_map: Dict[str, ScheduledAction]
+        self, scheduled: list[ScheduledAction], action_map: dict[str, ScheduledAction]
     ) -> None:
         """
         Mark reference actions that must complete before workflow ends.
-        
+
         Industry pattern: Actions referenced by position triggers create
         implicit dependencies - they must finish before workflow completes.
-        
+
         Args:
             scheduled: List of all scheduled actions
             action_map: Map of action_id to ScheduledAction
@@ -304,17 +293,16 @@ class ActionScheduler:
         for action in scheduled:
             if action.is_position_triggered and action.position_reference_action:
                 ref_id = action.position_reference_action
-                
+
                 # Check for optional override in trigger config
                 trigger = action.action_config.get("trigger", {})
                 wait_for_ref = trigger.get("wait_for_reference_complete", True)
-                
+
                 if wait_for_ref and ref_id in action_map:
                     ref_action = action_map[ref_id]
                     ref_action.must_complete_before_workflow_end = True
-                    
+
                     if self.logger:
                         self.logger.debug(
-                            f"Marked '{ref_id}' as must-complete "
-                            f"(referenced by position trigger '{action.action_id}')"
+                            f"Marked '{ref_id}' as must-complete (referenced by position trigger '{action.action_id}')"
                         )

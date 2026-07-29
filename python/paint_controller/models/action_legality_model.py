@@ -22,8 +22,9 @@ class ActionLegalityModel(QObject):
         self._capability_catalog = capability_catalog
 
         gate_signal = getattr(admin_action_gate, "gate_state_changed", None)
-        if callable(getattr(gate_signal, "connect", None)):
-            gate_signal.connect(self.legalityChanged.emit)
+        connect = getattr(gate_signal, "connect", None)
+        if callable(connect):
+            connect(self.legalityChanged.emit)
 
     @Slot(str, result="QVariantMap")
     def getActionLegality(self, action_key: str):

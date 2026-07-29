@@ -16,11 +16,14 @@ ignore = [
     "N802",  # function name should be lowercase (Qt slots use camelCase)
     "N803",  # argument name should be lowercase (Qt conventions)
     "N806",  # variable in function should be lowercase (Qt conventions)
+    "N815",  # mixedCase class attrs — Qt Signal/Property names for QML
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["N", "E402"]
 "python/paint_controller/scripts/*" = ["E402"]
+# gi.require_version must precede gi.repository import
+"python/paint_controller/services/video_stream.py" = ["E402"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["paint_controller"]

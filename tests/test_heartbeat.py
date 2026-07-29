@@ -196,6 +196,7 @@ def test_clear_error_state_publishes_and_resets_runtime_state(qt_app):
     assert node.publishers[0].published_messages[-1].data == HeartbeatStatus.CLEAR_ERROR.value
     assert node.publishers[1].published_messages[-1].__class__.__name__ == "Empty"
 
+
 def test_error_state_latches_and_clear_error_state_resets_without_coordinator(qt_app):
     node = FakeNode()
     state_store = FakeStateStore()

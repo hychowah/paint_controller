@@ -10,7 +10,7 @@ def _empty_report(length: int = 64) -> bytearray:
 
 
 def _write_i16(report: bytearray, offset: int, value: int) -> None:
-    report[offset:offset + 2] = int(value).to_bytes(2, byteorder="little", signed=True)
+    report[offset : offset + 2] = int(value).to_bytes(2, byteorder="little", signed=True)
 
 
 def test_parse_hid_frame_returns_none_for_short_packets():
@@ -24,7 +24,7 @@ def test_parse_hid_frame_extracts_button_bits_and_ignores_tail():
     report[9] = (1 << 6) | (1 << 4) | (1 << 0)
     report[10] = (1 << 6) | (1 << 4) | (1 << 0)
     report[13] = (1 << 2) | (1 << 1)
-    report[14] = (1 << 2)
+    report[14] = 1 << 2
 
     parsed = parse_hid_frame(bytes(report))
 
@@ -68,8 +68,8 @@ def test_parse_hid_frame_extracts_signed_analog_values():
 
 def test_parse_hid_frame_exposes_auxiliary_buttons_for_future_use():
     report = _empty_report()
-    report[8] = (1 << 1)
-    report[10] = (1 << 3)
+    report[8] = 1 << 1
+    report[10] = 1 << 3
 
     parsed = parse_hid_frame(bytes(report))
 

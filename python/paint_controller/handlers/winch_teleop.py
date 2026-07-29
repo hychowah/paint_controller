@@ -18,10 +18,7 @@ def is_winch_control_locked(heartbeat_handler: Any) -> bool:
     """True when base or EF heartbeat reports ONTASK (winch stick must not command)."""
     base_status = heartbeat_handler.get_base_status()
     ef_status = heartbeat_handler.get_ef_status()
-    return (
-        base_status == HeartbeatStatus.ONTASK.value
-        or ef_status == HeartbeatStatus.ONTASK.value
-    )
+    return base_status == HeartbeatStatus.ONTASK.value or ef_status == HeartbeatStatus.ONTASK.value
 
 
 def process_winch_speed(

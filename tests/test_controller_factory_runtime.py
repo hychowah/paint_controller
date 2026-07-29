@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib
 
-from tests.controller_factory_runtime_support import _CleanupRecorder, _LoggerRecorder, _controller_factory_module
+from tests.controller_factory_runtime_support import _CleanupRecorder, _controller_factory_module, _LoggerRecorder
 from tests.fakes import FakeNode
 
 
@@ -153,11 +153,13 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
         close_popup_fn=close_popup,
     )
 
-    assert hardware_calls == [(
-        bundle.teensy_controller,
-        bundle.winch_controller,
-        bundle.esp32_valve_controller,
-    )]
+    assert hardware_calls == [
+        (
+            bundle.teensy_controller,
+            bundle.winch_controller,
+            bundle.esp32_valve_controller,
+        )
+    ]
     assert bundle.workflow_catalog.kwargs["logger"] is node.get_logger()
     assert bundle.workflow_editor.kwargs["catalog"] is bundle.workflow_catalog
     assert bundle.workflow_editor.kwargs["logger"] is node.get_logger()
@@ -198,8 +200,6 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     assert bundle.emergency_handler.kwargs["safety_coordinator"] is bundle.safety_coordinator
     assert bundle.screen_recorder.kwargs["screen_manager"] is bundle.screen_manager
     assert node.get_logger().records[-1].message == "All controllers created with explicit DI"
-
-
 
 
 def test_admin_action_gate_evaluates_idle_default_and_live_exceptions() -> None:
@@ -245,4 +245,3 @@ def test_admin_action_gate_allows_emergency_override_in_error_state() -> None:
     evaluation = gate.evaluate("winch.emergency_stop")
 
     assert evaluation["allowed"] is True
-

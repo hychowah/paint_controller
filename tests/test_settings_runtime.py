@@ -57,14 +57,18 @@ def test_settings_manager_load_merges_clamps_and_ignores_unknown_keys(monkeypatc
     config_dir = tmp_path / "config"
     config_dir.mkdir(parents=True, exist_ok=True)
     config_path = config_dir / "settings.json"
-    config_path.write_text(json.dumps({
-        "winch_max_speed_mmps": 999.0,
-        "arm_extend_length": 1200,
-        "base_top_view_crop_enabled": False,
-        "base_top_view_src_points": "invalid",
-        "ui_section_states": ["bad"],
-        "unknown_key": 123,
-    }))
+    config_path.write_text(
+        json.dumps(
+            {
+                "winch_max_speed_mmps": 999.0,
+                "arm_extend_length": 1200,
+                "base_top_view_crop_enabled": False,
+                "base_top_view_src_points": "invalid",
+                "ui_section_states": ["bad"],
+                "unknown_key": 123,
+            }
+        )
+    )
     monkeypatch.setattr(SettingsManager, "_get_config_path", lambda self: config_path)
 
     manager = SettingsManager()
@@ -151,17 +155,21 @@ def test_save_setting_emits_operation_result_saved_signal_and_popup(monkeypatch,
     saved_json = json.loads(config_path.read_text())
     assert saved_json["winch_max_speed_mmps"] == 250.0
     assert operation_results == [(True, "Settings saved successfully")]
-    assert saved_events == [(
-        "winch_max_speed_mmps",
-        250.0,
-        "Maximum winch speed limit (mm/s)",
-    )]
-    assert popup_calls == [(
-        "Setting Saved",
-        "Maximum winch speed limit (mm/s): 250.0",
-        "info",
-        2000,
-    )]
+    assert saved_events == [
+        (
+            "winch_max_speed_mmps",
+            250.0,
+            "Maximum winch speed limit (mm/s)",
+        )
+    ]
+    assert popup_calls == [
+        (
+            "Setting Saved",
+            "Maximum winch speed limit (mm/s): 250.0",
+            "info",
+            2000,
+        )
+    ]
 
 
 def test_section_expansion_state_persists_and_unknown_defaults_true(monkeypatch, tmp_path, qt_core_app):
@@ -241,7 +249,10 @@ def test_settings_route_summaries_reflect_current_values(monkeypatch, tmp_path, 
     assert manager.getRouteSummary("wheels") == "Track max: 321.0, travel max: 888 mm"
     assert manager.getRouteSummary("camera") == "Base-top zoom: 0.73; full calibration remains overlay-primary"
     assert manager.getRouteSummary("arm") == "Retract: 111 mm, extend: 999 mm"
-    assert manager.getCameraCalibrationSummary() == "Saved zoom 0.73, crop disabled. Full calibration remains overlay-primary."
+    assert (
+        manager.getCameraCalibrationSummary()
+        == "Saved zoom 0.73, crop disabled. Full calibration remains overlay-primary."
+    )
 
 
 # --- TD-036: gated QML writes, legality key, path resolution ---
@@ -356,10 +367,14 @@ def test_migrate_from_template_preserves_values(monkeypatch, tmp_path, qt_core_a
     live = tmp_path / "migrate_live" / "settings.json"
     template = tmp_path / "template" / "settings.json"
     template.parent.mkdir(parents=True)
-    template.write_text(json.dumps({
-        "winch_max_speed_mmps": 250.0,
-        "action_legality_enforced": False,
-    }))
+    template.write_text(
+        json.dumps(
+            {
+                "winch_max_speed_mmps": 250.0,
+                "action_legality_enforced": False,
+            }
+        )
+    )
     monkeypatch.setenv(SETTINGS_PATH_ENV, str(live))
     # Avoid first-load migrate from the real package template into live.
     monkeypatch.setattr(SettingsManager, "_get_config_path", lambda self: live)

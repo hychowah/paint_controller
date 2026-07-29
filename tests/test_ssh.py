@@ -74,17 +74,19 @@ def test_ssh_launcher_uses_timeouts_and_daemon_thread(monkeypatch):
 
     assert thread.daemon is True
     assert thread.started is True
-    assert state["connect_calls"] == [(
-        "10.0.0.2",
-        {
-            "port": 2200,
-            "username": "deck",
-            "password": "secret",
-            "timeout": 5,
-            "banner_timeout": 5,
-            "auth_timeout": 5,
-        },
-    )]
+    assert state["connect_calls"] == [
+        (
+            "10.0.0.2",
+            {
+                "port": 2200,
+                "username": "deck",
+                "password": "secret",
+                "timeout": 5,
+                "banner_timeout": 5,
+                "auth_timeout": 5,
+            },
+        )
+    ]
     assert state["command"] == "echo ok"
     assert state["closed"] is True
 
@@ -115,6 +117,7 @@ def test_availability_callback_ignores_runtime_error_during_teardown(monkeypatch
     ssh_module = importlib.import_module("paint_controller.controllers.ssh")
     controller = ssh_module.UISSHController()
     try:
+
         class BrokenSignal:
             def emit(self, *args, **kwargs) -> None:
                 raise RuntimeError("Signal source has been deleted")

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from paint_controller.models.overlay_host_policy import OverlayHostPolicy
-from tests.test_shell_state import FakeScreenManager
 from paint_controller.models.shell_state import ShellState
+from tests.test_shell_state import FakeScreenManager
 
 
 def test_overlay_host_policy_defaults_to_single_surface_hosts(qt_app) -> None:

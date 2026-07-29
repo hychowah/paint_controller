@@ -102,7 +102,9 @@ def test_screen_manager_reports_virtual_desktop_and_cleans_up(qt_app, monkeypatc
     _FakeQGuiApplication._app = fake_app
     monkeypatch.setattr(module, "QGuiApplication", _FakeQGuiApplication)
 
-    manager = module.ScreenManager(node=type("Node", (), {"get_logger": lambda self: type("Logger", (), {"info": lambda self, _msg: None})()})())
+    manager = module.ScreenManager(
+        node=type("Node", (), {"get_logger": lambda self: type("Logger", (), {"info": lambda self, _msg: None})()})()
+    )
 
     assert manager.get_screen_count() == 2
     assert manager.get_primary_screen_name() == "builtin"
@@ -123,7 +125,11 @@ def test_base_top_view_transformer_scales_output_and_uses_cached_maps(monkeypatc
     transformer = module.BaseTopViewTransformer(config_path="/does/not/exist.json")
 
     compute_calls = []
-    monkeypatch.setattr(transformer, "_compute_remap_tables", lambda: compute_calls.append((transformer.output_width, transformer.output_height)))
+    monkeypatch.setattr(
+        transformer,
+        "_compute_remap_tables",
+        lambda: compute_calls.append((transformer.output_width, transformer.output_height)),
+    )
 
     transformer.initialize_for_resolution(960, 540)
 

@@ -11,10 +11,9 @@ import os
 from copy import deepcopy
 from typing import Any
 
-from PySide6.QtCore import QObject, Property, Signal, Slot
+from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from paint_controller.utils.constants import HeartbeatStatus
-
 
 # Env override for lab/field (TD-036). Takes precedence over the settings flag.
 _ENFORCEMENT_ENV_VAR = "PAINT_ACTION_LEGALITY_ENFORCED"
@@ -110,12 +109,14 @@ class AdminActionGate(QObject):
         self._settings_manager = settings_manager
 
         state_signal = getattr(state_store, "controller_heartbeat_state_changed", None)
-        if callable(getattr(state_signal, "connect", None)):
-            state_signal.connect(lambda *_args, **_kwargs: self.gate_state_changed.emit())
+        state_connect = getattr(state_signal, "connect", None)
+        if callable(state_connect):
+            state_connect(lambda *_args, **_kwargs: self.gate_state_changed.emit())
 
         enforcement_signal = getattr(settings_manager, "action_legality_enforced_changed", None)
-        if callable(getattr(enforcement_signal, "connect", None)):
-            enforcement_signal.connect(lambda *_args, **_kwargs: self.gate_state_changed.emit())
+        enforcement_connect = getattr(enforcement_signal, "connect", None)
+        if callable(enforcement_connect):
+            enforcement_connect(lambda *_args, **_kwargs: self.gate_state_changed.emit())
 
     @Property(int, notify=gate_state_changed)
     def heartbeatState(self) -> int:
@@ -196,9 +197,7 @@ class AdminActionGate(QObject):
                 metadata.update(deepcopy(catalog_metadata))
             else:
                 # Setting keys live in _SETTING_CAPABILITIES, not action map (TD-036).
-                setting_getter = getattr(
-                    self._capability_catalog, "getSettingCapability", None
-                )
+                setting_getter = getattr(self._capability_catalog, "getSettingCapability", None)
                 if callable(setting_getter):
                     setting_metadata = setting_getter(action_key)
                     if isinstance(setting_metadata, dict) and setting_metadata:

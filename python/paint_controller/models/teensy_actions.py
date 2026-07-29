@@ -83,7 +83,9 @@ class TeensyActions(QObject):
 
     @Slot(result=bool)
     def toggleStability(self) -> bool:
-        return self._run_toggle("Stability controller", "setStabilityEnabled", not self._teensy_intent("stability_enabled"))
+        return self._run_toggle(
+            "Stability controller", "setStabilityEnabled", not self._teensy_intent("stability_enabled")
+        )
 
     @Slot(result=bool)
     def toggleYaw(self) -> bool:
@@ -91,19 +93,27 @@ class TeensyActions(QObject):
 
     @Slot(result=bool)
     def toggleAutoCorrection(self) -> bool:
-        return self._run_toggle("Auto correction", "setAutoCorrectionEnabled", not self._teensy_intent("auto_correction_enabled"))
+        return self._run_toggle(
+            "Auto correction", "setAutoCorrectionEnabled", not self._teensy_intent("auto_correction_enabled")
+        )
 
     @Slot(result=bool)
     def toggleSprayGunLeveling(self) -> bool:
-        return self._run_toggle("Spray gun leveling", "setSprayGunLevelingEnabled", not self._teensy_intent("spray_gun_leveling_enabled"))
+        return self._run_toggle(
+            "Spray gun leveling", "setSprayGunLevelingEnabled", not self._teensy_intent("spray_gun_leveling_enabled")
+        )
 
     @Slot(result=bool)
     def toggleRollerSteering(self) -> bool:
-        return self._run_toggle("Roller steering", "setRollerSteeringEnabled", not self._teensy_intent("roller_steering_enabled"))
+        return self._run_toggle(
+            "Roller steering", "setRollerSteeringEnabled", not self._teensy_intent("roller_steering_enabled")
+        )
 
     @Slot(result=bool)
     def toggleSwingDamping(self) -> bool:
-        return self._run_toggle("Swing damping", "setSwingDampingEnabled", not self._teensy_intent("swing_damping_enabled"))
+        return self._run_toggle(
+            "Swing damping", "setSwingDampingEnabled", not self._teensy_intent("swing_damping_enabled")
+        )
 
     @Slot(result=bool)
     def toggleSprayGunLed(self) -> bool:

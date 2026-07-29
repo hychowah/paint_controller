@@ -9,15 +9,17 @@ from enum import Enum, IntEnum
 
 class ControlMode(str, Enum):
     """Robot control modes — base (track) vs end-effector."""
+
     BASE = "base"
     END_EFFECTOR = "ef"
 
 
 class JoystickControl(str, Enum):
     """Joystick control options available in the overlay menu.
-    
+
     Values must match exact strings used in QML and control_processor configs.
     """
+
     NONE = "None"
     WINCH_SPEED = "Winch Speed"
     TRACK_LEFT = "Track Control Left"
@@ -44,5 +46,3 @@ class HeartbeatStatus(IntEnum):
     WARNING = 0x02
     ERROR = 0x03
     CLEAR_ERROR = 0x04
-
-

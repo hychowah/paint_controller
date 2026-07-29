@@ -7,12 +7,13 @@ from pathlib import Path
 import pytest
 from PySide6.QtCore import QObject, QUrl
 from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent
+
 from tests.startup_smoke_support import (
     BlankImageProvider,
     DynamicObject,
     FakeActionLegality,
-    FakeWorkFlowRunner,
     FakeWorkflowEditor,
+    FakeWorkFlowRunner,
     _assert_component_ready,
     _context_objects,
     _qml_import_url,
@@ -46,7 +47,9 @@ def test_settings_route_loads_offscreen(monkeypatch, tmp_path, qt_app):
         "is not a type",
         "required property",
     )
-    assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+    assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+        warnings
+    )
 
 
 def test_system_control_workspace_loads_with_required_properties(monkeypatch, tmp_path, qt_app, qtbot):
@@ -108,7 +111,9 @@ Item {{
             "is not a type",
             "required property",
         )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+            warnings
+        )
     finally:
         if root is not None:
             root.deleteLater()
@@ -198,7 +203,9 @@ Item {{
                 "cannot read property 'right_wheel_speed'",
                 "invalid image provider: image://base_top_view/frame",
             )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+            warnings
+        )
     finally:
         if root is not None:
             root.deleteLater()
@@ -267,7 +274,9 @@ Item {{
             "typeerror",
             "referenceerror",
         )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+            warnings
+        )
     finally:
         if root is not None:
             root.deleteLater()
@@ -337,7 +346,9 @@ Item {{
             "typeerror",
             "referenceerror",
         )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+            warnings
+        )
     finally:
         if root is not None:
             root.deleteLater()
@@ -397,7 +408,9 @@ Item {{
             "is not a type",
             "required property",
         )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+            warnings
+        )
     finally:
         if root is not None:
             root.deleteLater()
@@ -467,7 +480,9 @@ Item {{
             "typeerror",
             "referenceerror",
         )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+            warnings
+        )
     finally:
         if root is not None:
             root.deleteLater()
@@ -535,7 +550,9 @@ Item {{
             "typeerror",
             "referenceerror",
         )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+            warnings
+        )
     finally:
         if root is not None:
             root.deleteLater()
@@ -599,7 +616,9 @@ Item {{
             "typeerror",
             "referenceerror",
         )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+            warnings
+        )
     finally:
         if root is not None:
             root.deleteLater()
@@ -664,7 +683,9 @@ Item {{
             "typeerror",
             "referenceerror",
         )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+            warnings
+        )
     finally:
         if root is not None:
             root.deleteLater()
@@ -730,7 +751,9 @@ Item {{
             "is not a type",
             "required property",
         )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+            warnings
+        )
     finally:
         if root is not None:
             root.deleteLater()
@@ -805,7 +828,9 @@ Item {{
             "cannot read property 'right_wheel_position'",
             "cannot call method 'tofixed' of undefined",
         )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+            warnings
+        )
     finally:
         if root is not None:
             root.deleteLater()
@@ -891,7 +916,9 @@ Item {{
             "cannot read property 'angle'",
             "cannot call method 'tofixed' of undefined",
         )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+            warnings
+        )
     finally:
         if root is not None:
             root.deleteLater()
@@ -1196,7 +1223,9 @@ Item {{
             "is not a type",
             "required property",
         )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+            warnings
+        )
     finally:
         if root is not None:
             root.deleteLater()
@@ -1295,9 +1324,10 @@ ApplicationWindow {{
             "is not a type",
             "required property",
         )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), warnings
+        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
+            warnings
+        )
     finally:
         if root is not None:
             root.deleteLater()
             qt_app.processEvents()
-

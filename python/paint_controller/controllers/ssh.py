@@ -1,15 +1,17 @@
-from PySide6.QtCore import QObject, Slot, Signal, QTimer, Property, QRunnable, QThreadPool
+import json
 import logging
 import os
-import json
-import tempfile
-import paramiko
-import threading
-import subprocess
-import time
 import platform
+import subprocess
+import tempfile
+import threading
+import time
 import weakref
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
+
+import paramiko
+from PySide6.QtCore import Property, QObject, QRunnable, QThreadPool, QTimer, Signal, Slot
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +51,7 @@ def _atomic_write_json(path: str, data, *, indent: int) -> None:
         if temp_path and os.path.exists(temp_path):
             os.unlink(temp_path)
         raise
+
 
 class SSHLauncher:
     def __init__(
@@ -118,6 +121,7 @@ class SSHLauncher:
         thread.start()
         return thread
 
+
 class AvailabilityCheckRunnable(QRunnable):
     def __init__(
         self,
@@ -136,26 +140,27 @@ class AvailabilityCheckRunnable(QRunnable):
         try:
             # Determine ping command based on OS
             param = "-n" if platform.system().lower() == "windows" else "-c"
-            
+
             # Run ping command with timeout
             cmd = ["ping", param, "1", "-W", str(int(self.timeout * 1000)), self.hostname]
             result = subprocess.run(cmd, capture_output=True, timeout=self.timeout + 1)
-            
+
             is_available = result.returncode == 0
-            
+
             # Extract ping time from output
             ping_time = None
             if is_available:
                 output = result.stdout.decode()
                 # Try to extract ping time (format varies by OS, looking for "time=X.XXms" or "time < X.XXms")
                 import re
-                match = re.search(r'time[<=\s]+([0-9.]+)\s*ms', output, re.IGNORECASE)
+
+                match = re.search(r"time[<=\s]+([0-9.]+)\s*ms", output, re.IGNORECASE)
                 if match:
                     try:
                         ping_time = float(match.group(1))
                     except ValueError:
                         ping_time = None
-            
+
             message = f"Device {self.device_name} checked at {time.strftime('%H:%M:%S')}: {'Available' if is_available else 'Unavailable'}"
             if is_available and ping_time is not None:
                 message += f" ({ping_time:.2f}ms)"
@@ -164,6 +169,7 @@ class AvailabilityCheckRunnable(QRunnable):
 
         except Exception as e:
             self.callback(self.device_name, False, f"{self.device_name} check failed: {str(e)}", 0)
+
 
 class UISSHController(QObject):
     # Signals for QML
@@ -189,7 +195,7 @@ class UISSHController(QObject):
         config_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "config"))
         self.ssh_path = os.path.join(config_dir, "ssh_config.json")
         self.bash_path = os.path.join(config_dir, "bash_config.json")
-        
+
         # Ensure config directory exists
         os.makedirs(config_dir, exist_ok=True)
 
@@ -201,7 +207,7 @@ class UISSHController(QObject):
 
     def _load_json_file(self, path: str) -> dict[str, Any]:
         try:
-            with open(path, 'r') as f:
+            with open(path) as f:
                 return json.load(f)
         except Exception as e:
             logger.error("Failed to load JSON config from %s: %s", path, e)
@@ -220,10 +226,7 @@ class UISSHController(QObject):
 
     def _load_ssh_config(self, path: str) -> dict[str, SSHLauncher]:
         ssh_config = self._load_json_file(path)
-        return {
-            name: SSHLauncher(**info)
-            for name, info in ssh_config.items()
-        }
+        return {name: SSHLauncher(**info) for name, info in ssh_config.items()}
 
     @Slot(str, bool, str, float)
     def _handle_availability_result(self, device_name: str, is_available: bool, message: str, ping_time: float):
@@ -240,14 +243,12 @@ class UISSHController(QObject):
     def _handle_command_result(self, device_name: str, command: str, stdout: str, stderr: str):
         if self._show_popup_fn:
             self._show_popup_fn(
-                title="Device Command",
-                message=f"Command executed on {device_name}:\n{command}",
-                popup_type="info"
+                title="Device Command", message=f"Command executed on {device_name}:\n{command}", popup_type="info"
             )
         if stderr:
             logger.warning("[%s] STDERR:\n%s", device_name, stderr.strip())
         else:
-            logger.info("[%s] STDOUT:\n%s", device_name, stdout.strip() or 'Done.')
+            logger.info("[%s] STDOUT:\n%s", device_name, stdout.strip() or "Done.")
 
     def _check_device_availability(self, device_name: str, hostname: str, port: int = 22, timeout: float = 0.5):
         controller_ref = weakref.ref(self)
@@ -277,13 +278,13 @@ class UISSHController(QObject):
                 self.deviceAvailable.emit(device_name, False, f"Invalid configuration for {device_name}")
                 logger.warning("Cannot start check for %s: Invalid config", device_name)
                 continue
-            
+
             hostname = device_config["hostname"]
-            
+
             if device_name in self.availability_timers:
                 logger.info("Availability check already running for %s", device_name)
                 continue
-            
+
             timer = QTimer(self)
             timer.timeout.connect(lambda name=device_name, host=hostname: self._check_device_availability(name, host))
             timer.start(1000 + index * 200)  # Stagger checks by 200ms per device
@@ -303,26 +304,26 @@ class UISSHController(QObject):
     def _get_deviceAvailability(self):
         return self._deviceAvailability
 
-    deviceAvailability = Property('QVariantMap', _get_deviceAvailability, notify=deviceAvailabilityChanged)
+    deviceAvailability = Property("QVariantMap", _get_deviceAvailability, notify=deviceAvailabilityChanged)
 
     def _get_devicePingTimes(self):
         return self._devicePingTimes
 
-    devicePingTimes = Property('QVariantMap', _get_devicePingTimes, notify=deviceAvailabilityChanged)
+    devicePingTimes = Property("QVariantMap", _get_devicePingTimes, notify=deviceAvailabilityChanged)
 
     @Slot(str, result=str)
     def get_device_config(self, device_name: str):
         """Get the current configuration for a device as JSON string"""
         ssh_config = self._load_json_file(self.ssh_path)
         device_config = ssh_config.get(device_name, {})
-        
+
         ui_config = {
             "ip": device_config.get("hostname", ""),
             "port": str(device_config.get("port", 22)),
             "username": device_config.get("username", ""),
-            "key_path": device_config.get("key_path", "")
+            "key_path": device_config.get("key_path", ""),
         }
-        
+
         return json.dumps(ui_config)
 
     @Slot(str, str, str, str, str)
@@ -332,34 +333,41 @@ class UISSHController(QObject):
             # Load existing config
             ssh_config = self._load_json_file(self.ssh_path)
 
-            logger.info("Updating config for %s with IP: %s, Port: %s, Username: %s, Key Path: %s", device_name, ip, port, username, key_path)
-            
+            logger.info(
+                "Updating config for %s with IP: %s, Port: %s, Username: %s, Key Path: %s",
+                device_name,
+                ip,
+                port,
+                username,
+                key_path,
+            )
+
             # Update the device config
             if device_name not in ssh_config:
                 ssh_config[device_name] = {}
-            
+
             ssh_config[device_name]["hostname"] = ip
             ssh_config[device_name]["port"] = int(port) if port else 22
             ssh_config[device_name]["username"] = username
-            
+
             # Only set key_path if provided
             if key_path.strip():
                 ssh_config[device_name]["key_path"] = key_path
             elif "key_path" in ssh_config[device_name]:
                 # Remove key_path if empty string provided
                 del ssh_config[device_name]["key_path"]
-            
+
             # Save updated config
             if self._save_json_file(self.ssh_path, ssh_config):
                 logger.info("Updated config for %s", device_name)
                 self.configUpdated.emit(device_name, "Configuration updated successfully")
-                
+
                 # Show success popup
                 if self._show_popup_fn:
                     self._show_popup_fn(
                         title="Configuration Updated",
                         message=f"{device_name} settings have been saved successfully",
-                        popup_type="success"
+                        popup_type="success",
                     )
 
                 if device_name in self.availability_timers:
@@ -372,7 +380,9 @@ class UISSHController(QObject):
 
                 # Restart timer with updated config
                 timer = QTimer(self)
-                timer.timeout.connect(lambda name=device_name, host=hostname: self._check_device_availability(name, host))
+                timer.timeout.connect(
+                    lambda name=device_name, host=hostname: self._check_device_availability(name, host)
+                )
                 timer.start(1000)  # Optional: make interval configurable
                 self.availability_timers[device_name] = timer
                 return True
@@ -381,17 +391,15 @@ class UISSHController(QObject):
                     self._show_popup_fn(
                         title="Configuration Error",
                         message=f"Failed to save {device_name} settings",
-                        popup_type="error"
+                        popup_type="error",
                     )
                 return False
-                
+
         except Exception as e:
             logger.error("Error updating config for %s: %s", device_name, e)
             if self._show_popup_fn:
                 self._show_popup_fn(
-                    title="Configuration Error", 
-                    message=f"Error updating {device_name}: {str(e)}",
-                    popup_type="error"
+                    title="Configuration Error", message=f"Error updating {device_name}: {str(e)}", popup_type="error"
                 )
             return False
 
@@ -404,7 +412,7 @@ class UISSHController(QObject):
             self._show_popup_fn(
                 title="Device Command",
                 message=f"Handling {action.upper()} for {service_name} on {device_name}",
-                popup_type="info"
+                popup_type="info",
             )
 
         launcher = remote_hosts.get(device_name)

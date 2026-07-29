@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-07-29 - TD-044 + TD-045 + TD-040 (CI control plane)
+
+**Goal**: Make lint/typecheck/test real gates — ruff green, CI install resilient, pyright meaningful.
+**Tried**: TD-044: format + autofix + N815 ignore + residual F841/E722/F601/test fixes; ruff pin. TD-045: `requirements-ci.txt` (no PyGObject/vtk) + apt xcb/egl/hidapi on typecheck/test. TD-040: fix 2 allowlist errors; strict⊆include; widen models/app_runtime/workflow; exclude video services residual.
+**Result**: ✅ ruff check/format clean; pyright 0; full suite **434 passed**. GHA not re-run here (local gates green).
+**Files**: `pyproject.toml`, `requirements-ci.txt`, `requirements-dev.txt`, `.github/workflows/ci.yml`, `pyrightconfig.json`, core/models/workflow fixes, mass format, tech-debt
+
+---
 ### 2026-07-28 - TD-047 resolved (façade demirror + ports)
 
 **Goal**: Close AppRuntime service-locator debt: demirror façades, then ports for wiring/composer.

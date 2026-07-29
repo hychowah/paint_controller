@@ -45,7 +45,9 @@ def _build_actions(
     video_result: bool = True,
     screen_result: bool = True,
     bag_result: bool = True,
-) -> tuple[RecordingActions, FakeVideoStreamHandler, FakeScreenRecorder, FakeRosBagRecorder, FakeLogger, list[tuple[bool, str]]]:
+) -> tuple[
+    RecordingActions, FakeVideoStreamHandler, FakeScreenRecorder, FakeRosBagRecorder, FakeLogger, list[tuple[bool, str]]
+]:
     video_stream_handler = FakeVideoStreamHandler(result=video_result)
     screen_recorder = FakeScreenRecorder(result=screen_result)
     ros_bag_recorder = FakeRosBagRecorder(result=bag_result)

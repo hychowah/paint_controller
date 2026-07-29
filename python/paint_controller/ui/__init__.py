@@ -3,5 +3,5 @@
 from .overlay import OverlayController
 
 __all__ = [
-    'OverlayController',
+    "OverlayController",
 ]

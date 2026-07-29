@@ -7,12 +7,12 @@ UDPReceiveThread._validate_message() and ESP32ValveController._calculate_crc8().
 
 def crc8(data: bytes, polynomial: int = 0x07, init: int = 0xFF) -> int:
     """Calculate CRC-8 checksum over data bytes.
-    
+
     Args:
         data: Bytes to checksum.
         polynomial: CRC polynomial (default 0x07 for CRC-8/CCITT).
         init: Initial CRC value (default 0xFF).
-    
+
     Returns:
         Computed CRC-8 value (0-255).
     """

@@ -24,14 +24,14 @@ from PySide6.QtCore import QObject
 from PySide6.QtTest import QSignalSpy
 
 from paint_controller.core import qml_context_composer as qcc
-from paint_controller.models.overlay_host_policy import OverlayHostPolicy
-from paint_controller.models.shell_router import ShellRouter
-from paint_controller.models.shell_state import ShellState
 from paint_controller.models.lidar_status import (
     LIDAR_STATUS_PROPERTY_NAMES,
     LIDAR_STATUS_SIGNAL_MAP,
     LidarStatus,
 )
+from paint_controller.models.overlay_host_policy import OverlayHostPolicy
+from paint_controller.models.shell_router import ShellRouter
+from paint_controller.models.shell_state import ShellState
 from paint_controller.models.teensy_status import TEENS_STATUS_PROPERTY_NAMES, TeensyStatus
 from paint_controller.models.valve_status import (
     VALVE_STATUS_PROPERTY_NAMES,
@@ -102,9 +102,7 @@ def _attach_shell_spies(shell_state: ShellState) -> dict[str, QSignalSpy]:
     return {name: QSignalSpy(getattr(shell_state, name)) for name in _SHELL_SIGNAL_NAMES}
 
 
-def _assert_shell_emissions(
-    spies: dict[str, QSignalSpy], expected: dict[str, list[list[object]]]
-) -> None:
+def _assert_shell_emissions(spies: dict[str, QSignalSpy], expected: dict[str, list[list[object]]]) -> None:
     for name, want in expected.items():
         got = _emissions(spies[name])
         assert got == want, f"{name}: expected emissions {want}, got {got}"
@@ -378,7 +376,13 @@ def test_shell_router_route_registry_returns_defensive_copy(qt_core_app) -> None
     registry.append({"key": "bogus", "title": "Bogus", "order": 99})
 
     assert [entry["key"] for entry in router.routeRegistry] == [
-        "home", "base", "winch", "monitor", "tuning", "launcher", "settings",
+        "home",
+        "base",
+        "winch",
+        "monitor",
+        "tuning",
+        "launcher",
+        "settings",
     ]
     assert router.navigateTo("bogus") is False
 
@@ -417,11 +421,7 @@ class _SignalHub:
 
 
 def _table(owners: dict[str, _SignalHub]) -> list[tuple[str, str]]:
-    return [
-        (owner_key, name)
-        for owner_key, hub in owners.items()
-        for name in hub.signal_names
-    ]
+    return [(owner_key, name) for owner_key, hub in owners.items() for name in hub.signal_names]
 
 
 _BASE_TOP_VIEW_CHANGED_SIGNALS: tuple[str, ...] = (
@@ -453,18 +453,14 @@ def _spec_recording_status() -> tuple[QObject, dict[str, _SignalHub], list[tuple
         "is_compressing_changed",
         "bag_status_message_changed",
     )
-    wrapper = qcc._RecordingStatus(
-        video_stream_handler=video, screen_recorder=screen, ros_bag_recorder=bag
-    )
+    wrapper = qcc._RecordingStatus(video_stream_handler=video, screen_recorder=screen, ros_bag_recorder=bag)
     owners = {"video": video, "screen": screen, "bag": bag}
     return wrapper, owners, _table(owners)
 
 
 def _spec_shell_connectivity_status() -> tuple[QObject, dict[str, _SignalHub], list[tuple[str, str]]]:
     ssh = _SignalHub("deviceAvailabilityChanged", "configUpdated")
-    heartbeat = _SignalHub(
-        "base_online_changed", "base_status_changed", "ef_online_changed", "ef_status_changed"
-    )
+    heartbeat = _SignalHub("base_online_changed", "base_status_changed", "ef_online_changed", "ef_status_changed")
     winch = _SignalHub("available_changed")
     # WheelStatus per-property surface (TD-037 B)
     wheel = _SignalHub("availableChanged")
@@ -498,9 +494,7 @@ def _spec_video_runtime_controls() -> tuple[QObject, dict[str, _SignalHub], list
 def _spec_video_runtime_top_bar() -> tuple[QObject, dict[str, _SignalHub], list[tuple[str, str]]]:
     ssh = _SignalHub("deviceAvailabilityChanged")
     screen = _SignalHub("is_recording_changed", "recording_duration_changed")
-    monitor = _SignalHub(
-        "battery_level_changed", "battery_remaining_time_changed", "cpu_temperature_changed"
-    )
+    monitor = _SignalHub("battery_level_changed", "battery_remaining_time_changed", "cpu_temperature_changed")
     teensy = _SignalHub("status_changed")
     winch = _SignalHub("motor_voltage_changed")
     wrapper = qcc._VideoRuntimeTopBar(
@@ -557,9 +551,7 @@ def test_wrapper_changed_fires_once_per_backing_emission(qt_core_app, build_spec
     for owner_key, signal_name in table:
         spy = QSignalSpy(wrapper.changed)
         getattr(owners[owner_key], signal_name).emit()
-        assert spy.count() == 1, (
-            f"{owner_key}.{signal_name}: expected exactly 1 changed emission, got {spy.count()}"
-        )
+        assert spy.count() == 1, f"{owner_key}.{signal_name}: expected exactly 1 changed emission, got {spy.count()}"
 
 
 # ---------------------------------------------------------------------------
@@ -588,7 +580,7 @@ def test_winch_status_connects_every_required_producer_signal(qt_core_app) -> No
     ):
         setattr(hub, name, value)
 
-    status = WinchStatus(hub)
+    WinchStatus(hub)
     for producer, _ in WINCH_STATUS_SIGNAL_MAP:
         recorder = getattr(hub, producer)
         assert len(recorder.connections) == 1, f"{producer}: expected 1 connection"
@@ -624,10 +616,7 @@ def test_winch_status_producer_emits_only_matching_property_notify(
         setattr(hub, name, value)
 
     status = WinchStatus(hub)
-    spies = {
-        notify_name: QSignalSpy(getattr(status, notify_name))
-        for _, notify_name in WINCH_STATUS_SIGNAL_MAP
-    }
+    spies = {notify_name: QSignalSpy(getattr(status, notify_name)) for _, notify_name in WINCH_STATUS_SIGNAL_MAP}
 
     getattr(hub, producer).emit()
 
@@ -713,10 +702,7 @@ def test_wheel_status_producer_emits_only_matching_property_notify(
 ) -> None:
     hub = _make_wheel_controller_hub()
     status = WheelStatus(hub)
-    spies = {
-        notify_name: QSignalSpy(getattr(status, notify_name))
-        for _, notify_name in WHEEL_STATUS_SIGNAL_MAP
-    }
+    spies = {notify_name: QSignalSpy(getattr(status, notify_name)) for _, notify_name in WHEEL_STATUS_SIGNAL_MAP}
     getattr(hub, producer).emit()
     for notify_name, spy in spies.items():
         if notify_name == status_signal:
@@ -765,51 +751,55 @@ def _make_teensy_controller_hub(all_status: dict | None = None) -> _SignalHub:
     hub.roller_steering_enabled = False
     hub.swing_damping_enabled = True
     hub.spray_gun_led_on = False
-    hub.all_status = all_status if all_status is not None else {
-        "enabled": True,
-        "relay_on": False,
-        "voltage": 24.0,
-        "current": 1.0,
-        "temperature": 30.0,
-        "run_time": 10.0,
-        "loop_time": 100.0,
-        "loop_time_counter": 1.0,
-        "imu_pitch": 1.0,
-        "imu_roll": 2.0,
-        "imu_yaw": 3.0,
-        "yaw_command": 0.0,
-        "yaw_pid_p": 0.1,
-        "yaw_pid_i": 0.2,
-        "yaw_pid_d": 0.3,
-        "imu_acc_x": 0.0,
-        "imu_acc_y": 0.0,
-        "imu_acc_z": 0.0,
-        "imu_angular_acc_x": 0.0,
-        "imu_angular_acc_y": 0.0,
-        "imu_angular_acc_z": 0.0,
-        "arm_extension_dist": 0.0,
-        "arm_rail_current": 0.0,
-        "gimbal_pitch_motor_current": 0.0,
-        "gimbal_pitch_motor_angle": 0.0,
-        "top_rail_position": 100.0,
-        "top_rail_speed": 0.0,
-        "top_rail_current": 0.0,
-        "arm_rail_position": 0.0,
-        "arm_rail_speed": 0.0,
-        "arm_sensor_dist": 0.0,
-        "left_prop_position": 0.0,
-        "right_prop_position": 0.0,
-        "left_prop_pwm": 0,
-        "right_prop_pwm": 0,
-        "spray_gun_pitch": 0.0,
-        "gimbal_pitch_motor_temp": 0.0,
-        "gimbal_roll_motor_angle": 0.0,
-        "gimbal_roll_motor_current": 0.0,
-        "gimbal_roll_motor_temp": 0.0,
-        "spray_gun_trigger": False,
-        "yaw_enabled": False,
-        "lidar_power": False,
-    }
+    hub.all_status = (
+        all_status
+        if all_status is not None
+        else {
+            "enabled": True,
+            "relay_on": False,
+            "voltage": 24.0,
+            "current": 1.0,
+            "temperature": 30.0,
+            "run_time": 10.0,
+            "loop_time": 100.0,
+            "loop_time_counter": 1.0,
+            "imu_pitch": 1.0,
+            "imu_roll": 2.0,
+            "imu_yaw": 3.0,
+            "yaw_command": 0.0,
+            "yaw_pid_p": 0.1,
+            "yaw_pid_i": 0.2,
+            "yaw_pid_d": 0.3,
+            "imu_acc_x": 0.0,
+            "imu_acc_y": 0.0,
+            "imu_acc_z": 0.0,
+            "imu_angular_acc_x": 0.0,
+            "imu_angular_acc_y": 0.0,
+            "imu_angular_acc_z": 0.0,
+            "arm_extension_dist": 0.0,
+            "arm_rail_current": 0.0,
+            "gimbal_pitch_motor_current": 0.0,
+            "gimbal_pitch_motor_angle": 0.0,
+            "top_rail_position": 100.0,
+            "top_rail_speed": 0.0,
+            "top_rail_current": 0.0,
+            "arm_rail_position": 0.0,
+            "arm_rail_speed": 0.0,
+            "arm_sensor_dist": 0.0,
+            "left_prop_position": 0.0,
+            "right_prop_position": 0.0,
+            "left_prop_pwm": 0,
+            "right_prop_pwm": 0,
+            "spray_gun_pitch": 0.0,
+            "gimbal_pitch_motor_temp": 0.0,
+            "gimbal_roll_motor_angle": 0.0,
+            "gimbal_roll_motor_current": 0.0,
+            "gimbal_roll_motor_temp": 0.0,
+            "spray_gun_trigger": False,
+            "yaw_enabled": False,
+            "lidar_power": False,
+        }
+    )
     return hub
 
 

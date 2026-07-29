@@ -8,7 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from PySide6.QtCore import QTimer, Qt
+from PySide6.QtCore import Qt, QTimer
 
 logger = logging.getLogger(__name__)
 
@@ -97,9 +97,7 @@ class SignalWiring:
         qt_bridge.toggleVideoOverlayRequested.connect(
             lambda _active, video_source: overlay_host.toggle_video_fullscreen(video_source)
         )
-        qt_bridge.updateVideoSourceRequested.connect(
-            overlay_host.set_video_fullscreen_source
-        )
+        qt_bridge.updateVideoSourceRequested.connect(overlay_host.set_video_fullscreen_source)
 
         self._wire_steam_deck_callbacks()
 
@@ -134,19 +132,19 @@ class SignalWiring:
             return
 
         input_handler = bundle.input_handler
-        steam_deck_handler.register_button_callback('up', input_handler.on_up_pressed)
-        steam_deck_handler.register_button_callback('down', input_handler.on_down_pressed)
-        steam_deck_handler.register_button_callback('left', input_handler.on_left_pressed)
-        steam_deck_handler.register_button_callback('right', input_handler.on_right_pressed)
-        steam_deck_handler.register_button_callback('r4', input_handler.on_r4_pressed)
-        steam_deck_handler.register_button_callback('l4', input_handler.on_l4_pressed)
-        steam_deck_handler.register_button_callback('menu', input_handler.on_menu_pressed)
-        steam_deck_handler.register_button_callback('switch', input_handler.on_switch_pressed)
-        steam_deck_handler.register_button_callback('l5', input_handler.on_l5_pressed)
-        steam_deck_handler.register_button_callback('r5', input_handler.on_r5_pressed)
-        steam_deck_handler.register_button_callback('dot', qt_bridge.toggle_fullscreen)
-        steam_deck_handler.register_button_callback('a', qt_bridge.toggle_lidar_overlay)
-        steam_deck_handler.register_button_callback('l1', input_handler.on_l1_pressed)
+        steam_deck_handler.register_button_callback("up", input_handler.on_up_pressed)
+        steam_deck_handler.register_button_callback("down", input_handler.on_down_pressed)
+        steam_deck_handler.register_button_callback("left", input_handler.on_left_pressed)
+        steam_deck_handler.register_button_callback("right", input_handler.on_right_pressed)
+        steam_deck_handler.register_button_callback("r4", input_handler.on_r4_pressed)
+        steam_deck_handler.register_button_callback("l4", input_handler.on_l4_pressed)
+        steam_deck_handler.register_button_callback("menu", input_handler.on_menu_pressed)
+        steam_deck_handler.register_button_callback("switch", input_handler.on_switch_pressed)
+        steam_deck_handler.register_button_callback("l5", input_handler.on_l5_pressed)
+        steam_deck_handler.register_button_callback("r5", input_handler.on_r5_pressed)
+        steam_deck_handler.register_button_callback("dot", qt_bridge.toggle_fullscreen)
+        steam_deck_handler.register_button_callback("a", qt_bridge.toggle_lidar_overlay)
+        steam_deck_handler.register_button_callback("l1", input_handler.on_l1_pressed)
 
     def _on_wheel_motor_error(self, has_error, error_message) -> None:
         if not has_error:
@@ -162,7 +160,7 @@ class SignalWiring:
 
         from paint_controller.utils.constants import HeartbeatStatus
 
-        node.get_logger().error(f'Wheel motor error detected: {error_message}')
+        node.get_logger().error(f"Wheel motor error detected: {error_message}")
         bundle.safety_coordinator.halt_all_effectors(
             f"Wheel motor error detected: {error_message}",
             heartbeat_state=HeartbeatStatus.ERROR,
@@ -180,7 +178,7 @@ class SignalWiring:
 
         input_state = steam_deck_handler.get_current_state()
         bundle.control_processor.process_input(input_state)
-        bundle.emergency_handler.check_emergency_button(input_state.get('buttons', {}))
+        bundle.emergency_handler.check_emergency_button(input_state.get("buttons", {}))
 
     def start_timers(self) -> QTimer:
         """Create and start the status timer and system monitor.

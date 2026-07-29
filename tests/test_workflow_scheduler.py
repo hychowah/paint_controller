@@ -115,9 +115,7 @@ def test_winch_increment_handler_clamps_acceleration_before_dispatch() -> None:
     hardware, _, winch, _ = _hardware()
     registry = ActionRegistry(hardware, logger=FakeLogger())
 
-    registry.get_handler("winch_increment").execute(
-        {"length": 80, "speed": 12, "acceleration": 999}
-    )
+    registry.get_handler("winch_increment").execute({"length": 80, "speed": 12, "acceleration": 999})
 
     assert winch.increment_calls == [(80, 12, 30)]
 

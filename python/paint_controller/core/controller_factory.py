@@ -21,7 +21,9 @@ from paint_controller.handlers.manual_commands import ManualCommandHandler
 from paint_controller.handlers.safety_coordinator import SafetyCoordinator
 from paint_controller.handlers.steam_deck import SteamDeckHandler
 from paint_controller.handlers.warnings import WarningHandler
+from paint_controller.models.admin_action_gate import AdminActionGate
 from paint_controller.models.base_top_view_actions import BaseTopViewActions
+from paint_controller.models.joystick_selection import JoystickSelectionModel
 from paint_controller.models.recording_actions import RecordingActions
 from paint_controller.models.system_actions import SystemActions
 from paint_controller.models.teensy_actions import TeensyActions
@@ -35,8 +37,6 @@ from paint_controller.services.workflow.hardware import HardwareControllers
 from paint_controller.services.workflow.workflow_catalog import WorkflowCatalog
 from paint_controller.services.workflow.workflow_editor import WorkflowEditor
 from paint_controller.services.workflow.workflow_runner import WorkFlowRunner
-from paint_controller.models.admin_action_gate import AdminActionGate
-from paint_controller.models.joystick_selection import JoystickSelectionModel
 from paint_controller.ui.overlay import OverlayController
 
 
@@ -85,27 +85,34 @@ class ControllerBundle:
     def cleanup(self, logger: Any = None) -> None:
         """Cleanup all controllers in reverse creation order."""
         cleanup_order = [
-            'workflow_editor',
-            'workflow_runner',
-            'workflow_catalog',
-            'ros_bag_recorder', 'screen_recorder', 'screen_manager',
-            'ssh_controller',
-            'emergency_handler', 'input_handler',
-            'control_processor', 'overlay_controller',
-            'heartbeat_handler',
-            'teensy_controller', 'winch_controller',
-            'wind_monitor', 'lidar_controller',
-            'esp32_valve_controller', 'wheel_controller',
-            'system_monitor',
+            "workflow_editor",
+            "workflow_runner",
+            "workflow_catalog",
+            "ros_bag_recorder",
+            "screen_recorder",
+            "screen_manager",
+            "ssh_controller",
+            "emergency_handler",
+            "input_handler",
+            "control_processor",
+            "overlay_controller",
+            "heartbeat_handler",
+            "teensy_controller",
+            "winch_controller",
+            "wind_monitor",
+            "lidar_controller",
+            "esp32_valve_controller",
+            "wheel_controller",
+            "system_monitor",
         ]
         for name in cleanup_order:
             ctrl = getattr(self, name, None)
-            if ctrl and hasattr(ctrl, 'cleanup'):
+            if ctrl and hasattr(ctrl, "cleanup"):
                 try:
                     ctrl.cleanup()
                 except Exception as e:
                     if logger:
-                        logger.error(f'Error cleaning up {name}: {e}')
+                        logger.error(f"Error cleaning up {name}: {e}")
 
 
 def create_controllers(
@@ -146,7 +153,9 @@ def create_controllers(
 
     # === Layer 3: ROS2 + settings controllers ===
     winch = WinchController(node, settings_manager=settings_manager)
-    teensy = TeensyController(node, settings_manager=settings_manager, winch_controller=winch, show_popup_fn=show_popup_fn)
+    teensy = TeensyController(
+        node, settings_manager=settings_manager, winch_controller=winch, show_popup_fn=show_popup_fn
+    )
     safety_coordinator = SafetyCoordinator(
         winch=winch,
         teensy=teensy,
@@ -263,7 +272,7 @@ def create_controllers(
         logger=logger,
     )
 
-    logger.info('All controllers created with explicit DI')
+    logger.info("All controllers created with explicit DI")
 
     return ControllerBundle(
         warning_handler=warning_handler,

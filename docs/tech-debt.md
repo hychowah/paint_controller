@@ -21,13 +21,14 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 | Rank | ID | Why |
 |---|---|---|
-| 1 | **TD-044 + TD-045**, then **TD-040** | Make CI/types real control planes |
-| 2 | **TD-048** | QML injection depth: *Actions / legality / settings via `required property` |
-| 3 | **TD-050** | Late-injection / finalize-ports hygiene (public API only) |
-| 4 | **TD-049** | Shared device ports beyond the workflow island |
-| 5 | **TD-042 / TD-043 / TD-051 / TD-041** | Hygiene (tests, dead state, cleanup inventory, docs) |
+| 1 | **TD-048** | QML injection depth: *Actions / legality / settings via `required property` |
+| 2 | **TD-050** | Late-injection / finalize-ports hygiene (public API only) |
+| 3 | **TD-049** | Shared device ports beyond the workflow island |
+| 4 | **TD-042 / TD-043 / TD-051 / TD-041** | Hygiene (tests, dead state, cleanup inventory, docs) |
 | — | **TD-052 / TD-053** | When touching tuning/commands or dual-surface overlays |
 | — | **TD-002 / TD-016** | Opportunistic chrome only; out of pure program track |
+| — | **TD-040 residual** | Optional: `video_stream` / `base_top_view_service` pyright include (deferred 2026-07-29) |
+| — | **TD-044 / TD-045 / TD-040** | Resolved 2026-07-29 (CI control plane) |
 | — | **TD-047** | Resolved 2026-07-28 (façade demirror + wiring/composer ports) |
 | — | **TD-046** | Resolved 2026-07-28 (docs + winch/wheel teleop extract; residual EF stick mass) |
 | — | **TD-037** | Resolved 2026-07-28 (residual: videoRuntime multi-home only) |
@@ -113,39 +114,6 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 ---
 
-### TD-040 — pyright allowlist excludes the riskiest modules
-**Area**: Tooling / CI
-**Priority**: medium
-**Effort**: medium
-**Architecture leverage**: medium
-**Why it matters**: `pyrightconfig.json` `include` cherry-picks scope; it excludes `services/` (`video_stream.py`, `base_top_view_service.py`, workflow — the threading-heaviest code), `core/app_runtime.py`, `ui/`, `widgets/`, much of `utils/`, and several models (`shell_state`, `admin_action_gate`, `capability_catalog`, …). Mode is `basic`. Some `strict` entries (e.g. `core/config.py`) sit outside `include` and are likely no-ops. "Pyright green" currently proves little about composition or concurrency risk.
-**What to do**: Widen `include` incrementally (services first, then `app_runtime`, then remaining models); fix fallout; ensure `strict` ⊆ `include`; keep the gate green.
-**Files**: `pyrightconfig.json`
-
----
-
-### TD-044 — Ruff lint debt on `dev` (1965 check errors, 111 format failures)
-**Area**: Tooling / CI
-**Priority**: medium
-**Effort**: medium
-**Architecture leverage**: high *for process* (until green, remote gates are theater)
-**Why it matters**: Surfaced 2026-07-27 by TD-034: the CI `lint` job (ruff check + ruff format --check on `python/` and `tests/`) is red on `dev` — 1965 check errors (mostly W293 blank-line-with-whitespace, UP006, W292, I001, F401) and 111 files failing the format check (counts from 2026-07-27; re-measure when fixing). With `dev` CI triggers, lint is **normalized-red** and `typecheck`/`test` stay blocked behind `needs: lint`.
-**What to do**: Bulk-fix mechanically (`ruff check --fix` + `ruff format`) in one dedicated commit with no behavior changes, then keep the job green. Coordinate with open branches to avoid merge pain. Pair with TD-045.
-**Files**: `pyproject.toml` (ruff config), `python/`, `tests/`, `.github/workflows/ci.yml`
-
----
-
-### TD-045 — CI test/typecheck jobs missing system dependencies
-**Area**: Tooling / CI
-**Priority**: medium
-**Effort**: low
-**Architecture leverage**: high *for process* (with TD-044)
-**Why it matters**: Surfaced 2026-07-27 by TD-034; reconfirmed 2026-07-28 workflow read. CI `test` and `typecheck` pip-install full `requirements.txt` (PyGObject, PySide6, vtk, …) with **zero apt** steps for girepository/cairo/Qt runtime libs, while `qmllint`/`build` jobs do use apt. Clean `ubuntu-latest` runners remain install-fragile even after lint goes green.
-**What to do**: Add an apt step (girepository/cairo dev headers, Qt runtime libs) to both jobs, or trim CI deps; verify green on a real runner.
-**Files**: `.github/workflows/ci.yml`, `python/paint_controller/requirements.txt`
-
----
-
 ### TD-002 — Design-token adoption incomplete on page/admin islands
 **Area**: QML UI
 **Priority**: low
@@ -207,6 +175,9 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 | ID | Title | Resolved | Notes |
 |---|---|---|---|
+| TD-044 | Ruff lint/format debt blocking CI | 2026-07-29 | `ruff format` + `ruff check --fix` + residual manual fixes; N815 ignored for Qt Signal/Property; ruff pinned `<0.17` in requirements-dev + CI. Local: check 0, format clean |
+| TD-045 | CI test/typecheck missing system deps | 2026-07-29 | `requirements-ci.txt` omits PyGObject/vtk (conftest stubs gi; vtk not under test). typecheck/test apt: xcb/egl/gl/hidapi. Device installs still use full `requirements.txt` |
+| TD-040 | Pyright allowlist excludes riskiest modules | 2026-07-29 | Fixed allowlist errors; strict ⊆ include; widened to full `models/`, `app_runtime`/`application`/`ros_node`, `services/workflow`. Residual exclude: `video_stream.py`, `base_top_view_service.py` (Gst/Property redeclaration noise). pyright 0 errors |
 | TD-047 | AppRuntime service-locator façades + wiring/composer whole-runtime coupling | 2026-07-28 | Slice 1: removed ~18 context-key mirrors; façades only in `_context_properties`; dead `_heartbeat_status_error` + free wrappers gone. Slice 2: `SignalWiringPorts` / `QmlComposePorts` frozen dataclasses; `SignalWiring`/`QmlContextComposer` no longer take `AppRuntime`; `start_timers()` returns timer for root ownership. Full suite green |
 | TD-046 | ControlProcessor teleop monolith; second command path undocumented | 2026-07-28 | Docs: module policy + ARCHITECTURE §7 table/do-not + AdminActionGate discrete-only note. Structure: high-state winch + wheel-travel helpers (`handlers/winch_teleop.py`, `wheel_travel_teleop.py`) behind stable `ControlProcessor` façade/`process_input` entry. Residual: EF stick modes still in façade; post-halt teleop latch is product policy (not done). Full suite green |
 | TD-037 | Status wrapper layer: blanket notify, stringly reads, duplicated telemetry | 2026-07-28 | Device status honesty: `models.{Winch,Wheel,Teensy,Valve,Lidar}Status` with per-property or fine-grained NOTIFY + `connect_required`; composer thinned (~1191→~730 LOC); shellConnectivity rewired to `wheel.availableChanged`; QML lidar Connections retargeted off blanket `changed`. Residual: videoRuntime/topBar multi-home voltages/SSH; recording multi-home; aggregator wrappers (recording/video/baseTopView); TD-033 soft pins. Full suite green |

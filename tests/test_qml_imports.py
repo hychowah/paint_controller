@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import re
-
+from pathlib import Path
 
 _HEAVY_IMPORT_RULES = {
     "QtCharts": re.compile(r"\b(ChartView|LineSeries|ValueAxis|BarSeries|PieSeries|SplineSeries)\b"),
-    "QtMultimedia": re.compile(r"\b(MediaPlayer|VideoOutput|Camera|AudioOutput|CaptureSession|MediaDevices|SoundEffect)\b"),
+    "QtMultimedia": re.compile(
+        r"\b(MediaPlayer|VideoOutput|Camera|AudioOutput|CaptureSession|MediaDevices|SoundEffect)\b"
+    ),
     "Qt5Compat.GraphicalEffects": re.compile(
         r"\b(DropShadow|OpacityMask|FastBlur|Glow|ColorOverlay|InnerShadow|RectangularGlow)\b"
     ),
