@@ -40,6 +40,7 @@ def test_base_heartbeat_loss_flows_through_real_safety_coordinator(qt_app):
         handler._controller_heartbeat_callback(_heartbeat_msg(HeartbeatStatus.IDLE.value))
         handler._base_heartbeat_callback(_heartbeat_msg(HeartbeatStatus.IDLE.value))
         handler._ef_heartbeat_callback(_heartbeat_msg(HeartbeatStatus.IDLE.value))
+    qt_app.processEvents()
 
     assert state_store.controller_heartbeat_state == HeartbeatStatus.ONTASK.value
 

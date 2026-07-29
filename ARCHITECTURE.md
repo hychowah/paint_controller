@@ -332,11 +332,13 @@ Main:       bridge QueuedConnection → controller._apply_status_snapshot(pod)
 | Availability timer | Main only; reads main-owned timestamp/flags |
 | `error_state_changed` | Edge-detect on main apply; SignalWiring keeps QueuedConnection to halt |
 
-**Teensy residual:** locked status dict + snapshot emit (TD-024) — different reader API (`get_status_value`), not the wheel/winch Property-bag pattern.
+**Property-bag devices using `RosTelemetryBridge`:** wheel, winch, lidar, heartbeat (per-channel bridges).
 
-**Heartbeat residual:** loss→halt still on main 200 ms timer; restore/status QObject fields may still update from ROS callbacks until a follow-up marshal.
+**Teensy residual:** locked status dict + snapshot emit (TD-024) — different reader API (`get_status_value`), not the Property-bag pattern.
 
-**Other residuals:** workflow may still command motion after halt; dual `/controller/heartbeat` publishers (hygiene); lidar/ESP32 UDP already use Queued paths or small surfaces.
+**Heartbeat ownership:** outbound `/controller/heartbeat` is **PaintRosNode** only (StateStore-driven). `UIHeartbeatHandler` publishes clear-error on `/clear/error` only (legacy CLEAR_ERROR-on-heartbeat removed).
+
+**Other residuals:** workflow may still command motion after halt; ESP32 UDP already QueuedConnection; BaseTopView scalar residual opportunistic.
 
 House rules (see also `KNOWLEDGE.md`):
 

@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-07-29 - Concurrency residual band (structure consistency)
+
+**Goal**: Clear high-value residuals after TD-054/056 for one telemetry dialect.
+**Tried**: Heartbeat per-channel `RosTelemetryBridge` + main apply; remove dual `/controller/heartbeat` pub from handler (PaintRosNode sole outbound; clear only `/clear/error`); lidar distance/angle bridges.
+**Result**: ✅ Full suite **495 passed**. Residual left: workflow-after-halt; Teensy lock+snapshot dialect.
+**Files**: `handlers/heartbeat.py`, `controllers/lidar.py`, tests, ARCHITECTURE/tech-debt/progress
+
+---
 ### 2026-07-29 - TD-056 resolved (ROS→Qt telemetry marshal)
 
 **Goal**: Wheel/winch status paths: no unlocked ROS-thread mutation of QML/teleop-visible fields.
