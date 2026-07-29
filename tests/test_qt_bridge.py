@@ -237,6 +237,27 @@ def test_set_input_handler_stores_instance(qt_app) -> None:
     assert bridge._input_handler is handler
 
 
+def test_require_ui_ports_raises_until_both_deps_set(qt_app) -> None:
+    """TD-050: production finalize asserts bridge collaborators non-None."""
+    bridge = _make_bridge()
+
+    try:
+        bridge.require_ui_ports()
+        raise AssertionError("expected RuntimeError for missing base_top")
+    except RuntimeError as exc:
+        assert "base_top_view_service" in str(exc)
+
+    bridge.set_base_top_view_service(FakeBaseTopViewService())
+    try:
+        bridge.require_ui_ports()
+        raise AssertionError("expected RuntimeError for missing input_handler")
+    except RuntimeError as exc:
+        assert "input_handler" in str(exc)
+
+    bridge.set_input_handler(FakeInputHandler())
+    bridge.require_ui_ports()  # must not raise
+
+
 # ---------------------------------------------------------------------------
 # toggle_lidar_overlay
 # ---------------------------------------------------------------------------

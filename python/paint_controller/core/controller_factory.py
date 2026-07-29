@@ -197,8 +197,7 @@ def create_controllers(
     workflow_catalog = WorkflowCatalog(logger=logger)
     workflow_editor = WorkflowEditor(catalog=workflow_catalog, logger=logger)
     workflow_runner = WorkFlowRunner(node, hardware, logger=logger, catalog=workflow_catalog)
-    if hasattr(workflow_editor, "attach_runtime"):
-        workflow_editor.attach_runtime(workflow_runner)
+    workflow_editor.attach_runtime(workflow_runner)
 
     input_handler = UIInputHandler(
         teensy=teensy,

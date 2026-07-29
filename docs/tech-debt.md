@@ -9,7 +9,7 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 
 **Architecture leverage** (optional tag on items): how much a fix improves FE↔BE program structure when doing architecture work, independent of ship-blocking urgency.
 
-Last multi-perspective re-validation: **2026-07-28** (deep software-only pass: composition/DI, QML contract injection, QML modules/kit, ports/domain modularity, test/CI control plane). Industrial HMI and operator-UX product work are **out of scope** for this tracker update. Prior 2026-07-27/28 program diagnoses reconfirmed; new TDs **048–053** added from evidence-backed research.
+Last multi-perspective re-validation: **2026-07-28** (deep software-only pass: composition/DI, QML contract injection, QML modules/kit, ports/domain modularity, test/CI control plane). Industrial HMI and operator-UX product work are **out of scope** for this tracker update. Prior 2026-07-27/28 program diagnoses reconfirmed; new TDs **048–053** added from evidence-backed research. **2026-07-29**: added **TD-054** (concurrent ROS publish + spin) from architecture concurrency review.
 
 **Research non-goals (do not invent debt for):** mega-`Backend` object; reopening TD-032 name-retirement mega-program; full URI QML module rewrite as a program; universal visual skin unification; HMI safety/legality ship defaults; `qmlRegisterSingletonInstance`.
 
@@ -21,12 +21,13 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 | Rank | ID | Why |
 |---|---|---|
-| 1 | **TD-050** | Late-injection / finalize-ports hygiene (public API only) |
-| 2 | **TD-049** | Shared device ports beyond the workflow island |
-| 3 | **TD-042 / TD-043 / TD-051 / TD-041** | Hygiene (tests, dead state, cleanup inventory, docs) |
+| 1 | **TD-049** | Shared device ports beyond the workflow island |
+| 2 | **TD-042 / TD-043 / TD-051 / TD-041** | Hygiene (tests, dead state, cleanup inventory, docs) |
+| — | **TD-054** | Runtime integrity: concurrent ROS publish + spin (schedule when touching ROS/teleop, or as a dedicated slice) |
 | — | **TD-052 / TD-053** | When touching tuning/commands or dual-surface overlays |
 | — | **TD-002 / TD-016** | Opportunistic chrome only; out of pure program track |
 | — | **TD-040 residual** | Optional: `video_stream` / `base_top_view_service` pyright include (deferred 2026-07-29) |
+| — | **TD-050** | Resolved 2026-07-29 (public setters + require_ui_ports finalize; set-once not enforced) |
 | — | **TD-048** | Resolved 2026-07-29 (page/feature inject for actions/legality/settings/chrome) |
 | — | **TD-044 / TD-045 / TD-040** | Resolved 2026-07-29 (CI control plane) |
 | — | **TD-047** | Resolved 2026-07-28 (façade demirror + wiring/composer ports) |
@@ -47,18 +48,6 @@ When the goal is **software architecture toward a professional Qt program** (not
 **What to do**: Promote a small shared ports module (or expand workflow ports into a shared location) covering halt + teleop + discrete command surfaces; adapters wrap existing controllers; migrate `ControlProcessor` off raw pubs first; keep `*Actions` as thin QObject shells over the same ports. Do **not** invent a mega-Backend or full Clean Architecture rewrite.
 **Acceptance**: At least one primary effector family (prefer Teensy teleop + halt) is consumed via a Protocol/ABC by both workflow adapters and teleop/safety; unit tests can fake that port without full Qt controller graphs; no new raw-pub reach from handlers.
 **Files**: `python/paint_controller/services/workflow/hardware.py`, `handlers/control_processor.py`, `handlers/safety_coordinator.py`, `models/*_actions.py`, `core/controller_factory.py`
-
----
-
-### TD-050 — Two-phase collaborator injection and private-field wiring
-**Area**: Backend / composition
-**Priority**: medium
-**Effort**: low–medium
-**Architecture leverage**: medium
-**Why it matters**: Bootstrap order is real (settings before bridge before gate/controllers), but late wiring is ad hoc: `settings_manager._show_popup_fn = …` private field poke; `QtBridge.set_base_top_view_service` / `set_input_handler` after factory; `set_admin_action_gate` via soft `getattr`; `workflow_editor.attach_runtime(...)`. Between phases, collaborators are optionally `None` — a “partially wired” window with no single finalize assert before QML load.
-**What to do**: Public setters only (e.g. `SettingsManager.set_show_popup_fn`); document one `finalize_ui_ports(...)` (or equivalent) that runs before QML load and asserts required ports non-None; collapse QtBridge optional deps into an explicit ports set-once API.
-**Acceptance**: No private-field assignment from `AppRuntime`; production path has non-None UI ports before QML load; unit test covers settings mutation after gate inject.
-**Files**: `python/paint_controller/core/app_runtime.py`, `core/settings.py`, `core/qt_bridge.py`, optionally `controller_factory.py`
 
 ---
 
@@ -95,6 +84,18 @@ When the goal is **software architecture toward a professional Qt program** (not
 **What to do**: Extract `ShellOverlayStack.qml` (or similar) taking surface/policy flags + models; both hosts become thin. Visibility remains driven by `overlayHost` flags.
 **Acceptance**: Overlay types appear once in composition QML; shell + multiscreen smokes green; status/command inject props not copy-pasted across hosts.
 **Files**: `qml/core/MainWindow.qml`, `qml/overlays/MultiScreenListUI.qml`, optional new stack QML under `qml/core/` or `qml/overlays/`
+
+---
+
+### TD-054 — Concurrent ROS I/O on one node (publish + spin)
+**Area**: Backend / concurrency (ROS ↔ Qt)
+**Priority**: medium–high (correctness under load)
+**Effort**: medium–high
+**Architecture leverage**: medium (runtime integrity; pairs with TD-049 when migrating teleop off raw pubs)
+**Why it matters**: `RosThread` owns `rclpy.spin_once` on the single `PaintRosNode` (subscriptions + ROS-side heartbeat timer), while teleop (~60 Hz `ControlProcessor`), discrete `*Actions`, safety halt, and workflow execution publish on the **same** node from the Qt main thread and/or `WorkFlowExecutionThread`. rclpy’s Python client is not fully free-threaded for concurrent publish + spin on one node; under load this can yield intermittent drops, assert failures, or RMW instability. Related history (**TD-039**) fixed ROS *error display* and some worker races, not a single ROS I/O ownership model. Distinct from **TD-049** (port shapes) and from post-halt inhibit residual (**TD-046**).
+**What to do**: Prefer one predictable ownership model: (A) command mailbox / queue processed only on `RosThread` — main and workflow enqueue publish requests; spin thread alone calls `publish` and runs callbacks; or (B) documented MultiThreadedExecutor + callback groups with an explicit publish gate. Keep GUI/QObject updates on the Qt main thread via queued signals. Do not expand raw multi-thread `publish` from new call sites while this is open. Do not conflate with halt-latch or device-port work unless a slice intentionally couples them.
+**Acceptance**: Production publish path for at least the high-rate teleop publishers does not call `publisher.publish` from the Qt main thread (or an equivalent documented, tested gate proves exclusive access); workflow publish path uses the same rule; focused tests cover the mailbox/gate (or executor policy) and existing teleop/safety/workflow bands stay green; ARCHITECTURE concurrency section states the chosen model.
+**Files**: `python/paint_controller/core/ros_node.py`, `core/app_runtime.py`, `core/signal_wiring.py`, `handlers/control_processor.py`, controllers that `publish` from UI/timer paths, `services/workflow/*` (execution thread → hardware publish)
 
 ---
 
@@ -159,6 +160,8 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 | ID | Title | Resolved | Notes |
 |---|---|---|---|
+| TD-050 | Two-phase collaborator injection and private-field wiring | 2026-07-29 | Public `SettingsManager.set_show_popup_fn` + `require_ui_ports`; `QtBridge.require_ui_ports`; `AppRuntime._finalize_ui_ports` before QML load; direct gate inject (no soft getattr); direct `workflow_editor.attach_runtime` (no hasattr). Set-once **not** enforced — overwrite-allowed setters + finalize non-None. Focused band green |
+| TD-048 | QML feature/page injection depth incomplete | 2026-07-29 | Inject-first for *Actions/legality/settings/chrome: PageWheel/Winch/Status/Tuning/Settings; SystemControl+DeviceControl dual-surface; VideoFullscreen base-top write path; TopBar/Emergency/Joystick/overlayController. Root bag still 26 names (retire last-consumer later). Smoke harnesses inject. Full suite 434 passed |
 | TD-044 | Ruff lint/format debt blocking CI | 2026-07-29 | `ruff format` + `ruff check --fix` + residual manual fixes; N815 ignored for Qt Signal/Property; ruff pinned `<0.17` in requirements-dev + CI. Local: check 0, format clean |
 | TD-045 | CI test/typecheck missing system deps | 2026-07-29 | `requirements-ci.txt` omits PyGObject/vtk (conftest stubs gi; vtk not under test). typecheck/test apt: xcb/egl/gl/hidapi. Device installs still use full `requirements.txt` |
 | TD-040 | Pyright allowlist excludes riskiest modules | 2026-07-29 | Fixed allowlist errors; strict ⊆ include; widened to full `models/`, `app_runtime`/`application`/`ros_node`, `services/workflow`. Residual exclude: `video_stream.py`, `base_top_view_service.py` (Gst/Property redeclaration noise). pyright 0 errors |

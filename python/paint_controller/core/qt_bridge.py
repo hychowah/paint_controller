@@ -47,12 +47,27 @@ class QtBridge(QObject):
         return str(getattr(self._state_store, "display_message", "") or "")
 
     def set_base_top_view_service(self, service: Any) -> None:
-        """Set after factory creates controllers (deferred wiring)."""
+        """Set after factory creates controllers (deferred wiring).
+
+        Overwrite is allowed for unit tests; production must set before QML load
+        and pass ``require_ui_ports()`` (TD-050). Set-once is not enforced.
+        """
         self._base_top_view_service = service
 
     def set_input_handler(self, handler: Any) -> None:
-        """Set after factory creates controllers (deferred wiring)."""
+        """Set after factory creates controllers (deferred wiring).
+
+        Overwrite is allowed for unit tests; production must set before QML load
+        and pass ``require_ui_ports()`` (TD-050). Set-once is not enforced.
+        """
         self._input_handler = handler
+
+    def require_ui_ports(self) -> None:
+        """Fail loud if deferred bridge collaborators were never injected (TD-050)."""
+        if self._base_top_view_service is None:
+            raise RuntimeError("QtBridge.base_top_view_service not set")
+        if self._input_handler is None:
+            raise RuntimeError("QtBridge.input_handler not set")
 
     def _log_info(self, msg: str) -> None:
         if self._logger:

@@ -358,9 +358,24 @@ class SettingsManager(QObject):
         self._config_file = resolve_settings_path()
         self.load()
 
+    def set_show_popup_fn(self, fn) -> None:
+        """Inject popup callable after construction (bridge is created later in AppRuntime).
+
+        Overwrite is allowed so unit tests can rebind; production must call once before
+        QML load and pass ``require_ui_ports()`` (TD-050).
+        """
+        self._show_popup_fn = fn
+
     def set_admin_action_gate(self, gate) -> None:
         """Inject AdminActionGate after construction (gate is created later in AppRuntime)."""
         self._admin_action_gate = gate
+
+    def require_ui_ports(self) -> None:
+        """Fail loud if production UI collaborators were never injected (TD-050)."""
+        if self._show_popup_fn is None:
+            raise RuntimeError("SettingsManager.show_popup_fn not set")
+        if self._admin_action_gate is None:
+            raise RuntimeError("SettingsManager.admin_action_gate not set")
 
     def _get_config_path(self) -> Path:
         """Live configuration file path; creates only the live parent directory."""

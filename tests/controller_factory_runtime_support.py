@@ -142,6 +142,12 @@ class _QtBridgeRecorder:
     def set_input_handler(self, input_handler) -> None:
         self.input_handler = input_handler
 
+    def require_ui_ports(self) -> None:
+        if self.base_top_view_service is None:
+            raise RuntimeError("QtBridge.base_top_view_service not set")
+        if self.input_handler is None:
+            raise RuntimeError("QtBridge.input_handler not set")
+
 
 class _WheelControllerRecorder:
     def __init__(self) -> None:

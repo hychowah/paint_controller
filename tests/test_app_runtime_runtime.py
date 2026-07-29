@@ -36,18 +36,35 @@ from tests.controller_factory_runtime_support import (
 from tests.fakes import FakeNode
 
 
+class _SettingsManagerStub:
+    """Public TD-050 port surface used by AppRuntime create_bundle tests."""
+
+    def __init__(self) -> None:
+        self._show_popup_fn = None
+        self.admin_action_gate = None
+        self.show_popup_set_calls: list[object] = []
+        self.gate_set_calls: list[object] = []
+
+    def set_show_popup_fn(self, fn) -> None:
+        self.show_popup_set_calls.append(fn)
+        self._show_popup_fn = fn
+
+    def set_admin_action_gate(self, gate) -> None:
+        self.gate_set_calls.append(gate)
+        self.admin_action_gate = gate
+
+    def require_ui_ports(self) -> None:
+        if self._show_popup_fn is None:
+            raise RuntimeError("SettingsManager.show_popup_fn not set")
+        if self.admin_action_gate is None:
+            raise RuntimeError("SettingsManager.admin_action_gate not set")
+
+
 def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) -> None:
     module, runtime = _runtime_without_bootstrap(monkeypatch)
 
     runtime.node = FakeNode()
-    runtime.settings_manager = type(
-        "Settings",
-        (),
-        {
-            "_show_popup_fn": None,
-            "set_admin_action_gate": lambda self, gate: setattr(self, "admin_action_gate", gate),
-        },
-    )()
+    runtime.settings_manager = _SettingsManagerStub()
     runtime.capability_catalog = object()
     runtime.state_store = type("StateStore", (), {"control_mode_changed": _SignalRecorder()})()
     runtime.steam_deck_handler = _SteamDeckHandlerRecorder()
@@ -56,6 +73,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     runtime.qt_bridge = _QtBridgeRecorder()
     runtime.engine = _EngineRecorder()
     runtime.overlay_host = object()
+    admin_gate = object()
     runtime.bundle = type(
         "Bundle",
         (),
@@ -71,7 +89,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
             "lidar_controller": _LidarStatusRecorder(),
             "heartbeat_handler": _HeartbeatHandlerRecorder(),
             "control_processor": _ControlProcessorRecorder(),
-            "admin_action_gate": object(),
+            "admin_action_gate": admin_gate,
             "manual_command_handler": object(),
             "recording_actions": object(),
             "teensy_actions": object(),
@@ -116,6 +134,8 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
     assert create_calls[0]["capability_catalog"] is runtime.capability_catalog
     assert runtime.qt_bridge.base_top_view_service is runtime.base_top_view_service
     assert runtime.qt_bridge.input_handler is runtime.bundle.input_handler
+    assert runtime.settings_manager.gate_set_calls == [admin_gate]
+    assert runtime.settings_manager.admin_action_gate is admin_gate
     assert runtime.action_legality is not None
     assert runtime.shell_router is not None
     # TD-047: façades live in the context map / bundle only — not AppRuntime mirrors.
@@ -286,6 +306,125 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
         "a",
         "l1",
     ]
+
+
+def test_setup_qml_engine_uses_public_set_show_popup_fn(monkeypatch, qt_app) -> None:
+    """TD-050: popup inject lives in _setup_qml_engine — not create_bundle."""
+    module, runtime = _runtime_without_bootstrap(monkeypatch)
+
+    settings = _SettingsManagerStub()
+    runtime.settings_manager = settings
+    runtime.state_store = type(
+        "StateStore",
+        (),
+        {
+            "control_mode": "base",
+            "display_message": "",
+            "display_message_changed": None,
+        },
+    )()
+    runtime.node = FakeNode()
+    runtime.video_stream_handler = type(
+        "Video",
+        (),
+        {
+            "ef_image_provider": object(),
+            "front_image_provider": object(),
+            "rear_image_provider": object(),
+        },
+    )()
+    runtime.base_top_view_service = type("BaseTop", (), {"image_provider": object()})()
+    runtime.qml_dir = "/tmp"
+
+    class FakeEngine:
+        def addImageProvider(self, *_args, **_kwargs) -> None:
+            pass
+
+        def addImportPath(self, *_args, **_kwargs) -> None:
+            pass
+
+    class FakeBridge:
+        def __init__(self, engine, state_store, logger=None, parent=None) -> None:
+            self.engine = engine
+            self.show_popup = object()
+
+    monkeypatch.setattr(module, "QQmlApplicationEngine", FakeEngine)
+    # Patch the real module object (namespace stubs break dotted monkeypatch paths).
+    qt_bridge_mod = importlib.import_module("paint_controller.core.qt_bridge")
+    monkeypatch.setattr(qt_bridge_mod, "QtBridge", FakeBridge)
+
+    runtime._setup_qml_engine()
+
+    assert len(settings.show_popup_set_calls) == 1
+    assert settings.show_popup_set_calls[0] is runtime.qt_bridge.show_popup
+    assert settings._show_popup_fn is runtime.qt_bridge.show_popup
+
+
+def _settings_with_temp_path(monkeypatch, tmp_path, **kwargs):
+    from pathlib import Path
+
+    from paint_controller.core.settings import SettingsManager
+
+    config_path = Path(tmp_path) / "config" / "settings.json"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(SettingsManager, "_get_config_path", lambda self: config_path)
+    return SettingsManager(**kwargs)
+
+
+def test_finalize_ui_ports_raises_when_settings_ports_missing(monkeypatch, tmp_path, qt_app) -> None:
+    """TD-050: real SettingsManager.require_ui_ports fails until both ports set."""
+    from paint_controller.core.qt_bridge import QtBridge
+
+    _, runtime = _runtime_without_bootstrap(monkeypatch)
+    runtime.settings_manager = _settings_with_temp_path(
+        monkeypatch, tmp_path, show_popup_fn=None, admin_action_gate=None
+    )
+    runtime.qt_bridge = QtBridge(engine=object(), state_store=type("S", (), {"display_message_changed": None})())
+    runtime.qt_bridge.set_base_top_view_service(object())
+    runtime.qt_bridge.set_input_handler(object())
+
+    try:
+        runtime._finalize_ui_ports()
+        raise AssertionError("expected RuntimeError for incomplete settings ports")
+    except RuntimeError as exc:
+        assert "show_popup_fn" in str(exc) or "admin_action_gate" in str(exc)
+
+
+def test_finalize_ui_ports_raises_when_bridge_ports_missing(monkeypatch, tmp_path, qt_app) -> None:
+    """TD-050: real QtBridge.require_ui_ports fails until both deps set."""
+    from paint_controller.core.qt_bridge import QtBridge
+
+    _, runtime = _runtime_without_bootstrap(monkeypatch)
+    runtime.settings_manager = _settings_with_temp_path(
+        monkeypatch,
+        tmp_path,
+        show_popup_fn=lambda *a: None,
+        admin_action_gate=object(),
+    )
+    runtime.qt_bridge = QtBridge(engine=object(), state_store=type("S", (), {"display_message_changed": None})())
+
+    try:
+        runtime._finalize_ui_ports()
+        raise AssertionError("expected RuntimeError for incomplete bridge ports")
+    except RuntimeError as exc:
+        assert "base_top_view_service" in str(exc) or "input_handler" in str(exc)
+
+
+def test_finalize_ui_ports_passes_when_all_ports_set(monkeypatch, tmp_path, qt_app) -> None:
+    from paint_controller.core.qt_bridge import QtBridge
+
+    _, runtime = _runtime_without_bootstrap(monkeypatch)
+    runtime.settings_manager = _settings_with_temp_path(
+        monkeypatch,
+        tmp_path,
+        show_popup_fn=lambda *a: None,
+        admin_action_gate=object(),
+    )
+    runtime.qt_bridge = QtBridge(engine=object(), state_store=type("S", (), {"display_message_changed": None})())
+    runtime.qt_bridge.set_base_top_view_service(object())
+    runtime.qt_bridge.set_input_handler(object())
+
+    runtime._finalize_ui_ports()  # must not raise
 
 
 def test_app_runtime_shutdown_cleans_resources_in_order(monkeypatch) -> None:

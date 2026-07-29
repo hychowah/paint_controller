@@ -122,7 +122,19 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     monkeypatch.setattr(module, "TuningActions", record("TuningActions"))
     monkeypatch.setattr(module, "BaseTopViewActions", record("BaseTopViewActions"))
     monkeypatch.setattr(module, "WorkflowCatalog", record("WorkflowCatalog"))
-    monkeypatch.setattr(module, "WorkflowEditor", record("WorkflowEditor"))
+
+    # TD-050: production calls attach_runtime directly (no hasattr skip).
+    class RecordedWorkflowEditor:
+        def __init__(self, *args, **kwargs) -> None:
+            construction_log.append(("WorkflowEditor", args, kwargs))
+            self.args = args
+            self.kwargs = kwargs
+            self.attached_runner = None
+
+        def attach_runtime(self, runner) -> None:
+            self.attached_runner = runner
+
+    monkeypatch.setattr(module, "WorkflowEditor", RecordedWorkflowEditor)
     monkeypatch.setattr(module, "WorkFlowRunner", record("WorkFlowRunner"))
     monkeypatch.setattr(module, "UIInputHandler", record("UIInputHandler"))
     monkeypatch.setattr(module, "EmergencyButtonHandler", record("EmergencyButtonHandler"))
@@ -163,6 +175,7 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     assert bundle.workflow_catalog.kwargs["logger"] is node.get_logger()
     assert bundle.workflow_editor.kwargs["catalog"] is bundle.workflow_catalog
     assert bundle.workflow_editor.kwargs["logger"] is node.get_logger()
+    assert bundle.workflow_editor.attached_runner is bundle.workflow_runner
     assert bundle.overlay_controller.kwargs["selection_model"] is not None
     assert bundle.control_processor.kwargs["selection_model"] is bundle.overlay_controller.kwargs["selection_model"]
     assert bundle.workflow_runner.args == (node, "hardware-bundle")

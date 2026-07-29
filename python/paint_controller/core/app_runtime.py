@@ -138,6 +138,8 @@ class AppRuntime:
         self._setup_qml_engine()
         self._create_controller_bundle()
         self._activate_default_video_overlay()
+        # TD-050: production UI collaborators must be non-None before QML load.
+        self._finalize_ui_ports()
 
         video_runtime = self._context_properties.get("videoRuntime")
         self._signal_wiring = SignalWiring(self._build_signal_wiring_ports(video_runtime))
@@ -191,7 +193,8 @@ class AppRuntime:
         self._log_startup("Qt bridge created")
 
         assert self.settings_manager is not None
-        self.settings_manager._show_popup_fn = self.qt_bridge.show_popup
+        # TD-050: public setter only — no private-field poke.
+        self.settings_manager.set_show_popup_fn(self.qt_bridge.show_popup)
 
     def _create_controller_bundle(self) -> None:
         from paint_controller.core.controller_factory import create_controllers
@@ -218,11 +221,9 @@ class AppRuntime:
         )
         self._log_startup("Controller bundle created")
 
-        # TD-036: QML settings mutations check AdminActionGate (created in factory).
+        # TD-036 / TD-050: gate is factory-created; inject via public API only.
         assert self.settings_manager is not None
-        inject_gate = getattr(self.settings_manager, "set_admin_action_gate", None)
-        if callable(inject_gate):
-            inject_gate(self.bundle.admin_action_gate)
+        self.settings_manager.set_admin_action_gate(self.bundle.admin_action_gate)
 
         self.qt_bridge.set_base_top_view_service(self.base_top_view_service)
         self.qt_bridge.set_input_handler(self.bundle.input_handler)
@@ -277,6 +278,13 @@ class AppRuntime:
         video_source = self.qt_bridge._video_source_for_control_mode()
         self.overlay_host.show_video_fullscreen(video_source)
         self._log_startup(f"Default video overlay activated: {video_source}")
+
+    def _finalize_ui_ports(self) -> None:
+        """Assert required UI collaborators are non-None before QML load (TD-050)."""
+        assert self.settings_manager is not None
+        assert self.qt_bridge is not None
+        self.settings_manager.require_ui_ports()
+        self.qt_bridge.require_ui_ports()
 
     def _register_context_properties(self) -> None:
         assert self.engine is not None

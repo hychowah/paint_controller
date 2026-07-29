@@ -255,6 +255,59 @@ def test_settings_route_summaries_reflect_current_values(monkeypatch, tmp_path, 
     )
 
 
+# --- TD-050: public UI port inject + require_ui_ports ---
+
+
+def test_late_set_show_popup_fn_enables_save_popup(monkeypatch, tmp_path, qt_core_app):
+    """Popup inject after construct-with-None (AppRuntime production order)."""
+    popup_calls: list[tuple] = []
+    manager, config_path = _make_manager(monkeypatch, tmp_path, show_popup_fn=None)
+    manager.set("winch_max_speed_mmps", 250.0)
+
+    manager.set_show_popup_fn(lambda *args: popup_calls.append(args))
+    assert manager.saveSetting("winch_max_speed_mmps") is True
+    assert popup_calls == [
+        (
+            "Setting Saved",
+            "Maximum winch speed limit (mm/s): 250.0",
+            "info",
+            2000,
+        )
+    ]
+    assert json.loads(config_path.read_text())["winch_max_speed_mmps"] == 250.0
+
+
+def test_require_ui_ports_raises_until_popup_and_gate_set(monkeypatch, tmp_path, qt_core_app):
+    manager, _ = _make_manager(monkeypatch, tmp_path, show_popup_fn=None, gate=None)
+
+    try:
+        manager.require_ui_ports()
+        raise AssertionError("expected RuntimeError for missing popup")
+    except RuntimeError as exc:
+        assert "show_popup_fn" in str(exc)
+
+    manager.set_show_popup_fn(lambda *args: None)
+    try:
+        manager.require_ui_ports()
+        raise AssertionError("expected RuntimeError for missing gate")
+    except RuntimeError as exc:
+        assert "admin_action_gate" in str(exc)
+
+    manager.set_admin_action_gate(_FakeGate(allowed=True))
+    manager.require_ui_ports()  # must not raise
+
+
+def test_late_gate_inject_changes_mutation_behavior(monkeypatch, tmp_path, qt_core_app):
+    """Ungated allow → inject deny gate → QML mutation fails (late inject is real)."""
+    manager, _ = _make_manager(monkeypatch, tmp_path, gate=None)
+    assert manager.applyFloat("winch_max_speed_mmps", 250.0) is True
+    assert manager.getFloat("winch_max_speed_mmps") == 250.0
+
+    manager.set_admin_action_gate(_FakeGate(allowed=False, reason="late deny"))
+    assert manager.applyFloat("winch_max_speed_mmps", 300.0) is False
+    assert manager.getFloat("winch_max_speed_mmps") == 250.0
+
+
 # --- TD-036: gated QML writes, legality key, path resolution ---
 
 
