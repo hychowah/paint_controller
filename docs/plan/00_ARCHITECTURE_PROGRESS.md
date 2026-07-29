@@ -22,11 +22,11 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 ### Now
 
 - Phase 8 is complete. **QML surface retirement program closed** (TD-032, 2026-07-28).
-- **Problem 2 Wave 1 (Phases 0–3) landed** (2026-07-29) on branch `td-055/layer-responsibility-depth`: shared ports, Teensy peel, pure legality, hurt retypes. Plan updated for **Wave 2**.
+- **Problem 2 Wave 1+2 landed** (2026-07-29): dual HAL collapse; ContinuousTeleopEngine; Actions invoke family; factory subsystem builders; workflow port dialect; Teensy formatting off-device. Phase 4′/5′ **deferred** (no empty rehome theater).
 
 ### Next
 
-- **TD-055 Wave 2 — Phase 6 first** (finish half-migrations: use-or-delete `scale_joystick_axis`, single winch verb, wheel port honesty, valve identity noise). Then Phase 7 (Teensy/Tuning Actions → invoke), Phase 8 (ControlProcessor engine). Do **not** start with package renames (Phase 5′). See `docs/plan/02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md` §6–§14.
+- **TD-054** when scheduled (ROS concurrent I/O). Opportunistic TD-052/053. TD-055 4′/5′ only if a real status/rehome win appears.
 - **TD-048 / TD-050 / TD-049 / hygiene band resolved** (2026-07-29): inject-first; finalize ports; shared Teensy ports; docs/cleanup/StateStore/smoke dual-source hygiene.
 - **Separate integrity track**: **TD-054** when scheduled (ROS concurrent publish + spin). Do not expand multi-thread publish while open.
 - Root context contract remains frozen at `_EXPECTED_CONTEXT_PROPERTY_NAMES` (~26 names). Prefer **inject then retire last consumer**; do not open a new boundary-retirement mega-program.
