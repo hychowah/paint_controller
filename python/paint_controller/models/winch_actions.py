@@ -93,7 +93,8 @@ class WinchActions(QObject):
 
     @Slot(result=bool)
     def toggleLoadDetection(self) -> bool:
-        return self.setLoadDetectionEnabled(not self._winch_echo("load_detection_enabled"))
+        current = False if self._winch is None else bool(self._winch.load_detection_enabled)
+        return self.setLoadDetectionEnabled(not current)
 
     @Slot(bool, result=bool)
     def setEnabled(self, enabled: bool) -> bool:
@@ -105,12 +106,8 @@ class WinchActions(QObject):
 
     @Slot(result=bool)
     def toggleWinchEnable(self) -> bool:
-        return self.setEnabled(not self._winch_echo("enabled"))
-
-    def _winch_echo(self, attribute: str) -> bool:
-        if self._winch is None:
-            return False
-        return bool(getattr(self._winch, attribute, False))
+        current = False if self._winch is None else bool(self._winch.enabled)
+        return self.setEnabled(not current)
 
     def _run(self, *, action_key: str, name: str, invoke) -> bool:
         allowed, reason = self._admin_action_gate.check_action(action_key)

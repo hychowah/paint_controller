@@ -49,15 +49,16 @@ class ManualCommandHandler(QObject):
         self._teensy = teensy
         self._winch = winch
         self._logger = logger
+        # Stable command ids (TD-055.7). Legacy English labels kept as aliases for QML.
         self._command_specs: dict[str, _CommandSpec] = {
-            "Set Spray Gun Angle": _CommandSpec(
+            "spray_gun_angle": _CommandSpec(
                 parameters=(
                     _ParameterSpec("Angle", self._to_float),
                     _ParameterSpec("Speed", self._to_float),
                 ),
                 executor=self._execute_set_spray_gun_angle,
             ),
-            "Demo": _CommandSpec(
+            "demo": _CommandSpec(
                 parameters=(
                     _ParameterSpec("Gimbal Angle", self._to_float),
                     _ParameterSpec("Gimbal Speed", self._to_float),
@@ -67,7 +68,7 @@ class ManualCommandHandler(QObject):
                 ),
                 executor=self._execute_demo,
             ),
-            "Winch Control": _CommandSpec(
+            "winch_control": _CommandSpec(
                 parameters=(
                     _ParameterSpec("Distance", self._to_int),
                     _ParameterSpec("Speed", self._to_int),
@@ -75,38 +76,52 @@ class ManualCommandHandler(QObject):
                 ),
                 executor=self._execute_winch_control,
             ),
-            "Frequency Tap": _CommandSpec(
+            "frequency_tap": _CommandSpec(
                 parameters=(
                     _ParameterSpec("Power", self._to_float),
                     _ParameterSpec("Period", self._to_float),
                 ),
                 executor=self._execute_frequency_tap,
             ),
-            "Tap Once": _CommandSpec(
+            "tap_once": _CommandSpec(
                 parameters=(_ParameterSpec("Power", self._to_float),),
                 executor=self._execute_tap_once,
             ),
-            "Extend Arm": _CommandSpec(
+            "extend_arm": _CommandSpec(
                 parameters=(_ParameterSpec("Length", self._to_int),),
                 executor=self._execute_extend_arm,
             ),
         }
+        self._command_aliases: dict[str, str] = {
+            "Set Spray Gun Angle": "spray_gun_angle",
+            "Demo": "demo",
+            "Winch Control": "winch_control",
+            "Frequency Tap": "frequency_tap",
+            "Tap Once": "tap_once",
+            "Extend Arm": "extend_arm",
+        }
+
+    def _resolve_command_id(self, command_name: str) -> str | None:
+        if command_name in self._command_specs:
+            return command_name
+        return self._command_aliases.get(command_name)
 
     @Slot(str, result=bool)
     def isCommandSupported(self, command_name: str) -> bool:
-        return command_name in self._command_specs
+        return self._resolve_command_id(command_name) is not None
 
     @Slot(str, "QVariantMap", result=bool)
     def executeCommand(self, command_name: str, raw_parameters: Any) -> bool:
-        if not self.isCommandSupported(command_name):
+        command_id = self._resolve_command_id(command_name)
+        if command_id is None:
             return self._fail(f"Command '{command_name}' is not available yet")
 
         try:
-            parameters = self._coerce_parameters(command_name, raw_parameters)
+            parameters = self._coerce_parameters(command_id, raw_parameters)
         except ValueError as exc:
             return self._fail(str(exc))
 
-        result = self._command_specs[command_name].executor(parameters)
+        result = self._command_specs[command_id].executor(parameters)
         if result is False:
             return self._fail(f"Command '{command_name}' was rejected by the backend")
 
@@ -174,18 +189,12 @@ class ManualCommandHandler(QObject):
     def _execute_winch_control(self, parameters: dict[str, object]) -> bool | None:
         if self._winch is None:
             return False
-        distance = self._as_int(parameters["Distance"])
-        speed = self._as_int(parameters["Speed"])
-        acceleration = self._as_int(parameters["Acceleration"])
-        # Prefer the shared workflow port name; fall back to legacy QML-facing alias.
-        move = getattr(self._winch, "move_increment_with_accel", None)
-        if callable(move):
-            result = move(distance, speed, acceleration)
-            return result if isinstance(result, bool) or result is None else bool(result)
-        legacy = getattr(self._winch, "moveIncrementWithAccel", None)
-        if not callable(legacy):
-            return False
-        result = legacy(distance, speed, acceleration)
+        # TD-055.6: single port verb — no dual getattr fallback.
+        result = self._winch.move_increment_with_accel(
+            self._as_int(parameters["Distance"]),
+            self._as_int(parameters["Speed"]),
+            self._as_int(parameters["Acceleration"]),
+        )
         return result if isinstance(result, bool) or result is None else bool(result)
 
     def _execute_frequency_tap(self, parameters: dict[str, object]) -> None:

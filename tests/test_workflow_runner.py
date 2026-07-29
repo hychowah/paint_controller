@@ -174,8 +174,10 @@ def test_workflow_runner_controls_execution_and_emergency_shutdown(qt_app, monke
     valve_calls: list[float] = []
     runner.execution_state_changed.connect(state_events.append)
     runner.error_occurred.connect(errors.append)
-    runner.executor.hardware.winch.move_absolute = lambda length, speed: winch_calls.append((length, speed))
-    runner.executor.hardware.teensy.set_valve_turn = lambda value: valve_calls.append(value)
+    runner.executor.hardware.winch.move_absolute_with_accel = (
+        lambda length, speed, acceleration=30: winch_calls.append((length, speed))
+    )
+    runner.executor.hardware.teensy.setValveTurn = lambda value: valve_calls.append(value)
 
     try:
         assert runner.load_workflow("demo") is True

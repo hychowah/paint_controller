@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib
 import inspect
+from pathlib import Path
 
 from paint_controller.handlers.demo_sequence import run_demo_action
 from paint_controller.handlers.policy.action_legality import (
@@ -231,9 +232,9 @@ def test_workflow_adapters_use_shared_port_methods() -> None:
     bundle = HardwareControllers.from_controllers(body, winch, valve)
     assert isinstance(bundle.teensy, TeensyControllerAdapter)
     assert isinstance(bundle.winch, WinchControllerAdapter)
-    bundle.teensy.set_spray_gun_gimbal_angle(5.0, 1.0)
-    bundle.teensy.set_valve_turn(0.25)
-    bundle.winch.move_absolute(100, 50, 20)
+    bundle.teensy.setSprayGunPitchAngle(5.0, 1.0)
+    bundle.teensy.setValveTurn(0.25)
+    bundle.winch.move_absolute_with_accel(100, 50, 20)
     assert body.pitch == [(5.0, 1.0)]
     assert valve.turns == [0.25]
     assert winch.moves == [("abs", 100, 50, 20)]
@@ -266,3 +267,147 @@ def test_control_processor_types_against_ports_not_concrete_controllers() -> Non
     assert "WheelController" not in source
     assert "WinchController" not in source
     assert "ESP32ValveController" not in source
+
+
+def test_scale_joystick_axis_used_by_production_teleop() -> None:
+    """TD-055.6: pure scaler must have production callers (not test-only dual truth)."""
+    engine_src = Path(
+        importlib.import_module("paint_controller.handlers.continuous_teleop_engine").__file__
+    ).read_text(encoding="utf-8")
+    winch_src = Path(
+        importlib.import_module("paint_controller.handlers.winch_teleop").__file__
+    ).read_text(encoding="utf-8")
+    assert "scale_joystick_axis" in engine_src
+    assert "scale_joystick_axis" in winch_src
+
+
+def test_continuous_teleop_engine_ticks_without_qobject() -> None:
+    """TD-055.8: engine is non-Qt and drives devices on tick."""
+    from paint_controller.handlers.continuous_teleop_engine import ContinuousTeleopEngine
+    from PySide6.QtCore import QObject
+
+    class W:
+        def __init__(self) -> None:
+            self.left = []
+            self.right = []
+
+        def command_left_wheel_speed(self, s: float) -> None:
+            self.left.append(s)
+
+        def command_right_wheel_speed(self, s: float) -> None:
+            self.right.append(s)
+
+        def command_position(self, **kw) -> bool:
+            return True
+
+        def emergency_stop(self) -> None:
+            pass
+
+    class Winch:
+        def get_available(self) -> bool:
+            return True
+
+        def get_motor_brake(self) -> bool:
+            return False
+
+        def command_speed_mmps(self, v: float) -> None:
+            pass
+
+    class Teensy:
+        def get_status_value(self, key: str):
+            return 0.0
+
+        def setLeftPropJoint(self, *a):
+            pass
+
+        def setRightPropJoint(self, *a):
+            pass
+
+        def set_ef_force(self, *a):
+            pass
+
+        def setYawAngle(self, *a):
+            pass
+
+        def setArmRailSpeed(self, *a):
+            pass
+
+        def setSprayTrigger(self, *a):
+            pass
+
+        def setTopRailSpeed(self, *a):
+            pass
+
+        def setLeftPropPWM(self, *a):
+            pass
+
+        def setRightPropPWM(self, *a):
+            pass
+
+        def setSprayPitchSpeed(self, *a):
+            pass
+
+    class Valve:
+        def setValveTurn(self, v: float) -> None:
+            pass
+
+    wheel = W()
+    engine = ContinuousTeleopEngine(
+        wheel, Winch(), Teensy(), Valve(), is_winch_locked=lambda: False
+    )
+    assert not isinstance(engine, QObject)
+    engine.tick(
+        {
+            "left_stick": {"x": 0, "y": 10000},
+            "right_stick": {"x": 0, "y": 0},
+            "triggers": {"left": 0, "right": 0},
+        },
+        "Track Control Left",
+        "None",
+    )
+    assert len(wheel.left) == 1
+
+
+def test_migrated_actions_have_no_string_method_dispatch() -> None:
+    """TD-055.7: primary action façades must not use method_name string getattr."""
+    for mod_name in (
+        "paint_controller.models.teensy_actions",
+        "paint_controller.models.tuning_actions",
+        "paint_controller.models.recording_actions",
+        "paint_controller.models.system_actions",
+        "paint_controller.models.wheel_actions",
+        "paint_controller.models.winch_actions",
+    ):
+        src = Path(importlib.import_module(mod_name).__file__).read_text(encoding="utf-8")
+        assert "method_name" not in src, mod_name
+        assert "getattr(controller" not in src and "getattr(self._teensy, method_name" not in src, mod_name
+
+
+def test_wheel_port_declares_command_position() -> None:
+    from paint_controller.ports.wheel import SupportsWheelTeleop
+
+    assert "command_position" in SupportsWheelTeleop.__dict__ or "command_position" in getattr(
+        SupportsWheelTeleop, "__annotations__", {}
+    ) or any(
+        getattr(m, "__name__", "") == "command_position"
+        for m in SupportsWheelTeleop.__dict__.values()
+        if callable(m)
+    ) or "command_position" in inspect.getsource(SupportsWheelTeleop)
+
+
+def test_factory_uses_subsystem_builders() -> None:
+    src = Path(
+        importlib.import_module("paint_controller.core.controller_factory").__file__
+    ).read_text(encoding="utf-8")
+    assert "_build_device_adapters" in src
+    assert "_build_control_plane" in src
+    assert "_build_presentation_actions" in src
+    assert "_build_workflow_and_services" in src
+
+
+def test_manual_winch_uses_single_port_verb() -> None:
+    src = Path(
+        importlib.import_module("paint_controller.handlers.manual_commands").__file__
+    ).read_text(encoding="utf-8")
+    assert "move_increment_with_accel" in src
+    assert "moveIncrementWithAccel" not in src

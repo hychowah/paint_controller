@@ -2,24 +2,28 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol
 
 from PySide6.QtCore import QObject, Signal, Slot
+
+
+class SupportsTuningTeensy(Protocol):
+    def setShortParams(self, p_value: float, i_value: float, d_value: float) -> object: ...
+
+    def setLongParams(self, p_value: float, i_value: float, d_value: float) -> object: ...
 
 
 class TuningActions(QObject):
     """Own page-level tuning requests initiated from QML.
 
-    This model absorbs the policy previously held by ``TuningAdminHandler`` so
-    that QML accesses yaw PID tuning through a single feature-root object rather
-    than a handler-shaped global.
+    TD-055.7: typed invoke — no string method-name dispatch.
     """
 
     operation_result = Signal(bool, str)
 
     def __init__(
         self,
-        teensy: Any,
+        teensy: SupportsTuningTeensy | None,
         admin_action_gate: Any,
         logger: Any,
         parent: QObject | None = None,
@@ -31,30 +35,21 @@ class TuningActions(QObject):
 
     @Slot(float, float, float, result=bool)
     def setShortYawPid(self, p_value: float, i_value: float, d_value: float) -> bool:
-        return self._run_action(
+        return self._run(
             action_key="tuning.short_yaw_pid",
             name="Short yaw PID",
-            method_name="setShortParams",
-            args=(p_value, i_value, d_value),
+            invoke=lambda t: t.setShortParams(p_value, i_value, d_value),
         )
 
     @Slot(float, float, float, result=bool)
     def setLongYawPid(self, p_value: float, i_value: float, d_value: float) -> bool:
-        return self._run_action(
+        return self._run(
             action_key="tuning.long_yaw_pid",
             name="Long yaw PID",
-            method_name="setLongParams",
-            args=(p_value, i_value, d_value),
+            invoke=lambda t: t.setLongParams(p_value, i_value, d_value),
         )
 
-    def _run_action(
-        self,
-        *,
-        action_key: str,
-        name: str,
-        method_name: str,
-        args: tuple[Any, ...],
-    ) -> bool:
+    def _run(self, *, action_key: str, name: str, invoke) -> bool:
         allowed, reason = self._admin_action_gate.check_action(action_key)
         if not allowed:
             return self._fail(reason)
@@ -62,13 +57,9 @@ class TuningActions(QObject):
         if self._teensy is None:
             return self._fail(f"{name} is unavailable")
 
-        method = getattr(self._teensy, method_name, None)
-        if not callable(method):
-            return self._fail(f"{name} is unavailable")
-
         try:
-            result = method(*args)
-        except Exception as exc:  # pragma: no cover - defensive boundary guard
+            result = invoke(self._teensy)
+        except Exception as exc:  # pragma: no cover
             return self._fail(f"{name} failed: {exc}")
 
         if result is False:

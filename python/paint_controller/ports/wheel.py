@@ -8,11 +8,19 @@ from paint_controller.ports.halt import SupportsWheelHalt
 
 
 class SupportsWheelTeleop(SupportsWheelHalt, Protocol):
-    """Continuous track teleop surface used by ControlProcessor."""
+    """Continuous teleop surface: track speeds + travel position fire."""
 
     def command_left_wheel_speed(self, speed: float) -> object: ...
 
     def command_right_wheel_speed(self, speed: float) -> object: ...
+
+    def command_position(
+        self,
+        left_mm: int,
+        right_mm: int,
+        rpm_limit: int,
+        relative: bool = True,
+    ) -> object: ...
 
 
 class SupportsWheelCommands(SupportsWheelTeleop, Protocol):

@@ -21,7 +21,7 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 | Rank | ID | Why |
 |---|---|---|
-| 1 | **TD-055** | Layer responsibility depth (Problem 2): one hardware vocabulary, deep modules, peel UI/orchestration off controllers — plan `docs/plan/02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md` |
+| 1 | **TD-055** | Problem 2 Wave 2 (Phases 6–10): finish half-migrations → Actions invoke family → teleop engine → device/dialect → composition — plan `docs/plan/02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md` |
 | 2 | **TD-054** | Runtime integrity: concurrent ROS publish + spin (schedule when touching ROS/teleop, or as a dedicated slice; do not expand multi-thread publish while open) |
 | — | **TD-052 / TD-053** | When touching tuning/commands or dual-surface overlays |
 | — | **TD-002 / TD-016** | Opportunistic chrome only; out of pure program track |
@@ -45,11 +45,12 @@ When the goal is **software architecture toward a professional Qt program** (not
 **Priority**: medium (maintainability / long-term structure; program track #1 for architecture)  
 **Effort**: high (phased; not one PR)  
 **Architecture leverage**: high  
-**Status**: **Phases 0–3 landed** 2026-07-29 on `td-055/layer-responsibility-depth` — dual HAL collapsed into shared `ports/` (winch/wheel/valve + teensy); Teensy peeled of popup/peer/demo (`demo_sequence`); pure `handlers/policy/*`; ControlProcessor + Winch/Wheel Actions retyped; review bans in AGENTS. **Residual**: Phase 4 status deepen; Phase 5 light rehome; remaining `*Actions` (teensy/tuning) still partially duck-typed; post-halt inhibit (TD-046) separate.  
-**Why it matters**: Folders look layered but responsibilities mixed (controllers as UI/orchestrators; dual HAL; policy in QObjects).  
-**What to do (remaining)**: Phase 4–5 optional per plan; extend typed surfaces to remaining Actions when touched.  
-**Acceptance (0–3)**: One hardware vocabulary for Teensy/Winch/wheel/valve clusters; Teensy without popup/peer/demo; legality + teleop maps pure-testable; hurt call sites not open `Any`+string dispatch.  
-**Files**: `ports/*`, `controllers/teensy.py`, `handlers/policy/*`, `handlers/demo_sequence.py`, `handlers/control_processor.py`, `models/*_actions.py`, `services/workflow/hardware.py`, `core/controller_factory.py`  
+**Status**: **Wave 1+2 landed** 2026-07-29 on `td-055/layer-responsibility-depth` (Phases 0–3 + 6–10). Optional 4′/5′ deferred.  
+**Why it matters**: Layer/responsibility depth (Problem 2).  
+**What landed (Wave 2)**: scaler production use; ContinuousTeleopEngine; Actions invoke (teensy/tuning/recording/system); wheel port `command_position`; factory subsystem builders; workflow port-name dialect; Teensy format helper off-device.  
+**Residual**: Phase 4′ status deepen / 5′ rehome only if needed; SignalWiring still takes bundle (narrower ports partial); BaseTopViewActions may still be special-cased.  
+**Acceptance**: Wave 2 §11 metrics met (see plan + tests/test_layer_responsibility_depth.py).  
+**Files**: `ports/*`, `handlers/continuous_teleop_engine.py`, `handlers/control_processor.py`, `models/*_actions.py`, `core/controller_factory.py`, `services/workflow/*`  
 **Plan**: `docs/plan/02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md`
 
 ---

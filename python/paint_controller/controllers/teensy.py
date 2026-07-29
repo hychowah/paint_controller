@@ -397,25 +397,9 @@ class TeensyController(RosStatusController):
         with self._status_lock:
             return self._status.get(key)
 
-    @Slot(str, result=str)
-    def get_formatted_value(self, key: str) -> str:
-        """Get a specific status value formatted as a string"""
-        value = self.get_status_value(key)
-
-        # Handle numeric values with appropriate formatting
-        if isinstance(value, float):
-            if key in ["imu_pitch", "imu_roll", "imu_yaw"]:
-                return f"{value:.2f}"
-            elif key == "temperature":
-                return f"{value:.1f}"
-            else:
-                return f"{value:.2f}"
-
-        # Just return string representation for other types
-        return str(value)
-
     #############################################
-    ### UI Control Methods (Slots)
+    ### Device command methods (legacy @Slot retained; no new Slots — TD-055)
+    ### Presentation formatting lives in TeensyStatus / pure helpers, not here.
     #############################################
 
     @Slot(bool)

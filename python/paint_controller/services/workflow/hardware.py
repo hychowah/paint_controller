@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Workflow hardware adapters over the shared ports vocabulary (TD-055).
 
-Adapters pull complexity downward: availability checks and error translation
-live here. Capability shapes come from ``paint_controller.ports`` — not a
-parallel ABC dialect.
+TD-055.9: adapters expose **port/controller method names** (one dialect).
+Availability checks live here; handlers trust adapter methods.
 """
 
 from __future__ import annotations
@@ -26,7 +25,7 @@ class ControllerNotAvailable(ControllerError):  # noqa: N818 — public workflow
 
 
 class TeensyControllerAdapter:
-    """Workflow-facing Teensy+valve adapter implementing shared port methods."""
+    """Workflow-facing Teensy+valve adapter — port method names only."""
 
     def __init__(
         self,
@@ -36,17 +35,17 @@ class TeensyControllerAdapter:
         self._teensy_controller = teensy_controller
         self._valve_controller = valve_controller
 
-    def set_valve_turn(self, turn_value: float) -> None:
+    def setValveTurn(self, turn_value: float) -> None:
         if not self._valve_controller:
             raise ControllerNotAvailable("ESP32 valve controller not available")
         self._valve_controller.setValveTurn(float(turn_value))
 
-    def set_spray_gun_gimbal_angle(self, angle: float, speed: float) -> None:
+    def setSprayGunPitchAngle(self, angle: float, speed: float) -> None:
         if not self._teensy_controller:
             raise ControllerNotAvailable("Teensy controller not available")
         self._teensy_controller.setSprayGunPitchAngle(float(angle), float(speed))
 
-    def extend_arm(self, distance: int) -> None:
+    def extendArm(self, distance: int) -> None:
         if not self._teensy_controller:
             raise ControllerNotAvailable("Teensy controller not available")
         self._teensy_controller.extendArm(int(distance))
@@ -58,17 +57,17 @@ class TeensyControllerAdapter:
 
 
 class WinchControllerAdapter:
-    """Workflow-facing winch adapter over ``SupportsWinchWorkflow``."""
+    """Workflow-facing winch adapter — port method names only."""
 
     def __init__(self, controller: SupportsWinchWorkflow | None):
         self._controller = controller
 
-    def move_increment(self, length: int, speed: int, acceleration: int = 30) -> None:
+    def move_increment_with_accel(self, length: int, speed: int, acceleration: int = 30) -> None:
         if not self._controller:
             raise ControllerNotAvailable("Winch controller not available")
         self._controller.move_increment_with_accel(int(length), int(speed), int(acceleration))
 
-    def move_absolute(self, length: int, speed: int, acceleration: int = 30) -> None:
+    def move_absolute_with_accel(self, length: int, speed: int, acceleration: int = 30) -> None:
         if not self._controller:
             raise ControllerNotAvailable("Winch controller not available")
         self._controller.move_absolute_with_accel(int(length), int(speed), int(acceleration))
@@ -80,7 +79,11 @@ class WinchControllerAdapter:
 
 
 class HardwareControllers:
-    """Container for workflow hardware adapter instances."""
+    """Container for workflow hardware adapter instances.
+
+    Adapter layer owns availability (ControllerNotAvailable). Callers may still
+    guard ``if not hardware.winch`` for missing optional devices.
+    """
 
     def __init__(
         self,
@@ -94,14 +97,11 @@ class HardwareControllers:
     def from_robot_controller(cls, robot_controller):
         teensy = None
         winch = None
-
         if hasattr(robot_controller, "teensy_controller") and robot_controller.teensy_controller:
             valve_controller = getattr(robot_controller, "esp32_valve_controller", None)
             teensy = TeensyControllerAdapter(robot_controller.teensy_controller, valve_controller)
-
         if hasattr(robot_controller, "winch_controller") and robot_controller.winch_controller:
             winch = WinchControllerAdapter(robot_controller.winch_controller)
-
         return cls(teensy_controller=teensy, winch_controller=winch)
 
     @classmethod

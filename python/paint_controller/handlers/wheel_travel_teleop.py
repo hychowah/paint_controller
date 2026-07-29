@@ -7,9 +7,21 @@ Does not use ``AdminActionGate``.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import Any
 
+from paint_controller.ports.wheel import SupportsWheelTeleop
+
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class WheelTravelTickResult:
+    """Accumulated travel after one stick tick (caller owns HUD)."""
+
+    left_mm: float
+    right_mm: float
+    display_value: float
 
 
 def travel_scale(rate_mm_per_s: float, update_interval_s: float, joystick_max: float) -> float:
@@ -26,9 +38,8 @@ def accumulate_wheel_travel(
     right_mm: float,
     scale: float,
     travel_max: float,
-    current_values: dict[str, Any],
-) -> tuple[float, float]:
-    """Accumulate left/right travel mm from stick Y. Returns (left_mm, right_mm)."""
+) -> WheelTravelTickResult:
+    """Accumulate left/right travel mm from stick Y."""
     delta = input_state[f"{stick}_stick"]["y"] * scale
 
     if mode == "Wheel Travel Left":
@@ -40,18 +51,11 @@ def accumulate_wheel_travel(
         right_mm = max(-travel_max, min(travel_max, right_mm))
         display = right_mm
 
-    if stick == "left":
-        current_values["left_mode"] = mode
-        current_values["left_value"] = display
-    else:
-        current_values["right_mode"] = mode
-        current_values["right_value"] = display
-
-    return left_mm, right_mm
+    return WheelTravelTickResult(left_mm, right_mm, display)
 
 
 def send_wheel_travel_command(
-    wheel: Any,
+    wheel: SupportsWheelTeleop,
     *,
     left_mm: float,
     right_mm: float,

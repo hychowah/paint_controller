@@ -66,12 +66,12 @@ def _hardware(
 def test_hardware_from_controllers_routes_calls_to_underlying_controllers() -> None:
     hardware, teensy, winch, valve = _hardware()
 
-    hardware.teensy.set_valve_turn(12.5)
-    hardware.teensy.set_spray_gun_gimbal_angle(8, 2)
-    hardware.teensy.extend_arm(120)
+    hardware.teensy.setValveTurn(12.5)
+    hardware.teensy.setSprayGunPitchAngle(8, 2)
+    hardware.teensy.extendArm(120)
     hardware.teensy.set_ef_force(1.5, -0.5)
-    hardware.winch.move_increment(50, 10, 20)
-    hardware.winch.move_absolute(400, 25, 15)
+    hardware.winch.move_increment_with_accel(50, 10, 20)
+    hardware.winch.move_absolute_with_accel(400, 25, 15)
 
     assert valve.turn_values == [12.5]
     assert teensy.gimbal_calls == [(8.0, 2.0)]
@@ -87,7 +87,7 @@ def test_hardware_adapter_raises_when_valve_controller_is_missing() -> None:
     assert hardware.teensy is not None
 
     try:
-        hardware.teensy.set_valve_turn(5.0)
+        hardware.teensy.setValveTurn(5.0)
     except ControllerNotAvailable as exc:
         assert "ESP32 valve controller not available" in str(exc)
     else:

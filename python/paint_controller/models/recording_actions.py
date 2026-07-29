@@ -2,27 +2,38 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol
 
 from PySide6.QtCore import QObject, Signal, Slot
+
+
+class SupportsEfBaseRecording(Protocol):
+    def toggleRecording(self) -> object: ...
+
+    def toggleBaseRecording(self) -> object: ...
+
+
+class SupportsScreenRecording(Protocol):
+    def toggleRecording(self) -> object: ...
+
+
+class SupportsRosBagRecording(Protocol):
+    def toggleBagRecording(self) -> object: ...
 
 
 class RecordingActions(QObject):
     """Own recording toggles initiated from QML.
 
-    This model absorbs the recording policy previously held by
-    ``DeviceOperationsHandler`` so that QML accesses camera, screen, and ROS bag
-    recording through a single feature-root object rather than a handler-shaped
-    global.
+    TD-055.7: typed invoke — no string method-name dispatch.
     """
 
     operation_result = Signal(bool, str)
 
     def __init__(
         self,
-        video_stream_handler: Any,
-        screen_recorder: Any,
-        ros_bag_recorder: Any,
+        video_stream_handler: SupportsEfBaseRecording | None,
+        screen_recorder: SupportsScreenRecording | None,
+        ros_bag_recorder: SupportsRosBagRecording | None,
         logger: Any,
         parent: QObject | None = None,
     ) -> None:
@@ -34,59 +45,45 @@ class RecordingActions(QObject):
 
     @Slot(result=bool)
     def toggleEndEffectorRecording(self) -> bool:
-        return self._run_action(
+        return self._run(
             name="EF camera recording",
             controller=self._video_stream_handler,
-            method_name="toggleRecording",
+            invoke=lambda c: c.toggleRecording(),
         )
 
     @Slot(result=bool)
     def toggleBaseRecording(self) -> bool:
-        return self._run_action(
+        return self._run(
             name="Base camera recording",
             controller=self._video_stream_handler,
-            method_name="toggleBaseRecording",
+            invoke=lambda c: c.toggleBaseRecording(),
         )
 
     @Slot(result=bool)
     def toggleScreenRecording(self) -> bool:
-        return self._run_action(
+        return self._run(
             name="Screen recording",
             controller=self._screen_recorder,
-            method_name="toggleRecording",
+            invoke=lambda c: c.toggleRecording(),
         )
 
     @Slot(result=bool)
     def toggleRosBagRecording(self) -> bool:
-        return self._run_action(
+        return self._run(
             name="ROS bag recording",
             controller=self._ros_bag_recorder,
-            method_name="toggleBagRecording",
+            invoke=lambda c: c.toggleBagRecording(),
         )
 
-    def _run_action(
-        self,
-        *,
-        name: str,
-        controller: Any,
-        method_name: str,
-        args: tuple[Any, ...] = (),
-    ) -> bool:
+    def _run(self, *, name: str, controller: Any, invoke) -> bool:
         if controller is None:
             return self._fail(f"{name} is unavailable")
-
-        method = getattr(controller, method_name, None)
-        if not callable(method):
-            return self._fail(f"{name} is unavailable")
-
         try:
-            result = method(*args)
-        except Exception as exc:  # pragma: no cover - defensive boundary guard
+            result = invoke(controller)
+        except Exception as exc:  # pragma: no cover
             return self._fail(f"{name} failed: {exc}")
-
         if result is False:
             return self._fail(f"{name} was rejected by the backend")
-
         message = f"{name} requested"
         self._logger.info(message)
         self.operation_result.emit(True, message)

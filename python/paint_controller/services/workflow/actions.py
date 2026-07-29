@@ -65,7 +65,7 @@ class WinchIncrementHandler(ActionHandler):
         if not self.hardware.winch:
             raise ControllerNotAvailable("Winch controller not available")
 
-        self.hardware.winch.move_increment(int(length), int(speed), int(acceleration))
+        self.hardware.winch.move_increment_with_accel(int(length), int(speed), int(acceleration))
         if self.logger:
             self.logger.debug(
                 f"Winch moved increment: {length}mm at {speed}mm/s with acceleration {acceleration} RPM/s"
@@ -103,7 +103,7 @@ class WinchAbsoluteHandler(ActionHandler):
         current_length = self.hardware.winch.get_cable_length()
         distance = abs(length - current_length)
 
-        self.hardware.winch.move_absolute(int(length), int(speed), int(acceleration))
+        self.hardware.winch.move_absolute_with_accel(int(length), int(speed), int(acceleration))
 
         # Store estimated time for later use
         self._last_estimated_time = (distance / speed) if speed > 0 else 0.0
@@ -142,7 +142,7 @@ class ValveTurnHandler(ActionHandler):
         if not self.hardware.teensy:
             raise ControllerNotAvailable("Teensy controller not available")
 
-        self.hardware.teensy.set_valve_turn(float(turn_value))
+        self.hardware.teensy.setValveTurn(float(turn_value))
         if self.logger:
             self.logger.debug(f"Valve turn set to {turn_value}")
 
@@ -164,7 +164,7 @@ class SprayGimbalHandler(ActionHandler):
         if not self.hardware.teensy:
             raise ControllerNotAvailable("Teensy controller not available")
 
-        self.hardware.teensy.set_spray_gun_gimbal_angle(float(angle), float(speed))
+        self.hardware.teensy.setSprayGunPitchAngle(float(angle), float(speed))
         if self.logger:
             self.logger.debug(f"Spray gimbal set to {angle}° at {speed}°/s")
 
@@ -188,7 +188,7 @@ class ArmExtendHandler(ActionHandler):
         if not self.hardware.teensy:
             raise ControllerNotAvailable("Teensy controller not available")
 
-        self.hardware.teensy.extend_arm(int(distance))
+        self.hardware.teensy.extendArm(int(distance))
 
         # Show popup if ROS node available
         if self.ros_node and hasattr(self.ros_node, "show_info_popup"):
