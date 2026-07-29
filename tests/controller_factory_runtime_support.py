@@ -22,12 +22,21 @@ class _LoggerRecorder:
     def __init__(self) -> None:
         self.errors: list[str] = []
         self.infos: list[str] = []
+        self.warnings: list[str] = []
 
     def info(self, message: str) -> None:
         self.infos.append(message)
 
     def error(self, message: str) -> None:
         self.errors.append(message)
+
+    def warning(self, message: str, *args) -> None:
+        if args:
+            try:
+                message = message % args
+            except TypeError:
+                message = f"{message} {args}"
+        self.warnings.append(message)
 
 
 def _controller_factory_module():
@@ -58,9 +67,13 @@ class _SignalRecorder:
     def __init__(self) -> None:
         self.connections: list[tuple[object, tuple]] = []
         self.emits: list[tuple[object, ...]] = []
+        self.disconnect_calls = 0
 
     def connect(self, callback, *args) -> None:
         self.connections.append((callback, args))
+
+    def disconnect(self, *args) -> None:
+        self.disconnect_calls += 1
 
     def emit(self, *args) -> None:
         self.emits.append(args)
@@ -442,6 +455,7 @@ class _StatusTimerRecorder:
     def __init__(self) -> None:
         self.stopped = False
         self.started = False
+        self.delete_later_called = False
         self.timeout = _SignalRecorder()
 
     def stop(self) -> None:
@@ -449,6 +463,9 @@ class _StatusTimerRecorder:
 
     def start(self, _interval_ms: int) -> None:
         self.started = True
+
+    def deleteLater(self) -> None:
+        self.delete_later_called = True
 
 
 class _WaitableRecorder:

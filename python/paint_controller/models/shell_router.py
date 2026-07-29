@@ -6,6 +6,59 @@ from typing import Any
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
+# Single source for production + smoke FakeShellRouter (TD-042).
+DEFAULT_ROUTE_REGISTRY: list[dict[str, Any]] = [
+    {
+        "key": "home",
+        "title": "Home",
+        "iconSource": "../../resource/homepage.svg",
+        "iconScale": 0.7,
+        "order": 0,
+    },
+    {
+        "key": "base",
+        "title": "Base",
+        "iconSource": "../../resource/base.png",
+        "iconScale": 0.7,
+        "order": 1,
+    },
+    {
+        "key": "winch",
+        "title": "Winch",
+        "iconSource": "../../resource/winch.png",
+        "iconScale": 0.6,
+        "order": 2,
+    },
+    {
+        "key": "monitor",
+        "title": "Monitor",
+        "iconSource": "../../resource/monitor.svg",
+        "iconScale": 0.6,
+        "order": 3,
+    },
+    {
+        "key": "tuning",
+        "title": "Tuning",
+        "iconSource": "../../resource/icon-pid.png",
+        "iconScale": 0.6,
+        "order": 4,
+    },
+    {
+        "key": "launcher",
+        "title": "Launcher",
+        "iconSource": "../../resource/launcher.svg",
+        "iconScale": 0.7,
+        "order": 5,
+    },
+    {
+        "key": "settings",
+        "title": "Settings",
+        "iconSource": "../../resource/setting.svg",
+        "iconScale": 0.6,
+        "order": 6,
+    },
+]
+
 
 class ShellRouter(QObject):
     """Own the operator-visible page route registry and current route.
@@ -21,57 +74,7 @@ class ShellRouter(QObject):
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._current_route = "home"
-        self._route_registry: list[dict[str, Any]] = [
-            {
-                "key": "home",
-                "title": "Home",
-                "iconSource": "../../resource/homepage.svg",
-                "iconScale": 0.7,
-                "order": 0,
-            },
-            {
-                "key": "base",
-                "title": "Base",
-                "iconSource": "../../resource/base.png",
-                "iconScale": 0.7,
-                "order": 1,
-            },
-            {
-                "key": "winch",
-                "title": "Winch",
-                "iconSource": "../../resource/winch.png",
-                "iconScale": 0.6,
-                "order": 2,
-            },
-            {
-                "key": "monitor",
-                "title": "Monitor",
-                "iconSource": "../../resource/monitor.svg",
-                "iconScale": 0.6,
-                "order": 3,
-            },
-            {
-                "key": "tuning",
-                "title": "Tuning",
-                "iconSource": "../../resource/icon-pid.png",
-                "iconScale": 0.6,
-                "order": 4,
-            },
-            {
-                "key": "launcher",
-                "title": "Launcher",
-                "iconSource": "../../resource/launcher.svg",
-                "iconScale": 0.7,
-                "order": 5,
-            },
-            {
-                "key": "settings",
-                "title": "Settings",
-                "iconSource": "../../resource/setting.svg",
-                "iconScale": 0.6,
-                "order": 6,
-            },
-        ]
+        self._route_registry: list[dict[str, Any]] = [dict(entry) for entry in DEFAULT_ROUTE_REGISTRY]
 
     @Property(list, notify=route_registry_changed)
     def routeRegistry(self) -> list[dict[str, Any]]:

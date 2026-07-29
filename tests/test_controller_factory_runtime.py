@@ -31,8 +31,9 @@ def test_controller_bundle_cleanup_runs_reverse_order_and_logs_errors() -> None:
         teensy_controller=cleanup_factory("teensy_controller"),
         heartbeat_handler=cleanup_factory("heartbeat_handler"),
         safety_coordinator=object(),
+        selection_model=object(),
         overlay_controller=cleanup_factory("overlay_controller"),
-        control_processor=cleanup_factory("control_processor"),
+        control_processor=object(),  # no cleanup in production
         admin_action_gate=object(),
         manual_command_handler=object(),
         recording_actions=object(),
@@ -42,29 +43,27 @@ def test_controller_bundle_cleanup_runs_reverse_order_and_logs_errors() -> None:
         winch_actions=object(),
         tuning_actions=object(),
         base_top_view_actions=object(),
-        input_handler=cleanup_factory("input_handler"),
-        emergency_handler=BrokenCleanup(),
+        input_handler=object(),
+        emergency_handler=BrokenCleanup(),  # unlisted leftover with cleanup()
         ssh_controller=cleanup_factory("ssh_controller"),
         screen_manager=cleanup_factory("screen_manager"),
         screen_recorder=cleanup_factory("screen_recorder"),
         ros_bag_recorder=cleanup_factory("ros_bag_recorder"),
         workflow_catalog=cleanup_factory("workflow_catalog"),
-        workflow_editor=cleanup_factory("workflow_editor"),
+        workflow_editor=object(),
         workflow_runner=cleanup_factory("workflow_runner"),
     )
 
     bundle.cleanup(logger)
 
+    # Ordered listed fields first, then alphabetical leftovers (emergency_handler).
     assert call_log == [
-        "workflow_editor",
         "workflow_runner",
         "workflow_catalog",
         "ros_bag_recorder",
         "screen_recorder",
         "screen_manager",
         "ssh_controller",
-        "input_handler",
-        "control_processor",
         "overlay_controller",
         "heartbeat_handler",
         "teensy_controller",
@@ -76,6 +75,7 @@ def test_controller_bundle_cleanup_runs_reverse_order_and_logs_errors() -> None:
         "system_monitor",
     ]
     assert logger.errors == ["Error cleaning up emergency_handler: boom"]
+    assert any("unlisted cleanup" in w for w in logger.warnings)
 
 
 def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
@@ -209,10 +209,121 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     assert bundle.base_top_view_actions.kwargs["admin_action_gate"] is bundle.admin_action_gate
     assert bundle.base_top_view_actions.kwargs["logger"] is node.get_logger()
     assert bundle.input_handler.kwargs["selection_model"] is bundle.overlay_controller.kwargs["selection_model"]
+    assert bundle.selection_model is bundle.overlay_controller.kwargs["selection_model"]
+    assert bundle.control_processor.kwargs["selection_model"] is bundle.selection_model
     assert bundle.input_handler.kwargs["close_popup_fn"] is close_popup
     assert bundle.emergency_handler.kwargs["safety_coordinator"] is bundle.safety_coordinator
     assert bundle.screen_recorder.kwargs["screen_manager"] is bundle.screen_manager
     assert node.get_logger().records[-1].message == "All controllers created with explicit DI"
+
+
+def test_cleanup_order_lists_every_field_with_cleanup_method(monkeypatch) -> None:
+    """TD-051: _CLEANUP_ORDER cannot silently omit a cleanup-bearing field."""
+    module = _controller_factory_module()
+
+    def record(name: str):
+        class Recorded:
+            def __init__(self, *args, **kwargs) -> None:
+                self.args = args
+                self.kwargs = kwargs
+
+            def cleanup(self) -> None:
+                pass
+
+        # Only some classes get cleanup to mirror production.
+        if name in {
+            "SystemMonitor",
+            "WheelController",
+            "ESP32ValveController",
+            "LidarController",
+            "WindMonitor",
+            "WinchController",
+            "TeensyController",
+            "UIHeartbeatHandler",
+            "OverlayController",
+            "UISSHController",
+            "ScreenManager",
+            "ScreenRecorder",
+            "RosBagRecorder",
+            "WorkflowCatalog",
+            "WorkFlowRunner",
+        }:
+            return Recorded
+        class NoCleanup:
+            def __init__(self, *args, **kwargs) -> None:
+                self.args = args
+                self.kwargs = kwargs
+
+        return NoCleanup
+
+    class FakeHardwareControllers:
+        @classmethod
+        def from_controllers(cls, teensy, winch, esp32):
+            return "hardware-bundle"
+
+    for name in (
+        "WarningHandler",
+        "SystemMonitor",
+        "WheelController",
+        "ESP32ValveController",
+        "LidarController",
+        "WindMonitor",
+        "WinchController",
+        "TeensyController",
+        "SafetyCoordinator",
+        "UIHeartbeatHandler",
+        "JoystickSelectionModel",
+        "OverlayController",
+        "ControlProcessor",
+        "AdminActionGate",
+        "ManualCommandHandler",
+        "RecordingActions",
+        "TeensyActions",
+        "SystemActions",
+        "WheelActions",
+        "WinchActions",
+        "TuningActions",
+        "BaseTopViewActions",
+        "WorkflowCatalog",
+        "WorkflowEditor",
+        "WorkFlowRunner",
+        "UIInputHandler",
+        "EmergencyButtonHandler",
+        "UISSHController",
+        "ScreenManager",
+        "ScreenRecorder",
+        "RosBagRecorder",
+    ):
+        if name == "WorkflowEditor":
+            class RecordedWorkflowEditor:
+                def __init__(self, *args, **kwargs) -> None:
+                    self.args = args
+                    self.kwargs = kwargs
+                    self.attached_runner = None
+
+                def attach_runtime(self, runner) -> None:
+                    self.attached_runner = runner
+
+            monkeypatch.setattr(module, name, RecordedWorkflowEditor)
+        else:
+            monkeypatch.setattr(module, name, record(name))
+    monkeypatch.setattr(module, "HardwareControllers", FakeHardwareControllers)
+
+    bundle = module.create_controllers(
+        node=FakeNode(),
+        settings_manager=object(),
+        capability_catalog=object(),
+        state_store=object(),
+        steam_deck_handler=object(),
+        video_stream_handler=object(),
+        base_top_view_service=object(),
+        show_popup_fn=object(),
+        close_popup_fn=object(),
+    )
+    with_cleanup = module._bundle_fields_with_cleanup(bundle)
+    assert with_cleanup <= set(module._CLEANUP_ORDER), (
+        f"cleanup-bearing fields missing from _CLEANUP_ORDER: {sorted(with_cleanup - set(module._CLEANUP_ORDER))}"
+    )
 
 
 def test_admin_action_gate_evaluates_idle_default_and_live_exceptions() -> None:

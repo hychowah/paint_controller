@@ -8,6 +8,7 @@ import pytest
 from PySide6.QtCore import QObject, QUrl
 from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent
 
+from tests.qml_warning_assert import assert_no_fatal_qml_warnings
 from tests.startup_smoke_support import (
     BlankImageProvider,
     DynamicObject,
@@ -64,15 +65,7 @@ Item {{
         assert root is not None, [str(error) for error in component.errors()]
         qt_app.processEvents()
 
-        fatal_warning_fragments = (
-            "failed to load component",
-            "no such file or directory",
-            "is not a type",
-            "required property",
-        )
-        assert not any(
-            fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments
-        ), (warnings)
+        assert_no_fatal_qml_warnings(warnings)
     finally:
         if root is not None:
             root.deleteLater()
@@ -140,15 +133,7 @@ Item {{
         assert root is not None, [str(error) for error in component.errors()]
         qt_app.processEvents()
 
-        fatal_warning_fragments = (
-            "failed to load component",
-            "no such file or directory",
-            "is not a type",
-            "required property",
-        )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
-            warnings
-        )
+        assert_no_fatal_qml_warnings(warnings)
     finally:
         if root is not None:
             root.deleteLater()
@@ -215,36 +200,7 @@ Item {{
         assert root is not None, [str(error) for error in component.errors()]
         qt_app.processEvents()
 
-        fatal_warning_fragments = (
-            "failed to load component",
-            "no such file or directory",
-            "is not a type",
-            "required property",
-        )
-        if video_source == "image://ef_live/frame":
-            fatal_warning_fragments += (
-                "endeffectoroverlay.qml: qml row: cannot specify",
-                "videooverlaytopbar.qml: qml row: cannot specify",
-                "cannot read property 'imu_pitch' of undefined",
-                "cannot call method 'tofixed' of undefined",
-                "cannot read property 'winch_torque'",
-                "cannot read property 'cable_length'",
-                "cannot read property 'distance'",
-                "cannot read property 'angle'",
-            )
-        if video_source == "image://base_front_live/frame":
-            fatal_warning_fragments += (
-                "basefrontoverlay.qml: qml row: cannot specify",
-                "basefrontoverlay.qml: qml connections",
-                "basetopviewsettingspopup.qml: unable to assign [undefined]",
-                "cannot call method 'tofixed' of undefined",
-                "cannot read property 'left_wheel_speed'",
-                "cannot read property 'right_wheel_speed'",
-                "invalid image provider: image://base_top_view/frame",
-            )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
-            warnings
-        )
+        assert_no_fatal_qml_warnings(warnings)
     finally:
         if root is not None:
             root.deleteLater()
@@ -306,17 +262,7 @@ Item {{
         assert root is not None, [str(error) for error in component.errors()]
         qt_app.processEvents()
 
-        fatal_warning_fragments = (
-            "failed to load component",
-            "no such file or directory",
-            "is not a type",
-            "required property",
-            "typeerror",
-            "referenceerror",
-        )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
-            warnings
-        )
+        assert_no_fatal_qml_warnings(warnings)
     finally:
         if root is not None:
             root.deleteLater()
@@ -385,17 +331,7 @@ Item {{
         assert root is not None, [str(error) for error in component.errors()]
         qt_app.processEvents()
 
-        fatal_warning_fragments = (
-            "failed to load component",
-            "no such file or directory",
-            "is not a type",
-            "required property",
-            "typeerror",
-            "referenceerror",
-        )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
-            warnings
-        )
+        assert_no_fatal_qml_warnings(warnings)
     finally:
         if root is not None:
             root.deleteLater()
@@ -451,15 +387,7 @@ Item {{
         assert root is not None, [str(error) for error in component.errors()]
         qt_app.processEvents()
 
-        fatal_warning_fragments = (
-            "failed to load component",
-            "no such file or directory",
-            "is not a type",
-            "required property",
-        )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
-            warnings
-        )
+        assert_no_fatal_qml_warnings(warnings)
     finally:
         if root is not None:
             root.deleteLater()
@@ -521,17 +449,7 @@ Item {{
         assert root is not None, [str(error) for error in component.errors()]
         qt_app.processEvents()
 
-        fatal_warning_fragments = (
-            "failed to load component",
-            "no such file or directory",
-            "is not a type",
-            "required property",
-            "typeerror",
-            "referenceerror",
-        )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
-            warnings
-        )
+        assert_no_fatal_qml_warnings(warnings)
     finally:
         if root is not None:
             root.deleteLater()
@@ -591,17 +509,7 @@ Item {{
         assert root is not None, [str(error) for error in component.errors()]
         qt_app.processEvents()
 
-        fatal_warning_fragments = (
-            "failed to load component",
-            "no such file or directory",
-            "is not a type",
-            "required property",
-            "typeerror",
-            "referenceerror",
-        )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
-            warnings
-        )
+        assert_no_fatal_qml_warnings(warnings)
     finally:
         if root is not None:
             root.deleteLater()
@@ -657,17 +565,7 @@ Item {{
         assert root is not None, [str(error) for error in component.errors()]
         qt_app.processEvents()
 
-        fatal_warning_fragments = (
-            "failed to load component",
-            "no such file or directory",
-            "is not a type",
-            "required property",
-            "typeerror",
-            "referenceerror",
-        )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
-            warnings
-        )
+        assert_no_fatal_qml_warnings(warnings)
     finally:
         if root is not None:
             root.deleteLater()
@@ -724,17 +622,7 @@ Item {{
         assert root is not None, [str(error) for error in component.errors()]
         qt_app.processEvents()
 
-        fatal_warning_fragments = (
-            "failed to load component",
-            "no such file or directory",
-            "is not a type",
-            "required property",
-            "typeerror",
-            "referenceerror",
-        )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
-            warnings
-        )
+        assert_no_fatal_qml_warnings(warnings)
     finally:
         if root is not None:
             root.deleteLater()
@@ -798,15 +686,7 @@ Item {{
         assert root is not None, [str(error) for error in component.errors()]
         qt_app.processEvents()
 
-        fatal_warning_fragments = (
-            "failed to load component",
-            "no such file or directory",
-            "is not a type",
-            "required property",
-        )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
-            warnings
-        )
+        assert_no_fatal_qml_warnings(warnings)
     finally:
         if root is not None:
             root.deleteLater()
@@ -871,22 +751,7 @@ Item {{
         assert root is not None, [str(error) for error in component.errors()]
         qt_app.processEvents()
 
-        fatal_warning_fragments = (
-            "failed to load component",
-            "no such file or directory",
-            "is not a type",
-            "required property",
-            "cannot read property 'left_wheel_speed'",
-            "cannot read property 'left_wheel_current'",
-            "cannot read property 'left_wheel_position'",
-            "cannot read property 'right_wheel_speed'",
-            "cannot read property 'right_wheel_current'",
-            "cannot read property 'right_wheel_position'",
-            "cannot call method 'tofixed' of undefined",
-        )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
-            warnings
-        )
+        assert_no_fatal_qml_warnings(warnings)
     finally:
         if root is not None:
             root.deleteLater()
@@ -959,22 +824,7 @@ Item {{
         assert root is not None, [str(error) for error in component.errors()]
         qt_app.processEvents()
 
-        fatal_warning_fragments = (
-            "failed to load component",
-            "no such file or directory",
-            "is not a type",
-            "required property",
-            "cannot read property 'imu_pitch' of undefined",
-            "cannot read property 'valve_position' of undefined",
-            "cannot read property 'winch_torque' of undefined",
-            "cannot read property 'cable_length' of undefined",
-            "cannot read property 'distance'",
-            "cannot read property 'angle'",
-            "cannot call method 'tofixed' of undefined",
-        )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
-            warnings
-        )
+        assert_no_fatal_qml_warnings(warnings)
     finally:
         if root is not None:
             root.deleteLater()
@@ -1286,15 +1136,7 @@ Item {{
         assert yaw_control.property("controlStatus") == "Inactive"
         assert spray_gun_led_control.property("controlStatus") == "Off"
 
-        fatal_warning_fragments = (
-            "failed to load component",
-            "no such file or directory",
-            "is not a type",
-            "required property",
-        )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
-            warnings
-        )
+        assert_no_fatal_qml_warnings(warnings)
     finally:
         if root is not None:
             root.deleteLater()
@@ -1394,15 +1236,7 @@ ApplicationWindow {{
         assert save_button.property("enabled") is False
         assert reset_button.property("enabled") is False
 
-        fatal_warning_fragments = (
-            "failed to load component",
-            "no such file or directory",
-            "is not a type",
-            "required property",
-        )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
-            warnings
-        )
+        assert_no_fatal_qml_warnings(warnings)
     finally:
         if root is not None:
             root.deleteLater()

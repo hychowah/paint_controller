@@ -8,6 +8,7 @@ from PySide6.QtCore import QObject, QUrl
 from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent
 
 from tests.startup_smoke_support import _assert_component_ready, _context_objects, _qml_import_url
+from tests.qml_warning_assert import assert_no_fatal_qml_warnings
 
 
 def test_edit_workflow_tab_loads_with_workflow_editor(monkeypatch, tmp_path, qt_app, qtbot):
@@ -55,15 +56,7 @@ Item {{
 
         qt_app.processEvents()
 
-        fatal_warning_fragments = (
-            "required property",
-            "referenceerror",
-            "failed to create",
-            "failed to load component",
-        )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
-            warnings
-        )
+        assert_no_fatal_qml_warnings(warnings)
     finally:
         if root is not None:
             root.deleteLater()

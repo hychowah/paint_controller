@@ -66,39 +66,10 @@ class FakeShellRouter(QObject):
     def __init__(self) -> None:
         super().__init__()
         self._current_route = "home"
-        self._route_registry = [
-            {"key": "home", "title": "Home", "iconSource": "../../resource/homepage.svg", "iconScale": 0.7, "order": 0},
-            {"key": "base", "title": "Base", "iconSource": "../../resource/base.png", "iconScale": 0.7, "order": 1},
-            {"key": "winch", "title": "Winch", "iconSource": "../../resource/winch.png", "iconScale": 0.6, "order": 2},
-            {
-                "key": "monitor",
-                "title": "Monitor",
-                "iconSource": "../../resource/monitor.svg",
-                "iconScale": 0.6,
-                "order": 3,
-            },
-            {
-                "key": "tuning",
-                "title": "Tuning",
-                "iconSource": "../../resource/icon-pid.png",
-                "iconScale": 0.6,
-                "order": 4,
-            },
-            {
-                "key": "launcher",
-                "title": "Launcher",
-                "iconSource": "../../resource/launcher.svg",
-                "iconScale": 0.7,
-                "order": 5,
-            },
-            {
-                "key": "settings",
-                "title": "Settings",
-                "iconSource": "../../resource/setting.svg",
-                "iconScale": 0.6,
-                "order": 6,
-            },
-        ]
+        # TD-042: same registry data as production ShellRouter (no hand-maintained copy).
+        from paint_controller.models.shell_router import DEFAULT_ROUTE_REGISTRY
+
+        self._route_registry = [dict(entry) for entry in DEFAULT_ROUTE_REGISTRY]
 
     @Property(list, constant=True)
     def routeRegistry(self) -> list[dict[str, object]]:

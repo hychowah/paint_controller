@@ -192,7 +192,8 @@ class SignalWiring:
         if bundle is None or qt_bridge is None:
             raise RuntimeError("ControllerBundle and QtBridge are required before starting timers")
 
-        status_timer = QTimer()
+        # Parent to qt_bridge so the timer is not a process-orphan QObject (TD-051).
+        status_timer = QTimer(qt_bridge)
         status_timer.timeout.connect(qt_bridge.status_updated.emit)
         status_timer.start(int(1000 / ports.update_rate))
 

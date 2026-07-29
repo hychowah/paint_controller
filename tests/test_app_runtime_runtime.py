@@ -431,7 +431,8 @@ def test_app_runtime_shutdown_cleans_resources_in_order(monkeypatch) -> None:
     module, runtime = _runtime_without_bootstrap(monkeypatch)
     call_log: list[str] = []
 
-    runtime.status_timer = _StatusTimerRecorder()
+    status_timer = _StatusTimerRecorder()
+    runtime.status_timer = status_timer
     engine_obj = object()
     app_obj = object()
     runtime.engine = engine_obj
@@ -457,7 +458,9 @@ def test_app_runtime_shutdown_cleans_resources_in_order(monkeypatch) -> None:
 
     runtime.shutdown()
 
-    assert runtime.status_timer.stopped is True
+    assert status_timer.stopped is True
+    assert status_timer.delete_later_called is True
+    assert runtime.status_timer is None
     assert teardown_calls == [(engine_obj, app_obj)]
     assert call_log == [
         "ros_thread.request_shutdown",

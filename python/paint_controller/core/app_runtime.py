@@ -348,6 +348,12 @@ class AppRuntime:
         try:
             if self.status_timer is not None:
                 self.status_timer.stop()
+                try:
+                    self.status_timer.timeout.disconnect()
+                except (TypeError, RuntimeError):
+                    pass
+                self.status_timer.deleteLater()
+                self.status_timer = None
             log_shutdown("Qt timers stopped")
         except Exception as error:
             logger.error("Error stopping timers: %s", error)

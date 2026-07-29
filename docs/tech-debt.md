@@ -21,11 +21,11 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 | Rank | ID | Why |
 |---|---|---|
-| 1 | **TD-042 / TD-043 / TD-051 / TD-041** | Hygiene (tests, dead state, cleanup inventory, docs) |
 | — | **TD-054** | Runtime integrity: concurrent ROS publish + spin (schedule when touching ROS/teleop, or as a dedicated slice) |
 | — | **TD-052 / TD-053** | When touching tuning/commands or dual-surface overlays |
 | — | **TD-002 / TD-016** | Opportunistic chrome only; out of pure program track |
 | — | **TD-040 residual** | Optional: `video_stream` / `base_top_view_service` pyright include (deferred 2026-07-29) |
+| — | **TD-041 / TD-042 / TD-043 / TD-051** | Resolved 2026-07-29 (hygiene band) |
 | — | **TD-049** | Resolved 2026-07-29 (shared ports Teensy teleop+halt+workflow body; residual *Actions Any) |
 | — | **TD-050** | Resolved 2026-07-29 (public setters + require_ui_ports finalize; set-once not enforced) |
 | — | **TD-048** | Resolved 2026-07-29 (page/feature inject for actions/legality/settings/chrome) |
@@ -38,18 +38,6 @@ When the goal is **software architecture toward a professional Qt program** (not
 ---
 
 ## Active Debt
-
-### TD-051 — Bundle cleanup string-list drift and unparented composition timers
-**Area**: Backend / lifecycle
-**Priority**: low
-**Effort**: low
-**Architecture leverage**: medium
-**Why it matters**: Explicit `cleanup()` for hardware is intentional and proven (TD-019/022/025/029). Residual software debt: `ControllerBundle.cleanup_order` is a **string list parallel** to dataclass fields (includes names with no `cleanup`; omits documenting non-cleanup members); `status_timer = QTimer()` is unparented and only `stop()`’d; `JoystickSelectionModel` is shared in the factory graph but **not on the bundle**. Composer/status QObjects are unparented process-lifetime objects (acceptable if documented).
-**What to do**: Derive cleanup from typed field metadata or a `SupportsCleanup` registry that fails if a new cleanup method is forgotten; parent `status_timer` to a long-lived owner and `deleteLater` on shutdown; add `selection_model` to the bundle when touching the factory.
-**Acceptance**: Cleanup list cannot drift silently from bundle fields; shutdown test asserts status timer does not fire after cleanup; selection model identity is on the bundle.
-**Files**: `python/paint_controller/core/controller_factory.py`, `core/signal_wiring.py`, `core/app_runtime.py`
-
----
 
 ### TD-052 — Command/tuning parameter schemas still owned in QML
 **Area**: QML ↔ Python boundary
@@ -110,44 +98,14 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 ---
 
-### TD-041 — Governance/doc hygiene: stale plan entries, KNOWLEDGE.md mis-citation
-**Area**: Docs
-**Priority**: low
-**Effort**: low
-**Architecture leverage**: low
-**Why it matters**: `00_ARCHITECTURE_PROGRESS.md`'s frozen list declares route identity owned in `MainWindow.qml` in the same file that declares Phase 7 (which moved it to `ShellRouter`) complete; its quarantine list still names `PageWheel.qml`'s `baseStreamHandler` seam, which no longer exists. `KNOWLEDGE.md`'s singleton entry cites PYSIDE-2160/2310 as a "known bug family" — both are unrelated issues fixed in Qt 6.5.x and the repo runs PySide6 6.10.1; the conclusion (avoid `qmlRegisterSingletonInstance` with implicit directory imports) is defensible, but the cited reasoning blocks legitimate typed-registration options (`qmlRegisterUncreatableType`, `@QmlNamedElement`). `AGENTS.md` also references a `launch/` directory that does not exist. Progress board "Next" still soft-offers more retirement targets; TD-032 is firmer: close the program, then stop.
-**What to do**: Correct the KNOWLEDGE.md entry (user confirmation required per KNOWLEDGE.md rules), refresh or retire the stale frozen/quarantine entries, align progress-board "Next" with TD-032 close-out and this tech-debt program-track table, fix the `launch/` reference.
-**Files**: `docs/plan/00_ARCHITECTURE_PROGRESS.md`, `KNOWLEDGE.md`, `AGENTS.md`
-
----
-
-### TD-042 — Over-fitted test mirror and structural-selfie assertions
-**Area**: Tests
-**Priority**: low
-**Effort**: medium
-**Architecture leverage**: medium
-**Why it matters**: Root **name** dual-source is already gated (`_EXPECTED_CONTEXT_PROPERTY_NAMES` ↔ composer ↔ smoke fixture key parity tests). Residual dual-source is **shape/registry/warnings**: `startup_smoke_support.py` (~1114 LOC, ~26 hand-maintained `Fake*` classes) re-implements Property/Slot surfaces by hand; `FakeShellRouter` hand-copies the production route list (content currently matches, but NOTIFY/validation already differ from `ShellRouter`); `controller_factory_runtime_support.py` (~455 LOC, ~25 recorder classes) often asserts that wiring wired what wiring wires; `fatal_warning_fragments` tuples are copy-pasted per smoke test (version-brittle). Expensive smoke optimizes for loadability against a hand mirror, not production-derived contracts.
-**What to do**: Prefer production `ShellRouter` (or shared pure registry data) for smoke; collapse warning fragments into one `assert_no_fatal_qml_warnings()` helper; prefer real lightweight QObjects over property-by-property fakes where construction is cheap; keep name-parity and shutdown-order tests; reduce structural selfies.
-**Files**: `tests/startup_smoke_support.py`, `tests/controller_factory_runtime_support.py`, `tests/test_startup_smoke*.py`, `models/shell_router.py`
-
----
-
-### TD-043 — Dead/duplicated state and metadata layers
-**Area**: State management
-**Priority**: low
-**Effort**: medium
-**Architecture leverage**: low–medium
-**Why it matters**: `StateStore` is ~60% dead state (`left/right_joystick_control`, `*_control_mode/value` have no writers/readers; QML reads only `display_message`) while its "single source of truth" branding invites writes to the wrong place. `CapabilityCatalog` (~560 lines) + metadata registry has few QML call sites.
-**Partial (2026-07-28 with TD-047 slice 1)**: dead `_heartbeat_status_error` write and uncalled free `wire`/`start_timers`/`compose_context_properties` removed.
-**What to do**: Delete the dead StateStore surface or make it Python-internal; reduce CapabilityCatalog to what consumers need (or fold legality into the gate when touching legality — do not open vanity catalog work alone).
-**Files**: `python/paint_controller/core/state_store.py`, `python/paint_controller/models/capability_catalog.py`
-
----
-
 ## Resolved Debt
 
 | ID | Title | Resolved | Notes |
 |---|---|---|---|
+| TD-041 | Governance/doc hygiene: stale plan entries, KNOWLEDGE mis-citation | 2026-07-29 | Frozen route ownership → ShellRouter; AGENTS launch/ fixed; KNOWLEDGE singleton note accurate for this repo; progress checklist no longer offers Phase 7 |
+| TD-042 | Over-fitted test mirror and structural-selfie assertions | 2026-07-29 | Shared `assert_no_fatal_qml_warnings`; FakeShellRouter uses `DEFAULT_ROUTE_REGISTRY`; residual: large property-level smoke Fake* set (not rewritten) |
+| TD-043 | Dead/duplicated state and metadata layers | 2026-07-29 | Dead StateStore joystick/control_* surface removed; live: control_mode/display_message/heartbeat. CapabilityCatalog left (live for gate/legality) — residual size only |
+| TD-051 | Bundle cleanup string-list drift and unparented composition timers | 2026-07-29 | `_CLEANUP_ORDER` + leftover detection; `selection_model` on bundle; status_timer parented to qt_bridge + stop/disconnect/deleteLater; tests cover order inventory + shutdown |
 | TD-049 | Device ports exist only for workflow; teleop/actions/safety bypass them | 2026-07-29 | Shared `ports/` Protocols (Teensy teleop+halt+status+workflow body; winch/wheel/valve halt). ControlProcessor off raw Teensy pubs (method dispatch; dual-sign joints; int casts). SafetyCoordinator halt Protocols. Workflow adapter types body as `SupportsTeensyWorkflowBody` + gimbal→`setSprayGunPitchAngle`. FakeTeensy method-only + new EF mode tests. Residual: `*Actions` still `Any`+getattr; not TD-054 |
 | TD-050 | Two-phase collaborator injection and private-field wiring | 2026-07-29 | Public `SettingsManager.set_show_popup_fn` + `require_ui_ports`; `QtBridge.require_ui_ports`; `AppRuntime._finalize_ui_ports` before QML load; direct gate inject (no soft getattr); direct `workflow_editor.attach_runtime` (no hasattr). Set-once **not** enforced — overwrite-allowed setters + finalize non-None. Focused band green |
 | TD-048 | QML feature/page injection depth incomplete | 2026-07-29 | Inject-first for *Actions/legality/settings/chrome: PageWheel/Winch/Status/Tuning/Settings; SystemControl+DeviceControl dual-surface; VideoFullscreen base-top write path; TopBar/Emergency/Joystick/overlayController. Root bag still 26 names (retire last-consumer later). Smoke harnesses inject. Full suite 434 passed |

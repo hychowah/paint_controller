@@ -13,7 +13,8 @@ ROS2 node with PySide6/QML UI for robotic paint controller on a Steam Deck. Pyth
 **Key Paths**:
 - `python/paint_controller/` — Main Python application
 - `python/paint_controller/qml/` — QML UI components
-- `launch/` — ROS2 launch files
+- `tests/` — pytest suite (offscreen Qt / fakes)
+- This package has **no** in-tree `launch/` directory; do not invent launch files without an explicit user request
 
 ## Build & Run
 
@@ -138,8 +139,8 @@ The test suite relies on a deliberately lightweight harness. Do not break these 
 
 You MUST pause and ask for explicit guidance before:
 
-- **Deleting any non-doc file** (code, config, launch files, tests). Deleting stale docs/plans/notes is routine per the Pruning Policy — no approval needed, but state what was deleted and why.
-- **Modifying launch files** (`launch/*.py`)
+- **Deleting any non-doc file** (code, config, tests). Deleting stale docs/plans/notes is routine per the Pruning Policy — no approval needed, but state what was deleted and why.
+- **Adding or modifying ROS2 launch files** (none live in this package today; ask before creating them)
 - **Changing ROS2 message types** or service definitions
 - **Modifying CMakeLists.txt or package.xml**
 - **Any change rated High complexity**

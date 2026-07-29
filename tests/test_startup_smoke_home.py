@@ -7,6 +7,7 @@ from pathlib import Path
 from PySide6.QtCore import QObject, QUrl
 from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent
 
+from tests.qml_warning_assert import assert_no_fatal_qml_warnings
 from tests.startup_smoke_support import BlankImageProvider, _assert_component_ready, _context_objects, _qml_import_url
 
 
@@ -78,15 +79,7 @@ Item {{
 
         qt_app.processEvents()
 
-        fatal_warning_fragments = (
-            "required property",
-            "cannot read property 'feeds' of undefined",
-            "cannot read property 'basestreamhandler' of undefined",
-            "referenceerror",
-        )
-        assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
-            warnings
-        )
+        assert_no_fatal_qml_warnings(warnings)
     finally:
         if root is not None:
             root.deleteLater()

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Any, cast
 
 from paint_controller.controllers.esp32_valve import ESP32ValveController
@@ -39,10 +39,45 @@ from paint_controller.services.workflow.workflow_editor import WorkflowEditor
 from paint_controller.services.workflow.workflow_runner import WorkFlowRunner
 from paint_controller.ui.overlay import OverlayController
 
+# Reverse-ish teardown order for fields that implement cleanup().
+# Test: every bundle field with a callable cleanup must appear here (TD-051).
+# Fields without cleanup (actions, gate, selection_model, …) are intentionally omitted.
+_CLEANUP_ORDER: tuple[str, ...] = (
+    "workflow_runner",
+    "workflow_catalog",
+    "ros_bag_recorder",
+    "screen_recorder",
+    "screen_manager",
+    "ssh_controller",
+    "overlay_controller",
+    "heartbeat_handler",
+    "teensy_controller",
+    "winch_controller",
+    "wind_monitor",
+    "lidar_controller",
+    "esp32_valve_controller",
+    "wheel_controller",
+    "system_monitor",
+)
+
+
+def _bundle_fields_with_cleanup(bundle: object) -> set[str]:
+    """Return dataclass field names whose current values expose cleanup()."""
+    names: set[str] = set()
+    for f in fields(bundle):  # type: ignore[arg-type]
+        obj = getattr(bundle, f.name, None)
+        if obj is not None and callable(getattr(obj, "cleanup", None)):
+            names.add(f.name)
+    return names
+
 
 @dataclass
 class ControllerBundle:
-    """All controllers and handlers created by the factory."""
+    """All controllers and handlers created by the factory.
+
+    Cleanup-bearing hardware/services are torn down via ``_CLEANUP_ORDER``.
+    Policy shells (*Actions, gate, selection_model) have no cleanup by design.
+    """
 
     # Independent
     warning_handler: WarningHandler
@@ -59,6 +94,7 @@ class ControllerBundle:
     safety_coordinator: SafetyCoordinator
 
     # Cross-controller handlers
+    selection_model: JoystickSelectionModel
     overlay_controller: OverlayController
     control_processor: ControlProcessor
     admin_action_gate: AdminActionGate
@@ -83,36 +119,25 @@ class ControllerBundle:
     workflow_runner: WorkFlowRunner
 
     def cleanup(self, logger: Any = None) -> None:
-        """Cleanup all controllers in reverse creation order."""
-        cleanup_order = [
-            "workflow_editor",
-            "workflow_runner",
-            "workflow_catalog",
-            "ros_bag_recorder",
-            "screen_recorder",
-            "screen_manager",
-            "ssh_controller",
-            "emergency_handler",
-            "input_handler",
-            "control_processor",
-            "overlay_controller",
-            "heartbeat_handler",
-            "teensy_controller",
-            "winch_controller",
-            "wind_monitor",
-            "lidar_controller",
-            "esp32_valve_controller",
-            "wheel_controller",
-            "system_monitor",
-        ]
-        for name in cleanup_order:
+        """Cleanup cleanup-bearing members; order from ``_CLEANUP_ORDER`` then leftovers."""
+        known = set(_CLEANUP_ORDER)
+        ordered = [n for n in _CLEANUP_ORDER if getattr(self, n, None) is not None]
+        leftovers = sorted(_bundle_fields_with_cleanup(self) - known)
+        if leftovers and logger is not None:
+            logger.warning(
+                "ControllerBundle cleanup found unlisted cleanup() fields: %s — update _CLEANUP_ORDER",
+                leftovers,
+            )
+        for name in ordered + leftovers:
             ctrl = getattr(self, name, None)
-            if ctrl and hasattr(ctrl, "cleanup"):
-                try:
-                    ctrl.cleanup()
-                except Exception as e:
-                    if logger:
-                        logger.error(f"Error cleaning up {name}: {e}")
+            cleanup_fn = getattr(ctrl, "cleanup", None) if ctrl is not None else None
+            if not callable(cleanup_fn):
+                continue
+            try:
+                cleanup_fn()
+            except Exception as e:
+                if logger:
+                    logger.error(f"Error cleaning up {name}: {e}")
 
 
 def create_controllers(
@@ -284,6 +309,7 @@ def create_controllers(
         teensy_controller=teensy,
         heartbeat_handler=heartbeat,
         safety_coordinator=safety_coordinator,
+        selection_model=selection_model,
         overlay_controller=overlay,
         control_processor=control_processor,
         admin_action_gate=admin_action_gate,

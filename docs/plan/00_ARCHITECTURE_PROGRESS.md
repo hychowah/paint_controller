@@ -10,8 +10,8 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 
 - Overall status: in progress
 - Active architecture program: none — the QML surface retirement program (Phases 0–8) is closing per `docs/tech-debt.md` TD-032; the master plan doc was deleted 2026-07-27 and is recoverable from git history
-- Most recent completed slice: **TD-049 resolved** — shared device ports for Teensy teleop/halt/workflow body (2026-07-29); prior same-day **TD-050** finalize-UI-ports
-- Debt tracker: next program-track hygiene (**TD-042 / TD-043 / TD-051 / TD-041**); runtime **TD-054** when touching ROS/teleop — see `docs/tech-debt.md`
+- Most recent completed slice: **hygiene band TD-041/042/043/051** (2026-07-29); prior same-day **TD-049/050/048**
+- Debt tracker: next program-track **TD-054** (ROS concurrent I/O) when scheduled; opportunistic TD-052/053 — see `docs/tech-debt.md`
 - Core purpose: reduce global coupling, clarify ownership, shrink ambient QML *usage* (injection depth), and make composition/ports closer to a professional Qt program — without reopening TD-032 name-retirement
 - First-principles rule: success means fewer ambient leaf reads, thinner composition export, and real CI/type control planes — not wrapper proliferation or mega-Backend
 - Last focused validation: `58 passed` for `tests/test_app_runtime_runtime.py tests/test_controller_factory_runtime.py tests/test_startup_smoke.py tests/test_startup_smoke_shell.py tests/test_startup_smoke_home.py tests/test_qml_imports.py tests/test_shell_router.py tests/test_qml_context_composer.py tests/test_signal_wiring.py` on 2026-07-24
@@ -25,8 +25,8 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 
 ### Next
 
-- **TD-048 / TD-050 / TD-049 resolved** (2026-07-29): inject-first QML contracts; finalize UI ports; shared `ports/` for Teensy teleop+halt+workflow body (residual: `*Actions` still `Any`).
-- **Software program track** (canonical order in `docs/tech-debt.md`): hygiene (**TD-042 / TD-043 / TD-051 / TD-041**); **TD-054** when touching ROS I/O concurrency.
+- **TD-048 / TD-050 / TD-049 / hygiene band resolved** (2026-07-29): inject-first; finalize ports; shared Teensy ports; docs/cleanup/StateStore/smoke dual-source hygiene.
+- **Software program track** (canonical order in `docs/tech-debt.md`): **TD-054** when scheduled; residual smoke Fake* property surfaces and CapabilityCatalog size are non-blocking.
 - Root context contract remains frozen at `_EXPECTED_CONTEXT_PROPERTY_NAMES` (~26 names). Prefer **inject then retire last consumer**; do not open a new boundary-retirement mega-program.
 - Industrial HMI / operator-UX product work is **out of scope** for this architecture track unless explicitly reprioritized.
 
@@ -38,7 +38,7 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 
 ### Frozen
 
-- Key-first shell route identity owned in `MainWindow.qml`
+- Key-first shell **route identity owned by `ShellRouter`** (Python); `MainWindow.qml` is a declarative consumer
 - `ShellState` as the bounded shell policy owner
 - `OverlayHostPolicy` as the bounded overlay host and layer owner
 - `shellConnectivityStatus` for shell-facing telemetry
@@ -51,16 +51,16 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 
 These files are allowed to keep temporary raw-global reads until their named family is active. They are explicit remainder, not architectural truth.
 
-- *(none — PageWheel ambient `videoRuntime`/`wheelActions` retired under TD-048 slice A, 2026-07-29)*
+- *(none)*
 
 ## Validation Gates
 
-- Every slice must retire at least one raw app-scope QML read path in the same change.
+- Prefer inject-first; retire raw app-scope QML reads when a family is touched (do not reopen TD-032 name-retirement mega-program).
 - Every slice touching `python/paint_controller/core/app_runtime.py` must record the AppRuntime contract delta.
 - No new contract may become a controller-shaped mirror, a generic device bag, or a raw `all_status` passthrough.
 - If a slice changes a QML-facing contract, add or update startup smoke coverage for that contract.
 - If a slice touches timers, worker pools, QThreads, controller cleanup, or QObject lifetime, add teardown-specific regression coverage before closing the slice.
-- When a raw QML global loses its last live consumer, remove it from `AppRuntime` in the same slice.
+- When a raw QML global loses its last live consumer, remove it from the context composer expected-name set in the same slice.
 - Startup-smoke fixtures for touched surfaces must stop providing retired globals once a slice lands so smoke coverage cannot silently mask fallback to the old context bag.
 
 ## Focused Validation Order
@@ -94,15 +94,14 @@ These files are allowed to keep temporary raw-global reads until their named fam
 
 ## Active Risks
 
-- The app-scope QML context contract is still broader than it should be for a professional Qt program.
-- Some feature roots now have bounded contracts while leaf components still bypass them, which can create false progress if later slices only rename access.
-- The remaining telemetry families must stay family-based and bounded; otherwise the repo can drift from one large context bag into many narrow-but-permanent bags.
-- Harness drift remains a real risk, especially where startup smoke still injects raw globals that a landed slice should no longer depend on.
+- The app-scope QML context contract is still broader than ideal (~26 frozen names); shrink only with last-consumer proof, not vanity rename programs.
+- Harness drift remains a risk where smoke fixtures re-implement production contracts by hand (TD-042 hygiene).
+- Runtime integrity: concurrent ROS publish + spin on one node remains open (**TD-054**).
 
 ## Next Session Checklist
 
-1. Keep the live board in this file as the only source of truth for unfinished architecture work.
-2. Continue the master plan at Phase 7 (`MainWindow.qml` shell simplification, optional) unless a higher-leverage retirement is proven.
+1. Keep this file as the live unfinished-work board; durable rationale stays in `01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`.
+2. Follow `docs/tech-debt.md` program-track order (hygiene, then **TD-054** when scheduled).
 3. Preserve frozen shell and launcher contracts.
-4. Keep the quarantined remainder explicit by file.
-5. Do not open automation follow-on work until the root QML contract is materially smaller.
+4. Keep quarantined remainder explicit by file (currently none).
+5. Do not open automation follow-on until there is a clear product need separate from ambient QML cleanup.

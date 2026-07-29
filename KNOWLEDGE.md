@@ -27,8 +27,12 @@ Inside `RowLayout`/`ColumnLayout`, children must NOT reference `parent.width * 0
 ### QQuickView vs QQmlApplicationEngine
 `QQmlApplicationEngine` requires `Window` or `ApplicationWindow` as QML root. For `Rectangle`-based components, use `QQuickView` with `SizeRootObjectToView` resize mode instead.
 
-### NEVER Use qmlRegisterSingletonInstance in PySide6
-`qmlRegisterSingletonInstance()` corrupts PySide6's QML type system when combined with implicit directory imports (no `qmldir`). Symptoms: `Cannot assign object of type "QQuickRectangle" to list property "data"` — affects ALL Rectangle children globally, not just the registered type. Even a minimal clean QObject triggers it. Known bug family: PYSIDE-2173, PYSIDE-2160, PYSIDE-2310. **Use `engine.rootContext().setContextProperty()` instead.** QML access uses lowercase instance name (`stateStore.X`) instead of type name (`StateStore.X`).
+### Prefer setContextProperty over qmlRegisterSingletonInstance in this repo
+`qmlRegisterSingletonInstance()` has caused global QML type-system corruption in this codebase when combined with **implicit directory imports** (folder imports without a solid `qmldir` / URI module setup). Observed symptoms: `Cannot assign object of type "QQuickRectangle" to list property "data"` on unrelated Rectangle children. Related history includes PYSIDE-2173-class issues; do not treat every PySide ticket ID as the same root cause.
+
+**Project invariant**: expose Python objects with `engine.rootContext().setContextProperty(name, obj)` and a frozen expected-name list. QML uses the lowercase instance name (`settingsManager.X`), not a registered type name.
+
+This does **not** ban all typed registration forever (`qmlRegisterUncreatableType`, `@QmlNamedElement`, proper URI modules). It bans reintroducing **singleton instance** registration into the current implicit-directory layout without a deliberate module redesign.
 
 ### Qt Button Keyboard Activation in Multi-Window Apps
 Qt Buttons respond to Space/Enter keys when focused, even in secondary windows. In multi-monitor or multi-window setups, keyboard events can leak across windows causing unintended button activation. For critical buttons (EXIT, DELETE, etc.), use `focusPolicy: Qt.ClickFocus` (allows mouse clicks but prevents Tab navigation) and `activeFocusOnTab: false`. Add `Keys.onPressed` handler to explicitly block Space/Enter/Return keys with `event.accepted = true` to prevent keyboard triggering while preserving mouse click functionality.

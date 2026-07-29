@@ -163,8 +163,10 @@ def test_start_timers_creates_status_timer_and_starts_monitor(monkeypatch) -> No
     from paint_controller.core import signal_wiring as signal_wiring_module
 
     timer_recorder = _StatusTimerRecorder()
+    parents: list[object] = []
 
-    def fake_qtimer_factory():
+    def fake_qtimer_factory(parent=None):
+        parents.append(parent)
         return timer_recorder
 
     fake_qtimer_factory.singleShot = lambda _ms, _callback: None
@@ -176,6 +178,8 @@ def test_start_timers_creates_status_timer_and_starts_monitor(monkeypatch) -> No
     assert status_timer is timer_recorder
     assert timer_recorder.started is True
     assert ports.bundle.system_monitor.monitoring_started is True
+    # TD-051: timer is parented to qt_bridge (not a process-orphan QObject).
+    assert parents == [ports.qt_bridge]
 
 
 def test_start_timers_requires_bundle() -> None:
