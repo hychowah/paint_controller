@@ -8,17 +8,36 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from paint_controller.handlers.heartbeat import HeartbeatStatus
+from collections.abc import Callable
+from dataclasses import dataclass
+
+from paint_controller.handlers.policy.teleop_control_map import scale_joystick_axis
+from paint_controller.ports.winch import SupportsWinchTeleop
+from paint_controller.utils.constants import HeartbeatStatus
 from paint_controller.utils.input import DeadzoneTracker
 
 logger = logging.getLogger(__name__)
 
 
-def is_winch_control_locked(heartbeat_handler: Any) -> bool:
+@dataclass(frozen=True)
+class WinchTickResult:
+    """Result of one winch stick tick (no HUD mutation)."""
+
+    has_been_active: bool
+    display_value: float
+    commanded: bool
+
+
+def is_winch_control_locked(
+    *,
+    get_base_status: Callable[[], int],
+    get_ef_status: Callable[[], int],
+) -> bool:
     """True when base or EF heartbeat reports ONTASK (winch stick must not command)."""
-    base_status = heartbeat_handler.get_base_status()
-    ef_status = heartbeat_handler.get_ef_status()
-    return base_status == HeartbeatStatus.ONTASK.value or ef_status == HeartbeatStatus.ONTASK.value
+    return (
+        get_base_status() == HeartbeatStatus.ONTASK.value
+        or get_ef_status() == HeartbeatStatus.ONTASK.value
+    )
 
 
 def process_winch_speed(
@@ -27,23 +46,15 @@ def process_winch_speed(
     stick: str,
     *,
     config: Any,
-    current_values: dict[str, Any],
     deadzone: DeadzoneTracker,
     deadzone_threshold: float,
     has_been_active: bool,
-    winch: Any,
-    heartbeat_handler: Any,
-) -> bool:
-    """Map stick Y to winch speed; return updated ``has_been_active`` flag."""
-    value = input_state[f"{stick}_stick"]["y"] * config.scale + config.offset
-    value = max(config.min_value, min(config.max_value, value))
-
-    if stick == "left":
-        current_values["left_mode"] = mode
-        current_values["left_value"] = value
-    else:
-        current_values["right_mode"] = mode
-        current_values["right_value"] = value
+    winch: SupportsWinchTeleop,
+    is_locked: Callable[[], bool],
+) -> WinchTickResult:
+    """Map stick Y to winch speed; return tick result (caller owns HUD)."""
+    raw = float(input_state[f"{stick}_stick"]["y"])
+    value = scale_joystick_axis(raw, config, apply_offset=True)
 
     normalized_value = abs(value) / config.max_value if config.max_value > 0 else 0
     should_send = deadzone.update(normalized_value, deadzone_threshold)
@@ -51,25 +62,27 @@ def process_winch_speed(
     if not deadzone.in_deadzone:
         has_been_active = True
 
+    commanded = False
     if should_send and has_been_active:
         try:
             if not winch.get_available():
                 logger.warning("Winch not available")
-                return has_been_active
+                return WinchTickResult(has_been_active, value, False)
 
             if winch.get_motor_brake():
                 logger.warning("Winch motor brake is on")
-                return has_been_active
+                return WinchTickResult(has_been_active, value, False)
 
-            if is_winch_control_locked(heartbeat_handler):
+            if is_locked():
                 logger.warning("Winch control locked: Base or EF is in ONTASK state")
-                return has_been_active
+                return WinchTickResult(has_been_active, value, False)
 
             winch.command_speed_mmps(value)
+            commanded = True
         except Exception as e:
             logger.error("Error commanding winch speed: %s", e)
 
-    return has_been_active
+    return WinchTickResult(has_been_active, value, commanded)
 
 
 def reset_winch_activation(deadzone: DeadzoneTracker) -> None:

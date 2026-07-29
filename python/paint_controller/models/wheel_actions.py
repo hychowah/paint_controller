@@ -6,20 +6,20 @@ from typing import Any
 
 from PySide6.QtCore import QObject, Signal, Slot
 
+from paint_controller.ports.wheel import SupportsWheelCommands
+
 
 class WheelActions(QObject):
     """Own page-level wheel requests initiated from QML.
 
-    This model absorbs the wheel policy previously held by
-    ``DeviceActionHandler`` so that QML accesses wheel enable/reset through a
-    single feature-root object rather than a handler-shaped global.
+    TD-055: typed against ``SupportsWheelCommands``; no stringly method-name dispatch.
     """
 
     operation_result = Signal(bool, str)
 
     def __init__(
         self,
-        wheel: Any,
+        wheel: SupportsWheelCommands | None,
         admin_action_gate: Any,
         logger: Any,
         parent: QObject | None = None,
@@ -31,11 +31,10 @@ class WheelActions(QObject):
 
     @Slot(bool, result=bool)
     def setEnabled(self, enabled: bool) -> bool:
-        return self._run_action(
+        return self._run(
             action_key="wheel.enable",
             name="Wheel enable",
-            method_name="setEnabled",
-            args=(enabled,),
+            invoke=lambda w: w.setEnabled(enabled),
         )
 
     @Slot(result=bool)
@@ -45,20 +44,13 @@ class WheelActions(QObject):
 
     @Slot(result=bool)
     def resetPosition(self) -> bool:
-        return self._run_action(
+        return self._run(
             action_key="wheel.reset_position",
             name="Reset wheel position",
-            method_name="resetWheelPosition",
+            invoke=lambda w: w.resetWheelPosition(),
         )
 
-    def _run_action(
-        self,
-        *,
-        action_key: str,
-        name: str,
-        method_name: str,
-        args: tuple[Any, ...] = (),
-    ) -> bool:
+    def _run(self, *, action_key: str, name: str, invoke) -> bool:
         allowed, reason = self._admin_action_gate.check_action(action_key)
         if not allowed:
             return self._fail(reason)
@@ -66,12 +58,8 @@ class WheelActions(QObject):
         if self._wheel is None:
             return self._fail(f"{name} is unavailable")
 
-        method = getattr(self._wheel, method_name, None)
-        if not callable(method):
-            return self._fail(f"{name} is unavailable")
-
         try:
-            result = method(*args)
+            result = invoke(self._wheel)
         except Exception as exc:  # pragma: no cover - defensive boundary guard
             return self._fail(f"{name} failed: {exc}")
 

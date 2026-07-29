@@ -2,24 +2,38 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol
 
 from PySide6.QtCore import QObject, Signal, Slot
+
+from paint_controller.ports.winch import SupportsWinchMotion
+
+
+class _SupportsWinchActions(SupportsWinchMotion, Protocol):
+    """Winch surface needed by page actions (motion + load detect + enable)."""
+
+    def setLoadDetectionEnabled(self, enabled: bool) -> object: ...
+
+    def setEnabled(self, enabled: bool) -> object: ...
+
+    @property
+    def load_detection_enabled(self) -> bool: ...
+
+    @property
+    def enabled(self) -> bool: ...
 
 
 class WinchActions(QObject):
     """Own page-level winch motion requests initiated from QML.
 
-    This model absorbs the policy previously held by ``WinchMotionHandler`` so
-    that QML accesses winch motion through a single feature-root object rather
-    than a handler-shaped global.
+    TD-055: typed against winch capability ports; no stringly method-name dispatch.
     """
 
     operation_result = Signal(bool, str)
 
     def __init__(
         self,
-        winch: Any,
+        winch: _SupportsWinchActions | None,
         admin_action_gate: Any,
         logger: Any,
         parent: QObject | None = None,
@@ -31,90 +45,71 @@ class WinchActions(QObject):
 
     @Slot(int, int, result=bool)
     def moveIncrement(self, length_mm: int, speed_mm_s: int) -> bool:
-        return self._run_action(
+        return self._run(
             action_key="winch.move_increment",
             name="Winch increment move",
-            method_name="move_increment",
-            args=(length_mm, speed_mm_s),
+            invoke=lambda w: w.move_increment(length_mm, speed_mm_s),
         )
 
     @Slot(int, int, result=bool)
     def moveAbsolute(self, length_mm: int, speed_mm_s: int) -> bool:
-        return self._run_action(
+        return self._run(
             action_key="winch.move_absolute",
             name="Winch absolute move",
-            method_name="move_absolute",
-            args=(length_mm, speed_mm_s),
+            invoke=lambda w: w.move_absolute(length_mm, speed_mm_s),
         )
 
     @Slot(result=bool)
     def retractFull(self) -> bool:
-        return self._run_action(
+        return self._run(
             action_key="winch.retract_full",
             name="Winch full retract",
-            method_name="move_absolute",
-            args=(0, 500),
+            invoke=lambda w: w.move_absolute(0, 500),
         )
 
     @Slot(result=bool)
     def extendOneMeter(self) -> bool:
-        return self._run_action(
+        return self._run(
             action_key="winch.extend_one_meter",
             name="Winch extend 1m",
-            method_name="move_increment",
-            args=(1000, 500),
+            invoke=lambda w: w.move_increment(1000, 500),
         )
 
     @Slot(result=bool)
     def emergencyStop(self) -> bool:
-        return self._run_action(
+        return self._run(
             action_key="winch.emergency_stop",
             name="Winch emergency stop",
-            method_name="move_increment",
-            args=(0, 0),
+            invoke=lambda w: w.move_increment(0, 0),
         )
 
     @Slot(bool, result=bool)
     def setLoadDetectionEnabled(self, enabled: bool) -> bool:
-        return self._run_action(
+        return self._run(
             action_key="winch.load_detection",
             name="Load detection",
-            method_name="setLoadDetectionEnabled",
-            args=(enabled,),
+            invoke=lambda w: w.setLoadDetectionEnabled(enabled),
         )
 
     @Slot(result=bool)
     def toggleLoadDetection(self) -> bool:
-        return self.setLoadDetectionEnabled(not self._winch_echo("load_detection_enabled"))
+        current = False if self._winch is None else bool(self._winch.load_detection_enabled)
+        return self.setLoadDetectionEnabled(not current)
 
     @Slot(bool, result=bool)
     def setEnabled(self, enabled: bool) -> bool:
-        """Enable/disable winch (was deviceActionHandler.requestWinchEnabled)."""
-        return self._run_action(
+        return self._run(
             action_key="status.winch_enable",
             name="Winch enable",
-            method_name="setEnabled",
-            args=(enabled,),
+            invoke=lambda w: w.setEnabled(enabled),
         )
 
     @Slot(result=bool)
     def toggleWinchEnable(self) -> bool:
-        return self.setEnabled(not self._winch_echo("enabled"))
+        current = False if self._winch is None else bool(self._winch.enabled)
+        return self.setEnabled(not current)
 
-    def _winch_echo(self, attribute: str) -> bool:
-        """Read an echo-driven winch state attribute (False when missing)."""
-        if self._winch is None:
-            return False
-        return bool(getattr(self._winch, attribute, False))
-
-    def _run_action(
-        self,
-        *,
-        action_key: str,
-        name: str,
-        method_name: str,
-        args: tuple[Any, ...],
-    ) -> bool:
+    def _run(self, *, action_key: str, name: str, invoke) -> bool:
         allowed, reason = self._admin_action_gate.check_action(action_key)
         if not allowed:
             return self._fail(reason)
@@ -122,12 +117,8 @@ class WinchActions(QObject):
         if self._winch is None:
             return self._fail(f"{name} is unavailable")
 
-        method = getattr(self._winch, method_name, None)
-        if not callable(method):
-            return self._fail(f"{name} is unavailable")
-
         try:
-            result = method(*args)
+            result = invoke(self._winch)
         except Exception as exc:  # pragma: no cover - defensive boundary guard
             return self._fail(f"{name} failed: {exc}")
 

@@ -5,7 +5,7 @@ ROS2 node with PySide6/QML UI for robotic paint control on a Steam Deck. The liv
 ## Current Strategy
 
 - This branch is **refactor-first**. Runtime/workflow/service hardening, the QML flattening pass, the feature-root pass, and the completed ownership work through Workstream D are historical record now.
-- The current architecture control plane is intentionally split in two: **`docs/plan/00_ARCHITECTURE_PROGRESS.md`** is the only live execution board, and **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** is the durable architecture guide.
+- The current architecture control plane is intentionally split: **`docs/plan/00_ARCHITECTURE_PROGRESS.md`** is the live execution board, and **`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`** is the durable Qt architecture guide. TD-055 Problem 2 (layer depth) Wave 1+2 is landed; residual notes live in `docs/tech-debt.md`.
 - The unfinished tail is no longer a generic structural cleanup. It is a family-by-family boundary retirement program focused on shrinking the permanent QML runtime surface.
 - The current live next direction is settings cleanup, followed by bounded `app_runtime.py` and handler decomposition only where they preserve the current contracts and materially reduce ambient reads.
 - Shell and launcher boundary work is treated as frozen unless a future slice proves a real retirement win that cannot be achieved inside the current contract.

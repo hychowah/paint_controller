@@ -9,7 +9,7 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 
 **Architecture leverage** (optional tag on items): how much a fix improves FE↔BE program structure when doing architecture work, independent of ship-blocking urgency.
 
-Last multi-perspective re-validation: **2026-07-28** (deep software-only pass: composition/DI, QML contract injection, QML modules/kit, ports/domain modularity, test/CI control plane). Industrial HMI and operator-UX product work are **out of scope** for this tracker update. Prior 2026-07-27/28 program diagnoses reconfirmed; new TDs **048–053** added from evidence-backed research. **2026-07-29**: added **TD-054** (concurrent ROS publish + spin) from architecture concurrency review.
+Last multi-perspective re-validation: **2026-07-28** (deep software-only pass: composition/DI, QML contract injection, QML modules/kit, ports/domain modularity, test/CI control plane). Industrial HMI and operator-UX product work are **out of scope** for this tracker update. Prior 2026-07-27/28 program diagnoses reconfirmed; new TDs **048–053** added from evidence-backed research. **2026-07-29**: added **TD-054** (concurrent ROS publish + spin); **TD-055** (layer responsibility depth / Problem 2) Wave 1+2 landed (execution plan deleted; recoverable from git history).
 
 **Research non-goals (do not invent debt for):** mega-`Backend` object; reopening TD-032 name-retirement mega-program; full URI QML module rewrite as a program; universal visual skin unification; HMI safety/legality ship defaults; `qmlRegisterSingletonInstance`.
 
@@ -21,23 +21,38 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 | Rank | ID | Why |
 |---|---|---|
-| — | **TD-054** | Runtime integrity: concurrent ROS publish + spin (schedule when touching ROS/teleop, or as a dedicated slice) |
+| 1 | **TD-054** | Runtime integrity: concurrent ROS publish + spin (schedule when touching ROS/teleop, or as a dedicated slice; do not expand multi-thread publish while open) |
+| — | **TD-055** | Landed Wave 1+2; residual only (see Active Debt). Not the primary next program track. |
 | — | **TD-052 / TD-053** | When touching tuning/commands or dual-surface overlays |
 | — | **TD-002 / TD-016** | Opportunistic chrome only; out of pure program track |
 | — | **TD-040 residual** | Optional: `video_stream` / `base_top_view_service` pyright include (deferred 2026-07-29) |
 | — | **TD-041 / TD-042 / TD-043 / TD-051** | Resolved 2026-07-29 (hygiene band) |
-| — | **TD-049** | Resolved 2026-07-29 (shared ports Teensy teleop+halt+workflow body; residual *Actions Any) |
+| — | **TD-049** | Resolved 2026-07-29 (shared ports Teensy teleop+halt+workflow body; residual *Actions Any — continued under TD-055) |
 | — | **TD-050** | Resolved 2026-07-29 (public setters + require_ui_ports finalize; set-once not enforced) |
 | — | **TD-048** | Resolved 2026-07-29 (page/feature inject for actions/legality/settings/chrome) |
 | — | **TD-044 / TD-045 / TD-040** | Resolved 2026-07-29 (CI control plane) |
 | — | **TD-047** | Resolved 2026-07-28 (façade demirror + wiring/composer ports) |
-| — | **TD-046** | Resolved 2026-07-28 (docs + winch/wheel teleop extract; residual EF stick mass) |
+| — | **TD-046** | Resolved 2026-07-28 (docs + winch/wheel teleop extract; residual EF stick mass / post-halt inhibit) |
 | — | **TD-037** | Resolved 2026-07-28 (residual: videoRuntime multi-home only) |
 | — | **TD-038 / TD-032 / TD-036 / TD-039** | Resolved 2026-07-28 |
 
 ---
 
 ## Active Debt
+
+### TD-055 — Layer responsibility depth (Problem 2)
+**Area**: Backend / package boundaries / module depth  
+**Priority**: medium (maintainability / long-term structure; program track #1 for architecture)  
+**Effort**: high (phased; not one PR)  
+**Architecture leverage**: high  
+**Status**: **Wave 1+2 landed** 2026-07-29 on `td-055/layer-responsibility-depth`. Execution plan deleted (git history is archive). Optional 4′/5′ rehome deferred.  
+**Why it matters**: Layer/responsibility depth (Problem 2).  
+**What landed**: dual HAL collapse; ContinuousTeleopEngine; Actions invoke family; wheel port honesty; factory subsystem builders; workflow port dialect; Teensy format off-device.  
+**Residual**: SignalWiring still takes whole bundle; CP test-compat proxies over engine remain; package rehome not done.  
+**Acceptance**: Structural coverage in `tests/test_layer_responsibility_depth.py`; full suite green at land.  
+**Files**: `ports/*`, `handlers/continuous_teleop_engine.py`, `handlers/control_processor.py`, `models/*_actions.py`, `core/controller_factory.py`, `services/workflow/*`
+
+---
 
 ### TD-052 — Command/tuning parameter schemas still owned in QML
 **Area**: QML ↔ Python boundary

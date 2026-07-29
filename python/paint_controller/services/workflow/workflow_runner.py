@@ -462,7 +462,7 @@ class WorkFlowRunner(QObject):
         # Stop winch immediately
         try:
             if hardware.winch:
-                hardware.winch.move_absolute(0, 1)  # Move to 0mm at minimum speed
+                hardware.winch.move_absolute_with_accel(0, 1)  # Move to 0mm at minimum speed
                 self.logger.info("Emergency stop: Winch moving to retracted position")
         except Exception as e:
             self.logger.error(f"Emergency stop: Failed to stop winch: {e}")
@@ -470,7 +470,7 @@ class WorkFlowRunner(QObject):
         # Close valve immediately
         try:
             if hardware.teensy:
-                hardware.teensy.set_valve_turn(0.0)
+                hardware.teensy.setValveTurn(0.0)
                 self.logger.info("Emergency stop: Valve closed")
         except Exception as e:
             self.logger.error(f"Emergency stop: Failed to close valve: {e}")

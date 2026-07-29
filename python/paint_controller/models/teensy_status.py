@@ -72,6 +72,17 @@ TEENS_STATUS_PROPERTY_NAMES: tuple[str, ...] = tuple(
 )
 
 
+def format_status_value(key: str, value: Any) -> str:
+    """Presentation formatting for Teensy status (not device-adapter responsibility)."""
+    if isinstance(value, float):
+        if key in ["imu_pitch", "imu_roll", "imu_yaw"]:
+            return f"{value:.2f}"
+        if key == "temperature":
+            return f"{value:.1f}"
+        return f"{value:.2f}"
+    return str(value)
+
+
 def _coerce(value: Any, kind: str) -> Any:
     if kind == "bool":
         return bool(value)

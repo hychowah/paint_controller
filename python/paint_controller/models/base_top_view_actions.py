@@ -71,18 +71,18 @@ class BaseTopViewActions(QObject):
 
     @Slot(result=bool)
     def saveSettings(self) -> bool:
-        return self._run_method(
+        return self._run(
             action_key="camera.base_top_view.save",
             name="Base top view save",
-            method_name="saveSettings",
+            invoke=lambda s: s.saveSettings(),
         )
 
     @Slot(result=bool)
     def resetToDefaults(self) -> bool:
-        return self._run_method(
+        return self._run(
             action_key="camera.base_top_view.reset",
             name="Base top view reset",
-            method_name="resetToDefaults",
+            invoke=lambda s: s.resetToDefaults(),
         )
 
     def _set_property(self, name: str, property_name: str, value: Any) -> bool:
@@ -103,7 +103,7 @@ class BaseTopViewActions(QObject):
         self.operation_result.emit(True, message)
         return True
 
-    def _run_method(self, *, action_key: str, name: str, method_name: str) -> bool:
+    def _run(self, *, action_key: str, name: str, invoke) -> bool:
         allowed, reason = self._admin_action_gate.check_action(action_key)
         if not allowed:
             return self._fail(reason)
@@ -111,12 +111,8 @@ class BaseTopViewActions(QObject):
         if self._base_top_view_service is None:
             return self._fail(f"{name} is unavailable")
 
-        method = getattr(self._base_top_view_service, method_name, None)
-        if not callable(method):
-            return self._fail(f"{name} is unavailable")
-
         try:
-            result = method()
+            result = invoke(self._base_top_view_service)
         except Exception as exc:  # pragma: no cover - defensive boundary guard
             return self._fail(f"{name} failed: {exc}")
 

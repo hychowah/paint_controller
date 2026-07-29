@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import threading
 import time
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 from geometry_msgs.msg import Twist, Vector3
@@ -16,7 +15,6 @@ from std_msgs.msg import Bool, Float32, Float32MultiArray, Int32, Int32MultiArra
 from paint_controller.controllers._base import RosStatusController
 
 if TYPE_CHECKING:
-    from paint_controller.controllers.winch import WinchController
     from paint_controller.core.settings import SettingsManager
 
 
@@ -115,13 +113,9 @@ class TeensyController(RosStatusController):
         self,
         node: Node,
         settings_manager: SettingsManager | None = None,
-        winch_controller: WinchController | None = None,
-        show_popup_fn: Callable[..., None] | None = None,
     ) -> None:
         super().__init__(node)
         self._settings_manager = settings_manager
-        self._winch_controller = winch_controller
-        self._show_popup_fn = show_popup_fn
 
         # Initialize status variables with default values instead of empty dictionary
         self._status: TeensyStatusDict = {
@@ -403,25 +397,9 @@ class TeensyController(RosStatusController):
         with self._status_lock:
             return self._status.get(key)
 
-    @Slot(str, result=str)
-    def get_formatted_value(self, key: str) -> str:
-        """Get a specific status value formatted as a string"""
-        value = self.get_status_value(key)
-
-        # Handle numeric values with appropriate formatting
-        if isinstance(value, float):
-            if key in ["imu_pitch", "imu_roll", "imu_yaw"]:
-                return f"{value:.2f}"
-            elif key == "temperature":
-                return f"{value:.1f}"
-            else:
-                return f"{value:.2f}"
-
-        # Just return string representation for other types
-        return str(value)
-
     #############################################
-    ### UI Control Methods (Slots)
+    ### Device command methods (legacy @Slot retained; no new Slots — TD-055)
+    ### Presentation formatting lives in TeensyStatus / pure helpers, not here.
     #############################################
 
     @Slot(bool)
@@ -449,8 +427,6 @@ class TeensyController(RosStatusController):
     def homeTopRail(self, home: bool):
         """Home the top rail"""
         self._publish_bool(self.ef_home_top_rail_pub, True)
-        if self._show_popup_fn:
-            self._show_popup_fn("Homing Top Rail", "Homing top rail", "info")
 
     @Slot(float)
     def setArmRailSpeed(self, speed: float):
@@ -460,8 +436,6 @@ class TeensyController(RosStatusController):
     @Slot(int)
     def extendArm(self, dist: int):
         self._publish_int32(self.ef_move_arm_rail_pos_pub, dist)
-        if self._show_popup_fn:
-            self._show_popup_fn("Extending Arm", f"Extending arm to {dist} mm", "info")
 
     @Slot(bool)
     def homeArm(self, home: bool):
@@ -515,16 +489,6 @@ class TeensyController(RosStatusController):
         msg = Float32MultiArray()
         msg.data = [float(angle), float(speed)]
         self.ef_spray_pitch_pub.publish(msg)
-
-    @Slot(float, float, float, float, float)
-    def demoAction(
-        self, pitch_angle: float, pitch_speed: float, cable_length: float, cable_speed: float, force_y: float
-    ):
-        """Perform a demo action with the spray gun"""
-        self.setSprayGunPitchAngle(pitch_angle, pitch_speed)
-        if self._winch_controller:
-            self._winch_controller.move_absolute(int(cable_length), int(cable_speed))
-        self.set_ef_force(0.0, force_y)
 
     @Slot(bool)
     def setSprayGunLED(self, on: bool):

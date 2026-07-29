@@ -135,6 +135,20 @@ The test suite relies on a deliberately lightweight harness. Do not break these 
 
 ---
 
+## TD-055 Layer Depth Review Bans (Problem 2)
+
+When reviewing or implementing backend structure work, **reject**:
+
+- New domain/policy rules under presentation-shaped `models/` (put plain policy in `handlers/policy/`)
+- New QML-oriented `@Slot` growth on device `controllers/` (use `*Actions`)
+- A second hardware HAL parallel to `ports/` (e.g. new ABCs under `services/workflow/hardware.py`)
+- New `show_popup_fn` / peer-device orchestration dependencies on device controllers
+- Pass-through-only types that do not hide a real decision (Ousterhout: prefer deep modules)
+
+TD-055 Wave 1+2 is landed; residual only in `docs/tech-debt.md` (plan retired to git history).
+
+---
+
 ## Stop and Ask Triggers
 
 You MUST pause and ask for explicit guidance before:

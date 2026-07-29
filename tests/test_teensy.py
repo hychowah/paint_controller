@@ -166,11 +166,14 @@ def test_set_ef_force_publishes_twist_message(qt_app, fake_node):
     assert published.linear.z == 0.0
 
 
-def test_get_formatted_value_reads_status_via_locking_snapshot(qt_app, fake_node):
+def test_format_status_value_is_presentation_helper_not_device_method(qt_app, fake_node):
+    """TD-055.9: formatting lives off TeensyController (presentation pure helper)."""
+    from paint_controller.models.teensy_status import format_status_value
+
     controller = _teensy_controller_class()(fake_node)
     status = _teensy_status_class()()
     status.temperature = 23.456
-
     controller._status_callback(status)
 
-    assert controller.get_formatted_value("temperature") == "23.5"
+    assert not hasattr(controller, "get_formatted_value")
+    assert format_status_value("temperature", controller.get_status_value("temperature")) == "23.5"
