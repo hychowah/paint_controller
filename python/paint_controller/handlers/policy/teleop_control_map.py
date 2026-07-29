@@ -1,7 +1,8 @@
-"""Pure teleop control-config tables (TD-055 Phase 3).
+"""Pure teleop control-config types and axis scaling (TD-055 Phase 3).
 
-``ControlProcessor`` owns timers, display, and device calls; this module owns
-the mode→scale/interval map so rules can be unit-tested without Qt.
+``ControlConfig`` / ``TeleopScaleConstants`` / ``scale_joystick_axis`` live here.
+The production mode→config table is owned by ``teleop_modes`` (catalog SOT);
+``build_default_control_configs`` re-exports that builder for stable imports.
 """
 
 from __future__ import annotations
@@ -61,74 +62,11 @@ class TeleopScaleConstants:
 
 
 def build_default_control_configs(constants: TeleopScaleConstants) -> dict[str, ControlConfig]:
-    """Build the production mode→ControlConfig table from scale constants."""
-    return {
-        "Winch Speed": ControlConfig(
-            scale=constants.winch_scale,
-            min_interval=constants.winch_update_interval,
-            min_value=-constants.winch_max_speed_mmps,
-            max_value=constants.winch_max_speed_mmps,
-            bidirectional=True,
-        ),
-        "Track Control Left": ControlConfig(
-            scale=constants.track_scale, min_interval=constants.track_update_interval
-        ),
-        "Track Control Right": ControlConfig(
-            scale=constants.track_scale, min_interval=constants.track_update_interval
-        ),
-        "EF arm": ControlConfig(scale=constants.ef_arm_scale, min_interval=constants.ef_arm_update_interval),
-        "EF prop joint": ControlConfig(
-            scale=constants.ef_joint_scale, min_interval=constants.ef_joint_update_interval
-        ),
-        "EF spray trigger": ControlConfig(
-            scale=constants.ef_trigger_scale,
-            min_interval=constants.ef_trigger_update_interval,
-            offset=constants.ef_trigger_offset,
-            min_value=constants.ef_trigger_min_value,
-            value_cast="int",
-        ),
-        "EF top rail": ControlConfig(
-            scale=constants.ef_rail_scale, min_interval=constants.ef_rail_update_interval
-        ),
-        "EF prop pwm": ControlConfig(
-            scale=constants.ef_pwm_scale,
-            min_interval=constants.ef_pwm_update_interval,
-            offset=constants.ef_pwm_offset,
-            min_value=constants.ef_pwm_min_value,
-            value_cast="int",
-        ),
-        "EF spray pitch": ControlConfig(
-            scale=constants.ef_pitch_scale,
-            min_interval=constants.ef_pitch_update_interval,
-            value_cast="int",
-        ),
-        "EF Yaw Angle": ControlConfig(
-            scale=constants.ef_yaw_scale, min_interval=constants.ef_yaw_update_interval
-        ),
-        "EF Force": ControlConfig(
-            scale=constants.ef_force_scale, min_interval=constants.ef_force_update_interval
-        ),
-        "Valve Turn": ControlConfig(
-            scale=constants.valve_turn_scale, min_interval=constants.valve_turn_update_interval
-        ),
-        "Arm Rail Speed": ControlConfig(
-            scale=constants.arm_rail_speed_scale, min_interval=constants.ef_rail_update_interval
-        ),
-        "Wheel Travel Left": ControlConfig(
-            scale=constants.wheel_travel_scale,
-            min_interval=constants.wheel_travel_update_interval,
-            min_value=-constants.wheel_travel_max,
-            max_value=constants.wheel_travel_max,
-            bidirectional=True,
-        ),
-        "Wheel Travel Right": ControlConfig(
-            scale=constants.wheel_travel_scale,
-            min_interval=constants.wheel_travel_update_interval,
-            min_value=-constants.wheel_travel_max,
-            max_value=constants.wheel_travel_max,
-            bidirectional=True,
-        ),
-    }
+    """Build the production mode→ControlConfig table (delegates to teleop catalog)."""
+    # Local import avoids import cycle: teleop_modes imports ControlConfig from here.
+    from paint_controller.handlers.policy.teleop_modes import build_control_configs
+
+    return build_control_configs(constants)
 
 
 def scale_joystick_axis(

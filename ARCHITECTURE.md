@@ -411,9 +411,29 @@ python/paint_controller/venv/bin/python -m pytest tests -q
 
 ### Add **continuous teleop** for an axis
 
-1. Extend input sampling / mapping as needed (`steam_deck` / input utils).
-2. Teach `ControlProcessor` rate limits and publish path.
-3. Do not only add a QML button slot if the behavior is continuous stick control.
+Classify first — continuous stick control is **not** an `*Actions` slot or Command-tab form.
+
+| Operator shape | Owner |
+|---|---|
+| Hold stick (continuous) | `handlers/policy/teleop_modes` catalog + `ContinuousTeleopEngine` |
+| Tap toggle / home / gated admin | `models/*_actions.py` + optional capability key |
+| Parameterized one-shot form | `handlers/manual_commands.py` + Command tab schema |
+| Saved sequence step | workflow adapters over `ports/*` |
+
+**Standard single-axis EF stick mode** (clone of `EF spray pitch`):
+
+1. Device method + continuous ROS publisher on the controller (e.g. `TeensyController`).
+2. Extend the matching port Protocol if teleop types against it (`ports/teensy.py` → `SupportsTeensyTeleop`).
+3. **One catalog entry** in `handlers/policy/teleop_modes.py`:
+   - menu label + display name (append to ordered `menu_labels`)
+   - `ControlConfig` in `build_control_configs`
+   - closed STANDARD apply callable in `apply_standard` table
+   - policy flags (`autorun_clear` / `duplicate_allowed` if needed)
+4. If stick math is non-standard (dual-axis, deadzone, nonlinear): add a SPECIAL engine handler instead of stuffing complexity into STANDARD apply.
+5. Mirror label on `JoystickControl` enum (typed convenience); integrity tests enforce catalog ⇄ enum parity.
+6. Unit tests: catalog integrity suite + device publish if payload matters.
+
+Do **not** hand-sync separate lists in selection model, control map, and engine elif forests — the catalog is the runtime SOT.
 
 ### Things to avoid
 
@@ -421,6 +441,7 @@ python/paint_controller/venv/bin/python -m pytest tests -q
 - Re-introducing raw `*Controller` objects as new root context properties.
 - A mega-`Backend` façade that only renames ambient access.
 - New equal-owner paths for the same operator-visible behavior (two modules that both “own” the same command).
+- A second hardware HAL parallel to `ports/` (e.g. under `services/workflow/`).
 
 ---
 
@@ -436,7 +457,7 @@ python/paint_controller/venv/bin/python -m pytest tests -q
 | Dual-surface / shell policy flags | `ShellState` |
 | Overlay host & z-layer policy | `OverlayHostPolicy` (`overlayHost` in QML) |
 | Discrete admin / device commands | Feature `*Actions` + `AdminActionGate` |
-| Continuous motion from sticks | `ControlProcessor` |
+| Continuous motion from sticks | `ContinuousTeleopEngine` (+ `teleop_modes` catalog); `ControlProcessor` is Qt façade |
 | Halt-all effectors | `SafetyCoordinator` |
 | Settings schema & persistence | `SettingsManager` |
 | Workflow run / edit | `services/workflow/*` via `systemControlServices` (and related) |

@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-07-29 - Teleop mode catalog (A+B+C)
+
+**Goal**: Single SOT for continuous stick modes; kill index-based selection policy.
+**Tried**: `handlers/policy/teleop_modes.py` (menu/display/configs/standard apply/policy sets); selection + engine wire; `build_default_control_configs` delegates; integrity tests.
+**Result**: ✅ Focused band **90 passed** (teleop_modes, joystick_selection, control_processor, layer_depth, input, overlay).
+**Files**: `teleop_modes.py`, `teleop_control_map.py`, `continuous_teleop_engine.py`, `joystick_selection.py`, `ARCHITECTURE.md`, tests
+
+---
 ### 2026-07-29 - Workflow halt-stop + Teensy bridge residual
 
 **Goal**: Halt stops workflow execution without dual matrix; Teensy status on RosTelemetryBridge.

@@ -58,17 +58,15 @@ def test_selection_model_remembers_controls_per_mode(qt_app) -> None:
     assert model.get_remembered_controls("ef") == ("EF arm", "Winch Speed")
 
 
-# Indices match JoystickSelectionModel._control_options order.
-_TRACK_LEFT = 2
-_TRACK_RIGHT = 3
-_EF_ARM = 6
+def _index_of(model: JoystickSelectionModel, label: str) -> int:
+    return model.control_options.index(label)
 
 
 def test_select_left_control_commits_allowed_option(qt_app) -> None:
     model = JoystickSelectionModel()
     model.set_joystick_controls("Winch Speed", "None")
 
-    assert model.select_left_control(_TRACK_LEFT) is True
+    assert model.select_left_control(_index_of(model, "Track Control Left")) is True
     assert model.get_left_selected_option() == "Track Control Left"
 
 
@@ -76,7 +74,7 @@ def test_select_left_control_blocks_duplicate_of_committed_right(qt_app) -> None
     model = JoystickSelectionModel()
     model.set_joystick_controls("Winch Speed", "EF arm")
 
-    assert model.select_left_control(_EF_ARM) is False
+    assert model.select_left_control(_index_of(model, "EF arm")) is False
     assert model.get_left_selected_option() == "Winch Speed"
 
 
@@ -84,9 +82,18 @@ def test_select_control_allows_track_options_independently_on_both_sides(qt_app)
     model = JoystickSelectionModel()
     model.set_joystick_controls("Track Control Left", "Track Control Right")
 
-    assert model.select_left_control(_TRACK_RIGHT) is True
-    assert model.select_right_control(_TRACK_LEFT) is True
+    assert model.select_left_control(_index_of(model, "Track Control Right")) is True
+    assert model.select_right_control(_index_of(model, "Track Control Left")) is True
     assert model.get_current_joystick_controls() == ["Track Control Right", "Track Control Left"]
+
+
+def test_avoid_autorun_clears_named_modes_not_indices(qt_app) -> None:
+    model = JoystickSelectionModel()
+    model.set_joystick_controls("Winch Speed", "EF prop pwm")
+
+    model.avoidAutoRunOverwrite()
+
+    assert model.get_current_joystick_controls() == ["None", "None"]
 
 
 def test_display_name_mapping_abbreviates_long_modes(qt_app) -> None:

@@ -18,6 +18,7 @@ from paint_controller.handlers.policy.teleop_control_map import (
     build_default_control_configs,
     scale_joystick_axis,
 )
+from paint_controller.handlers.policy.teleop_modes import apply_standard
 from paint_controller.ports.teensy import SupportsTeensyTeleop
 from paint_controller.ports.valve import SupportsValveCommand
 from paint_controller.ports.wheel import SupportsWheelTeleop
@@ -360,18 +361,8 @@ class ContinuousTeleopEngine:
                 command: float | int = int(value)
             else:
                 command = float(value)
-            if mode == "EF arm":
-                self._teensy.setArmRailSpeed(float(command))
-            elif mode == "EF spray trigger":
-                self._teensy.setSprayTrigger(int(command))
-            elif mode == "EF top rail":
-                self._teensy.setTopRailSpeed(float(command))
-            elif mode == "EF prop pwm":
-                pwm = int(command)
-                self._teensy.setLeftPropPWM(pwm)
-                self._teensy.setRightPropPWM(pwm)
-            elif mode == "EF spray pitch":
-                self._teensy.setSprayPitchSpeed(int(command))
+            # Catalog owns closed STANDARD device apply (no per-mode elif forest).
+            apply_standard(self._teensy, mode, command)
 
     def send_wheel_travel_command(self) -> bool:
         return wheel_travel_teleop.send_wheel_travel_command(

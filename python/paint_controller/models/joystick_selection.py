@@ -2,9 +2,15 @@ from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
+from paint_controller.handlers.policy import teleop_modes
+
 
 class JoystickSelectionModel(QObject):
-    """Own committed and temporary joystick control selections."""
+    """Own committed and temporary joystick control selections.
+
+    Menu labels, display names, and selection policy sets come from the teleop
+    catalog (``teleop_modes``) — not hard-coded indices or parallel lists.
+    """
 
     committed_left_index_changed = Signal(int)
     committed_right_index_changed = Signal(int)
@@ -12,43 +18,9 @@ class JoystickSelectionModel(QObject):
     temporary_right_index_changed = Signal(int)
     control_options_changed = Signal(list)
 
-    # Compact display labels for the small ControlInfoPanel surfaces.
-    # Full canonical names remain in control_options for the selection menu.
-    _DISPLAY_NAMES: dict[str, str] = {
-        "None": "None",
-        "Winch Speed": "Winch",
-        "Track Control Left": "Track Left",
-        "Track Control Right": "Track Right",
-        "Wheel Travel Left": "Wheel Left",
-        "Wheel Travel Right": "Wheel Right",
-        "EF arm": "EF Arm",
-        "EF top rail": "Top Rail",
-        "EF prop pwm": "Prop PWM",
-        "EF prop joint": "Prop Joint",
-        "EF spray trigger": "Spray Trigger",
-        "EF spray pitch": "Spray Pitch",
-        "EF Yaw Angle": "Yaw",
-        "EF Force": "EF Force",
-    }
-
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
-        self._control_options = [
-            "None",
-            "Winch Speed",
-            "Track Control Left",
-            "Track Control Right",
-            "Wheel Travel Left",
-            "Wheel Travel Right",
-            "EF arm",
-            "EF top rail",
-            "EF prop pwm",
-            "EF prop joint",
-            "EF spray trigger",
-            "EF spray pitch",
-            "EF Yaw Angle",
-            "EF Force",
-        ]
+        self._control_options = teleop_modes.menu_labels()
         self._left_selected_index = 0
         self._right_selected_index = 0
         self._temp_left_index = 0
@@ -77,13 +49,20 @@ class JoystickSelectionModel(QObject):
         self._set_temporary_left_index(left_index)
         self._set_temporary_right_index(right_index)
 
+    def _label_at(self, index: int) -> str:
+        if 0 <= index < len(self._control_options):
+            return self._control_options[index]
+        return ""
+
     def _can_select_option(self, active_menu: str, index: int, *, other_index: int | None = None) -> bool:
-        if index in (2, 3):
+        label = self._label_at(index)
+        if label in teleop_modes.duplicate_allowed_labels():
             return True
 
         if other_index is None:
             other_index = self._temp_right_index if active_menu == "left" else self._temp_left_index
-        return index == 0 or index != other_index
+        # Sentinel "None" (index 0) or any non-conflicting unique mode.
+        return index == 0 or label == "None" or index != other_index
 
     def select_left_control(self, index: int) -> bool:
         """Commit a left control selection if it is allowed.
@@ -183,7 +162,7 @@ class JoystickSelectionModel(QObject):
     @Slot(str, result=str)
     def display_name_for_option(self, option: str) -> str:
         """Return a compact display label for a canonical control option."""
-        return self._DISPLAY_NAMES.get(option, option)
+        return teleop_modes.display_name(option)
 
     def remember_current_controls(self, mode: str) -> None:
         self._remembered_controls_by_mode[mode] = (
@@ -196,10 +175,11 @@ class JoystickSelectionModel(QObject):
 
     @Slot()
     def avoidAutoRunOverwrite(self) -> None:
-        if self._left_selected_index in (1, 8, 9):
+        clear = teleop_modes.autorun_clear_labels()
+        if self.get_left_selected_option() in clear:
             self._set_committed_left_index(0)
 
-        if self._right_selected_index in (1, 8, 9):
+        if self.get_right_selected_option() in clear:
             self._set_committed_right_index(0)
 
         self.reset_temporary_selection()
