@@ -10,8 +10,8 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 
 - Overall status: in progress
 - Active architecture program: none — the QML surface retirement program (Phases 0–8) is closing per `docs/tech-debt.md` TD-032; the master plan doc was deleted 2026-07-27 and is recoverable from git history
-- Most recent completed slice: **TD-044 + TD-045 + TD-040** — CI control plane (2026-07-29); TD-047 composition ports prior
-- Debt tracker: next program-track **TD-048** (QML injection depth) per `docs/tech-debt.md`
+- Most recent completed slice: **TD-048 slice A** — PageWheel inject `wheelActions` + `videoRuntime` (2026-07-29)
+- Debt tracker: TD-048 residual **B→C→D…**; program track next **PageWinch / SystemControl** inject per `docs/tech-debt.md`
 - Core purpose: reduce global coupling, clarify ownership, shrink ambient QML *usage* (injection depth), and make composition/ports closer to a professional Qt program — without reopening TD-032 name-retirement
 - First-principles rule: success means fewer ambient leaf reads, thinner composition export, and real CI/type control planes — not wrapper proliferation or mega-Backend
 - Last focused validation: `58 passed` for `tests/test_app_runtime_runtime.py tests/test_controller_factory_runtime.py tests/test_startup_smoke.py tests/test_startup_smoke_shell.py tests/test_startup_smoke_home.py tests/test_qml_imports.py tests/test_shell_router.py tests/test_qml_context_composer.py tests/test_signal_wiring.py` on 2026-07-24
@@ -51,7 +51,7 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 
 These files are allowed to keep temporary raw-global reads until their named family is active. They are explicit remainder, not architectural truth.
 
-- `python/paint_controller/qml/pages/wheel/PageWheel.qml` — base preview seam remainder after wheel detail telemetry retirement
+- *(none — PageWheel ambient `videoRuntime`/`wheelActions` retired under TD-048 slice A, 2026-07-29)*
 
 ## Validation Gates
 

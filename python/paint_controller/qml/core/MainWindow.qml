@@ -36,6 +36,7 @@ ApplicationWindow {
     property var videoRuntimeModel: videoRuntime
     property var recordingStatusModel: recordingStatus
     property var wheelStatusModel: wheelStatus
+    property var wheelActionsModel: wheelActions
     property var winchStatusModel: winchStatus
     property var teensyStatusModel: teensyStatus
     property var valveStatusModel: valveStatus
@@ -258,6 +259,8 @@ ApplicationWindow {
         id: wheelPageComponent
         PageWheel {
             wheelStatus: mainWindow.wheelStatusModel
+            wheelActions: mainWindow.wheelActionsModel
+            videoRuntime: mainWindow.videoRuntimeModel
         }
     }
     

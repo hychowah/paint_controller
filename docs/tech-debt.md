@@ -43,14 +43,15 @@ When the goal is **software architecture toward a professional Qt program** (not
 **Priority**: medium
 **Effort**: medium (page/feature slices)
 **Architecture leverage**: high
-**Why it matters**: Deep research 2026-07-28. TD-032 correctly froze the root bag (~26 names) and started **status** injection via `required property`. Greps show **zero** `required property` for any `*Actions`, `actionLegality`, `settingsManager`, `overlayController`, or `qtBridge`. Result: feature roots advertise a bounded status contract while leaves ambient-call write/legality/settings — **false progress** if slices only rename access. Worst cases: `DeviceControlTab` ambient-calls five action models + `actionLegality`; `PageTuning` / `PageSettings` have empty constructors; `PageWheel` injects `wheelStatus` but ambient-reads `wheelActions` + `videoRuntime` (quarantine remainder). Dual-surface status injection is aligned; command injection is not.
-**What to do**: Injection-first, retirement-last (do **not** shrink `_EXPECTED_CONTEXT_PROPERTY_NAMES` until the last consumer dies):
-1. Smallest slices: `PageWheel` (`wheelActions` + `videoRuntime`); `PageWinch` promote `winchActions` to `required`; `PageTuning` inject status+actions.
-2. Highest leverage: `SystemControlWorkspace` requires the action models + `actionLegality` used by `DeviceControlTab`; wire both Main + MultiScreenListUI.
-3. Settings: inject `settingsManager` at page/tab roots; thread into leaves.
-4. Optional: inject `overlayController` (or hide/toggle callbacks) into feature roots only.
-**Acceptance**: Touched page/feature trees name domain deps only via `required property`; dual surfaces inject the same command/legality set; smoke fixtures provide inject path; root name freeze still respected.
-**Files**: `qml/core/MainWindow.qml`, `qml/overlays/MultiScreenListUI.qml`, `qml/features/**`, `qml/pages/wheel|winch|status|tuning|settings/**`, `qml/overlays/systemcontrol/DeviceControlTab.qml`, startup smoke fixtures
+**Partial (2026-07-29 slice A)**: `PageWheel` now `required` injects `wheelStatus` + `wheelActions` + `videoRuntime`; Main wires all three; smoke harness injects; PageWheel quarantine cleared. Root bag still 26 names (inject-first).
+**Why it matters**: TD-032 froze the root bag (~26 names) and started **status** injection via `required property`. Write/legality/settings/chrome still largely ambient. Feature roots can look bounded while leaves bypass them.
+**What to do next** (inject-first, retire-last — do **not** shrink `_EXPECTED_CONTEXT_PROPERTY_NAMES` until last consumer dies):
+1. **B**: PageWinch promote `winchActions` to `required` (+ children)
+2. **C (highest leverage)**: SystemControlWorkspace + DeviceControlTab: *Actions + `actionLegality`; dual-surface Main + MultiScreen
+3. **D/E**: PageTuning inject; PageStatus command leftovers
+4. **F/G/H**: Settings `settingsManager` threading; video base-top write path; chrome optional
+**Acceptance**: Touched families use `required property` for domain write/legality deps; dual surfaces lockstep for feature roots; smoke inject path; freeze intact.
+**Files**: `qml/core/MainWindow.qml`, `qml/overlays/MultiScreenListUI.qml`, `qml/features/**`, `qml/pages/**`, `DeviceControlTab.qml`, startup smoke fixtures
 
 ---
 

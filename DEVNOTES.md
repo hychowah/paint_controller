@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-07-29 - TD-048 slice A: PageWheel injection
+
+**Goal**: Inject `wheelActions` + `videoRuntime` as required props on PageWheel (status already injected).
+**Tried**: Required props on PageWheel; MainWindow wheel component wiring; smoke harness captures context fakes via parent props to avoid name-shadowing.
+**Result**: ✅ PageWheel smoke + qml imports green. Quarantine remainder cleared. Root bag still 26 names.
+**Files**: `PageWheel.qml`, `MainWindow.qml`, `tests/test_startup_smoke.py`, tech-debt, progress board
+
+---
 ### 2026-07-29 - TD-044 + TD-045 + TD-040 (CI control plane)
 
 **Goal**: Make lint/typecheck/test real gates — ruff green, CI install resilient, pyright meaningful.

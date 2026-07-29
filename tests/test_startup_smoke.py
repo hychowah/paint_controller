@@ -307,6 +307,7 @@ import QtQuick
 import "{wheel_import_url}"
 
 Item {{
+    id: harnessRoot
     width: 1280
     height: 800
     property var wheelStatusModel: ({{
@@ -321,10 +322,16 @@ Item {{
         leftWheelPosition: 0,
         rightWheelPosition: 0
     }})
+    // Capture context-bag fakes before required-property name shadowing
+    property var injectedWheelActions: wheelActions
+    property var injectedVideoRuntime: videoRuntime
 
+    // TD-048: constructor inject status + command + video (root bag still registered)
     PageWheel {{
         anchors.fill: parent
-        wheelStatus: wheelStatusModel
+        wheelStatus: harnessRoot.wheelStatusModel
+        wheelActions: harnessRoot.injectedWheelActions
+        videoRuntime: harnessRoot.injectedVideoRuntime
     }}
 }}
 '''.encode(),

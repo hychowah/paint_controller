@@ -8,7 +8,10 @@ import "../../components/displays"
 Rectangle {
     id: page1Rect
     objectName: "page1Rect"
+    // TD-048: constructor inject status + command + video feeds (no ambient globals)
     required property var wheelStatus
+    required property var wheelActions
+    required property var videoRuntime
     Layout.fillWidth: true
     Layout.fillHeight: true
     property int timeStep: 0
@@ -200,7 +203,7 @@ Rectangle {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                wheelActions.toggleEnabled()
+                                page1Rect.wheelActions.toggleEnabled()
                             }
                         }
                         
@@ -343,7 +346,7 @@ Rectangle {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                if (wheelActions.resetPosition()) {
+                                if (page1Rect.wheelActions.resetPosition()) {
                                     resetFeedback.visible = true
                                     resetFeedbackTimer.restart()
                                 }
@@ -516,7 +519,7 @@ Rectangle {
         }
 
         Connections {
-            target: videoRuntime.feeds
+            target: page1Rect.videoRuntime.feeds
             function onBaseFrontFrameReady() {
                 if (camSource == "image://base_front_live/frame"){
                     baseFrame.source = ""
