@@ -5,6 +5,8 @@ from __future__ import annotations
 import importlib
 import time
 
+from paint_controller.controllers.wheel import WheelStatusSnapshot
+
 
 def _wheel_controller_class():
     return importlib.import_module("paint_controller.controllers.wheel").WheelController
@@ -38,7 +40,37 @@ def test_left_and_right_speed_commands_reuse_last_partner_value(qt_app, fake_nod
     assert second_msg.right_rpm == -45
 
 
-def test_status_callback_updates_availability_and_properties(qt_app, fake_node):
+def test_apply_status_snapshot_updates_properties(qt_app, fake_node):
+    """Main-thread apply owns QObject fields (TD-056)."""
+    controller = _wheel_controller_class()(fake_node)
+    snap = WheelStatusSnapshot(
+        recv_mono=time.time(),
+        left_available=True,
+        right_available=True,
+        left_error=False,
+        right_error=False,
+        left_speed=11.5,
+        right_speed=-9.0,
+        left_current=4.2,
+        right_current=4.4,
+        left_travel_mm=150.0,
+        right_travel_mm=175.0,
+    )
+    controller._apply_status_snapshot(snap)
+
+    assert controller.available is True
+    assert controller.left_motor_available is True
+    assert controller.right_motor_available is True
+    assert controller.left_wheel_speed == 11.5
+    assert controller.right_wheel_speed == -9.0
+    assert controller.left_wheel_current == 4.2
+    assert controller.right_wheel_current == 4.4
+    assert controller.left_wheel_position == 150.0
+    assert controller.right_wheel_position == 175.0
+
+
+def test_status_callback_does_not_mutate_fields_until_events(qt_app, fake_node):
+    """Affinity: ROS callback only posts; apply runs after processEvents."""
     controller = _wheel_controller_class()(fake_node)
     status = _vehicle_status_class()(
         left_available=True,
@@ -52,16 +84,15 @@ def test_status_callback_updates_availability_and_properties(qt_app, fake_node):
     )
 
     controller._status_callback(status)
+    assert controller.available is False
+    assert controller.left_motor_available is False
+    assert controller.left_wheel_speed == 0.0
+
+    qt_app.processEvents()
 
     assert controller.available is True
     assert controller.left_motor_available is True
-    assert controller.right_motor_available is True
     assert controller.left_wheel_speed == 11.5
-    assert controller.right_wheel_speed == -9.0
-    assert controller.left_wheel_current == 4.2
-    assert controller.right_wheel_current == 4.4
-    assert controller.left_wheel_position == 150.0
-    assert controller.right_wheel_position == 175.0
 
 
 def test_set_enabled_records_intent_and_publishes_inverted(qt_app, fake_node):
@@ -88,6 +119,7 @@ def test_error_signal_emits_once_per_transition(qt_app, fake_node):
     status = _vehicle_status_class()(left_available=True, right_available=True, left_error=True)
     controller._status_callback(status)
     controller._status_callback(status)
+    qt_app.processEvents()
 
     assert received == [(True, "Left track motor error")]
 

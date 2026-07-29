@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from paint_interfaces.msg import MoveVehiclePos, MoveVehicleSpd, VehicleStatus
@@ -12,11 +13,29 @@ from rclpy.node import Node
 from std_msgs.msg import Bool
 
 from paint_controller.controllers._base import RosStatusController
+from paint_controller.core.ros_telemetry import RosTelemetryBridge
 
 if TYPE_CHECKING:
     from paint_controller.core.ros_io import RosCommandBus
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class WheelStatusSnapshot:
+    """Immutable vehicle status POD for TD-056 main-thread apply."""
+
+    recv_mono: float
+    left_available: bool
+    right_available: bool
+    left_error: bool
+    right_error: bool
+    left_speed: float
+    right_speed: float
+    left_current: float
+    right_current: float
+    left_travel_mm: float
+    right_travel_mm: float
 
 
 class WheelController(RosStatusController):
@@ -65,9 +84,12 @@ class WheelController(RosStatusController):
         self._enabled = False
         self._last_command_time = time.time()
 
-        # Throttle variables
-        self._last_update_time = 0
-        self._min_update_interval = 0.05  # 50ms minimum between UI updates
+        # Throttle variables (telemetry floats only; applied on main)
+        self._last_update_time = 0.0
+        self._min_update_interval = 0.05  # 50ms minimum between UI telemetry updates
+
+        # TD-056: ROS callback only posts POD; main apply owns QObject fields.
+        self._telemetry = RosTelemetryBridge(self._apply_status_snapshot, parent=self)
 
         # Setup publishers and subscribers
         self._setup_publishers()
@@ -104,28 +126,24 @@ class WheelController(RosStatusController):
         logger.info("Vehicle status subscriber set up on topic 'vehicle/status'")
 
     def _check_availability(self) -> None:
-        """
-        Periodically check if wheel controller is still connected based on time since last message
-        and motor availability states from VehicleStatus.
-        This runs on a timer to ensure we detect disconnections even when no new messages arrive.
-        """
+        """Main-thread timer: recompute availability from main-owned status state."""
+        self._recompute_available(log_disconnect=True)
+
+    def _recompute_available(self, *, log_disconnect: bool = False) -> None:
+        """Single owner for ``available`` (apply path + availability timer)."""
         current_time = time.time()
-
-        # Calculate time since last status update
         time_since_last_update = self._time_since_last_status(current_time)
-
-        # Determine if available: must have recent messages AND both motors available
         is_connected = time_since_last_update <= self._connection_timeout
         motors_available = self._left_motor_available and self._right_motor_available
         new_available = is_connected and motors_available
 
-        # Only emit if there's a change in availability
         if self.set_available(new_available):
             self.available_changed.emit()
-            if not new_available:
+            if not new_available and log_disconnect:
                 if not is_connected:
                     logger.warning(
-                        "Wheel controller considered disconnected: %.1fs since last message", time_since_last_update
+                        "Wheel controller considered disconnected: %.1fs since last message",
+                        time_since_last_update,
                     )
                 elif not motors_available:
                     logger.warning(
@@ -133,69 +151,84 @@ class WheelController(RosStatusController):
                         self._left_motor_available,
                         self._right_motor_available,
                     )
+            elif new_available and not log_disconnect:
+                logger.info("Wheel controller connection restored")
+
+    @staticmethod
+    def _snapshot_from_msg(msg: VehicleStatus) -> WheelStatusSnapshot:
+        """Pure mapping: ROS message → frozen POD (scalar copy only)."""
+        return WheelStatusSnapshot(
+            recv_mono=time.time(),
+            left_available=bool(msg.left_available),
+            right_available=bool(msg.right_available),
+            left_error=bool(msg.left_error),
+            right_error=bool(msg.right_error),
+            left_speed=float(msg.left_speed),
+            right_speed=float(msg.right_speed),
+            left_current=float(msg.left_current),
+            right_current=float(msg.right_current),
+            left_travel_mm=float(msg.left_travel_mm),
+            right_travel_mm=float(msg.right_travel_mm),
+        )
 
     def _status_callback(self, msg: VehicleStatus) -> None:
-        """Callback function for vehicle status messages"""
+        """ROS spin thread: pack POD and post — no QObject field mutation."""
         try:
-            # Update the last status time when any message is received
-            self._record_status_update()
-
-            # Process motor availability states
-            self._update_motor_availability(msg.left_available, msg.right_available)
-
-            # Process motor error states
-            self._update_error_states(bool(msg.left_error), bool(msg.right_error))
-
-            # Check overall availability based on connection + motor states
-            motors_available = self._left_motor_available and self._right_motor_available
-            new_available = motors_available
-
-            if self.set_available(new_available):
-                self.available_changed.emit()
-                if new_available:
-                    logger.info("Wheel controller connection restored")
-
-            # Process the status update
-            self.update_status(msg)
+            self._telemetry.post(self._snapshot_from_msg(msg))
         except Exception as e:
             logger.error("Error in vehicle status callback: %s", e)
 
-    def _update_motor_availability(self, left_available: bool, right_available: bool) -> None:
-        """Update motor availability states and emit signals if changed"""
-        if self._left_motor_available != left_available:
-            self._left_motor_available = left_available
-            self.left_motor_available_changed.emit()
+    def _apply_status_snapshot(self, snap: object) -> None:
+        """Main thread only: mutate fields, NOTIFY, error edges, availability."""
+        if not isinstance(snap, WheelStatusSnapshot):
+            logger.error("Wheel status apply expected WheelStatusSnapshot, got %s", type(snap))
+            return
 
-        if self._right_motor_available != right_available:
-            self._right_motor_available = right_available
-            self.right_motor_available_changed.emit()
+        self._last_status_update_time = float(snap.recv_mono)
 
-    def _update_error_states(self, left_error: bool, right_error: bool) -> None:
-        """Update motor error states and trigger emergency signal if errors detected"""
+        # Safety / motor flags: always apply (unthrottled).
         prev_left_error = self._left_error
         prev_right_error = self._right_error
 
-        if self._left_error != left_error:
-            self._left_error = left_error
-            self.left_error_changed.emit()
+        if self._left_motor_available != snap.left_available:
+            self._left_motor_available = snap.left_available
+            self.left_motor_available_changed.emit()
+        if self._right_motor_available != snap.right_available:
+            self._right_motor_available = snap.right_available
+            self.right_motor_available_changed.emit()
 
-        if self._right_error != right_error:
-            self._right_error = right_error
+        if self._left_error != snap.left_error:
+            self._left_error = snap.left_error
+            self.left_error_changed.emit()
+        if self._right_error != snap.right_error:
+            self._right_error = snap.right_error
             self.right_error_changed.emit()
 
-        # Emit error_state_changed signal when error transitions to True
-        new_errors = []
-        if left_error and not prev_left_error:
+        new_errors: list[str] = []
+        if snap.left_error and not prev_left_error:
             new_errors.append("Left")
-        if right_error and not prev_right_error:
+        if snap.right_error and not prev_right_error:
             new_errors.append("Right")
-
         if new_errors:
             if len(new_errors) == 2:
                 error_msg = "Both track motors error"
             else:
                 error_msg = f"{new_errors[0]} track motor error"
             self.error_state_changed.emit(True, error_msg)
+
+        # Telemetry floats: throttled on main.
+        current_time = time.time()
+        if current_time - self._last_update_time >= self._min_update_interval:
+            self._last_update_time = current_time
+            self.set_left_wheel_speed(snap.left_speed)
+            self.set_right_wheel_speed(snap.right_speed)
+            self.set_left_wheel_current(snap.left_current)
+            self.set_right_wheel_current(snap.right_current)
+            self.set_left_wheel_position(snap.left_travel_mm)
+            self.set_right_wheel_position(snap.right_travel_mm)
+
+        # Message implies connected for this tick; timer handles timeout disconnect.
+        self._recompute_available(log_disconnect=False)
 
     def command_speed(self, left_rpm: int, right_rpm: int) -> bool:
         """
@@ -264,22 +297,6 @@ class WheelController(RosStatusController):
         """
         self._last_right_rpm = int(speed)
         return self.command_speed(self._last_left_rpm, self._last_right_rpm)
-
-    def update_status(self, msg: VehicleStatus) -> None:
-        """
-        Process incoming vehicle status messages and update properties with throttling
-        """
-        current_time = time.time()
-        if current_time - self._last_update_time >= self._min_update_interval:
-            self._last_update_time = current_time
-
-            # Update property values from VehicleStatus
-            self.set_left_wheel_speed(float(msg.left_speed))
-            self.set_right_wheel_speed(float(msg.right_speed))
-            self.set_left_wheel_current(float(msg.left_current))
-            self.set_right_wheel_current(float(msg.right_current))
-            self.set_left_wheel_position(float(msg.left_travel_mm))
-            self.set_right_wheel_position(float(msg.right_travel_mm))
 
     # Property getters and setters
     def get_left_wheel_speed(self) -> float:

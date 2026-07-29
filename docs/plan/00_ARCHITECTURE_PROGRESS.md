@@ -9,12 +9,12 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 ## Current Snapshot
 
 - Overall status: in progress
-- Active architecture program: none — **TD-055** residual only; **TD-054** closed. QML surface retirement closed (TD-032).
-- Most recent completed slice: **TD-054** RosCommandBus + continuous-motion latch (2026-07-29)
-- Debt tracker: **TD-056** next integrity; TD-055 residual optional 4′/5′; opportunistic TD-052/053 — see `docs/tech-debt.md`
+- Active architecture program: none — **TD-054** and **TD-056** closed; **TD-055** residual only. QML surface retirement closed (TD-032).
+- Most recent completed slice: **TD-056** RosTelemetryBridge + wheel/winch main-thread apply (2026-07-29)
+- Debt tracker: TD-055 residual optional 4′/5′; opportunistic TD-052/053; heartbeat telemetry residual — see `docs/tech-debt.md`
 - Core purpose: reduce global coupling, clarify ownership, shrink ambient QML *usage* (injection depth), and make composition/ports closer to a professional Qt program — without reopening TD-032 name-retirement.
 - First-principles rule: success means fewer ambient leaf reads, thinner composition export, real CI/type control planes, and **deeper modules with less change amplification** — not wrapper proliferation, mega-Backend, or empty layer folders
-- Last full-suite baseline: `477 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q` on 2026-07-29 (TD-054 land)
+- Last full-suite baseline: `482 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q` on 2026-07-29 (TD-056 land)
 
 ## Live Board
 
@@ -25,8 +25,8 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 
 ### Next
 
-- **TD-056** (ROS callback → Qt telemetry marshal) is the next integrity track. Opportunistic TD-052/053. TD-055 4′/5′ only if a real status/rehome win appears.
-- **TD-054 resolved** (2026-07-29): `RosCommandBus` + continuous-motion latch + e-stop-before-teleop. Do not reintroduce raw multi-thread command publish.
+- Opportunistic TD-052/053. TD-055 4′/5′ only if a real status/rehome win appears. Optional: heartbeat ROS→main marshal residual.
+- **TD-054 / TD-056 resolved** (2026-07-29): command bus + continuous latch; telemetry bridge for wheel/winch. Do not reintroduce raw multi-thread command publish or unlocked ROS-thread property mutation on Property-bag devices.
 - **TD-048 / TD-050 / TD-049 / hygiene band resolved** (2026-07-29): inject-first; finalize ports; shared Teensy ports; docs/cleanup/StateStore/smoke dual-source hygiene.
 - Root context contract remains frozen at `_EXPECTED_CONTEXT_PROPERTY_NAMES` (~26 names). Prefer **inject then retire last consumer**; do not open a new boundary-retirement mega-program.
 - Industrial HMI / operator-UX product work is **out of scope** for this architecture track unless explicitly reprioritized.
@@ -97,14 +97,14 @@ These files are allowed to keep temporary raw-global reads until their named fam
 
 - The app-scope QML context contract is still broader than ideal (~26 frozen names); shrink only with last-consumer proof, not vanity rename programs.
 - Harness drift remains a risk where smoke fixtures re-implement production contracts by hand (TD-042 hygiene).
-- ROS subscription callbacks still mutate QObject fields from the spin thread (**TD-056**).
+- Heartbeat restore/status may still mutate QObject fields from ROS callbacks (residual after TD-056).
 - Workflow execution can still command motion after halt (product residual; not TD-054 acceptance).
-- Do not reintroduce raw multi-thread ROS **command** `publish` outside `RosCommandBus.pump`.
+- Do not reintroduce raw multi-thread ROS **command** `publish` outside `RosCommandBus.pump`, or unlocked ROS-thread QObject mutation on wheel/winch status.
 
 ## Next Session Checklist
 
 1. Keep this file as the live unfinished-work board; durable Qt rationale stays in `01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`.
-2. Next integrity track: **TD-056** (ROS→Qt telemetry marshal). TD-055 residual only in `docs/tech-debt.md`.
+2. Concurrency integrity track closed (TD-054/056). TD-055 residual only in `docs/tech-debt.md`.
 3. Preserve frozen shell and launcher contracts.
 4. Keep quarantined remainder explicit by file (currently none).
 5. Do not open automation follow-on until there is a clear product need separate from ambient QML cleanup.

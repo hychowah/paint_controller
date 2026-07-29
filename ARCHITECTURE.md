@@ -114,6 +114,7 @@ Root package: `python/paint_controller/`
 | `qt_bridge.py` | Small UI bridge signals (popups, sidebar, video requests) |
 | `ros_node.py` | ROS node helpers + `RosThread` (spin off the GUI thread; pumps command bus) |
 | `ros_io.py` | **TD-054** `RosCommandBus` — sole owner of cross-thread ROS **command** publish |
+| `ros_telemetry.py` | **TD-056** `RosTelemetryBridge` — last-wins ROS→main telemetry marshal |
 | `config.py` | Runtime defaults (e.g. control update rate) |
 
 ### `controllers/` — device / ROS adapters
@@ -271,7 +272,7 @@ When adding a new “hold button to move” vs “tap to home” behavior, pick 
 
 ---
 
-## 8. Threading and ROS command I/O (TD-054)
+## 8. Threading and ROS I/O (TD-054 command + TD-056 telemetry)
 
 ### Threads (program view)
 
@@ -312,12 +313,37 @@ RosThread:   command_bus.pump() → raw publisher.publish
 
 **Not the safety mechanism:** bus drain order alone. Priority/slot ordering is affinity and backlog control; latch defines post-halt re-drive out of existence.
 
-**Residual (not TD-054):** ROS subscription → Qt field races (see **TD-056**); workflow may still command motion after halt until product stops workflow on halt; dual `/controller/heartbeat` publishers (hygiene).
+### ROS telemetry marshal (TD-056)
+
+**Problem solved:** subscription callbacks on `RosThread` must not unlock-mutate QObject fields that QML/`*Status`/teleop read on main.
+
+**Model (wheel / winch):**
+
+```
+RosThread:  build frozen POD from msg scalars → RosTelemetryBridge.post(pod)
+Main:       bridge QueuedConnection → controller._apply_status_snapshot(pod)
+            → fields + per-property NOTIFY + error edges; availability recompute
+```
+
+| Piece | Role |
+|---|---|
+| `RosTelemetryBridge` | Last-wins pending POD + single dirty wake; explicit `Qt.QueuedConnection` |
+| `WheelStatusSnapshot` / `WinchStatusSnapshot` | Immutable scalar POD only — never queue raw ROS msgs |
+| Availability timer | Main only; reads main-owned timestamp/flags |
+| `error_state_changed` | Edge-detect on main apply; SignalWiring keeps QueuedConnection to halt |
+
+**Teensy residual:** locked status dict + snapshot emit (TD-024) — different reader API (`get_status_value`), not the wheel/winch Property-bag pattern.
+
+**Heartbeat residual:** loss→halt still on main 200 ms timer; restore/status QObject fields may still update from ROS callbacks until a follow-up marshal.
+
+**Other residuals:** workflow may still command motion after halt; dual `/controller/heartbeat` publishers (hygiene); lidar/ESP32 UDP already use Queued paths or small surfaces.
 
 House rules (see also `KNOWLEDGE.md`):
 
 - Prefer **emit outside locks**.
 - Cross-thread edges: prefer explicit `Qt.QueuedConnection` when affinity is known.
+- **ROS status callbacks:** post POD only; main owns QObject-visible mutation (TD-056).
+- **ROS command publishes:** bus only (TD-054).
 - Video: copy under lock; drop frames under load rather than unbounded queues.
 - Shutdown: stop UI/timers → tear down QML → join workers → ROS → destroy node.
 

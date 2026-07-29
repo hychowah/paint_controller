@@ -144,3 +144,50 @@ def test_speed_command_reaches_subscriber_over_fake_ros_bus(qt_app):
     assert controller.command_speed_mmps(150.0) is True
 
     assert received == [150.0]
+
+
+def test_status_callback_does_not_mutate_until_events(qt_app, fake_node):
+    """TD-056 affinity: ROS callback posts only; apply after processEvents."""
+    import time
+
+    from paint_controller.controllers.winch import WinchStatusSnapshot
+
+    controller = _winch_controller_class()(fake_node)
+    snap = WinchStatusSnapshot(
+        recv_mono=time.time(),
+        enabled=True,
+        cable_length=12.5,
+        cable_speed=1.0,
+        winch_torque=2.0,
+        motor_temperature=40.0,
+        motor_voltage=48.0,
+        motor_brake=False,
+        load_detection_mode=True,
+        unusual_load_detected=False,
+    )
+    # Direct apply path (unit).
+    controller._apply_status_snapshot(snap)
+    assert controller.available is True
+    assert controller.cable_length == 12.5
+    assert controller.enabled is True
+
+    # Callback path: no sync mutation of teleop-visible fields.
+    controller2 = _winch_controller_class()(fake_node)
+    # Build a minimal fake message-like object with attributes used by snapshot.
+    class _Msg:
+        enabled = True
+        cable_length = 99.0
+        cable_speed = 0.0
+        winch_torque = 0.0
+        motor_temperature = 0.0
+        motor_voltage = 0.0
+        motor_brake = True
+        load_detection_mode = False
+        unusual_load_detected = False
+
+    controller2._status_callback(_Msg())
+    assert controller2.available is False
+    assert controller2.cable_length == 0.0
+    qt_app.processEvents()
+    assert controller2.available is True
+    assert controller2.cable_length == 99.0

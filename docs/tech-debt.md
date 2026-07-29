@@ -9,9 +9,9 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 
 **Architecture leverage** (optional tag on items): how much a fix improves FE↔BE program structure when doing architecture work, independent of ship-blocking urgency.
 
-Last multi-perspective re-validation: **2026-07-28** (deep software-only pass). **2026-07-29**: TD-055 Wave 1+2 landed; TD-054/056 concurrency track defined; **TD-054 resolved** (RosCommandBus Option A2 + continuous-motion latch + e-stop-before-teleop; suite 477 passed). Next integrity item: **TD-056**.
+Last multi-perspective re-validation: **2026-07-28** (deep software-only pass). **2026-07-29**: TD-055 Wave 1+2 landed; **TD-054** and **TD-056** concurrency track closed (command bus + telemetry marshal for wheel/winch).
 
-**Research non-goals (do not invent debt for):** mega-`Backend` object; reopening TD-032 name-retirement mega-program; full URI QML module rewrite as a program; universal visual skin unification; HMI safety/legality ship defaults; `qmlRegisterSingletonInstance`. Concurrency non-goals: MultiThreadedExecutor-first rewrite; UI/control process split; moving the teleop loop onto RosThread; forcing ESP32 UDP through the ROS command bus; reintroducing raw multi-thread command `publish`.
+**Research non-goals (do not invent debt for):** mega-`Backend` object; reopening TD-032 name-retirement mega-program; full URI QML module rewrite as a program; universal visual skin unification; HMI safety/legality ship defaults; `qmlRegisterSingletonInstance`. Concurrency non-goals: MultiThreadedExecutor-first rewrite; UI/control process split; moving the teleop loop onto RosThread; forcing ESP32 UDP through the ROS command bus; reintroducing raw multi-thread command `publish` or unlocked ROS-thread QObject field mutation on property-bag devices.
 
 ---
 
@@ -21,7 +21,7 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 | Rank | ID | Why |
 |---|---|---|
-| 1 | **TD-056** | ROS subscription callbacks → locked snapshot / queued main-thread update (Teensy TD-024 pattern for wheel/winch/etc.) |
+| — | **TD-056** | **Resolved 2026-07-29** — `RosTelemetryBridge` + wheel/winch main-thread apply (see Resolved). Residual: heartbeat restore fields; Teensy stays lock+snapshot |
 | — | **TD-054** | **Resolved 2026-07-29** — RosCommandBus + continuous-motion latch (see Resolved table) |
 | — | **TD-055** | Landed Wave 1+2; residual only (see Active Debt). Not the primary next program track. |
 | — | **TD-052 / TD-053** | When touching tuning/commands or dual-surface overlays |
@@ -79,30 +79,6 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 ---
 
-### TD-056 — ROS callback → Qt telemetry marshal
-**Area**: Backend / concurrency (ROS ↔ Qt)  
-**Priority**: medium (correctness / data races; next integrity track after TD-054)  
-**Effort**: medium (device-by-device)  
-**Architecture leverage**: medium (makes `*Status` projections honest under spin-thread callbacks)  
-**Status**: **Active — promoted 2026-07-29** (was implied residual after TD-024/039; not previously a standalone TD)  
-**Depends on**: TD-054 landed (`RosCommandBus`); do not reintroduce raw multi-thread command publish.
-
-**Why it matters**: Controllers are created on the Qt main thread; subscription callbacks run under `RosThread.spin_once` and often mutate Python fields then `emit` without locks. Qt AutoConnection may queue **slots** to the main thread; it does **not** make unlocked field writes safe for concurrent readers (teleop, `*Status`, QML bindings). Teensy already uses `_status_lock` + snapshot emit (TD-024). Wheel/winch and similar paths do not fully match. Wheel motor error → safety already uses explicit `QueuedConnection` in `signal_wiring` — that is the delivery pattern to generalize, not a complete telemetry model.
-
-**What to do**:
-1. **Rule**: subscription callbacks may only (a) write a locked / POD snapshot, and (b) notify the main thread via explicit `QueuedConnection` (or main-thread pull timer). No unlocked QML-bound field mutation from the spin thread.
-2. **Order**: wheel first (safety-adjacent) → winch → remaining ROS status controllers / heartbeat mirrors as needed.
-3. Align with existing `*Status` models: main thread owns property updates when practical; fail-loud `connect_required` stays.
-4. Optional structural test or checklist comment in layer tests: no new unlocked cross-thread status writes on touched devices.
-5. Out of scope: BaseTopView scalar residual (TD-039 residual — opportunistic); GStreamer/video (mutex path already); full process split.
-
-**Acceptance**: Wheel (then winch) status paths used by UI/safety do not race unlocked fields from ROS callbacks; explicit queue or lock+snapshot documented in code; focused device + notify/safety bands green; no new raw multi-thread publish introduced.
-
-**Files**: `python/paint_controller/controllers/wheel.py`, `controllers/winch.py`, `controllers/_base.py` (if shared helpers), `controllers/teensy.py` (reference only), `handlers/heartbeat.py`, `models/*_status.py`, `core/signal_wiring.py`, corresponding tests  
-**Related**: TD-054 (publish ownership); TD-024 (Teensy template); TD-039 (partial concurrency fixes)
-
----
-
 ### TD-002 — Design-token adoption incomplete on page/admin islands
 **Area**: QML UI
 **Priority**: low
@@ -130,7 +106,8 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 | ID | Title | Resolved | Notes |
 |---|---|---|---|
-| TD-054 | Concurrent ROS command I/O + post-halt motion latch | 2026-07-29 | Option A2 `RosCommandBus` (continuous last-wins + oneshot; pump on RosThread); wheel/winch/teensy command pubs bound; `SafetyCoordinator.continuous_motion_allowed` latch + `invalidate_continuous` + teensy `suppress_continuous_thrust`; e-stop before teleop on status tick; tests `test_ros_io` + latch/safety/control bands; full suite 477 passed. Residual: TD-056 telemetry marshal; workflow-after-halt; dual heartbeat pub hygiene. ARCHITECTURE §8 |
+| TD-056 | ROS callback → Qt telemetry marshal | 2026-07-29 | `RosTelemetryBridge` (QueuedConnection + last-wins); wheel/winch frozen POD + main `_apply_status_snapshot`; affinity tests (callback no sync mutate); Teensy remains lock+snapshot (TD-024). Residual: heartbeat restore/status from ROS callbacks; lidar opportunistic. ARCHITECTURE §8 |
+| TD-054 | Concurrent ROS command I/O + post-halt motion latch | 2026-07-29 | Option A2 `RosCommandBus` (continuous last-wins + oneshot; pump on RosThread); wheel/winch/teensy command pubs bound; `SafetyCoordinator.continuous_motion_allowed` latch + `invalidate_continuous` + teensy `suppress_continuous_thrust`; e-stop before teleop on status tick; tests `test_ros_io` + latch/safety/control bands; full suite 477 passed. Residual: workflow-after-halt; dual heartbeat pub hygiene. ARCHITECTURE §8 |
 | TD-041 | Governance/doc hygiene: stale plan entries, KNOWLEDGE mis-citation | 2026-07-29 | Frozen route ownership → ShellRouter; AGENTS launch/ fixed; KNOWLEDGE singleton note accurate for this repo; progress checklist no longer offers Phase 7 |
 | TD-042 | Over-fitted test mirror and structural-selfie assertions | 2026-07-29 | Shared `assert_no_fatal_qml_warnings`; FakeShellRouter uses `DEFAULT_ROUTE_REGISTRY`; residual: large property-level smoke Fake* set (not rewritten) |
 | TD-043 | Dead/duplicated state and metadata layers | 2026-07-29 | Dead StateStore joystick/control_* surface removed; live: control_mode/display_message/heartbeat. CapabilityCatalog left (live for gate/legality) — residual size only |

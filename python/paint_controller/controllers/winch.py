@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from paint_interfaces.msg import MoveWinchLength, WinchStatus
@@ -12,12 +13,29 @@ from rclpy.node import Node
 from std_msgs.msg import Bool, Float64
 
 from paint_controller.controllers._base import RosStatusController
+from paint_controller.core.ros_telemetry import RosTelemetryBridge
 
 if TYPE_CHECKING:
     from paint_controller.core.ros_io import RosCommandBus
     from paint_controller.core.settings import SettingsManager
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class WinchStatusSnapshot:
+    """Immutable winch status POD for TD-056 main-thread apply."""
+
+    recv_mono: float
+    enabled: bool
+    cable_length: float
+    cable_speed: float
+    winch_torque: float
+    motor_temperature: float
+    motor_voltage: float
+    motor_brake: bool
+    load_detection_mode: bool
+    unusual_load_detected: bool
 
 
 class WinchController(RosStatusController):
@@ -64,9 +82,12 @@ class WinchController(RosStatusController):
         self._last_command_time = time.time()
         self._watchdog_timeout = 1.0
 
-        # Throttle variables
-        self._last_update_time = 0
-        self._min_update_interval = 0.1  # 50ms minimum between UI updates
+        # Throttle variables (telemetry applied on main)
+        self._last_update_time = 0.0
+        self._min_update_interval = 0.1
+
+        # TD-056: ROS callback only posts POD; main apply owns QObject fields.
+        self._telemetry = RosTelemetryBridge(self._apply_status_snapshot, parent=self)
 
         # Setup publishers and subscribers
         self._setup_publishers()
@@ -112,56 +133,63 @@ class WinchController(RosStatusController):
         self._node.get_logger().info("Winch status subscriber set up on topic 'winch/status'")
 
     def _status_callback(self, msg: WinchStatus) -> None:
-        """Callback function for winch status messages"""
+        """ROS spin thread: pack POD and post — no QObject field mutation."""
         try:
-            self.update_status(msg)
+            self._telemetry.post(self._snapshot_from_msg(msg))
         except Exception as e:
             self._node.get_logger().error(f"Error in winch status callback: {e}")
 
     def _check_availability(self) -> None:
-        """
-        Periodically check if winch is still connected based on time since last message
-        This runs on a timer to ensure we detect disconnections even when no new messages arrive
-        """
+        """Main-thread timer: mark disconnected when status is stale."""
         current_time = time.time()
-
-        # Calculate time since last status update
         time_since_last_update = self._time_since_last_status(current_time)
-
-        # If it's been too long since the last update, consider the winch disconnected
         if time_since_last_update > self._connection_timeout:
-            # Only emit if there's a change in availability
             if self.set_available(False):
                 self.available_changed.emit()
                 self._node.get_logger().warning(
                     f"Winch considered disconnected: {time_since_last_update:.1f}s since last message"
                 )
 
-    def update_status(self, msg: WinchStatus) -> None:
-        """Update property values from incoming status message"""
-        current_time = time.time()
-        self._record_status_update()
+    @staticmethod
+    def _snapshot_from_msg(msg: WinchStatus) -> WinchStatusSnapshot:
+        return WinchStatusSnapshot(
+            recv_mono=time.time(),
+            enabled=bool(msg.enabled),
+            cable_length=float(msg.cable_length),
+            cable_speed=float(msg.cable_speed),
+            winch_torque=float(msg.winch_torque),
+            motor_temperature=float(msg.motor_temperature),
+            motor_voltage=float(msg.motor_voltage),
+            motor_brake=bool(msg.motor_brake),
+            load_detection_mode=bool(msg.load_detection_mode),
+            unusual_load_detected=bool(msg.unusual_load_detected),
+        )
 
-        # If message is received, the device is considered connected
-        # even if msg.available is False (that would indicate a connected device in error state)
+    def _apply_status_snapshot(self, snap: object) -> None:
+        """Main thread only: mutate fields and NOTIFY."""
+        if not isinstance(snap, WinchStatusSnapshot):
+            self._node.get_logger().error(f"Winch status apply expected WinchStatusSnapshot, got {type(snap)}")
+            return
+
+        self._last_status_update_time = float(snap.recv_mono)
+
+        # Message received ⇒ connected (msg.available false can still mean "error but linked").
         if self.set_available(True):
             self.available_changed.emit()
             self._node.get_logger().info("Winch connection restored")
 
-        # Update other properties with throttling
+        current_time = time.time()
         if current_time - self._last_update_time >= self._min_update_interval:
             self._last_update_time = current_time
-
-            # Update property values
-            self.set_enabled(msg.enabled)
-            self.set_cable_length(msg.cable_length)
-            self.set_cable_speed(msg.cable_speed)
-            self.set_winch_torque(msg.winch_torque)
-            self.set_motor_temperature(msg.motor_temperature)
-            self.set_motor_voltage(msg.motor_voltage)
-            self.set_motor_brake(msg.motor_brake)
-            self.set_load_detection_enabled(msg.load_detection_mode)
-            self.set_unusual_load_detected(msg.unusual_load_detected)
+            self.set_enabled(snap.enabled)
+            self.set_cable_length(snap.cable_length)
+            self.set_cable_speed(snap.cable_speed)
+            self.set_winch_torque(snap.winch_torque)
+            self.set_motor_temperature(snap.motor_temperature)
+            self.set_motor_voltage(snap.motor_voltage)
+            self.set_motor_brake(snap.motor_brake)
+            self.set_load_detection_enabled(snap.load_detection_mode)
+            self.set_unusual_load_detected(snap.unusual_load_detected)
 
     def command_speed_rpm(self, speed: float) -> bool:
         """Command winch speed with safety limits (RPM)"""

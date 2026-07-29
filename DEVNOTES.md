@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-07-29 - TD-056 resolved (ROS→Qt telemetry marshal)
+
+**Goal**: Wheel/winch status paths: no unlocked ROS-thread mutation of QML/teleop-visible fields.
+**Tried**: Deep `RosTelemetryBridge` (QueuedConnection + last-wins); frozen POD snapshots; main `_apply_status_snapshot`; affinity tests (callback alone does not mutate; processEvents applies).
+**Result**: ✅ Focused + full suite green. TD-056 → Resolved. Residual: heartbeat restore/status from ROS; Teensy stays lock+snapshot (TD-024).
+**Files**: `core/ros_telemetry.py`, wheel/winch controllers, tests, ARCHITECTURE §8, tech-debt, progress board
+
+---
 ### 2026-07-29 - TD-054 resolved (RosCommandBus + motion latch)
 
 **Goal**: Sole ROS command publish affinity on RosThread; fail-closed continuous teleop after halt.
