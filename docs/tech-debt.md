@@ -48,7 +48,7 @@ When the goal is **software architecture toward a professional Qt program** (not
 **Status**: **Wave 1+2 landed** 2026-07-29 on `td-055/layer-responsibility-depth` (Phases 0–3 + 6–10). Optional 4′/5′ deferred.  
 **Why it matters**: Layer/responsibility depth (Problem 2).  
 **What landed (Wave 2)**: scaler production use; ContinuousTeleopEngine; Actions invoke (teensy/tuning/recording/system); wheel port `command_position`; factory subsystem builders; workflow port-name dialect; Teensy format helper off-device.  
-**Residual**: Phase 4′ status deepen / 5′ rehome only if needed; SignalWiring still takes bundle (narrower ports partial); BaseTopViewActions may still be special-cased.  
+**Residual**: Phase 4′ status deepen / 5′ rehome only if needed; SignalWiring still takes whole bundle; CP test-compat proxies over engine remain.  
 **Acceptance**: Wave 2 §11 metrics met (see plan + tests/test_layer_responsibility_depth.py).  
 **Files**: `ports/*`, `handlers/continuous_teleop_engine.py`, `handlers/control_processor.py`, `models/*_actions.py`, `core/controller_factory.py`, `services/workflow/*`  
 **Plan**: `docs/plan/02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md`
