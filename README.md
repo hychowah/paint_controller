@@ -2,22 +2,6 @@
 
 ROS 2 + PySide6/QML control application for the paint robot.
 
-## Current Status
-
-- This repository is currently in a **refactor-first** phase. The intent is to improve architecture, safety, shutdown/threading behavior, tests, and typing gates before resuming net-new feature development.
-- `TD-001` Stage 1 is complete: verified-dead QML was removed, false shared-component folders were flattened, constructor-driven QML surfaces were hardened with `required` / `readonly`, offscreen startup/import smoke coverage was expanded, and warn-only `qmllint` CI is in place.
-- `TD-031` is complete: the shell now uses an explicit page registry, `systemcontrol` and fullscreen video have dedicated feature roots under `qml/features/`, and canonical theme ownership lives under `qml/theme/CommonStyle.qml` with compatibility shims left at the old paths.
-- The architecture control plane is intentionally split: `docs/plan/00_ARCHITECTURE_PROGRESS.md` is the only live execution board, and `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` is durable architecture rationale plus historical context.
-- Stage 1A through Stage 1E, Stage 2, Stage 3A, Stage 3B1, Stage 4, Stage 4.5, Workstream A, Workstream B, Workstream C, and Workstream D are complete for the targeted families. Workstream E then landed bounded system-control services, bounded video runtime, shared status models, shell/connectivity contracts, page-level wheel and winch detail retirement, teensy/valve detail retirement, lidar/monitor telemetry retirement, fullscreen overlay telemetry retirement, and the remaining PageHome preview/frame-refresh retirement behind explicit `videoRuntime` ownership.
-- Recent runtime hardening also repaired the tracked fullscreen overlay warning classes and restored clean full-suite teardown after the SSH-controller cleanup fix.
-- The current next recommended implementation path is settings cleanup, followed by bounded `app_runtime.py` and handler decomposition only where those slices preserve the current ownership boundaries and still materially reduce ambient reads.
-- Python runtime is the only live application path in this repository; the old C++ UI path has been removed from the tree.
-- Runtime objects are exposed to QML through `setContextProperty()`. Do not use `qmlRegisterSingletonInstance()` in this repo.
-- Latest verified local validation on 2026-07-23 is green at `269 passed` via `python/paint_controller/venv/bin/python -m pytest tests -q`.
-- Most recent focused validation is green at `10 passed` for `tests/test_startup_smoke_home.py`, `tests/test_startup_smoke_shell.py`, and `tests/test_qml_imports.py`, with the workflow-editor import follow-up green at `2 passed` for `tests/test_startup_smoke_workflow_editor.py` and `tests/test_qml_imports.py`.
-- For authority and session-start order: use `INDEX.md` first, prefer `DEVNOTES.md` for the latest verified runtime state, use `docs/plan/00_ARCHITECTURE_PROGRESS.md` for live next-step guidance, and use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable rationale.
-- For a human-oriented map of packages, ownership, and the QML↔Python contract: see [`ARCHITECTURE.md`](ARCHITECTURE.md).
-
 ## Prerequisites
 
 - Ubuntu 22.04 or 24.04
@@ -165,18 +149,98 @@ Useful focused handoff bands:
 
 ### Current Test Layers
 
-- Pure logic and schema: `tests/test_crc.py`, `tests/test_input_utils.py`, `tests/test_settings_schema.py`
-- Harness validation: `tests/test_test_infrastructure.py`
-- Core runtime state and persistence: `tests/test_state_store.py`, `tests/test_settings_runtime.py`
-- Direct AppRuntime seams and shutdown behavior: `tests/test_app_runtime_runtime.py`
-- Controller-factory wiring and admin gate behavior: `tests/test_controller_factory_runtime.py`
-- Startup smoke by surface: `tests/test_startup_smoke.py`, `tests/test_startup_smoke_shell.py`, `tests/test_startup_smoke_home.py`, `tests/test_startup_smoke_workflow_editor.py`
-- Manual command boundary: `tests/test_manual_command_handler.py`
-- Safety-critical command dispatch: `tests/test_control_processor.py`
-- Qt signal bridge: `tests/test_qt_bridge.py`
-- Component and handler behavior: `tests/test_emergency.py`, `tests/test_input_handler.py`, `tests/test_steam_deck_hid.py`, `tests/test_winch.py`, `tests/test_ssh.py`
-- Safety convergence wiring: `tests/test_safety_integration.py`
-- Real ROS transport: `tests/test_winch_ros_integration.py`
+- **Pure logic and schema**
+  - `tests/test_crc.py` — CRC8 algorithm behavior
+  - `tests/test_input_utils.py` — Deadzone and double-press input logic
+  - `tests/test_settings_schema.py` — Settings schema integrity and signal-pair coverage
+  - `tests/test_teleop_modes.py` — Teleop mode catalog invariants and dispatch
+  - `tests/test_layer_responsibility_depth.py` — TD-055 layer-depth / port-policy structural checks
+
+- **Harness validation and static regressions**
+  - `tests/test_test_infrastructure.py` — Fake ROS/Qt harness primitives
+  - `tests/test_qml_imports.py` — Heavyweight QML import usage regression
+
+- **Core runtime state, settings, shell, and overlay**
+  - `tests/test_state_store.py` — StateStore property emissions
+  - `tests/test_settings_runtime.py` — SettingsManager load/save/gating behavior
+  - `tests/test_capability_catalog.py` — Capability catalog metadata and surface mapping
+  - `tests/test_shell_state.py` — Single/dual-screen shell state policy
+  - `tests/test_shell_router.py` — Route registry and navigation
+  - `tests/test_overlay_host_policy.py` — Overlay host matrix and fullscreen policy
+
+- **AppRuntime lifecycle and signal wiring**
+  - `tests/test_app_runtime_runtime.py` — AppRuntime bundle creation, context properties, shutdown order
+  - `tests/test_signal_wiring.py` — Qt signal interconnection and timer startup
+
+- **Controller factory, admin gate, and action legality**
+  - `tests/test_controller_factory_runtime.py` — Controller dependency graph and cleanup order
+  - `tests/test_admin_action_gate.py` — Heartbeat gating and enforcement flag behavior
+  - `tests/test_action_legality_model.py` — Gate + capability metadata merge
+
+- **QML bridge and context composition**
+  - `tests/test_qt_bridge.py` — Popup/fullscreen signal bridge
+  - `tests/test_qml_context_composer.py` — QML context-property composition
+  - `tests/test_notify_contracts.py` — QML NOTIFY signal contracts for status models
+
+- **Joystick selection, overlay, and input handling**
+  - `tests/test_joystick_selection.py` — Joystick selection model
+  - `tests/test_overlay_controller.py` — Overlay menu controller
+  - `tests/test_input_handler.py` — Control-mode switch and menu delegation
+
+- **Device controllers and ROS I/O**
+  - `tests/test_ros_node.py` — PaintRosNode heartbeat, cleanup, and command-bus pump
+  - `tests/test_ros_io.py` — RosCommandBus traffic ordering and invalidation
+  - `tests/test_ros_telemetry.py` — Deferred telemetry bridge scheduling
+  - `tests/test_winch.py` — WinchController commands, clamping, and status
+  - `tests/test_wheel.py` — WheelController commands and availability
+  - `tests/test_teensy.py` — TeensyController status, relay, and thrust ramping
+  - `tests/test_esp32_valve.py` — ESP32 valve UDP/ROS gateway
+  - `tests/test_ssh.py` — SSH launcher and controller cleanup
+  - `tests/test_system_monitor.py` — Worker-thread system monitor
+
+- **Safety, heartbeat, and emergency**
+  - `tests/test_safety_coordinator.py` — Halt-all effectors and safety latch
+  - `tests/test_safety_integration.py` — Heartbeat loss flows through safety coordinator
+  - `tests/test_heartbeat.py` — UIHeartbeatHandler online/loss/recovery
+  - `tests/test_emergency.py` — Steam emergency button hold and dispatch
+
+- **Teleop control dispatch**
+  - `tests/test_control_processor.py` — Joystick-to-hardware command mapping and safety latches
+
+- **Manual action boundaries**
+  - `tests/test_manual_command_handler.py` — Python-owned manual command handler
+  - `tests/test_winch_motion_handler.py` — Winch action facade
+  - `tests/test_wheel_actions.py` — Wheel action facade
+  - `tests/test_teensy_actions.py` — Teensy toggle action facade
+  - `tests/test_tuning_actions.py` — Tuning PID action facade
+  - `tests/test_system_actions.py` — Clear-errors action facade
+  - `tests/test_recording_actions.py` — Recording toggle action facade
+  - `tests/test_base_top_view_actions.py` — Base-top calibration action facade
+  - `tests/test_device_power_actions.py` — Power/home toggle absorption into action facades
+
+- **Workflow engine and editor**
+  - `tests/test_workflow_scheduler.py` — Action registry and scheduler
+  - `tests/test_workflow_executor.py` — WorkFlowExecutor state machine
+  - `tests/test_workflow_runner.py` — QML-facing workflow runner
+  - `tests/test_workflow_editor.py` — Workflow persistence boundary
+
+- **Video, base-top view, and runtime services**
+  - `tests/test_base_top_view_service.py` — Base-top worker-thread cleanup and map ownership
+  - `tests/test_services_runtime.py` — ScreenManager and base-top transformer
+  - `tests/test_video_stream.py` — CameraStream / ImageProvider cleanup
+
+- **Steam Deck input**
+  - `tests/test_steam_deck_hid.py` — HID report parsing
+  - `tests/test_steam_deck_handler.py` — SteamDeckHandler cleanup and button-hold behavior
+
+- **Startup smoke by QML surface**
+  - `tests/test_startup_smoke.py` — Feature and page surfaces
+  - `tests/test_startup_smoke_home.py` — Home page surface
+  - `tests/test_startup_smoke_shell.py` — Shell and navigation surface
+  - `tests/test_startup_smoke_workflow_editor.py` — Workflow editor surface
+
+- **Real ROS transport**
+  - `tests/test_winch_ros_integration.py` — Winch pub/sub over live ROS
 
 ## Repository Layout
 
