@@ -9,13 +9,13 @@ ColumnLayout {
     spacing: CommonStyle.spacingSm
 
     function currentSettingText() {
-        if (!settingsManager) {
+        if (!root.settingsManager) {
             return root.defaultValue
         }
 
         var value = root.decimalPlaces === 0
-            ? settingsManager.getInt(root.settingKey)
-            : settingsManager.getFloat(root.settingKey)
+            ? root.settingsManager.getInt(root.settingKey)
+            : root.settingsManager.getFloat(root.settingKey)
         return root.decimalPlaces === 0 ? value.toString() : value.toFixed(root.decimalPlaces)
     }
 
@@ -26,6 +26,7 @@ ColumnLayout {
     // Component properties
     required property string label
     required property string settingKey
+    required property var settingsManager
     property int decimalPlaces: 1
     property string unitSuffix: ""
     property string defaultValue: "0"
@@ -109,12 +110,12 @@ ColumnLayout {
                         parseInt(inputField.text) : 
                         parseFloat(inputField.text)
                     
-                    if (!isNaN(num) && settingsManager) {
+                    if (!isNaN(num) && root.settingsManager) {
                         // TD-036: single gated write path (set+persist).
                         if (root.decimalPlaces === 0) {
-                            settingsManager.applyInt(root.settingKey, num)
+                            root.settingsManager.applyInt(root.settingKey, num)
                         } else {
-                            settingsManager.applyFloat(root.settingKey, num)
+                            root.settingsManager.applyFloat(root.settingKey, num)
                         }
                         // Always refresh so a gate deny restores the truthful value.
                         root.refreshDisplayText()
@@ -125,7 +126,7 @@ ColumnLayout {
     }
 
     Connections {
-        target: settingsManager
+        target: root.settingsManager
 
         function onSetting_changed(key, value) {
             if (key === root.settingKey) {

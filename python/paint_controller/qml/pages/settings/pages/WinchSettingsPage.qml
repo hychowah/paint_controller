@@ -5,6 +5,8 @@ import "../components"
 
 ScrollView {
     id: root
+    required property var settingsManager
+    property var qtBridge
     contentWidth: availableWidth
     clip: true
 
@@ -31,6 +33,8 @@ ScrollView {
         }
 
         ManagedSettingSpinBox {
+
+            settingsManager: root.settingsManager
             title: "Maximum Speed"
             subtitle: "Maximum winch speed limit"
             settingKey: "winch_max_speed_mmps"

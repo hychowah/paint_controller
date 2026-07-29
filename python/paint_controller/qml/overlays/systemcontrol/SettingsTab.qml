@@ -8,6 +8,7 @@ Item {
     
     // Popup reference passed from parent
     required property var confirmationPopup
+    required property var settingsManager
     
     // Helper function to create setting input field
     function createSettingRow(key, label, currentValue, minVal, maxVal, isFloat) {
@@ -59,6 +60,8 @@ Item {
                 // Winch Settings Section
                 // ==========================================
                 SettingsSection {
+
+                    settingsManager: settingsTab.settingsManager
                     Layout.fillWidth: true
                     title: "Winch Settings"
                     description: "Configure winch motor parameters"
@@ -71,6 +74,8 @@ Item {
                             implicitHeight: childrenRect.height
                             
                             SettingInputField {
+
+                                settingsManager: settingsTab.settingsManager
                                 label: "Max Speed (Range: 0 - 100 RPM)"
                                 settingKey: "winch_max_speed_mmps"
                                 decimalPlaces: 1
@@ -87,6 +92,8 @@ Item {
                 // Track Control Settings Section
                 // ==========================================
                 SettingsSection {
+
+                    settingsManager: settingsTab.settingsManager
                     Layout.fillWidth: true
                     title: "Track Control"
                     description: "Configure track/wheel speed parameters"
@@ -99,6 +106,8 @@ Item {
                             implicitHeight: childrenRect.height
                             
                             SettingInputField {
+
+                                settingsManager: settingsTab.settingsManager
                                 label: "Max Speed (Range: 5 - 50)"
                                 settingKey: "track_max_speed"
                                 decimalPlaces: 1
@@ -108,6 +117,8 @@ Item {
                             }
                             
                             SettingInputField {
+
+                                settingsManager: settingsTab.settingsManager
                                 label: "Min Speed (Range: 0 - 30)"
                                 settingKey: "track_min_speed"
                                 decimalPlaces: 1
@@ -117,6 +128,8 @@ Item {
                             }
                             
                             SettingInputField {
+
+                                settingsManager: settingsTab.settingsManager
                                 label: "Wheel Travel Max Distance (Range: 100 - 1000 mm)"
                                 settingKey: "wheel_travel_max"
                                 decimalPlaces: 0
@@ -127,6 +140,8 @@ Item {
                             }
                             
                             SettingInputField {
+
+                                settingsManager: settingsTab.settingsManager
                                 label: "Wheel Travel Rate (Range: 10 - 500 mm/sec)"
                                 settingKey: "wheel_travel_rate"
                                 decimalPlaces: 0
@@ -137,6 +152,8 @@ Item {
                             }
                             
                             SettingInputField {
+
+                                settingsManager: settingsTab.settingsManager
                                 label: "Wheel Travel Speed (Range: 50 - 600 RPM)"
                                 settingKey: "wheel_travel_rpm"
                                 decimalPlaces: 0
@@ -153,6 +170,8 @@ Item {
                 // End Effector Settings Section
                 // ==========================================
                 SettingsSection {
+
+                    settingsManager: settingsTab.settingsManager
                     Layout.fillWidth: true
                     title: "End Effector"
                     description: "Configure thrust force and valve parameters"
@@ -165,6 +184,8 @@ Item {
                             implicitHeight: childrenRect.height
                             
                             SettingInputField {
+
+                                settingsManager: settingsTab.settingsManager
                                 label: "Thrust Force (Range: -1.0 to +1.0)"
                                 settingKey: "thrust_force"
                                 decimalPlaces: 2
@@ -193,7 +214,9 @@ Item {
                                 }
 
                                 SettingInputField {
-                                    label: "Thrust Ramp Rate (thrust/second, Range: 0.1 - 10.0)"
+
+                                settingsManager: settingsTab.settingsManager
+                                label: "Thrust Ramp Rate (thrust/second, Range: 0.1 - 10.0)"
                                     settingKey: "thrust_ramp_rate"
                                     decimalPlaces: 2
                                     defaultValue: "1.00"
@@ -203,6 +226,8 @@ Item {
                             }
                             
                             SettingInputField {
+
+                                settingsManager: settingsTab.settingsManager
                                 label: "Valve Turn Max (Range: 0 - 10)"
                                 settingKey: "valve_turn_max"
                                 decimalPlaces: 1
@@ -218,6 +243,8 @@ Item {
                 // Arm Extension Settings Section
                 // ==========================================
                 SettingsSection {
+
+                    settingsManager: settingsTab.settingsManager
                     Layout.fillWidth: true
                     title: "Arm Extension Presets"
                     description: "Configure arm retract/extend positions"
@@ -230,6 +257,8 @@ Item {
                             implicitHeight: childrenRect.height
                             
                             SettingInputField {
+
+                                settingsManager: settingsTab.settingsManager
                                 label: "Retract Position (Range: 0 - 1000)"
                                 settingKey: "arm_retract_length"
                                 decimalPlaces: 0
@@ -239,6 +268,8 @@ Item {
                             }
                             
                             SettingInputField {
+
+                                settingsManager: settingsTab.settingsManager
                                 label: "Extend Position (Range: 0 - 1500)"
                                 settingKey: "arm_extend_length"
                                 decimalPlaces: 0

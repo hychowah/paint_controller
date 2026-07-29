@@ -11,7 +11,7 @@ Rectangle {
     border.width: 1
 
     required property var winchStatus
-    property var winchActions
+    required property var winchActions
     property string mode: "power"  // "power" | "load"
     property color primaryColor: "#2196F3"
     property color disabledColor: "#BDBDBD"

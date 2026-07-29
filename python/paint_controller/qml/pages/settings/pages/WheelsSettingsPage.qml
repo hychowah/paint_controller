@@ -5,6 +5,8 @@ import "../components"
 
 ScrollView {
     id: root
+    required property var settingsManager
+    property var qtBridge
     contentWidth: availableWidth
     clip: true
 
@@ -31,18 +33,24 @@ ScrollView {
         }
 
         ManagedSettingSpinBox {
+
+            settingsManager: root.settingsManager
             title: "Track Maximum Speed"
             subtitle: "Upper speed limit for track and wheel motion"
             settingKey: "track_max_speed"
         }
 
         ManagedSettingSpinBox {
+
+            settingsManager: root.settingsManager
             title: "Track Minimum Speed"
             subtitle: "Minimum speed used to overcome static friction"
             settingKey: "track_min_speed"
         }
 
         ManagedSettingSpinBox {
+
+            settingsManager: root.settingsManager
             title: "Wheel Travel Maximum"
             subtitle: "Maximum wheel travel distance"
             settingKey: "wheel_travel_max"
@@ -50,6 +58,8 @@ ScrollView {
         }
 
         ManagedSettingSpinBox {
+
+            settingsManager: root.settingsManager
             title: "Wheel Travel Rate"
             subtitle: "Adjustment rate for wheel travel commands"
             settingKey: "wheel_travel_rate"
@@ -57,6 +67,8 @@ ScrollView {
         }
 
         ManagedSettingSpinBox {
+
+            settingsManager: root.settingsManager
             title: "Wheel Travel RPM"
             subtitle: "Fixed RPM used for wheel travel commands"
             settingKey: "wheel_travel_rpm"

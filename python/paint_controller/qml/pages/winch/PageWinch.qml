@@ -8,7 +8,7 @@ Item {
     id: winchPageRoot
     objectName: "winchPageRoot"
     required property var winchStatus
-    // winchActions is the ambient root-context model (same as pre-extract PageWinch).
+    required property var winchActions
     Layout.fillWidth: true
     Layout.fillHeight: true
 
@@ -106,7 +106,7 @@ Item {
 
                     WinchEnableToggle {
                         winchStatus: winchPageRoot.winchStatus
-                        winchActions: winchActions
+                        winchActions: winchPageRoot.winchActions
                         mode: "power"
                         primaryColor: winchPageRoot.primaryColor
                         disabledColor: winchPageRoot.disabledColor
@@ -115,7 +115,7 @@ Item {
 
                     WinchEnableToggle {
                         winchStatus: winchPageRoot.winchStatus
-                        winchActions: winchActions
+                        winchActions: winchPageRoot.winchActions
                         mode: "load"
                         primaryColor: winchPageRoot.primaryColor
                         disabledColor: winchPageRoot.disabledColor
@@ -170,7 +170,7 @@ Item {
 
                         WinchMoveIncrementPanel {
                             winchStatus: winchPageRoot.winchStatus
-                            winchActions: winchActions
+                            winchActions: winchPageRoot.winchActions
                             primaryColor: winchPageRoot.primaryColor
                             dangerColor: winchPageRoot.dangerColor
                             disabledColor: winchPageRoot.disabledColor
@@ -180,7 +180,7 @@ Item {
 
                         WinchMoveAbsolutePanel {
                             winchStatus: winchPageRoot.winchStatus
-                            winchActions: winchActions
+                            winchActions: winchPageRoot.winchActions
                             primaryColor: winchPageRoot.primaryColor
                             dangerColor: winchPageRoot.dangerColor
                             disabledColor: winchPageRoot.disabledColor
@@ -191,7 +191,7 @@ Item {
 
                     WinchQuickActionsBar {
                         winchStatus: winchPageRoot.winchStatus
-                        winchActions: winchActions
+                        winchActions: winchPageRoot.winchActions
                         primaryColor: winchPageRoot.primaryColor
                         dangerColor: winchPageRoot.dangerColor
                         disabledColor: winchPageRoot.disabledColor

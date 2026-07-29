@@ -16,6 +16,14 @@ Item {
     required property var wheelStatus
     required property var winchStatus
     required property var teensyStatus
+    required property var wheelActions
+    required property var winchActions
+    required property var teensyActions
+    required property var recordingActions
+    required property var systemActions
+    required property var actionLegality
+    required property var settingsManager
+    required property var overlayController
     readonly property bool showSystemMenu: showOverlay && activeMenu === "system"
 
     visible: true
@@ -112,7 +120,7 @@ Item {
                         id: closeMouseArea
                         anchors.fill: parent
                         hoverEnabled: true
-                        onClicked: overlayController.hide_menu()
+                        onClicked: systemControlWorkspace.overlayController.hide_menu()
                     }
                 }
             }
@@ -167,6 +175,12 @@ Item {
                     wheelStatus: systemControlWorkspace.wheelStatus
                     winchStatus: systemControlWorkspace.winchStatus
                     teensyStatus: systemControlWorkspace.teensyStatus
+                    wheelActions: systemControlWorkspace.wheelActions
+                    winchActions: systemControlWorkspace.winchActions
+                    teensyActions: systemControlWorkspace.teensyActions
+                    recordingActions: systemControlWorkspace.recordingActions
+                    systemActions: systemControlWorkspace.systemActions
+                    actionLegality: systemControlWorkspace.actionLegality
                 }
 
                 LegacySystemControl.CommandTab {
@@ -177,6 +191,7 @@ Item {
                 LegacySystemControl.SettingsTab {
                     id: settingsTabContent
                     confirmationPopup: sharedConfirmationPopup
+                    settingsManager: systemControlWorkspace.settingsManager
                 }
 
                 LegacySystemControl.WorkFlowTab {
@@ -222,7 +237,7 @@ Item {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: overlayController.hide_menu()
+            onClicked: systemControlWorkspace.overlayController.hide_menu()
             onPressed: systemMenuCloseButton.scale = 0.92
             onReleased: systemMenuCloseButton.scale = 1.0
             onCanceled: systemMenuCloseButton.scale = 1.0

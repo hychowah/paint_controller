@@ -1,12 +1,12 @@
 # Development Notes
 
 ---
-### 2026-07-29 - TD-048 slice A: PageWheel injection
+### 2026-07-29 - TD-048 resolved (full inject-first)
 
-**Goal**: Inject `wheelActions` + `videoRuntime` as required props on PageWheel (status already injected).
-**Tried**: Required props on PageWheel; MainWindow wheel component wiring; smoke harness captures context fakes via parent props to avoid name-shadowing.
-**Result**: ✅ PageWheel smoke + qml imports green. Quarantine remainder cleared. Root bag still 26 names.
-**Files**: `PageWheel.qml`, `MainWindow.qml`, `tests/test_startup_smoke.py`, tech-debt, progress board
+**Goal**: Finish QML injection depth — *Actions/legality/settings/chrome via `required property` on pages/features.
+**Tried**: A PageWheel; B PageWinch+children; C SystemControl+DeviceControl dual-surface; D Tuning; E Status/Teensy; F settingsManager threading; G video base-top write path; H TopBar/Emergency/Joystick/overlayController. Smoke harnesses avoid required-prop name-shadowing.
+**Result**: ✅ Full suite **434 passed**. Root bag still 26 names (retire-last later). TD-048 → Resolved.
+**Files**: MainWindow, MultiScreenListUI, pages/features/overlays/navigation QML, startup smokes, tech-debt, progress board
 
 ---
 ### 2026-07-29 - TD-044 + TD-045 + TD-040 (CI control plane)

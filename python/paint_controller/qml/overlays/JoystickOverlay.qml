@@ -114,7 +114,7 @@ Item {
                         id: commitTimer
                         interval: 150
                         repeat: false
-                        onTriggered: overlayController.select_index(index)
+                        onTriggered: overlayLayer.overlayController.select_index(index)
                     }
                 }
 
@@ -170,6 +170,7 @@ Item {
     required property int rightSelectedIndex
     required property string activeMenu
     required property var controlOptions
+    required property var overlayController
     property bool showLeftMenu: showOverlay && activeMenu === "left"
     property bool showRightMenu: showOverlay && activeMenu === "right"
 
@@ -182,7 +183,7 @@ Item {
         MouseArea {
             anchors.fill: parent
             enabled: parent.visible
-            onClicked: overlayController.hide_menu()
+            onClicked: overlayLayer.overlayController.hide_menu()
         }
     }
 

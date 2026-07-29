@@ -29,6 +29,17 @@ Window {
     property var valveStatusModel: valveStatus
     property var lidarStatusModel: lidarStatus
     property var videoRuntimeModel: videoRuntime
+    property var wheelActionsModel: wheelActions
+    property var winchActionsModel: winchActions
+    property var teensyActionsModel: teensyActions
+    property var recordingActionsModel: recordingActions
+    property var systemActionsModel: systemActions
+    property var actionLegalityModel: actionLegality
+    property var settingsManagerModel: settingsManager
+    property var baseTopViewStatusModel: baseTopViewStatus
+    property var baseTopViewActionsModel: baseTopViewActions
+    property var overlayControllerModel: overlayController
+    property var qtBridgeModel: qtBridge
     
     // Properties to control which screen this window appears on
     property int targetScreenIndex: 0
@@ -66,13 +77,21 @@ Window {
         id: systemControlMenuSecondary
         objectName: "systemControlMenuSecondary"
         z: overlayHost ? overlayHost.system_control_layer : 1001
-        showOverlay: overlayController.show_overlay
-        activeMenu: overlayController.active_menu
+        showOverlay: multiScreenWindow.overlayControllerModel.show_overlay
+        activeMenu: multiScreenWindow.overlayControllerModel.active_menu
         systemControlServices: multiScreenWindow.systemControlServicesModel
         recordingStatus: multiScreenWindow.recordingStatusModel
         wheelStatus: multiScreenWindow.wheelStatusModel
         winchStatus: multiScreenWindow.winchStatusModel
         teensyStatus: multiScreenWindow.teensyStatusModel
+        wheelActions: multiScreenWindow.wheelActionsModel
+        winchActions: multiScreenWindow.winchActionsModel
+        teensyActions: multiScreenWindow.teensyActionsModel
+        recordingActions: multiScreenWindow.recordingActionsModel
+        systemActions: multiScreenWindow.systemActionsModel
+        actionLegality: multiScreenWindow.actionLegalityModel
+        settingsManager: multiScreenWindow.settingsManagerModel
+        overlayController: multiScreenWindow.overlayControllerModel
         visible: overlayHost ? overlayHost.system_control_on_secondary_surface : (shellState ? shellState.show_system_control_on_secondary_surface : true)
     }
 
@@ -81,11 +100,12 @@ Window {
         id: joystickOverlaySecondary
         objectName: "joystickOverlaySecondary"
         z: overlayHost ? overlayHost.joystick_overlay_layer : 1000
-        showOverlay: overlayController.show_overlay
-        leftSelectedIndex: overlayController.left_selected_index
-        rightSelectedIndex: overlayController.right_selected_index
-        activeMenu: overlayController.active_menu
-        controlOptions: overlayController.control_options
+        showOverlay: multiScreenWindow.overlayControllerModel.show_overlay
+        leftSelectedIndex: multiScreenWindow.overlayControllerModel.left_selected_index
+        rightSelectedIndex: multiScreenWindow.overlayControllerModel.right_selected_index
+        activeMenu: multiScreenWindow.overlayControllerModel.active_menu
+        controlOptions: multiScreenWindow.overlayControllerModel.control_options
+        overlayController: multiScreenWindow.overlayControllerModel
         visible: overlayHost ? overlayHost.joystick_overlay_on_secondary_surface : false
     }
 
@@ -103,6 +123,10 @@ Window {
         teensyStatus: multiScreenWindow.teensyStatusModel
         valveStatus: multiScreenWindow.valveStatusModel
         lidarStatus: multiScreenWindow.lidarStatusModel
+        overlayController: multiScreenWindow.overlayControllerModel
+        baseTopViewStatus: multiScreenWindow.baseTopViewStatusModel
+        baseTopViewActions: multiScreenWindow.baseTopViewActionsModel
+        actionLegality: multiScreenWindow.actionLegalityModel
     }
 
     EmergencyOverlay {
@@ -110,6 +134,7 @@ Window {
         id: emergencyOverlaySecondary
         objectName: "emergencyOverlaySecondary"
         z: overlayHost ? overlayHost.emergency_overlay_layer : 3000
+        qtBridge: multiScreenWindow.qtBridgeModel
         visible: overlayHost ? overlayHost.emergency_overlay_on_secondary_surface : false
     }
     

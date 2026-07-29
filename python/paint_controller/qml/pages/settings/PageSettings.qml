@@ -5,6 +5,8 @@ import "pages"
 
 Rectangle {
     id: settingsMenu
+    required property var settingsManager
+    required property var qtBridge
     Layout.fillWidth: true
     Layout.fillHeight: true
     color: "#F5F5F5"
@@ -25,6 +27,8 @@ Rectangle {
         }
         
         MainSettingsPage {
+            settingsManager: settingsMenu.settingsManager
+            qtBridge: settingsMenu.qtBridge
             id: mainPage
             onPageRequested: function(page) {
                 settingsMenu.currentPage = page
@@ -32,21 +36,29 @@ Rectangle {
         }
         
         WinchSettingsPage {
+            settingsManager: settingsMenu.settingsManager
+            qtBridge: settingsMenu.qtBridge
             id: winchPage
             onBackRequested: settingsMenu.currentPage = "main"
         }
         
         WheelsSettingsPage {
+            settingsManager: settingsMenu.settingsManager
+            qtBridge: settingsMenu.qtBridge
             id: wheelsPage
             onBackRequested: settingsMenu.currentPage = "main"
         }
         
         CameraSettingsPage {
+            settingsManager: settingsMenu.settingsManager
+            qtBridge: settingsMenu.qtBridge
             id: cameraPage
             onBackRequested: settingsMenu.currentPage = "main"
         }
         
         ArmSettingsPage {
+            settingsManager: settingsMenu.settingsManager
+            qtBridge: settingsMenu.qtBridge
             id: armPage
             onBackRequested: settingsMenu.currentPage = "main"
         }

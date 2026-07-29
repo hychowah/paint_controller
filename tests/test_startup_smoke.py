@@ -20,10 +20,10 @@ from tests.startup_smoke_support import (
 )
 
 
-def test_settings_route_loads_offscreen(monkeypatch, tmp_path, qt_app):
+def test_settings_route_loads_offscreen(monkeypatch, tmp_path, qt_app, qtbot):
     repo_root = Path(__file__).resolve().parent.parent
     qml_dir = repo_root / "python" / "paint_controller" / "qml"
-    qml_path = qml_dir / "pages" / "settings" / "PageSettings.qml"
+    settings_import_url = _qml_import_url(qml_dir / "pages" / "settings")
 
     engine = QQmlApplicationEngine()
     engine.addImportPath(str(qml_dir))
@@ -36,20 +36,47 @@ def test_settings_route_loads_offscreen(monkeypatch, tmp_path, qt_app):
     for name, obj in context_objects.items():
         ctx.setContextProperty(name, obj)
 
-    engine.load(QUrl.fromLocalFile(str(qml_path)))
-    qt_app.processEvents()
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{settings_import_url}"
 
-    assert engine.rootObjects(), "PageSettings.qml failed to load"
+Item {{
+    width: 1280
+    height: 800
+    property var injectedSettings: settingsManager
+    property var injectedBridge: qtBridge
 
-    fatal_warning_fragments = (
-        "failed to load component",
-        "no such file or directory",
-        "is not a type",
-        "required property",
+    PageSettings {{
+        anchors.fill: parent
+        settingsManager: parent.injectedSettings
+        qtBridge: parent.injectedBridge
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:PageSettingsHarness.qml"),
     )
-    assert not any(fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments), (
-        warnings
-    )
+
+    _assert_component_ready(qtbot, component)
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+        qt_app.processEvents()
+
+        fatal_warning_fragments = (
+            "failed to load component",
+            "no such file or directory",
+            "is not a type",
+            "required property",
+        )
+        assert not any(
+            fragment in warning.lower() for warning in warnings for fragment in fatal_warning_fragments
+        ), (warnings)
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
 
 
 def test_system_control_workspace_loads_with_required_properties(monkeypatch, tmp_path, qt_app, qtbot):
@@ -92,6 +119,14 @@ Item {{
         wheelStatus: wheelStatusModel
         winchStatus: winchStatusModel
         teensyStatus: teensyStatusModel
+        wheelActions: wheelActions
+        winchActions: winchActions
+        teensyActions: teensyActions
+        recordingActions: recordingActions
+        systemActions: systemActions
+        actionLegality: actionLegality
+        settingsManager: settingsManager
+        overlayController: overlayController
     }}
 }}
 '''.encode(),
@@ -163,6 +198,10 @@ Item {{
         teensyStatus: teensyStatus
         valveStatus: valveStatus
         lidarStatus: lidarStatus
+        overlayController: overlayController
+        baseTopViewStatus: baseTopViewStatus
+        baseTopViewActions: baseTopViewActions
+        actionLegality: actionLegality
     }}
 }}
 '''.encode(),
@@ -253,6 +292,7 @@ Item {{
     PageWinch {{
         anchors.fill: parent
         winchStatus: winchStatusModel
+        winchActions: winchActions
     }}
 }}
 '''.encode(),
@@ -396,6 +436,8 @@ Item {{
         wheelStatus: wheelStatusModel
         winchStatus: winchStatusModel
         teensyStatus: teensyStatusModel
+        winchActions: winchActions
+        teensyActions: teensyActions
     }}
 }}
 '''.encode(),
@@ -739,6 +781,10 @@ Item {{
         teensyStatus: teensyStatus
         valveStatus: valveStatus
         lidarStatus: lidarStatus
+        overlayController: overlayController
+        baseTopViewStatus: baseTopViewStatus
+        baseTopViewActions: baseTopViewActions
+        actionLegality: actionLegality
     }}
 }}
 '''.encode(),
@@ -809,6 +855,9 @@ Item {{
         workflowRunner: workflowRunnerModel
         videoRuntime: videoRuntimeModel
         wheelStatus: wheelStatusModel
+        baseTopViewStatus: baseTopViewStatus
+        baseTopViewActions: baseTopViewActions
+        actionLegality: actionLegality
     }}
 }}
 '''.encode(),
@@ -1177,12 +1226,25 @@ Item {{
         sprayGunLedOn: false
     }})
 
+    property var injectedWheelActions: wheelActions
+    property var injectedWinchActions: winchActions
+    property var injectedTeensyActions: teensyActions
+    property var injectedRecordingActions: recordingActions
+    property var injectedSystemActions: systemActions
+    property var injectedActionLegality: actionLegality
+
     DeviceControlTab {{
         anchors.fill: parent
         recordingStatus: recordingStatusModel
         wheelStatus: wheelStatusModel
         winchStatus: winchStatusModel
         teensyStatus: teensyStatusModel
+        wheelActions: parent.injectedWheelActions
+        winchActions: parent.injectedWinchActions
+        teensyActions: parent.injectedTeensyActions
+        recordingActions: parent.injectedRecordingActions
+        systemActions: parent.injectedSystemActions
+        actionLegality: parent.injectedActionLegality
     }}
 }}
 '''.encode(),
@@ -1289,12 +1351,19 @@ import QtQuick.Controls
 import "{video_components_import_url}"
 
 ApplicationWindow {{
+    id: popupHost
     width: 1280
     height: 800
     visible: false
+    property var injectedStatus: baseTopViewStatus
+    property var injectedActions: baseTopViewActions
+    property var injectedLegality: actionLegality
 
     BaseTopViewSettingsPopup {{
         visible: true
+        baseTopViewStatus: popupHost.injectedStatus
+        baseTopViewActions: popupHost.injectedActions
+        actionLegality: popupHost.injectedLegality
     }}
 }}
 '''.encode(),

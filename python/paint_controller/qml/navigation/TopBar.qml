@@ -6,6 +6,8 @@ import "../theme"
 
 Rectangle {
     id: topBar
+    required property var qtBridge
+    required property var warningHandler
     height: CommonStyle.shellTopBarHeight
     color: CommonStyle.chromeBackground
     z: 1  // Ensure top bar is above the StackView
@@ -35,7 +37,7 @@ Rectangle {
         
         // App message with improved typography
         Text {
-            text: qtBridge.display_message || ""
+            text: topBar.qtBridge.display_message || ""
             color: CommonStyle.textPrimary
             font.family: CommonStyle.fontSans
             font.pixelSize: CommonStyle.shellMessageFont
@@ -62,8 +64,8 @@ Rectangle {
                 }
                 
                 Text {
-                    text: "Warnings (" + warningHandler.warnings.length + ")"
-                    color: warningHandler.warnings.length === 0 ? CommonStyle.textStrong : CommonStyle.textPrimary
+                    text: "Warnings (" + topBar.warningHandler.warnings.length + ")"
+                    color: topBar.warningHandler.warnings.length === 0 ? CommonStyle.textStrong : CommonStyle.textPrimary
                     font.family: CommonStyle.fontSans
                     font.pixelSize: CommonStyle.shellWarningFont
                     font.weight: Font.Medium
@@ -72,7 +74,7 @@ Rectangle {
             }
             
             background: Rectangle {
-                color: warningHandler.warnings.length === 0 ? CommonStyle.sidebarButtonSelected : CommonStyle.buttonDanger
+                color: topBar.warningHandler.warnings.length === 0 ? CommonStyle.sidebarButtonSelected : CommonStyle.buttonDanger
                 radius: CommonStyle.shellControlHeightMd / 2
                 
                 // Add subtle gradient
@@ -167,7 +169,7 @@ Rectangle {
                 
                 ListView {
                     id: listView
-                    model: warningHandler.warnings
+                    model: topBar.warningHandler.warnings
                     spacing: CommonStyle.spacingMd
                     boundsBehavior: Flickable.StopAtBounds
                     width: parent.width
@@ -221,10 +223,10 @@ Rectangle {
                                 }
                                 
                                 onClicked: {
-                                    if(warningHandler.warnings.length == 1) {
+                                    if(topBar.warningHandler.warnings.length == 1) {
                                         warningPopup.close()
                                     }
-                                    warningHandler.remove_warning(index)
+                                    topBar.warningHandler.remove_warning(index)
                                 }
                             }
                         }
@@ -258,7 +260,7 @@ Rectangle {
                     }
                     
                     onClicked: {
-                        warningHandler.clear()
+                        topBar.warningHandler.clear()
                         warningPopup.close()
                     }
                 }

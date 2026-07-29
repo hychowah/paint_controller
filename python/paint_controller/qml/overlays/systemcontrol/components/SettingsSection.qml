@@ -9,6 +9,7 @@ Rectangle {
     
     // Properties
     required property string title
+    required property var settingsManager
     property string description: ""
     property string sectionId: ""  // Unique ID for state persistence
     property bool expanded: true
@@ -19,15 +20,15 @@ Rectangle {
     
     // Load persisted state on component completion
     Component.onCompleted: {
-        if (sectionId !== "" && typeof settingsManager !== "undefined" && settingsManager) {
-            expanded = settingsManager.getSectionExpanded(sectionId)
+        if (sectionId !== "" && settingsSection.settingsManager) {
+            expanded = settingsSection.settingsManager.getSectionExpanded(sectionId)
         }
     }
     
     // Save state when expanded changes
     onExpandedChanged: {
-        if (sectionId !== "" && typeof settingsManager !== "undefined" && settingsManager) {
-            settingsManager.setSectionExpanded(sectionId, expanded)
+        if (sectionId !== "" && settingsSection.settingsManager) {
+            settingsSection.settingsManager.setSectionExpanded(sectionId, expanded)
         }
     }
     

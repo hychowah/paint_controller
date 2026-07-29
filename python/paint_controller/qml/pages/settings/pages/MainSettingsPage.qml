@@ -5,6 +5,8 @@ import "../components"
 
 ScrollView {
     id: root
+    required property var settingsManager
+    property var qtBridge
     contentWidth: availableWidth
     clip: true
     
@@ -16,7 +18,7 @@ ScrollView {
     property string armSubtitle: "Arm presets and end-effector settings"
 
     function refreshSummaries() {
-        if (!settingsManager) {
+        if (!root.settingsManager) {
             winchSubtitle = "Max speed settings"
             wheelsSubtitle = "Wheel speed and travel settings"
             cameraSubtitle = "Base-top calibration and camera settings"
@@ -24,10 +26,10 @@ ScrollView {
             return
         }
 
-        winchSubtitle = settingsManager.getRouteSummary("winch")
-        wheelsSubtitle = settingsManager.getRouteSummary("wheels")
-        cameraSubtitle = settingsManager.getRouteSummary("camera")
-        armSubtitle = settingsManager.getRouteSummary("arm")
+        winchSubtitle = root.settingsManager.getRouteSummary("winch")
+        wheelsSubtitle = root.settingsManager.getRouteSummary("wheels")
+        cameraSubtitle = root.settingsManager.getRouteSummary("camera")
+        armSubtitle = root.settingsManager.getRouteSummary("arm")
     }
     
     ColumnLayout {
@@ -90,8 +92,8 @@ ScrollView {
             subtitle: "Test multi-screen display support"
             
             onClicked: {
-                if (qtBridge) {
-                    qtBridge.toggle_multiscreen_window()
+                if (root.qtBridge) {
+                    root.qtBridge.toggle_multiscreen_window()
                 }
             }
         }
@@ -104,7 +106,7 @@ ScrollView {
     }
 
     Connections {
-        target: settingsManager
+        target: root.settingsManager
 
         function onSetting_changed(key, value) {
             root.refreshSummaries()

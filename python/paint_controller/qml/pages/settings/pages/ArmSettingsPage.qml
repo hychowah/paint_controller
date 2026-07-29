@@ -5,6 +5,8 @@ import "../components"
 
 ScrollView {
     id: root
+    required property var settingsManager
+    property var qtBridge
     contentWidth: availableWidth
     clip: true
 
@@ -32,6 +34,8 @@ ScrollView {
         }
 
         ManagedSettingSpinBox {
+
+            settingsManager: root.settingsManager
             title: "Retract Length"
             subtitle: "Persisted preset for arm retracted position"
             settingKey: "arm_retract_length"
@@ -40,6 +44,8 @@ ScrollView {
         }
 
         ManagedSettingSpinBox {
+
+            settingsManager: root.settingsManager
             title: "Extend Length"
             subtitle: "Persisted preset for arm extended position"
             settingKey: "arm_extend_length"
@@ -52,18 +58,24 @@ ScrollView {
         }
 
         ManagedSettingSpinBox {
+
+            settingsManager: root.settingsManager
             title: "Thrust Force"
             subtitle: "Persisted and live-applied thrust force target"
             settingKey: "thrust_force"
         }
 
         ManagedSettingSpinBox {
+
+            settingsManager: root.settingsManager
             title: "Thrust Ramp Rate"
             subtitle: "How quickly thrust force ramps toward target"
             settingKey: "thrust_ramp_rate"
         }
 
         ManagedSettingSpinBox {
+
+            settingsManager: root.settingsManager
             title: "Valve Turn Maximum"
             subtitle: "Maximum valve turn value for live operation"
             settingKey: "valve_turn_max"

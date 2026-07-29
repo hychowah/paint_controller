@@ -10,7 +10,7 @@ Rectangle {
     radius: 12
 
     required property var winchStatus
-    property var winchActions
+    required property var winchActions
     property color primaryColor: "#2196F3"
     property color dangerColor: "#F44336"
     property color disabledColor: "#BDBDBD"

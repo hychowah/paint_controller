@@ -12,6 +12,8 @@ Rectangle {
     required property var wheelStatus
     required property var winchStatus
     required property var teensyStatus
+    required property var winchActions
+    required property var teensyActions
     Layout.fillWidth: true
     Layout.fillHeight: true
     color: "#9F9F9F"
@@ -72,7 +74,7 @@ Rectangle {
                                 onToggled: {
                                     // No revert needed: the switch never self-assigns,
                                     // so a rejected request leaves the binding intact.
-                                    winchActions.setEnabled(checked)
+                                    page3Rect.winchActions.setEnabled(checked)
                                 }
                         }
                     }
@@ -141,6 +143,7 @@ Rectangle {
             Layout.preferredWidth: parent.width / 2
             Layout.fillHeight: true
             teensyStatus: page3Rect.teensyStatus
+            teensyActions: page3Rect.teensyActions
         }
 
         // Wheel Status - now using the separate component  

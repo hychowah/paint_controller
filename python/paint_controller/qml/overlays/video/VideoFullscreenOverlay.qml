@@ -13,6 +13,10 @@ Item {
     required property var teensyStatus
     required property var valveStatus
     required property var lidarStatus
+    required property var overlayController
+    required property var baseTopViewStatus
+    required property var baseTopViewActions
+    required property var actionLegality
 
     VideoFullscreenWorkspace {
         anchors.fill: parent
@@ -25,5 +29,9 @@ Item {
         teensyStatus: root.teensyStatus
         valveStatus: root.valveStatus
         lidarStatus: root.lidarStatus
+        overlayController: root.overlayController
+        baseTopViewStatus: root.baseTopViewStatus
+        baseTopViewActions: root.baseTopViewActions
+        actionLegality: root.actionLegality
     }
 }

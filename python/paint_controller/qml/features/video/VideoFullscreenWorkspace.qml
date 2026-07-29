@@ -16,6 +16,10 @@ Rectangle {
     required property var teensyStatus
     required property var valveStatus
     required property var lidarStatus
+    required property var overlayController
+    required property var baseTopViewStatus
+    required property var baseTopViewActions
+    required property var actionLegality
 
     readonly property int panelWidth: CommonStyle.videoControlPanelWidth
     readonly property int panelHeight: CommonStyle.videoControlPanelHeight
@@ -69,7 +73,7 @@ Rectangle {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: overlayController.toggle_system_menu()
+            onClicked: root.overlayController.toggle_system_menu()
             onPressed: systemMenuButton.scale = 0.92
             onReleased: systemMenuButton.scale = 1.0
             onCanceled: systemMenuButton.scale = 1.0
@@ -173,6 +177,9 @@ Rectangle {
             workflowRunner: root.workflowServices.workflowRunner
             videoRuntime: root.videoRuntime
             wheelStatus: root.wheelStatus
+            baseTopViewStatus: root.baseTopViewStatus
+            baseTopViewActions: root.baseTopViewActions
+            actionLegality: root.actionLegality
         }
     }
 
@@ -188,7 +195,7 @@ Rectangle {
         controlModeDisplay: root.videoRuntime.controls.leftModeDisplay
         controlValue: root.videoRuntime.controls.leftValue
         title: "LEFT CONTROL"
-        onPanelClicked: overlayController.open_menu("left")
+        onPanelClicked: root.overlayController.open_menu("left")
     }
 
     ControlInfoPanel {
@@ -203,7 +210,7 @@ Rectangle {
         controlModeDisplay: root.videoRuntime.controls.rightModeDisplay
         controlValue: root.videoRuntime.controls.rightValue
         title: "RIGHT CONTROL"
-        onPanelClicked: overlayController.open_menu("right")
+        onPanelClicked: root.overlayController.open_menu("right")
     }
 
     Rectangle {

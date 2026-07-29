@@ -21,13 +21,13 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 | Rank | ID | Why |
 |---|---|---|
-| 1 | **TD-048** | QML injection depth: *Actions / legality / settings via `required property` |
-| 2 | **TD-050** | Late-injection / finalize-ports hygiene (public API only) |
-| 3 | **TD-049** | Shared device ports beyond the workflow island |
-| 4 | **TD-042 / TD-043 / TD-051 / TD-041** | Hygiene (tests, dead state, cleanup inventory, docs) |
+| 1 | **TD-050** | Late-injection / finalize-ports hygiene (public API only) |
+| 2 | **TD-049** | Shared device ports beyond the workflow island |
+| 3 | **TD-042 / TD-043 / TD-051 / TD-041** | Hygiene (tests, dead state, cleanup inventory, docs) |
 | — | **TD-052 / TD-053** | When touching tuning/commands or dual-surface overlays |
 | — | **TD-002 / TD-016** | Opportunistic chrome only; out of pure program track |
 | — | **TD-040 residual** | Optional: `video_stream` / `base_top_view_service` pyright include (deferred 2026-07-29) |
+| — | **TD-048** | Resolved 2026-07-29 (page/feature inject for actions/legality/settings/chrome) |
 | — | **TD-044 / TD-045 / TD-040** | Resolved 2026-07-29 (CI control plane) |
 | — | **TD-047** | Resolved 2026-07-28 (façade demirror + wiring/composer ports) |
 | — | **TD-046** | Resolved 2026-07-28 (docs + winch/wheel teleop extract; residual EF stick mass) |
@@ -37,23 +37,6 @@ When the goal is **software architecture toward a professional Qt program** (not
 ---
 
 ## Active Debt
-
-### TD-048 — QML feature/page injection depth incomplete (status yes, commands ambient)
-**Area**: QML ↔ Python contract
-**Priority**: medium
-**Effort**: medium (page/feature slices)
-**Architecture leverage**: high
-**Partial (2026-07-29 slice A)**: `PageWheel` now `required` injects `wheelStatus` + `wheelActions` + `videoRuntime`; Main wires all three; smoke harness injects; PageWheel quarantine cleared. Root bag still 26 names (inject-first).
-**Why it matters**: TD-032 froze the root bag (~26 names) and started **status** injection via `required property`. Write/legality/settings/chrome still largely ambient. Feature roots can look bounded while leaves bypass them.
-**What to do next** (inject-first, retire-last — do **not** shrink `_EXPECTED_CONTEXT_PROPERTY_NAMES` until last consumer dies):
-1. **B**: PageWinch promote `winchActions` to `required` (+ children)
-2. **C (highest leverage)**: SystemControlWorkspace + DeviceControlTab: *Actions + `actionLegality`; dual-surface Main + MultiScreen
-3. **D/E**: PageTuning inject; PageStatus command leftovers
-4. **F/G/H**: Settings `settingsManager` threading; video base-top write path; chrome optional
-**Acceptance**: Touched families use `required property` for domain write/legality deps; dual surfaces lockstep for feature roots; smoke inject path; freeze intact.
-**Files**: `qml/core/MainWindow.qml`, `qml/overlays/MultiScreenListUI.qml`, `qml/features/**`, `qml/pages/**`, `DeviceControlTab.qml`, startup smoke fixtures
-
----
 
 ### TD-049 — Device ports exist only for workflow; teleop/actions/safety bypass them
 **Area**: Backend / modularity

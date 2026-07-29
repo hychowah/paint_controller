@@ -9,6 +9,7 @@ Rectangle {
     id: teensyStatusRect
     objectName: "teensyStatus"
     required property var teensyStatus
+    required property var teensyActions
     color: "#FFFFFF"
     radius: 10
 
@@ -37,14 +38,14 @@ Rectangle {
 
             TouchSwitch {
                 checked: teensyStatusRect.teensyStatus.enabled
-                onToggled: teensyActions.requestTeensyEnabled(checked)
+                onToggled: teensyStatusRect.teensyActions.requestTeensyEnabled(checked)
             }
 
             Label { text: "Relay:"; font.bold: true }
 
             TouchSwitch {
                 checked: teensyStatusRect.teensyStatus.relayOn
-                onToggled: teensyActions.requestTeensyRelayEnabled(checked)
+                onToggled: teensyStatusRect.teensyActions.requestTeensyRelayEnabled(checked)
             }
         }
 

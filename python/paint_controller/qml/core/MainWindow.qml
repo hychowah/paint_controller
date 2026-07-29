@@ -38,7 +38,19 @@ ApplicationWindow {
     property var wheelStatusModel: wheelStatus
     property var wheelActionsModel: wheelActions
     property var winchStatusModel: winchStatus
+    property var winchActionsModel: winchActions
     property var teensyStatusModel: teensyStatus
+    property var teensyActionsModel: teensyActions
+    property var recordingActionsModel: recordingActions
+    property var systemActionsModel: systemActions
+    property var actionLegalityModel: actionLegality
+    property var tuningActionsModel: tuningActions
+    property var settingsManagerModel: settingsManager
+    property var baseTopViewStatusModel: baseTopViewStatus
+    property var baseTopViewActionsModel: baseTopViewActions
+    property var overlayControllerModel: overlayController
+    property var qtBridgeModel: qtBridge
+    property var warningHandlerModel: warningHandler
     property var valveStatusModel: valveStatus
     property var lidarStatusModel: lidarStatus
     property var shellConnectivityStatusModel: shellConnectivityStatus
@@ -118,11 +130,11 @@ ApplicationWindow {
     }
 
     // Controller bindings
-    property bool showOverlay: overlayController.show_overlay
-    property int leftSelectedIndex: overlayController.left_selected_index
-    property int rightSelectedIndex: overlayController.right_selected_index
-    property string activeMenu: overlayController.active_menu
-    property var controlOptions: overlayController.control_options
+    property bool showOverlay: overlayControllerModel ? overlayControllerModel.show_overlay : false
+    property int leftSelectedIndex: overlayControllerModel ? overlayControllerModel.left_selected_index : 0
+    property int rightSelectedIndex: overlayControllerModel ? overlayControllerModel.right_selected_index : 0
+    property string activeMenu: overlayControllerModel ? overlayControllerModel.active_menu : ""
+    property var controlOptions: overlayControllerModel ? overlayControllerModel.control_options : []
     property bool showLeftMenu: showOverlay && activeMenu === "left"
     property bool showRightMenu: showOverlay && activeMenu === "right"
     property bool showPowerMenu: showOverlay && activeMenu === "power"
@@ -183,6 +195,8 @@ ApplicationWindow {
                             
                             TopBar {
                                 Layout.fillWidth: true
+                                qtBridge: mainWindow.qtBridgeModel
+                                warningHandler: mainWindow.warningHandlerModel
                             }
                             
                             Item {
@@ -268,6 +282,7 @@ ApplicationWindow {
         id: winchPageComponent
         PageWinch {
             winchStatus: mainWindow.winchStatusModel
+            winchActions: mainWindow.winchActionsModel
         }
     }
     
@@ -277,12 +292,18 @@ ApplicationWindow {
             wheelStatus: mainWindow.wheelStatusModel
             winchStatus: mainWindow.winchStatusModel
             teensyStatus: mainWindow.teensyStatusModel
+            winchActions: mainWindow.winchActionsModel
+            teensyActions: mainWindow.teensyActionsModel
         }
     }
 
     Component {
         id: tuningPageComponent
-        PageTuning {}
+        PageTuning {
+            teensyStatus: mainWindow.teensyStatusModel
+            tuningActions: mainWindow.tuningActionsModel
+            qtBridge: mainWindow.qtBridgeModel
+        }
     }
 
     Component {
@@ -295,7 +316,10 @@ ApplicationWindow {
 
     Component {
         id: settingsPageComponent
-        PageSettings {}
+        PageSettings {
+            settingsManager: mainWindow.settingsManagerModel
+            qtBridge: mainWindow.qtBridgeModel
+        }
     }
 
     SystemControlWorkspace {
@@ -303,13 +327,21 @@ ApplicationWindow {
         id: systemControlMenu
         objectName: "systemControlMenuMain"
         z: overlayHost ? overlayHost.system_control_layer : 1001
-        showOverlay: overlayController.show_overlay
-        activeMenu: overlayController.active_menu
+        showOverlay: mainWindow.overlayControllerModel.show_overlay
+        activeMenu: mainWindow.overlayControllerModel.active_menu
         systemControlServices: mainWindow.systemControlServicesModel
         recordingStatus: mainWindow.recordingStatusModel
         wheelStatus: mainWindow.wheelStatusModel
         winchStatus: mainWindow.winchStatusModel
         teensyStatus: mainWindow.teensyStatusModel
+        wheelActions: mainWindow.wheelActionsModel
+        winchActions: mainWindow.winchActionsModel
+        teensyActions: mainWindow.teensyActionsModel
+        recordingActions: mainWindow.recordingActionsModel
+        systemActions: mainWindow.systemActionsModel
+        actionLegality: mainWindow.actionLegalityModel
+        settingsManager: mainWindow.settingsManagerModel
+        overlayController: mainWindow.overlayControllerModel
         visible: showSystemControlOnMainSurface
     }
 
@@ -322,11 +354,12 @@ ApplicationWindow {
         id: joystickOverlayMain
         objectName: "joystickOverlayMain"
         z: overlayHost ? overlayHost.joystick_overlay_layer : 1000
-        showOverlay: overlayController.show_overlay
-        leftSelectedIndex: overlayController.left_selected_index
-        rightSelectedIndex: overlayController.right_selected_index
-        activeMenu: overlayController.active_menu
-        controlOptions: overlayController.control_options
+        showOverlay: mainWindow.overlayControllerModel.show_overlay
+        leftSelectedIndex: mainWindow.overlayControllerModel.left_selected_index
+        rightSelectedIndex: mainWindow.overlayControllerModel.right_selected_index
+        activeMenu: mainWindow.overlayControllerModel.active_menu
+        controlOptions: mainWindow.overlayControllerModel.control_options
+        overlayController: mainWindow.overlayControllerModel
         visible: showJoystickOverlayOnMainSurface
     }
 
@@ -336,6 +369,7 @@ ApplicationWindow {
         objectName: "emergencyOverlayMain"
         anchors.fill: parent
         z: overlayHost ? overlayHost.emergency_overlay_layer : 3000
+        qtBridge: mainWindow.qtBridgeModel
         visible: showEmergencyOverlayOnMainSurface
     }
 
@@ -354,6 +388,10 @@ ApplicationWindow {
         teensyStatus: mainWindow.teensyStatusModel
         valveStatus: mainWindow.valveStatusModel
         lidarStatus: mainWindow.lidarStatusModel
+        overlayController: mainWindow.overlayControllerModel
+        baseTopViewStatus: mainWindow.baseTopViewStatusModel
+        baseTopViewActions: mainWindow.baseTopViewActionsModel
+        actionLegality: mainWindow.actionLegalityModel
     }
 
     // LiDAR 3D View
@@ -371,7 +409,7 @@ ApplicationWindow {
 
     // Bridge signals from Python backend to QML UI elements
     Connections {
-        target: qtBridge
+        target: mainWindow.qtBridgeModel
 
         function onShowPopupRequested(title, message, popupType, delay) {
             messagePopup.messageTitle = title

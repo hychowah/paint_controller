@@ -10,6 +10,9 @@ Rectangle {
     required property var workflowRunner
     required property var videoRuntime
     required property var wheelStatus
+    required property var baseTopViewStatus
+    required property var baseTopViewActions
+    required property var actionLegality
 
     readonly property int panelWidth: CommonStyle.panelWidth
     readonly property int panelHeight: CommonStyle.panelHeight
@@ -307,7 +310,7 @@ Rectangle {
         // Tap to open settings (only when not in edit mode)
         MouseArea {
             anchors.fill: parent
-            enabled: !baseTopViewStatus.editMode
+            enabled: !overlay.baseTopViewStatus.editMode
             cursorShape: Qt.PointingHandCursor
             onClicked: baseTopViewSettingsPopup.open()
         }
@@ -316,11 +319,14 @@ Rectangle {
     // Base Top View Settings Popup
     BaseTopViewSettingsPopup {
         id: baseTopViewSettingsPopup
+        baseTopViewStatus: overlay.baseTopViewStatus
+        baseTopViewActions: overlay.baseTopViewActions
+        actionLegality: overlay.actionLegality
     }
     
     // Connections to refresh base top view when new frame is ready
     Connections {
-        target: baseTopViewStatus
+        target: overlay.baseTopViewStatus
         function onFrameReady() {
             baseTopViewDisplay.source = ""
             baseTopViewDisplay.source = "image://base_top_view/frame"

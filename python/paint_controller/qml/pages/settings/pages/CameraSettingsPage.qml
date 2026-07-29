@@ -5,6 +5,8 @@ import "../components"
 
 ScrollView {
     id: root
+    required property var settingsManager
+    property var qtBridge
     contentWidth: availableWidth
     clip: true
 
@@ -12,12 +14,12 @@ ScrollView {
     property string calibrationSubtitle: "The truthful camera calibration surface currently lives in the video overlay settings popup."
 
     function refreshSummary() {
-        if (!settingsManager) {
+        if (!root.settingsManager) {
             calibrationSubtitle = "The truthful camera calibration surface currently lives in the video overlay settings popup."
             return
         }
 
-        calibrationSubtitle = settingsManager.getCameraCalibrationSummary()
+        calibrationSubtitle = root.settingsManager.getCameraCalibrationSummary()
     }
     
     
@@ -51,7 +53,7 @@ ScrollView {
     }
 
     Connections {
-        target: settingsManager
+        target: root.settingsManager
 
         function onSetting_changed(key, value) {
             root.refreshSummary()
