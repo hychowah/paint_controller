@@ -83,3 +83,39 @@ def test_cleanup_is_idempotent_and_destroys_publisher_once(monkeypatch):
 
     assert len(node.destroyed_publishers) == 1
     assert len(node.destroyed_timers) == 1
+
+
+def test_ros_thread_pumps_command_bus_before_spin(monkeypatch, qt_core_app):
+    """TD-054: RosThread drains the command bus on each loop and on exit."""
+    import time
+
+    import rclpy
+
+    from paint_controller.core.ros_io import ImmediatePumpBus, RosCommandBus, TrafficKind
+
+    # ImmediatePump would double-publish if used here; use deferred bus.
+    bus = RosCommandBus()
+    raw = FakePublisher()
+    handle = bus.bind(raw, kind=TrafficKind.ONESHOT)
+    handle.publish("cmd")
+
+    mod = _ros_node_module(monkeypatch)
+    node = mod.PaintRosNode(state_store=FakeStateStore(HeartbeatStatus.IDLE.value))
+    thread = mod.RosThread(node, command_bus=bus)
+
+    spin_calls = {"n": 0}
+
+    def fake_spin_once(_node, timeout_sec=0.05):
+        spin_calls["n"] += 1
+        # After first spin iteration, bus should already have been pumped.
+        if spin_calls["n"] == 1:
+            assert raw.published_messages == ["cmd"]
+        thread.request_shutdown()
+
+    monkeypatch.setattr(rclpy, "ok", lambda: True)
+    monkeypatch.setattr(rclpy, "spin_once", fake_spin_once)
+
+    thread.start()
+    assert thread.wait(2000)
+    assert spin_calls["n"] >= 1
+    assert raw.published_messages == ["cmd"]

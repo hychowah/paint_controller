@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 from threading import Lock
+from typing import TYPE_CHECKING
 
 import rclpy
 from PySide6.QtCore import QThread, Signal
@@ -12,6 +13,9 @@ from std_msgs.msg import UInt8
 
 from paint_controller.core.state_store import StateStore
 from paint_controller.utils.constants import HeartbeatStatus
+
+if TYPE_CHECKING:
+    from paint_controller.core.ros_io import RosCommandBus
 
 
 class PaintRosNode(Node):
@@ -48,15 +52,21 @@ class PaintRosNode(Node):
 
 
 class RosThread(QThread):
-    """Isolated thread for running the ROS event loop with thread-safe shutdown."""
+    """Isolated thread for running the ROS event loop with thread-safe shutdown.
+
+    TD-054: when a :class:`RosCommandBus` is provided, each loop iteration
+    ``pump()``s pending command publishes before ``spin_once``. Final pump
+    runs on exit so stop commands are not stranded.
+    """
 
     error_occurred = Signal(str)
     node_started = Signal()
     node_stopped = Signal()
 
-    def __init__(self, node: Node):
+    def __init__(self, node: Node, command_bus: RosCommandBus | None = None):
         super().__init__()
         self.node = node
+        self._command_bus = command_bus
         self._running = False
         self._shutdown_requested = False
         self._lock = Lock()
@@ -78,18 +88,34 @@ class RosThread(QThread):
                     continue
 
                 try:
+                    self._pump_command_bus()
                     rclpy.spin_once(self.node, timeout_sec=0.05)
                 except Exception as spin_error:
                     self.error_occurred.emit(f"ROS spin error (likely network): {spin_error}")
                     time.sleep(0.1)
 
+            # Final drain after shutdown requested (before join returns).
+            self._pump_command_bus()
             self._cleanup()
         except Exception as error:
             self.error_occurred.emit(f"Critical ROS thread error: {error}")
+            try:
+                self._pump_command_bus()
+            except Exception:
+                pass
             self._cleanup()
         finally:
             self._running = False
             self.node_stopped.emit()
+
+    def _pump_command_bus(self) -> None:
+        bus = self._command_bus
+        if bus is None:
+            return
+        try:
+            bus.pump()
+        except Exception as pump_error:
+            self.error_occurred.emit(f"ROS command bus pump error: {pump_error}")
 
     def request_shutdown(self) -> None:
         with self._lock:

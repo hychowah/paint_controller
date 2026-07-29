@@ -15,6 +15,7 @@ from PySide6.QtWidgets import QApplication
 from paint_controller.core import qml_context_composer
 from paint_controller.core.config import RuntimeDefaults
 from paint_controller.core.qml_context_composer import QmlComposePorts, QmlContextComposer
+from paint_controller.core.ros_io import RosCommandBus
 from paint_controller.core.ros_node import RosThread
 from paint_controller.core.settings import SettingsManager
 from paint_controller.core.signal_wiring import SignalWiring, SignalWiringPorts
@@ -86,6 +87,7 @@ class AppRuntime:
         self.steam_deck_handler: SteamDeckHandler | None = None
         self.video_stream_handler: VideoStreamHandler | None = None
         self.base_top_view_service: BaseTopViewService | None = None
+        self.command_bus: RosCommandBus | None = None
         self.ros_thread: RosThread | None = None
         self.engine: QQmlApplicationEngine | None = None
         self.qt_bridge = None
@@ -131,7 +133,9 @@ class AppRuntime:
         self._log_startup("Steam Deck handler started")
 
         assert self.node is not None
-        self.ros_thread = RosThread(self.node)
+        # TD-054: command bus drained only on RosThread (controllers bind in later slices).
+        self.command_bus = RosCommandBus()
+        self.ros_thread = RosThread(self.node, command_bus=self.command_bus)
         self.ros_thread.start()
         self._log_startup("ROS thread started")
 
@@ -218,6 +222,7 @@ class AppRuntime:
             base_top_view_service=self.base_top_view_service,
             show_popup_fn=self.qt_bridge.show_popup,
             close_popup_fn=self.qt_bridge.close_popup,
+            command_bus=self.command_bus,
         )
         self._log_startup("Controller bundle created")
 
@@ -363,6 +368,9 @@ class AppRuntime:
             self.engine = None
 
         try:
+            # TD-054: reject new command enqueues; RosThread final pump drains pending.
+            if self.command_bus is not None:
+                self.command_bus.close()
             if self.ros_thread is not None:
                 self.ros_thread.request_shutdown()
                 if not self.ros_thread.wait(2000):

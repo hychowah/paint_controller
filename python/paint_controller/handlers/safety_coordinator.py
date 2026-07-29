@@ -1,8 +1,13 @@
-"""Shared halt-all safety path for emergency and comms-loss conditions."""
+"""Shared halt-all safety path for emergency and comms-loss conditions.
+
+TD-054: also owns the continuous-motion latch. After any ``halt_all_effectors``,
+stick teleop must not re-command until ``clear_error_state``. Optional
+``command_bus.invalidate_continuous`` drops stale teleop publishes.
+"""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from paint_controller.ports.halt import SupportsValveHalt, SupportsWheelHalt, SupportsWinchHalt
 from paint_controller.ports.teensy import SupportsTeensyHalt
@@ -19,7 +24,7 @@ class LoggerProtocol(Protocol):
 
 
 class SafetyCoordinator:
-    """Coordinates halt-all behavior across safety-trigger paths."""
+    """Coordinates halt-all behavior and continuous-motion latch (TD-054)."""
 
     def __init__(
         self,
@@ -30,6 +35,7 @@ class SafetyCoordinator:
         esp32_valve: SupportsValveHalt | None = None,
         state_store: StateStore | None = None,
         logger: LoggerProtocol | None = None,
+        command_bus: Any | None = None,
     ) -> None:
         self._winch = winch
         self._teensy = teensy
@@ -37,6 +43,14 @@ class SafetyCoordinator:
         self._esp32_valve = esp32_valve
         self._state_store = state_store
         self._logger = logger
+        self._command_bus = command_bus
+        # Fail-open until first halt; then latched until clear_error_state.
+        self._continuous_motion_allowed = True
+
+    @property
+    def continuous_motion_allowed(self) -> bool:
+        """False after halt until clear_error_state (continuous teleop / thrust)."""
+        return self._continuous_motion_allowed
 
     def _set_runtime_state(self, heartbeat_state: int | HeartbeatStatus, *, force: bool = False) -> None:
         if self._state_store is None:
@@ -54,6 +68,7 @@ class SafetyCoordinator:
         self._state_store.controller_heartbeat_state = int(new_state)
 
     def clear_error_state(self) -> None:
+        self._continuous_motion_allowed = True
         self._set_runtime_state(HeartbeatStatus.IDLE, force=True)
 
     def halt_all_effectors(
@@ -62,6 +77,15 @@ class SafetyCoordinator:
         *,
         heartbeat_state: int | HeartbeatStatus = HeartbeatStatus.ERROR,
     ) -> None:
+        # Latch first so the next teleop tick cannot re-drive before stops publish.
+        self._continuous_motion_allowed = False
+        if self._command_bus is not None:
+            try:
+                self._command_bus.invalidate_continuous()
+            except Exception as exc:
+                if self._logger is not None:
+                    self._logger.error(f"command bus invalidate failed during halt: {exc}")
+
         self._set_runtime_state(heartbeat_state)
 
         failures: list[str] = []
@@ -75,6 +99,9 @@ class SafetyCoordinator:
         try:
             if self._teensy is not None:
                 self._teensy.setSprayTrigger(1000)
+                suppress = getattr(self._teensy, "suppress_continuous_thrust", None)
+                if callable(suppress):
+                    suppress()
         except Exception as exc:
             failures.append(f"teensy: {exc}")
 

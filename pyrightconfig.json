@@ -22,6 +22,7 @@
     "python/paint_controller/core/controller_factory.py",
     "python/paint_controller/core/qt_bridge.py",
     "python/paint_controller/core/qml_context_composer.py",
+    "python/paint_controller/core/ros_io.py",
     "python/paint_controller/core/ros_node.py",
     "python/paint_controller/core/signal_wiring.py",
     "python/paint_controller/core/settings.py",

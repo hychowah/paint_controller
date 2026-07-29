@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
+from typing import TYPE_CHECKING, Any
 
 from paint_interfaces.msg import MoveVehiclePos, MoveVehicleSpd, VehicleStatus
 from PySide6.QtCore import Property, Signal, Slot
@@ -11,6 +12,9 @@ from rclpy.node import Node
 from std_msgs.msg import Bool
 
 from paint_controller.controllers._base import RosStatusController
+
+if TYPE_CHECKING:
+    from paint_controller.core.ros_io import RosCommandBus
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +39,9 @@ class WheelController(RosStatusController):
     # Error signal for emergency overlay (has_error: bool, message: str)
     error_state_changed = Signal(bool, str)
 
-    def __init__(self, node: Node) -> None:
+    def __init__(self, node: Node, command_bus: RosCommandBus | None = None) -> None:
         super().__init__(node)
+        self._command_bus = command_bus
 
         # Initialize property values
         self._left_wheel_speed = 0.0
@@ -71,12 +76,27 @@ class WheelController(RosStatusController):
         # Create availability check timer
         self._start_availability_timer()
 
+    def _bind_cmd(self, publisher: Any, *, continuous: bool = False) -> Any:
+        """TD-054: wrap command publishers; call sites keep ``.publish(msg)``."""
+        bus = self._command_bus
+        if bus is None:
+            return publisher
+        from paint_controller.core.ros_io import TrafficKind
+
+        kind = TrafficKind.CONTINUOUS if continuous else TrafficKind.ONESHOT
+        return bus.bind(publisher, kind=kind)
+
     def _setup_publishers(self) -> None:
         """Setup ROS publishers for vehicle control"""
-        self._speed_cmd_pub = self._node.create_publisher(MoveVehicleSpd, "vehicle/speed/cmd", 1)
-        self._pos_cmd_pub = self._node.create_publisher(MoveVehiclePos, "vehicle/position/cmd", 1)
-        self._disable_pub = self._node.create_publisher(Bool, "wheel/disable/cmd", 1)
-        self._set_zero_pub = self._node.create_publisher(Bool, "wheel/set_zero/cmd", 1)
+        self._speed_cmd_pub = self._bind_cmd(
+            self._node.create_publisher(MoveVehicleSpd, "vehicle/speed/cmd", 1),
+            continuous=True,
+        )
+        self._pos_cmd_pub = self._bind_cmd(
+            self._node.create_publisher(MoveVehiclePos, "vehicle/position/cmd", 1)
+        )
+        self._disable_pub = self._bind_cmd(self._node.create_publisher(Bool, "wheel/disable/cmd", 1))
+        self._set_zero_pub = self._bind_cmd(self._node.create_publisher(Bool, "wheel/set_zero/cmd", 1))
 
     def _setup_subscribers(self) -> None:
         """Setup ROS subscribers for vehicle status"""

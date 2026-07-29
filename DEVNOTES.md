@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-07-29 - TD-054 resolved (RosCommandBus + motion latch)
+
+**Goal**: Sole ROS command publish affinity on RosThread; fail-closed continuous teleop after halt.
+**Tried**: Option A2 `RosCommandBus` (continuous last-wins + oneshot); bind wheel/winch/teensy at construct; `SafetyCoordinator.continuous_motion_allowed` + `invalidate_continuous` + teensy `suppress_continuous_thrust`; status tick e-stop before teleop.
+**Result**: ✅ Full suite **477 passed**. TD-054 → Resolved. Next integrity: **TD-056**. Residuals: workflow-after-halt, dual heartbeat pub, pre-existing `ef_yaw_control_pub` never created in Teensy setup (unrelated).
+**Files**: `core/ros_io.py`, `ros_node.py`, `app_runtime.py`, `controller_factory.py`, `signal_wiring.py`, wheel/winch/teensy, safety_coordinator, control_processor, tests, ARCHITECTURE §8, tech-debt, progress board
+
+---
 ### 2026-07-29 - TD-048 resolved (full inject-first)
 
 **Goal**: Finish QML injection depth — *Actions/legality/settings/chrome via `required property` on pages/features.

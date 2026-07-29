@@ -9,9 +9,9 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 
 **Architecture leverage** (optional tag on items): how much a fix improves FE↔BE program structure when doing architecture work, independent of ship-blocking urgency.
 
-Last multi-perspective re-validation: **2026-07-28** (deep software-only pass: composition/DI, QML contract injection, QML modules/kit, ports/domain modularity, test/CI control plane). Industrial HMI and operator-UX product work are **out of scope** for this tracker update. Prior 2026-07-27/28 program diagnoses reconfirmed; new TDs **048–053** added from evidence-backed research. **2026-07-29**: added **TD-054** (concurrent ROS publish + spin); **TD-055** (layer responsibility depth / Problem 2) Wave 1+2 landed (execution plan deleted; recoverable from git history).
+Last multi-perspective re-validation: **2026-07-28** (deep software-only pass). **2026-07-29**: TD-055 Wave 1+2 landed; TD-054/056 concurrency track defined; **TD-054 resolved** (RosCommandBus Option A2 + continuous-motion latch + e-stop-before-teleop; suite 477 passed). Next integrity item: **TD-056**.
 
-**Research non-goals (do not invent debt for):** mega-`Backend` object; reopening TD-032 name-retirement mega-program; full URI QML module rewrite as a program; universal visual skin unification; HMI safety/legality ship defaults; `qmlRegisterSingletonInstance`.
+**Research non-goals (do not invent debt for):** mega-`Backend` object; reopening TD-032 name-retirement mega-program; full URI QML module rewrite as a program; universal visual skin unification; HMI safety/legality ship defaults; `qmlRegisterSingletonInstance`. Concurrency non-goals: MultiThreadedExecutor-first rewrite; UI/control process split; moving the teleop loop onto RosThread; forcing ESP32 UDP through the ROS command bus; reintroducing raw multi-thread command `publish`.
 
 ---
 
@@ -21,7 +21,8 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 | Rank | ID | Why |
 |---|---|---|
-| 1 | **TD-054** | Runtime integrity: concurrent ROS publish + spin (schedule when touching ROS/teleop, or as a dedicated slice; do not expand multi-thread publish while open) |
+| 1 | **TD-056** | ROS subscription callbacks → locked snapshot / queued main-thread update (Teensy TD-024 pattern for wheel/winch/etc.) |
+| — | **TD-054** | **Resolved 2026-07-29** — RosCommandBus + continuous-motion latch (see Resolved table) |
 | — | **TD-055** | Landed Wave 1+2; residual only (see Active Debt). Not the primary next program track. |
 | — | **TD-052 / TD-053** | When touching tuning/commands or dual-surface overlays |
 | — | **TD-002 / TD-016** | Opportunistic chrome only; out of pure program track |
@@ -32,7 +33,7 @@ When the goal is **software architecture toward a professional Qt program** (not
 | — | **TD-048** | Resolved 2026-07-29 (page/feature inject for actions/legality/settings/chrome) |
 | — | **TD-044 / TD-045 / TD-040** | Resolved 2026-07-29 (CI control plane) |
 | — | **TD-047** | Resolved 2026-07-28 (façade demirror + wiring/composer ports) |
-| — | **TD-046** | Resolved 2026-07-28 (docs + winch/wheel teleop extract; residual EF stick mass / post-halt inhibit) |
+| — | **TD-046** | Resolved 2026-07-28 (docs + winch/wheel teleop extract). **Post-halt inhibit residual moved into TD-054** (coupled acceptance). EF stick mass residual remains unscheduled. |
 | — | **TD-037** | Resolved 2026-07-28 (residual: videoRuntime multi-home only) |
 | — | **TD-038 / TD-032 / TD-036 / TD-039** | Resolved 2026-07-28 |
 
@@ -42,7 +43,7 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 ### TD-055 — Layer responsibility depth (Problem 2)
 **Area**: Backend / package boundaries / module depth  
-**Priority**: medium (maintainability / long-term structure; program track #1 for architecture)  
+**Priority**: medium (maintainability / long-term structure; residual only — integrity track is TD-054/056)  
 **Effort**: high (phased; not one PR)  
 **Architecture leverage**: high  
 **Status**: **Wave 1+2 landed** 2026-07-29 on `td-055/layer-responsibility-depth`. Execution plan deleted (git history is archive). Optional 4′/5′ rehome deferred.  
@@ -78,15 +79,27 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 ---
 
-### TD-054 — Concurrent ROS I/O on one node (publish + spin)
-**Area**: Backend / concurrency (ROS ↔ Qt)
-**Priority**: medium–high (correctness under load)
-**Effort**: medium–high
-**Architecture leverage**: medium (runtime integrity; pairs with TD-049 when migrating teleop off raw pubs)
-**Why it matters**: `RosThread` owns `rclpy.spin_once` on the single `PaintRosNode` (subscriptions + ROS-side heartbeat timer), while teleop (~60 Hz `ControlProcessor`), discrete `*Actions`, safety halt, and workflow execution publish on the **same** node from the Qt main thread and/or `WorkFlowExecutionThread`. rclpy’s Python client is not fully free-threaded for concurrent publish + spin on one node; under load this can yield intermittent drops, assert failures, or RMW instability. Related history (**TD-039**) fixed ROS *error display* and some worker races, not a single ROS I/O ownership model. Distinct from **TD-049** (port shapes) and from post-halt inhibit residual (**TD-046**).
-**What to do**: Prefer one predictable ownership model: (A) command mailbox / queue processed only on `RosThread` — main and workflow enqueue publish requests; spin thread alone calls `publish` and runs callbacks; or (B) documented MultiThreadedExecutor + callback groups with an explicit publish gate. Keep GUI/QObject updates on the Qt main thread via queued signals. Do not expand raw multi-thread `publish` from new call sites while this is open. Do not conflate with halt-latch or device-port work unless a slice intentionally couples them.
-**Acceptance**: Production publish path for at least the high-rate teleop publishers does not call `publisher.publish` from the Qt main thread (or an equivalent documented, tested gate proves exclusive access); workflow publish path uses the same rule; focused tests cover the mailbox/gate (or executor policy) and existing teleop/safety/workflow bands stay green; ARCHITECTURE concurrency section states the chosen model.
-**Files**: `python/paint_controller/core/ros_node.py`, `core/app_runtime.py`, `core/signal_wiring.py`, `handlers/control_processor.py`, controllers that `publish` from UI/timer paths, `services/workflow/*` (execution thread → hardware publish)
+### TD-056 — ROS callback → Qt telemetry marshal
+**Area**: Backend / concurrency (ROS ↔ Qt)  
+**Priority**: medium (correctness / data races; next integrity track after TD-054)  
+**Effort**: medium (device-by-device)  
+**Architecture leverage**: medium (makes `*Status` projections honest under spin-thread callbacks)  
+**Status**: **Active — promoted 2026-07-29** (was implied residual after TD-024/039; not previously a standalone TD)  
+**Depends on**: TD-054 landed (`RosCommandBus`); do not reintroduce raw multi-thread command publish.
+
+**Why it matters**: Controllers are created on the Qt main thread; subscription callbacks run under `RosThread.spin_once` and often mutate Python fields then `emit` without locks. Qt AutoConnection may queue **slots** to the main thread; it does **not** make unlocked field writes safe for concurrent readers (teleop, `*Status`, QML bindings). Teensy already uses `_status_lock` + snapshot emit (TD-024). Wheel/winch and similar paths do not fully match. Wheel motor error → safety already uses explicit `QueuedConnection` in `signal_wiring` — that is the delivery pattern to generalize, not a complete telemetry model.
+
+**What to do**:
+1. **Rule**: subscription callbacks may only (a) write a locked / POD snapshot, and (b) notify the main thread via explicit `QueuedConnection` (or main-thread pull timer). No unlocked QML-bound field mutation from the spin thread.
+2. **Order**: wheel first (safety-adjacent) → winch → remaining ROS status controllers / heartbeat mirrors as needed.
+3. Align with existing `*Status` models: main thread owns property updates when practical; fail-loud `connect_required` stays.
+4. Optional structural test or checklist comment in layer tests: no new unlocked cross-thread status writes on touched devices.
+5. Out of scope: BaseTopView scalar residual (TD-039 residual — opportunistic); GStreamer/video (mutex path already); full process split.
+
+**Acceptance**: Wheel (then winch) status paths used by UI/safety do not race unlocked fields from ROS callbacks; explicit queue or lock+snapshot documented in code; focused device + notify/safety bands green; no new raw multi-thread publish introduced.
+
+**Files**: `python/paint_controller/controllers/wheel.py`, `controllers/winch.py`, `controllers/_base.py` (if shared helpers), `controllers/teensy.py` (reference only), `handlers/heartbeat.py`, `models/*_status.py`, `core/signal_wiring.py`, corresponding tests  
+**Related**: TD-054 (publish ownership); TD-024 (Teensy template); TD-039 (partial concurrency fixes)
 
 ---
 
@@ -117,6 +130,7 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 | ID | Title | Resolved | Notes |
 |---|---|---|---|
+| TD-054 | Concurrent ROS command I/O + post-halt motion latch | 2026-07-29 | Option A2 `RosCommandBus` (continuous last-wins + oneshot; pump on RosThread); wheel/winch/teensy command pubs bound; `SafetyCoordinator.continuous_motion_allowed` latch + `invalidate_continuous` + teensy `suppress_continuous_thrust`; e-stop before teleop on status tick; tests `test_ros_io` + latch/safety/control bands; full suite 477 passed. Residual: TD-056 telemetry marshal; workflow-after-halt; dual heartbeat pub hygiene. ARCHITECTURE §8 |
 | TD-041 | Governance/doc hygiene: stale plan entries, KNOWLEDGE mis-citation | 2026-07-29 | Frozen route ownership → ShellRouter; AGENTS launch/ fixed; KNOWLEDGE singleton note accurate for this repo; progress checklist no longer offers Phase 7 |
 | TD-042 | Over-fitted test mirror and structural-selfie assertions | 2026-07-29 | Shared `assert_no_fatal_qml_warnings`; FakeShellRouter uses `DEFAULT_ROUTE_REGISTRY`; residual: large property-level smoke Fake* set (not rewritten) |
 | TD-043 | Dead/duplicated state and metadata layers | 2026-07-29 | Dead StateStore joystick/control_* surface removed; live: control_mode/display_message/heartbeat. CapabilityCatalog left (live for gate/legality) — residual size only |
@@ -128,7 +142,7 @@ When the goal is **software architecture toward a professional Qt program** (not
 | TD-045 | CI test/typecheck missing system deps | 2026-07-29 | `requirements-ci.txt` omits PyGObject/vtk (conftest stubs gi; vtk not under test). typecheck/test apt: xcb/egl/gl/hidapi. Device installs still use full `requirements.txt` |
 | TD-040 | Pyright allowlist excludes riskiest modules | 2026-07-29 | Fixed allowlist errors; strict ⊆ include; widened to full `models/`, `app_runtime`/`application`/`ros_node`, `services/workflow`. Residual exclude: `video_stream.py`, `base_top_view_service.py` (Gst/Property redeclaration noise). pyright 0 errors |
 | TD-047 | AppRuntime service-locator façades + wiring/composer whole-runtime coupling | 2026-07-28 | Slice 1: removed ~18 context-key mirrors; façades only in `_context_properties`; dead `_heartbeat_status_error` + free wrappers gone. Slice 2: `SignalWiringPorts` / `QmlComposePorts` frozen dataclasses; `SignalWiring`/`QmlContextComposer` no longer take `AppRuntime`; `start_timers()` returns timer for root ownership. Full suite green |
-| TD-046 | ControlProcessor teleop monolith; second command path undocumented | 2026-07-28 | Docs: module policy + ARCHITECTURE §7 table/do-not + AdminActionGate discrete-only note. Structure: high-state winch + wheel-travel helpers (`handlers/winch_teleop.py`, `wheel_travel_teleop.py`) behind stable `ControlProcessor` façade/`process_input` entry. Residual: EF stick modes still in façade; post-halt teleop latch is product policy (not done). Full suite green |
+| TD-046 | ControlProcessor teleop monolith; second command path undocumented | 2026-07-28 | Docs: module policy + ARCHITECTURE §7 table/do-not + AdminActionGate discrete-only note. Structure: high-state winch + wheel-travel helpers (`handlers/winch_teleop.py`, `wheel_travel_teleop.py`) behind stable `ControlProcessor` façade/`process_input` entry. Residual: EF stick modes still in façade. **Post-halt teleop latch absorbed into TD-054** (coupled acceptance, 2026-07-29). Full suite green |
 | TD-037 | Status wrapper layer: blanket notify, stringly reads, duplicated telemetry | 2026-07-28 | Device status honesty: `models.{Winch,Wheel,Teensy,Valve,Lidar}Status` with per-property or fine-grained NOTIFY + `connect_required`; composer thinned (~1191→~730 LOC); shellConnectivity rewired to `wheel.availableChanged`; QML lidar Connections retargeted off blanket `changed`. Residual: videoRuntime/topBar multi-home voltages/SSH; recording multi-home; aggregator wrappers (recording/video/baseTopView); TD-033 soft pins. Full suite green |
 | TD-038 | File-scale QML decomposition: PageWinch, EditWorkFlowTab, TeensyStatus | 2026-07-28 | A1: `WorkflowEditor.load_document`/`save_document`, no QML JSON document assembly. B: PageWinch ~1606→~213 LOC + `winch/components/*`. C: TeensyStatus ~831→~103 LOC + `status/components/teensy/*` tabs. D: workflow param forms under `systemcontrol/components/` (EditWorkFlowTab ~1027→~715). Tokens remain TD-002. Focused band green (workflow editor, winch/status smokes, qml imports) |
 | TD-032 | QML boundary retirement program: close out honestly, then stop | 2026-07-28 | Retired deviceActionHandler into teensyActions/winchActions; stateStore root → qtBridge.display_message; backend renamed qtBridge; freeze root list (26 names, no vanity 12–15); boundary program closed. 62 passed focused band |

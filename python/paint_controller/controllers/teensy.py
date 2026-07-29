@@ -15,6 +15,7 @@ from std_msgs.msg import Bool, Float32, Float32MultiArray, Int32, Int32MultiArra
 from paint_controller.controllers._base import RosStatusController
 
 if TYPE_CHECKING:
+    from paint_controller.core.ros_io import RosCommandBus
     from paint_controller.core.settings import SettingsManager
 
 
@@ -113,9 +114,11 @@ class TeensyController(RosStatusController):
         self,
         node: Node,
         settings_manager: SettingsManager | None = None,
+        command_bus: RosCommandBus | None = None,
     ) -> None:
         super().__init__(node)
         self._settings_manager = settings_manager
+        self._command_bus = command_bus
 
         # Initialize status variables with default values instead of empty dictionary
         self._status: TeensyStatusDict = {
@@ -222,49 +225,98 @@ class TeensyController(RosStatusController):
         self._thrust_ramp_timer.timeout.connect(self._update_thrust_ramp)
         self._thrust_ramp_timer.start(100)  # 100ms = 10Hz
 
+    def _bind_cmd(self, publisher: Any, *, continuous: bool = False) -> Any:
+        """TD-054: wrap command publishers; call sites keep ``.publish(msg)``."""
+        bus = self._command_bus
+        if bus is None:
+            return publisher
+        from paint_controller.core.ros_io import TrafficKind
+
+        kind = TrafficKind.CONTINUOUS if continuous else TrafficKind.ONESHOT
+        return bus.bind(publisher, kind=kind)
+
     def _setup_publishers(self) -> None:
-        """Set up ROS publishers for Teensy control"""
-        self.teensy_relay_pub = self._node.create_publisher(Bool, "teensy/relay/cmd", 1)
-        self.teensy_enable_pub = self._node.create_publisher(Bool, "teensy/enable/cmd", 1)
-        self.ef_move_top_rail_speed_pub = self._node.create_publisher(Float32, "teensy/top_rail/speed/cmd", 1)
-        self.ef_home_top_rail_pub = self._node.create_publisher(Bool, "teensy/top_rail/home/cmd", 1)
-        self.ef_move_arm_rail_speed_pub = self._node.create_publisher(Float32, "teensy/arm_rail/speed/cmd", 1)
-        self.ef_move_arm_rail_pos_pub = self._node.create_publisher(Int32, "teensy/arm/extend/cmd", 1)
-        self.ef_home_arm_rail_pub = self._node.create_publisher(Bool, "teensy/arm/home/cmd", 1)
-        self.prop_left_pwm_pub = self._node.create_publisher(Int32, "teensy/prop/left/pwm/cmd", 1)
-        self.prop_right_pwm_pub = self._node.create_publisher(Int32, "teensy/prop/right/pwm/cmd", 1)
-        self.prop_left_joint_pub = self._node.create_publisher(Float32, "teensy/prop/left/joint/cmd", 1)
-        self.prop_right_joint_pub = self._node.create_publisher(Float32, "teensy/prop/right/joint/cmd", 1)
-        self.ef_spray_trigger_pub = self._node.create_publisher(Int32, "teensy/spray_gun/trigger/cmd", 1)
-        self.ef_spray_pitch_speed_pub = self._node.create_publisher(Int32, "teensy/spray_gun/pitch/speed/cmd", 1)
-        self.ef_spray_pitch_pub = self._node.create_publisher(Float32MultiArray, "teensy/spray_gun/pitch/angle/cmd", 1)
-        self.ef_spray_led_pub = self._node.create_publisher(Bool, "teensy/spray_gun/led/cmd", 1)
+        """Set up ROS publishers for Teensy control (TD-054 bound when command_bus set)."""
+        self.teensy_relay_pub = self._bind_cmd(self._node.create_publisher(Bool, "teensy/relay/cmd", 1))
+        self.teensy_enable_pub = self._bind_cmd(self._node.create_publisher(Bool, "teensy/enable/cmd", 1))
+        self.ef_move_top_rail_speed_pub = self._bind_cmd(
+            self._node.create_publisher(Float32, "teensy/top_rail/speed/cmd", 1),
+            continuous=True,
+        )
+        self.ef_home_top_rail_pub = self._bind_cmd(self._node.create_publisher(Bool, "teensy/top_rail/home/cmd", 1))
+        self.ef_move_arm_rail_speed_pub = self._bind_cmd(
+            self._node.create_publisher(Float32, "teensy/arm_rail/speed/cmd", 1),
+            continuous=True,
+        )
+        self.ef_move_arm_rail_pos_pub = self._bind_cmd(
+            self._node.create_publisher(Int32, "teensy/arm/extend/cmd", 1)
+        )
+        self.ef_home_arm_rail_pub = self._bind_cmd(self._node.create_publisher(Bool, "teensy/arm/home/cmd", 1))
+        self.prop_left_pwm_pub = self._bind_cmd(
+            self._node.create_publisher(Int32, "teensy/prop/left/pwm/cmd", 1),
+            continuous=True,
+        )
+        self.prop_right_pwm_pub = self._bind_cmd(
+            self._node.create_publisher(Int32, "teensy/prop/right/pwm/cmd", 1),
+            continuous=True,
+        )
+        self.prop_left_joint_pub = self._bind_cmd(
+            self._node.create_publisher(Float32, "teensy/prop/left/joint/cmd", 1),
+            continuous=True,
+        )
+        self.prop_right_joint_pub = self._bind_cmd(
+            self._node.create_publisher(Float32, "teensy/prop/right/joint/cmd", 1),
+            continuous=True,
+        )
+        self.ef_spray_trigger_pub = self._bind_cmd(
+            self._node.create_publisher(Int32, "teensy/spray_gun/trigger/cmd", 1),
+            continuous=True,
+        )
+        self.ef_spray_pitch_speed_pub = self._bind_cmd(
+            self._node.create_publisher(Int32, "teensy/spray_gun/pitch/speed/cmd", 1),
+            continuous=True,
+        )
+        self.ef_spray_pitch_pub = self._bind_cmd(
+            self._node.create_publisher(Float32MultiArray, "teensy/spray_gun/pitch/angle/cmd", 1)
+        )
+        self.ef_spray_led_pub = self._bind_cmd(self._node.create_publisher(Bool, "teensy/spray_gun/led/cmd", 1))
         # Stability controller publishers (decoupled force and yaw control)
-        self.stability_enable_pub = self._node.create_publisher(Bool, "stability_controller/enable/cmd", 1)
-        self.stability_yaw_enable_pub = self._node.create_publisher(
-            Bool, "stability_controller/yaw_control/enable/cmd", 1
+        self.stability_enable_pub = self._bind_cmd(
+            self._node.create_publisher(Bool, "stability_controller/enable/cmd", 1)
         )
-        self.stability_yaw_angle_pub = self._node.create_publisher(
-            Float32, "stability_controller/yaw_control/angle/cmd", 1
+        self.stability_yaw_enable_pub = self._bind_cmd(
+            self._node.create_publisher(Bool, "stability_controller/yaw_control/enable/cmd", 1)
         )
-        self.stability_short_param_pub = self._node.create_publisher(
-            TeensyYaw, "stability_controller/yaw_control/short_params/cmd", 1
+        self.stability_yaw_angle_pub = self._bind_cmd(
+            self._node.create_publisher(Float32, "stability_controller/yaw_control/angle/cmd", 1)
         )
-        self.stability_long_param_pub = self._node.create_publisher(
-            TeensyYaw, "stability_controller/yaw_control/long_params/cmd", 1
+        self.stability_short_param_pub = self._bind_cmd(
+            self._node.create_publisher(TeensyYaw, "stability_controller/yaw_control/short_params/cmd", 1)
         )
-        self.stability_auto_correction_enable_pub = self._node.create_publisher(
-            Bool, "stability_controller/yaw_control/auto_correction/cmd", 1
+        self.stability_long_param_pub = self._bind_cmd(
+            self._node.create_publisher(TeensyYaw, "stability_controller/yaw_control/long_params/cmd", 1)
         )
-        self.stability_force_pub = self._node.create_publisher(Twist, "stability_controller/force/cmd", 1)
-        self.ef_spray_level_enable_pub = self._node.create_publisher(Bool, "teensy/spray_gun/leveling_enable/cmd", 1)
-        self.ef_lidar_power_pub = self._node.create_publisher(Bool, "unilidar/power", 1)
-        self.ef_tap_freq_pub = self._node.create_publisher(Int32MultiArray, "teensy/tapper/tap_freq/cmd", 1)
-        self.ef_tap_once_pub = self._node.create_publisher(Int32, "teensy/tapper/tap_once/cmd", 1)
-        self.ef_tap_stop_pub = self._node.create_publisher(Bool, "teensy/tapper/stop/cmd", 1)
-        self.roller_steering_enable_pub = self._node.create_publisher(Bool, "teensy/roller/steering/enable/cmd", 1)
-        self.swing_damping_enable_pub = self._node.create_publisher(
-            Bool, "stability_controller/swing_damping/enable/cmd", 1
+        self.stability_auto_correction_enable_pub = self._bind_cmd(
+            self._node.create_publisher(Bool, "stability_controller/yaw_control/auto_correction/cmd", 1)
+        )
+        self.stability_force_pub = self._bind_cmd(
+            self._node.create_publisher(Twist, "stability_controller/force/cmd", 1),
+            continuous=True,
+        )
+        self.ef_spray_level_enable_pub = self._bind_cmd(
+            self._node.create_publisher(Bool, "teensy/spray_gun/leveling_enable/cmd", 1)
+        )
+        self.ef_lidar_power_pub = self._bind_cmd(self._node.create_publisher(Bool, "unilidar/power", 1))
+        self.ef_tap_freq_pub = self._bind_cmd(
+            self._node.create_publisher(Int32MultiArray, "teensy/tapper/tap_freq/cmd", 1)
+        )
+        self.ef_tap_once_pub = self._bind_cmd(self._node.create_publisher(Int32, "teensy/tapper/tap_once/cmd", 1))
+        self.ef_tap_stop_pub = self._bind_cmd(self._node.create_publisher(Bool, "teensy/tapper/stop/cmd", 1))
+        self.roller_steering_enable_pub = self._bind_cmd(
+            self._node.create_publisher(Bool, "teensy/roller/steering/enable/cmd", 1)
+        )
+        self.swing_damping_enable_pub = self._bind_cmd(
+            self._node.create_publisher(Bool, "stability_controller/swing_damping/enable/cmd", 1)
         )
 
     def _setup_subscribers(self) -> None:
@@ -725,8 +777,21 @@ class TeensyController(RosStatusController):
         self._thrust_ramp_rate = new_value
         self._node.get_logger().info(f"Thrust ramp rate updated to: {new_value}")
 
+    def suppress_continuous_thrust(self) -> None:
+        """TD-054: zero thrust ramp state and publish zero force (safety halt)."""
+        was_enabled = self._thrust_force_enabled
+        self._thrust_force_enabled = False
+        self._target_thrust_force = 0.0
+        self._current_thrust_force = 0.0
+        if was_enabled:
+            self.thrust_force_enabled_changed.emit(False)
+        if abs(self._last_published_thrust) > 0.001:
+            self.set_ef_force(0.0, 0.0)
+            self._last_published_thrust = 0.0
+
     def _update_thrust_ramp(self):
         """Update ramped thrust force at 10Hz"""
+        # TD-054: after suppress_continuous_thrust, target and current stay 0.
         # Calculate the delta based on ramp rate (thrust/second)
         # At 10Hz, each step is 0.1 seconds
         ramp_step = self._thrust_ramp_rate * 0.1  # 0.1 second per update

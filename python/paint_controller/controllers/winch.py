@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from paint_interfaces.msg import MoveWinchLength, WinchStatus
 from PySide6.QtCore import Property, Signal, Slot
@@ -14,6 +14,7 @@ from std_msgs.msg import Bool, Float64
 from paint_controller.controllers._base import RosStatusController
 
 if TYPE_CHECKING:
+    from paint_controller.core.ros_io import RosCommandBus
     from paint_controller.core.settings import SettingsManager
 
 logger = logging.getLogger(__name__)
@@ -32,8 +33,14 @@ class WinchController(RosStatusController):
     load_detection_changed = Signal()
     unusual_load_detected_changed = Signal()
 
-    def __init__(self, node: Node, settings_manager: SettingsManager | None = None) -> None:
+    def __init__(
+        self,
+        node: Node,
+        settings_manager: SettingsManager | None = None,
+        command_bus: RosCommandBus | None = None,
+    ) -> None:
         super().__init__(node)
+        self._command_bus = command_bus
 
         # Initialize property values
         # Get max_speed from settings_manager if available, otherwise use default
@@ -68,14 +75,36 @@ class WinchController(RosStatusController):
         # Create availability check timer
         self._start_availability_timer()
 
+    def _bind_cmd(self, publisher: Any, *, continuous: bool = False) -> Any:
+        """TD-054: wrap command publishers; call sites keep ``.publish(msg)``."""
+        bus = self._command_bus
+        if bus is None:
+            return publisher
+        from paint_controller.core.ros_io import TrafficKind
+
+        kind = TrafficKind.CONTINUOUS if continuous else TrafficKind.ONESHOT
+        return bus.bind(publisher, kind=kind)
+
     def _setup_publishers(self) -> None:
         """Setup ROS publishers for winch control"""
-        self._speed_rpm_pub = self._node.create_publisher(Float64, "winch/move/speed/rpm/cmd", 1)
-        self._speed_mmps_pub = self._node.create_publisher(Float64, "winch/move/speed/mmps/cmd", 1)
-        self._enable_pub = self._node.create_publisher(Bool, "winch/enable/cmd", 1)
-        self._move_increment_pub = self._node.create_publisher(MoveWinchLength, "winch/move/increment/cmd", 1)
-        self._move_absolute_pub = self._node.create_publisher(MoveWinchLength, "winch/move/absolute/cmd", 1)
-        self._load_detection_pub = self._node.create_publisher(Bool, "winch/load_detection/cmd", 1)
+        self._speed_rpm_pub = self._bind_cmd(
+            self._node.create_publisher(Float64, "winch/move/speed/rpm/cmd", 1),
+            continuous=True,
+        )
+        self._speed_mmps_pub = self._bind_cmd(
+            self._node.create_publisher(Float64, "winch/move/speed/mmps/cmd", 1),
+            continuous=True,
+        )
+        self._enable_pub = self._bind_cmd(self._node.create_publisher(Bool, "winch/enable/cmd", 1))
+        self._move_increment_pub = self._bind_cmd(
+            self._node.create_publisher(MoveWinchLength, "winch/move/increment/cmd", 1)
+        )
+        self._move_absolute_pub = self._bind_cmd(
+            self._node.create_publisher(MoveWinchLength, "winch/move/absolute/cmd", 1)
+        )
+        self._load_detection_pub = self._bind_cmd(
+            self._node.create_publisher(Bool, "winch/load_detection/cmd", 1)
+        )
 
     def _setup_subscribers(self) -> None:
         """Setup ROS subscribers for winch status"""

@@ -43,6 +43,7 @@ def _make_cp(
     heartbeat=None,
     state_store=None,
     settings_manager=None,
+    safety_coordinator=None,
 ) -> Any:
     """Create a ControlProcessor with all-fake dependencies."""
     ControlProcessor = _cp_module().ControlProcessor
@@ -55,6 +56,7 @@ def _make_cp(
         heartbeat_handler=heartbeat or FakeHeartbeatHandler(),
         settings_manager=settings_manager,
         state_store=state_store or FakeStateStore(),
+        safety_coordinator=safety_coordinator,
     )
 
 
@@ -79,6 +81,29 @@ def test_settings_manager_none_uses_hardcoded_defaults(qt_app) -> None:
     assert cp.TRACK_MIN_SPEED == TRACK_MIN_SPEED
     assert cp._winch_max_speed_mmps == 400.0
     assert cp._wheel_travel_max == 500.0
+
+
+def test_process_input_skips_engine_when_continuous_motion_latched(qt_app) -> None:
+    """TD-054: after halt latch, process_input must not command wheel/winch."""
+    from paint_controller.handlers.safety_coordinator import SafetyCoordinator
+
+    wheel = FakeWheel()
+    winch = FakeWinch()
+    safety = SafetyCoordinator(wheel=wheel, winch=winch, teensy=FakeTeensy(), esp32_valve=FakeEsp32Valve())
+    safety.halt_all_effectors("test")
+    wheel.left_speed_commands.clear()
+    wheel.right_speed_commands.clear()
+    winch.rpm_commands.clear()
+
+    overlay = FakeOverlay()
+    overlay.left_option = "Track Control Left"
+    overlay.right_option = "None"
+    cp = _make_cp(wheel=wheel, winch=winch, overlay=overlay, safety_coordinator=safety)
+    cp.process_input(_stick_state(ly=JOYSTICK_MAX))
+
+    assert wheel.left_speed_commands == []
+    assert wheel.right_speed_commands == []
+    assert winch.rpm_commands == []
 
 
 # ---------------------------------------------------------------------------

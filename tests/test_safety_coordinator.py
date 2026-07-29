@@ -58,3 +58,36 @@ def test_clear_error_state_allows_runtime_state_reset(qt_core_app):
     coordinator.clear_error_state()
 
     assert state_store.controller_heartbeat_state == HeartbeatStatus.IDLE.value
+
+
+def test_halt_latches_continuous_motion_until_clear(qt_core_app):
+    """TD-054: any halt_all_effectors latches stick teleop until clear_error_state."""
+    from paint_controller.core.ros_io import RosCommandBus, TrafficKind
+
+    bus = RosCommandBus()
+    raw = type("P", (), {"publish": lambda self, m: None})()
+    cont = bus.bind(raw, kind=TrafficKind.CONTINUOUS)
+    cont.publish("stale_motion")
+    assert bus.pending_counts() == (0, 1)
+
+    teensy = FakeTeensy()
+    teensy.suppress_continuous_thrust = lambda: setattr(teensy, "thrust_suppressed", True)
+
+    coordinator = SafetyCoordinator(
+        winch=FakeWinch(),
+        teensy=teensy,
+        wheel=FakeWheel(),
+        esp32_valve=FakeEsp32Valve(),
+        state_store=FakeStateStore(),
+        logger=FakeLogger(),
+        command_bus=bus,
+    )
+
+    assert coordinator.continuous_motion_allowed is True
+    coordinator.halt_all_effectors("e-stop")
+    assert coordinator.continuous_motion_allowed is False
+    assert bus.pending_counts() == (0, 0)
+    assert getattr(teensy, "thrust_suppressed", False) is True
+
+    coordinator.clear_error_state()
+    assert coordinator.continuous_motion_allowed is True

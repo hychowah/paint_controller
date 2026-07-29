@@ -5,7 +5,8 @@
 - Does **not** call ``AdminActionGate``. Continuous motion owned by ``ContinuousTeleopEngine``.
 - This class owns QML properties, display formatting, and settings signal wiring only.
 
-Post-halt stick inhibit is product policy elsewhere — not implemented here (TD-046 residual).
+TD-054: when ``safety_coordinator.continuous_motion_allowed`` is False (after halt),
+``process_input`` skips the engine tick so sticks cannot re-drive until clear-error.
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
     from paint_controller.core.settings import SettingsManager
     from paint_controller.core.state_store import StateStore
     from paint_controller.handlers.heartbeat import UIHeartbeatHandler
+    from paint_controller.handlers.safety_coordinator import SafetyCoordinator
     from paint_controller.models.joystick_selection import JoystickSelectionModel
 
 logger = logging.getLogger(__name__)
@@ -55,12 +57,14 @@ class ControlProcessor(QObject):
         heartbeat_handler: UIHeartbeatHandler,
         settings_manager: SettingsManager | None,
         state_store: StateStore,
+        safety_coordinator: SafetyCoordinator | None = None,
     ) -> None:
         super().__init__()
         self._selection_model = selection_model
         self._heartbeat_handler = heartbeat_handler
         self._settings_manager = settings_manager
         self._state_store = state_store
+        self._safety_coordinator = safety_coordinator
         self._teensy = teensy
 
         self.MESSAGE_UPDATE_INTERVAL = 0.2
@@ -217,6 +221,11 @@ class ControlProcessor(QObject):
 
     def process_input(self, input_state: dict[str, Any]) -> None:
         try:
+            # TD-054: latched after halt_all_effectors until clear_error_state.
+            safety = self._safety_coordinator
+            if safety is not None and not safety.continuous_motion_allowed:
+                return
+
             left_mode = self._selection_model.get_left_selected_option()
             right_mode = self._selection_model.get_right_selected_option()
             self.left_control_mode_display = self._selection_model.display_name_for_option(left_mode)

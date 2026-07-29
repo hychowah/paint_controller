@@ -112,7 +112,8 @@ Root package: `python/paint_controller/`
 | `settings.py` | Settings schema, persistence, QML-facing settings API |
 | `state_store.py` | Shared runtime state (heartbeat class, messages, …) |
 | `qt_bridge.py` | Small UI bridge signals (popups, sidebar, video requests) |
-| `ros_node.py` | ROS node helpers + `RosThread` (spin off the GUI thread) |
+| `ros_node.py` | ROS node helpers + `RosThread` (spin off the GUI thread; pumps command bus) |
+| `ros_io.py` | **TD-054** `RosCommandBus` — sole owner of cross-thread ROS **command** publish |
 | `config.py` | Runtime defaults (e.g. control update rate) |
 
 ### `controllers/` — device / ROS adapters
@@ -254,13 +255,15 @@ QML slot call
 Steam Deck HID thread
   → SteamDeckHandler (main thread edges / state)
 SignalWiring status timer (~60 Hz default)
-  → ControlProcessor.process_input(...)
-  → rate-limited publishes on controllers
+  → emergency check **then** ControlProcessor.process_input(...)
+  → ContinuousTeleopEngine (if SafetyCoordinator.continuous_motion_allowed)
+  → controller methods → RosCommandBus handles (.publish)
 ```
 
 - This path is **not** the same as per-button `AdminActionGate` slots.
 - Effector-specific locks and rate limits live in `ControlProcessor` (and helpers such as `winch_teleop` / `wheel_travel_teleop`).
 - Shared hard stop sequence lives in `SafetyCoordinator.halt_all_effectors()` (used by emergency, heartbeat, motor fault paths).
+- **TD-054 latch:** any `halt_all_effectors` sets `continuous_motion_allowed=False` until `clear_error_state`; teleop skips the engine tick while latched.
 
 **Do not:** assume the gate covers sticks; put stick math in `*Actions`; add a second continuous entry beside `process_input`.
 
@@ -268,15 +271,48 @@ When adding a new “hold button to move” vs “tap to home” behavior, pick 
 
 ---
 
-## 8. Threading (program view)
+## 8. Threading and ROS command I/O (TD-054)
+
+### Threads (program view)
 
 | Thread / affinity | Typical residents |
 |---|---|
 | **Qt GUI / main** | `AppRuntime`, QML engine, most `QObject` controllers as API surface, `ControlProcessor`, status timer |
-| **ROS spin** | `RosThread` — `rclpy.spin_once` isolated from the GUI |
+| **ROS spin** | `RosThread` — `pump()` command bus then `rclpy.spin_once` |
 | **HID** | Steam Deck reader thread → signals to main |
 | **Video / vision workers** | GStreamer sample callbacks; base-top OpenCV worker; image providers under mutex |
 | **Other workers** | e.g. system monitor `moveToThread`, ESP32 UDP receive, workflow executor |
+
+### ROS command bus (Option A2)
+
+**Problem solved:** concurrent `publisher.publish` from Qt/workflow while `RosThread` spins the same node is unsafe under load.
+
+**Model:**
+
+```
+Any thread:  bound_handle.publish(msg)   # enqueue only
+RosThread:   command_bus.pump() → raw publisher.publish
+             then rclpy.spin_once(...)
+```
+
+| Piece | Role |
+|---|---|
+| `RosCommandBus` (`core/ros_io.py`) | Deep module: continuous **last-wins** per handle; oneshot FIFO; `invalidate_continuous`; `close` |
+| `BoundPublisher` | Controllers keep `.publish(msg)` shape; bind-time `TrafficKind` only at setup |
+| Wheel / winch / teensy | `command_bus` injected; `_bind_cmd` wraps command pubs at construct |
+| ROS-side heartbeat timer | May still raw-publish on `PaintRosNode` (runs on RosThread; TD-028) |
+| ESP32 **UDP** | Out of domain — not forced through the ROS command bus |
+
+**Safety latch (same TD-054 close, separate module):**
+
+1. `halt_all_effectors` → latch off continuous motion + `invalidate_continuous` + halt matrix (+ teensy `suppress_continuous_thrust`).
+2. `ControlProcessor.process_input` no-ops engine while latched.
+3. Status tick: **e-stop poll before teleop**.
+4. Clear only via `clear_error_state` (no auto-unlatch on heartbeat recovery alone).
+
+**Not the safety mechanism:** bus drain order alone. Priority/slot ordering is affinity and backlog control; latch defines post-halt re-drive out of existence.
+
+**Residual (not TD-054):** ROS subscription → Qt field races (see **TD-056**); workflow may still command motion after halt until product stops workflow on halt; dual `/controller/heartbeat` publishers (hygiene).
 
 House rules (see also `KNOWLEDGE.md`):
 

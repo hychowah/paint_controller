@@ -146,14 +146,21 @@ class ControllerBundle:
 # - QML façades → QmlContextComposer
 
 
-def _build_device_adapters(node: Any, settings_manager: Any, state_store: Any, logger: Any) -> dict[str, Any]:
+def _build_device_adapters(
+    node: Any,
+    settings_manager: Any,
+    state_store: Any,
+    logger: Any,
+    command_bus: Any = None,
+) -> dict[str, Any]:
     """Device I/O adapters + safety/heartbeat (no presentation)."""
-    wheel = WheelController(node)
+    # TD-054: command_bus binds ROS command pubs (sole raw publish on RosThread.pump).
+    wheel = WheelController(node, command_bus=command_bus)
     esp32_valve = ESP32ValveController(node)
     lidar = LidarController(node)
     wind_monitor = WindMonitor(node)
-    winch = WinchController(node, settings_manager=settings_manager)
-    teensy = TeensyController(node, settings_manager=settings_manager)
+    winch = WinchController(node, settings_manager=settings_manager, command_bus=command_bus)
+    teensy = TeensyController(node, settings_manager=settings_manager, command_bus=command_bus)
     safety_coordinator = SafetyCoordinator(
         winch=winch,
         teensy=teensy,
@@ -161,6 +168,7 @@ def _build_device_adapters(node: Any, settings_manager: Any, state_store: Any, l
         esp32_valve=esp32_valve,
         state_store=state_store,
         logger=logger,
+        command_bus=command_bus,
     )
     heartbeat = UIHeartbeatHandler(node, state_store=state_store, safety_coordinator=safety_coordinator)
     return {
@@ -198,6 +206,7 @@ def _build_control_plane(
         heartbeat_handler=devices["heartbeat"],
         settings_manager=settings_manager,
         state_store=state_store,
+        safety_coordinator=devices["safety_coordinator"],
     )
     admin_action_gate = AdminActionGate(
         capability_catalog=capability_catalog,
@@ -323,6 +332,7 @@ def create_controllers(
     base_top_view_service: Any,
     show_popup_fn: Any,
     close_popup_fn: Any,
+    command_bus: Any = None,
 ) -> ControllerBundle:
     """Compose runtime graph from subsystem builders (TD-055 Phase 10)."""
     logger = node.get_logger()
@@ -330,7 +340,9 @@ def create_controllers(
     warning_handler = WarningHandler()
     system_monitor = SystemMonitor()
 
-    devices = _build_device_adapters(node, settings_manager, state_store, logger)
+    devices = _build_device_adapters(
+        node, settings_manager, state_store, logger, command_bus=command_bus
+    )
     control = _build_control_plane(
         devices,
         settings_manager=settings_manager,

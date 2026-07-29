@@ -177,8 +177,9 @@ class SignalWiring:
             return
 
         input_state = steam_deck_handler.get_current_state()
-        bundle.control_processor.process_input(input_state)
+        # TD-054: e-stop poll before teleop so a held e-stop latches before stick cmds.
         bundle.emergency_handler.check_emergency_button(input_state.get("buttons", {}))
+        bundle.control_processor.process_input(input_state)
 
     def start_timers(self) -> QTimer:
         """Create and start the status timer and system monitor.
