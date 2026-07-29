@@ -60,6 +60,47 @@ def test_clear_error_state_allows_runtime_state_reset(qt_core_app):
     assert state_store.controller_heartbeat_state == HeartbeatStatus.IDLE.value
 
 
+def test_halt_requests_execution_stop_before_device_matrix(qt_core_app):
+    """Halt binds non-blocking stop_execution; never joins; latch stays down."""
+    order: list[str] = []
+
+    class _ExecStop:
+        def stop_execution(self) -> bool:
+            order.append("stop_execution")
+            return True
+
+    class _Wheel:
+        def emergency_stop(self) -> None:
+            order.append("wheel")
+
+    class _Winch:
+        def command_speed_rpm(self, value: float) -> None:
+            order.append("winch")
+
+    class _Teensy:
+        def setSprayTrigger(self, value: int) -> None:
+            order.append("teensy")
+
+    class _Valve:
+        def setValveTurn(self, value: float) -> None:
+            order.append("valve")
+
+    coordinator = SafetyCoordinator(
+        winch=_Winch(),
+        teensy=_Teensy(),
+        wheel=_Wheel(),
+        esp32_valve=_Valve(),
+        state_store=FakeStateStore(),
+        logger=FakeLogger(),
+    )
+    coordinator.bind_execution_stop(_ExecStop())
+    coordinator.halt_all_effectors("test")
+
+    assert order[0] == "stop_execution"
+    assert set(order[1:]) == {"winch", "teensy", "wheel", "valve"}
+    assert coordinator.continuous_motion_allowed is False
+
+
 def test_halt_latches_continuous_motion_until_clear(qt_core_app):
     """TD-054: any halt_all_effectors latches stick teleop until clear_error_state."""
     from paint_controller.core.ros_io import RosCommandBus, TrafficKind

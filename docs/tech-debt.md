@@ -106,8 +106,8 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 | ID | Title | Resolved | Notes |
 |---|---|---|---|
-| TD-056 | ROS callback → Qt telemetry marshal | 2026-07-29 | `RosTelemetryBridge` (QueuedConnection + last-wins); wheel/winch frozen POD + main `_apply_status_snapshot`; affinity tests. Follow-on residual band (same day): heartbeat per-channel bridge + lidar bridge; handler no longer dual-publishes `/controller/heartbeat` (PaintRosNode sole outbound; clear via `/clear/error`). Teensy remains lock+snapshot (TD-024). Residual: workflow-after-halt. ARCHITECTURE §8 |
-| TD-054 | Concurrent ROS command I/O + post-halt motion latch | 2026-07-29 | Option A2 `RosCommandBus`; continuous-motion latch; e-stop before teleop. Residual: workflow-after-halt. ARCHITECTURE §8 |
+| TD-056 | ROS callback → Qt telemetry marshal | 2026-07-29 | `RosTelemetryBridge`; wheel/winch/lidar/heartbeat; later Teensy device-key bridge (user fields main-only). ARCHITECTURE §8 |
+| TD-054 | Concurrent ROS command I/O + post-halt motion latch | 2026-07-29 | RosCommandBus + latch + e-stop-before-teleop; later `bind_execution_stop` + play gate. Residual: in-flight workflow oneshot; UI stop local retract. ARCHITECTURE §8 |
 | TD-041 | Governance/doc hygiene: stale plan entries, KNOWLEDGE mis-citation | 2026-07-29 | Frozen route ownership → ShellRouter; AGENTS launch/ fixed; KNOWLEDGE singleton note accurate for this repo; progress checklist no longer offers Phase 7 |
 | TD-042 | Over-fitted test mirror and structural-selfie assertions | 2026-07-29 | Shared `assert_no_fatal_qml_warnings`; FakeShellRouter uses `DEFAULT_ROUTE_REGISTRY`; residual: large property-level smoke Fake* set (not rewritten) |
 | TD-043 | Dead/duplicated state and metadata layers | 2026-07-29 | Dead StateStore joystick/control_* surface removed; live: control_mode/display_message/heartbeat. CapabilityCatalog left (live for gate/legality) — residual size only |

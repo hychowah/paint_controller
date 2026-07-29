@@ -280,8 +280,27 @@ class WorkFlowExecutor:
         self.logger.info("WorkFlow resumed")
         return True
 
+    def request_stop_nonblocking(self) -> bool:
+        """Request stop without joining the execution thread (halt-safe).
+
+        Always succeeds for halt idempotency: idle is a no-op success.
+        """
+        if self.current_state == ExecutionState.IDLE:
+            return True
+
+        self._stop_requested = True
+        if self.execution_thread is not None:
+            self.execution_thread.request_stop()
+
+        # Flip state immediately so UI is not left PAUSED/RUNNING under latch.
+        self.current_state = ExecutionState.IDLE
+        self.current_action_index = -1
+        self._loop_iteration = 0
+        self.logger.info("WorkFlow stop requested (non-blocking)")
+        return True
+
     def stop(self) -> bool:
-        """Stop workflow execution."""
+        """Stop workflow execution and wait for the worker (operator stop)."""
         if self.current_state == ExecutionState.IDLE:
             return False
 

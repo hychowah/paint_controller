@@ -44,13 +44,18 @@ class SafetyCoordinator:
         self._state_store = state_store
         self._logger = logger
         self._command_bus = command_bus
+        self._execution_stop: Any | None = None
         # Fail-open until first halt; then latched until clear_error_state.
         self._continuous_motion_allowed = True
 
     @property
     def continuous_motion_allowed(self) -> bool:
-        """False after halt until clear_error_state (continuous teleop / thrust)."""
+        """False after halt until clear_error_state (continuous teleop / thrust / workflow play)."""
         return self._continuous_motion_allowed
+
+    def bind_execution_stop(self, execution_stop: Any | None) -> None:
+        """Late-bind workflow runner (or any object with stop_execution())."""
+        self._execution_stop = execution_stop
 
     def _set_runtime_state(self, heartbeat_state: int | HeartbeatStatus, *, force: bool = False) -> None:
         if self._state_store is None:
@@ -77,8 +82,9 @@ class SafetyCoordinator:
         *,
         heartbeat_state: int | HeartbeatStatus = HeartbeatStatus.ERROR,
     ) -> None:
-        # Latch first so the next teleop tick cannot re-drive before stops publish.
+        # 1) Latch continuous teleop / workflow play
         self._continuous_motion_allowed = False
+        # 2) Drop pending continuous teleop publishes
         if self._command_bus is not None:
             try:
                 self._command_bus.invalidate_continuous()
@@ -86,8 +92,19 @@ class SafetyCoordinator:
                 if self._logger is not None:
                     self._logger.error(f"command bus invalidate failed during halt: {exc}")
 
+        # 3) Non-blocking workflow stop request (before zeros; no join / no runner matrix)
+        if self._execution_stop is not None:
+            try:
+                stop_fn = getattr(self._execution_stop, "stop_execution", None)
+                if callable(stop_fn):
+                    stop_fn()
+            except Exception as exc:
+                if self._logger is not None:
+                    self._logger.error(f"execution stop failed during halt: {exc}")
+
         self._set_runtime_state(heartbeat_state)
 
+        # 4) Device halt matrix
         failures: list[str] = []
 
         try:

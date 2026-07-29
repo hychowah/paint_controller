@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-07-29 - Workflow halt-stop + Teensy bridge residual
+
+**Goal**: Halt stops workflow execution without dual matrix; Teensy status on RosTelemetryBridge.
+**Tried**: `stop_execution` / `request_stop_nonblocking` (no join, no `_emergency_shutdown`); coordinator bind after factory runner create; play/resume gate on latch; Teensy ROS posts device keys only, main apply preserves user fields.
+**Result**: ✅ Full suite **484 passed**. Residual: in-flight workflow oneshot; UI stop still has local emergency retract.
+**Files**: safety_coordinator, workflow_runner/executor, controller_factory, teensy, tests, ARCHITECTURE
+
+---
 ### 2026-07-29 - Concurrency residual band (structure consistency)
 
 **Goal**: Clear high-value residuals after TD-054/056 for one telemetry dialect.

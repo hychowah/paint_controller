@@ -14,7 +14,7 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 - Debt tracker: TD-055 residual optional 4′/5′; opportunistic TD-052/053; heartbeat telemetry residual — see `docs/tech-debt.md`
 - Core purpose: reduce global coupling, clarify ownership, shrink ambient QML *usage* (injection depth), and make composition/ports closer to a professional Qt program — without reopening TD-032 name-retirement.
 - First-principles rule: success means fewer ambient leaf reads, thinner composition export, real CI/type control planes, and **deeper modules with less change amplification** — not wrapper proliferation, mega-Backend, or empty layer folders
-- Last full-suite baseline: `495 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q` on 2026-07-29 (TD-056 + residual band)
+- Last full-suite baseline: `484 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q` on 2026-07-29 (halt-stop + Teensy bridge residual)
 
 ## Live Board
 
@@ -97,9 +97,9 @@ These files are allowed to keep temporary raw-global reads until their named fam
 
 - The app-scope QML context contract is still broader than ideal (~26 frozen names); shrink only with last-consumer proof, not vanity rename programs.
 - Harness drift remains a risk where smoke fixtures re-implement production contracts by hand (TD-042 hygiene).
-- Workflow execution can still command motion after halt (product residual; not TD-054 acceptance).
-- Teensy status still uses lock+snapshot (TD-024), not RosTelemetryBridge.
-- Do not reintroduce raw multi-thread ROS **command** `publish` outside `RosCommandBus.pump`, or unlocked ROS-thread QObject mutation on property-bag devices.
+- In-flight workflow action may still oneshot-publish before cooperative stop is seen.
+- Operator UI workflow `stop()` may still use local `_emergency_shutdown` (not the global halt matrix).
+- Do not reintroduce raw multi-thread ROS **command** `publish` outside `RosCommandBus.pump`, or unlocked ROS-thread QObject mutation on property-bag / status devices.
 
 ## Next Session Checklist
 

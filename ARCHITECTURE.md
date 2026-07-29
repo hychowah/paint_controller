@@ -332,13 +332,15 @@ Main:       bridge QueuedConnection → controller._apply_status_snapshot(pod)
 | Availability timer | Main only; reads main-owned timestamp/flags |
 | `error_state_changed` | Edge-detect on main apply; SignalWiring keeps QueuedConnection to halt |
 
-**Property-bag devices using `RosTelemetryBridge`:** wheel, winch, lidar, heartbeat (per-channel bridges).
+**Property-bag / status devices using `RosTelemetryBridge`:** wheel, winch, lidar, teensy (device keys), heartbeat (per-channel bridges).
 
-**Teensy residual:** locked status dict + snapshot emit (TD-024) — different reader API (`get_status_value`), not the Property-bag pattern.
+**Teensy:** ROS posts device-field dict only; main apply merges under lock without wiping `_USER_CONTROLLED_FIELDS`; `get_status_value` remains locked; `status_changed` emits from main.
 
-**Heartbeat ownership:** outbound `/controller/heartbeat` is **PaintRosNode** only (StateStore-driven). `UIHeartbeatHandler` publishes clear-error on `/clear/error` only (legacy CLEAR_ERROR-on-heartbeat removed).
+**Heartbeat ownership:** outbound `/controller/heartbeat` is **PaintRosNode** only (StateStore-driven). `UIHeartbeatHandler` publishes clear-error on `/clear/error` only.
 
-**Other residuals:** workflow may still command motion after halt; ESP32 UDP already QueuedConnection; BaseTopView scalar residual opportunistic.
+**Workflow + halt:** `SafetyCoordinator` late-binds `WorkFlowRunner.stop_execution()` (non-blocking, no `_emergency_shutdown`). Order: latch → invalidate continuous → stop_execution → device zeros. `play`/`resume` refuse while latched. Operator UI `stop()` may still call local `_emergency_shutdown` (separate product path).
+
+**Other residuals:** in-flight workflow oneshot may still publish before stop is seen; ESP32 UDP already QueuedConnection; BaseTopView scalar residual opportunistic.
 
 House rules (see also `KNOWLEDGE.md`):
 

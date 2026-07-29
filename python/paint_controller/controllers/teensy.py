@@ -13,6 +13,7 @@ from rclpy.node import Node
 from std_msgs.msg import Bool, Float32, Float32MultiArray, Int32, Int32MultiArray
 
 from paint_controller.controllers._base import RosStatusController
+from paint_controller.core.ros_telemetry import RosTelemetryBridge
 
 if TYPE_CHECKING:
     from paint_controller.core.ros_io import RosCommandBus
@@ -213,6 +214,9 @@ class TeensyController(RosStatusController):
         else:
             self._thrust_ramp_rate = 1.0
 
+        # TD-056 residual: ROS status via bridge; main apply owns status_changed.
+        self._telemetry = RosTelemetryBridge(self._apply_status_snapshot, parent=self)
+
         # Configure publishers and subscribers
         self._setup_publishers()
         self._setup_subscribers()
@@ -367,77 +371,84 @@ class TeensyController(RosStatusController):
             self._status.update(cast(TeensyStatusDict, fields))
             return self._status.copy()
 
+    @staticmethod
+    def _device_snapshot_from_msg(msg: TeensyStatus) -> dict[str, Any]:
+        """ROS-derived fields only — never includes _USER_CONTROLLED_FIELDS."""
+        return {
+            "available": True,
+            "top_rail_position": msg.top_rail_position,
+            "top_rail_speed": msg.top_rail_speed,
+            "top_rail_current": msg.top_rail_current,
+            "arm_rail_position": msg.arm_rail_position,
+            "arm_rail_speed": msg.arm_rail_speed,
+            "arm_rail_current": msg.arm_rail_current,
+            "arm_extension_dist": msg.arm_extension_dist,
+            "arm_sensor_dist": msg.arm_sensor_dist,
+            "voltage": msg.voltage,
+            "temperature": msg.temperature,
+            "current": msg.current,
+            "run_time": msg.runtime,
+            "loop_time": msg.looptime,
+            "loop_time_counter": msg.looptime_counter,
+            "relay_on": bool(msg.relay_on),
+            "enabled": msg.enabled,
+            "left_prop_position": msg.left_prop_position / 100,
+            "left_prop_pwm": msg.left_prop_pwm,
+            "right_prop_position": msg.right_prop_position / 100,
+            "right_prop_pwm": msg.right_prop_pwm,
+            "imu_acc_x": msg.linear_acceleration.x,
+            "imu_acc_y": msg.linear_acceleration.y,
+            "imu_acc_z": msg.linear_acceleration.z,
+            "imu_angular_acc_x": msg.angular_velocity.x,
+            "imu_angular_acc_y": msg.angular_velocity.y,
+            "imu_angular_acc_z": msg.angular_velocity.z,
+            "imu_pitch": msg.orientation.x,
+            "imu_roll": msg.orientation.y,
+            "imu_yaw": msg.orientation.z,
+            "spray_gun_pitch": msg.spray_gun_pitch,
+            "gimbal_pitch_motor_angle": msg.gimbal_pitch_motor_angle,
+            "gimbal_pitch_motor_current": msg.gimbal_pitch_motor_current,
+            "gimbal_pitch_motor_temp": msg.gimbal_pitch_motor_temp,
+            "gimbal_roll_motor_angle": msg.gimbal_roll_motor_angle,
+            "gimbal_roll_motor_current": msg.gimbal_roll_motor_current,
+            "gimbal_roll_motor_temp": msg.gimbal_roll_motor_temp,
+            "spray_gun_trigger": msg.spray_gun_trigger,
+            "yaw_enabled": msg.yaw_enabled,
+            "yaw_command": msg.yaw_command,
+            "yaw_pid_p": msg.yaw_pid_p,
+            "yaw_pid_i": msg.yaw_pid_i,
+            "yaw_pid_d": msg.yaw_pid_d,
+            "target_yaw": msg.yaw_command,
+            "recv_mono": time.time(),
+        }
+
     def _status_callback(self, msg: TeensyStatus) -> None:
-        """Process incoming TeensyStatus messages from ROS"""
+        """ROS spin: post device POD only — no status_changed emit."""
         try:
-            # Build new status dict, then swap atomically under lock
-            new_status: TeensyStatusDict = {
-                "available": True,
-                "top_rail_position": msg.top_rail_position,
-                "top_rail_speed": msg.top_rail_speed,
-                "top_rail_current": msg.top_rail_current,
-                "arm_rail_position": msg.arm_rail_position,
-                "arm_rail_speed": msg.arm_rail_speed,
-                "arm_rail_current": msg.arm_rail_current,
-                "arm_extension_dist": msg.arm_extension_dist,
-                "arm_sensor_dist": msg.arm_sensor_dist,
-                "voltage": msg.voltage,
-                "temperature": msg.temperature,
-                "current": msg.current,
-                "run_time": msg.runtime,
-                "loop_time": msg.looptime,
-                "loop_time_counter": msg.looptime_counter,
-                "relay_on": bool(msg.relay_on),
-                "enabled": msg.enabled,
-                "left_prop_position": msg.left_prop_position / 100,
-                "left_prop_pwm": msg.left_prop_pwm,
-                "right_prop_position": msg.right_prop_position / 100,
-                "right_prop_pwm": msg.right_prop_pwm,
-                "imu_acc_x": msg.linear_acceleration.x,
-                "imu_acc_y": msg.linear_acceleration.y,
-                "imu_acc_z": msg.linear_acceleration.z,
-                "imu_angular_acc_x": msg.angular_velocity.x,
-                "imu_angular_acc_y": msg.angular_velocity.y,
-                "imu_angular_acc_z": msg.angular_velocity.z,
-                "imu_pitch": msg.orientation.x,
-                "imu_roll": msg.orientation.y,
-                "imu_yaw": msg.orientation.z,
-                "spray_gun_pitch": msg.spray_gun_pitch,
-                "gimbal_pitch_motor_angle": msg.gimbal_pitch_motor_angle,
-                "gimbal_pitch_motor_current": msg.gimbal_pitch_motor_current,
-                "gimbal_pitch_motor_temp": msg.gimbal_pitch_motor_temp,
-                "gimbal_roll_motor_angle": msg.gimbal_roll_motor_angle,
-                "gimbal_roll_motor_current": msg.gimbal_roll_motor_current,
-                "gimbal_roll_motor_temp": msg.gimbal_roll_motor_temp,
-                "spray_gun_trigger": msg.spray_gun_trigger,
-                "yaw_enabled": msg.yaw_enabled,
-                "yaw_command": msg.yaw_command,
-                "yaw_pid_p": msg.yaw_pid_p,
-                "yaw_pid_i": msg.yaw_pid_i,
-                "yaw_pid_d": msg.yaw_pid_d,
-                # Add member state variables for QML access
-                "target_yaw": msg.yaw_command,
-            }
-
-            with self._status_lock:
-                # Preserve user-controlled fields that aren't in the ROS message
-                for field in _USER_CONTROLLED_FIELDS:
-                    new_status[field] = self._status.get(field, False)
-                self._status = new_status
-                status_snapshot = self._status.copy()
-
-            current_time = time.time()
-            self._record_status_update()
-
-            # Throttle UI updates to avoid overwhelming the UI
-            # Emit signal OUTSIDE lock to prevent deadlock
-            time_since_last_update = current_time - self._last_ui_update_time
-            if time_since_last_update > self._last_ui_update_interval:
-                self._last_ui_update_time = current_time
-                self.status_changed.emit(status_snapshot)
-
+            self._telemetry.post(self._device_snapshot_from_msg(msg))
         except Exception as e:
             self._node.get_logger().error(f"Error in Teensy status callback: {e}")
+
+    def _apply_status_snapshot(self, snap: object) -> None:
+        """Main thread: merge ROS device keys; preserve user-controlled fields."""
+        if not isinstance(snap, dict):
+            self._node.get_logger().error(f"Teensy apply expected dict, got {type(snap)}")
+            return
+
+        recv = float(snap.get("recv_mono", time.time()))
+        device_keys = {k: v for k, v in snap.items() if k != "recv_mono" and k not in _USER_CONTROLLED_FIELDS}
+
+        with self._status_lock:
+            self._status.update(cast(TeensyStatusDict, device_keys))
+            status_snapshot = self._status.copy()
+
+        self._last_status_update_time = recv
+
+        current_time = time.time()
+        time_since_last_update = current_time - self._last_ui_update_time
+        if time_since_last_update > self._last_ui_update_interval:
+            self._last_ui_update_time = current_time
+            self.status_changed.emit(status_snapshot)
 
     def get_status(self) -> TeensyStatusDict:
         """Get current Teensy status"""

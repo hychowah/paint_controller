@@ -357,6 +357,16 @@ def create_controllers(
     services = _build_workflow_and_services(
         node, devices, show_popup_fn=show_popup_fn, logger=logger
     )
+    # Late bind: coordinator exists before runner; halt must stop execution without join.
+    safety = devices["safety_coordinator"]
+    runner = services["workflow_runner"]
+    bind_stop = getattr(safety, "bind_execution_stop", None)
+    if callable(bind_stop):
+        bind_stop(runner)
+    bind_gate = getattr(runner, "bind_motion_gate", None)
+    if callable(bind_gate):
+        bind_gate(lambda: safety.continuous_motion_allowed)
+
     actions = _build_presentation_actions(
         devices,
         control,

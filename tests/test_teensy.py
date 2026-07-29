@@ -58,6 +58,9 @@ def test_status_callback_preserves_user_controlled_fields(qt_app, fake_node):
     status.yaw_command = 44.0
 
     controller._status_callback(status)
+    # Callback posts only — user fields must remain until main apply, then still preserved.
+    assert controller.get_status()["relay_enabled"] is True
+    qt_app.processEvents()
     current = controller.get_status()
 
     assert current["relay_enabled"] is True
@@ -174,6 +177,7 @@ def test_format_status_value_is_presentation_helper_not_device_method(qt_app, fa
     status = _teensy_status_class()()
     status.temperature = 23.456
     controller._status_callback(status)
+    qt_app.processEvents()
 
     assert not hasattr(controller, "get_formatted_value")
     assert format_status_value("temperature", controller.get_status_value("temperature")) == "23.5"

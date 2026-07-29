@@ -34,7 +34,14 @@ class WorkFlowRunner(QObject):
     loaded_workflow_reload_state_changed = Signal(bool)
     error_occurred = Signal(str)  # Error message
 
-    def __init__(self, ros_node, hardware: HardwareControllers, logger=None, catalog: WorkflowCatalog | None = None):
+    def __init__(
+        self,
+        ros_node,
+        hardware: HardwareControllers,
+        logger=None,
+        catalog: WorkflowCatalog | None = None,
+        motion_allowed_fn=None,
+    ):
         """
         Initialize workflow runner.
 
@@ -42,10 +49,12 @@ class WorkFlowRunner(QObject):
             ros_node: ROS2 node instance
             hardware: Pre-built HardwareControllers with wired controller adapters
             logger: Optional logger (uses ros_node.get_logger() if None)
+            motion_allowed_fn: Optional ``() -> bool`` gate for play/resume (TD-054 latch)
         """
         super().__init__()
         self.ros_node = ros_node
         self.logger = logger or ros_node.get_logger()
+        self._motion_allowed_fn = motion_allowed_fn
 
         self.executor = WorkFlowExecutor(ros_node, hardware, self.logger)
         self._catalog = catalog or WorkflowCatalog(logger=self.logger)
@@ -64,6 +73,26 @@ class WorkFlowRunner(QObject):
         self._monitor_timer = QTimer()
         self._monitor_timer.timeout.connect(self._update_execution_state)
         self._monitor_timer.start(100)  # Update every 100ms
+
+    def bind_motion_gate(self, motion_allowed_fn) -> None:
+        """Late-bind continuous-motion latch (factory after SafetyCoordinator)."""
+        self._motion_allowed_fn = motion_allowed_fn
+
+    def _motion_allowed(self) -> bool:
+        fn = self._motion_allowed_fn
+        if fn is None:
+            return True
+        try:
+            return bool(fn())
+        except Exception:
+            return False
+
+    def stop_execution(self) -> bool:
+        """Non-blocking execution stop for SafetyCoordinator halt (no hardware matrix)."""
+        ok = self.executor.request_stop_nonblocking()
+        self._workflow_start_time = 0.0
+        self.execution_state_changed.emit(self.executor.current_state.value)
+        return ok
 
     @Property(list, notify=workflow_list_changed)
     def workflow_list(self) -> list[str]:
@@ -394,6 +423,12 @@ class WorkFlowRunner(QObject):
             self.error_occurred.emit(error_msg)
             return False
 
+        if not self._motion_allowed():
+            error_msg = "Cannot start workflow while motion is latched (clear error first)"
+            self.logger.error(error_msg)
+            self.error_occurred.emit(error_msg)
+            return False
+
         success = self.executor.play()
 
         if success:
@@ -423,6 +458,12 @@ class WorkFlowRunner(QObject):
     @Slot()
     def resume(self) -> bool:
         """Resume paused workflow execution."""
+        if not self._motion_allowed():
+            error_msg = "Cannot resume workflow while motion is latched (clear error first)"
+            self.logger.error(error_msg)
+            self.error_occurred.emit(error_msg)
+            return False
+
         success = self.executor.resume()
 
         if success:
