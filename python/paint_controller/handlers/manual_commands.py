@@ -4,9 +4,21 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Protocol
 
 from PySide6.QtCore import QObject, Signal, Slot
+
+from paint_controller.handlers.demo_sequence import run_demo_action
+from paint_controller.ports.teensy import SupportsTeensyWorkflowBody
+from paint_controller.ports.winch import SupportsWinchMotion
+
+
+class SupportsManualTeensyCommands(SupportsTeensyWorkflowBody, Protocol):
+    """Teensy surface used by system-control manual commands (incl. tap helpers)."""
+
+    def startTapFreq(self, power: float, period: float) -> None: ...
+
+    def tapOnce(self, power: float) -> None: ...
 
 
 @dataclass(frozen=True)
@@ -26,7 +38,13 @@ class ManualCommandHandler(QObject):
 
     operation_result = Signal(bool, str)
 
-    def __init__(self, teensy: Any, winch: Any, logger: Any, parent: QObject | None = None) -> None:
+    def __init__(
+        self,
+        teensy: SupportsManualTeensyCommands,
+        winch: SupportsWinchMotion | None,
+        logger: Any,
+        parent: QObject | None = None,
+    ) -> None:
         super().__init__(parent)
         self._teensy = teensy
         self._winch = winch
@@ -130,33 +148,54 @@ class ManualCommandHandler(QObject):
     def _to_int(value: str) -> int:
         return int(float(value))
 
+    @staticmethod
+    def _as_float(value: object) -> float:
+        return float(str(value))
+
+    @staticmethod
+    def _as_int(value: object) -> int:
+        return int(float(str(value)))
+
     def _execute_set_spray_gun_angle(self, parameters: dict[str, object]) -> None:
-        self._teensy.setSprayGunPitchAngle(parameters["Angle"], parameters["Speed"])
+        self._teensy.setSprayGunPitchAngle(self._as_float(parameters["Angle"]), self._as_float(parameters["Speed"]))
 
     def _execute_demo(self, parameters: dict[str, object]) -> None:
-        self._teensy.demoAction(
-            parameters["Gimbal Angle"],
-            parameters["Gimbal Speed"],
-            parameters["Cable Length"],
-            parameters["Cable Speed"],
-            parameters["Force Y"],
+        # TD-055: multi-device demo lives in application demo_sequence, not on Teensy.
+        run_demo_action(
+            self._teensy,
+            self._winch,
+            pitch_angle=self._as_float(parameters["Gimbal Angle"]),
+            pitch_speed=self._as_float(parameters["Gimbal Speed"]),
+            cable_length=self._as_float(parameters["Cable Length"]),
+            cable_speed=self._as_float(parameters["Cable Speed"]),
+            force_y=self._as_float(parameters["Force Y"]),
         )
 
     def _execute_winch_control(self, parameters: dict[str, object]) -> bool | None:
-        return self._winch.moveIncrementWithAccel(
-            parameters["Distance"],
-            parameters["Speed"],
-            parameters["Acceleration"],
-        )
+        if self._winch is None:
+            return False
+        distance = self._as_int(parameters["Distance"])
+        speed = self._as_int(parameters["Speed"])
+        acceleration = self._as_int(parameters["Acceleration"])
+        # Prefer the shared workflow port name; fall back to legacy QML-facing alias.
+        move = getattr(self._winch, "move_increment_with_accel", None)
+        if callable(move):
+            result = move(distance, speed, acceleration)
+            return result if isinstance(result, bool) or result is None else bool(result)
+        legacy = getattr(self._winch, "moveIncrementWithAccel", None)
+        if not callable(legacy):
+            return False
+        result = legacy(distance, speed, acceleration)
+        return result if isinstance(result, bool) or result is None else bool(result)
 
     def _execute_frequency_tap(self, parameters: dict[str, object]) -> None:
-        self._teensy.startTapFreq(parameters["Power"], parameters["Period"])
+        self._teensy.startTapFreq(self._as_float(parameters["Power"]), self._as_float(parameters["Period"]))
 
     def _execute_tap_once(self, parameters: dict[str, object]) -> None:
-        self._teensy.tapOnce(parameters["Power"])
+        self._teensy.tapOnce(self._as_float(parameters["Power"]))
 
     def _execute_extend_arm(self, parameters: dict[str, object]) -> None:
-        self._teensy.extendArm(parameters["Length"])
+        self._teensy.extendArm(self._as_int(parameters["Length"]))
 
     def _fail(self, message: str) -> bool:
         self._logger.warning(message)

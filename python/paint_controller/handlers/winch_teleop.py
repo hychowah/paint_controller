@@ -8,7 +8,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from paint_controller.handlers.heartbeat import HeartbeatStatus
+from paint_controller.ports.winch import SupportsWinchTeleop
+from paint_controller.utils.constants import HeartbeatStatus
 from paint_controller.utils.input import DeadzoneTracker
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ def process_winch_speed(
     deadzone: DeadzoneTracker,
     deadzone_threshold: float,
     has_been_active: bool,
-    winch: Any,
+    winch: SupportsWinchTeleop,
     heartbeat_handler: Any,
 ) -> bool:
     """Map stick Y to winch speed; return updated ``has_been_active`` flag."""

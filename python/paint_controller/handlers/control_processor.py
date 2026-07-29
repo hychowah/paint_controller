@@ -18,40 +18,34 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 from PySide6.QtCore import Property, QObject, Signal
 
 from paint_controller.handlers import wheel_travel_teleop, winch_teleop
+from paint_controller.handlers.policy.teleop_control_map import (
+    ControlConfig,
+    TeleopScaleConstants,
+    build_default_control_configs,
+)
+from paint_controller.ports.teensy import SupportsTeensyTeleop
+from paint_controller.ports.valve import SupportsValveCommand
+from paint_controller.ports.wheel import SupportsWheelTeleop
+from paint_controller.ports.winch import SupportsWinchTeleop
 from paint_controller.utils.input import DeadzoneTracker
 
 if TYPE_CHECKING:
-    from paint_controller.controllers.esp32_valve import ESP32ValveController
-    from paint_controller.controllers.wheel import WheelController
-    from paint_controller.controllers.winch import WinchController
     from paint_controller.core.settings import SettingsManager
     from paint_controller.core.state_store import StateStore
     from paint_controller.handlers.heartbeat import UIHeartbeatHandler
     from paint_controller.models.joystick_selection import JoystickSelectionModel
-    from paint_controller.ports.teensy import SupportsTeensyTeleop
 
 logger = logging.getLogger(__name__)
 
-# Value cast for EF stick modes (was ROS msg type on raw publishers).
-ValueCast = Literal["float", "int"]
 DisplayValue = str | float | tuple[float, float]
 
-
-@dataclass
-class ControlConfig:
-    scale: float
-    min_interval: float  # Minimum time between commands in seconds
-    offset: float = 0
-    min_value: float = float("-inf")
-    max_value: float = float("inf")
-    value_cast: ValueCast = "float"
-    bidirectional: bool = False  # True for controls that support negative values (e.g., winch speed)
+# Re-export for tests / callers that imported ControlConfig from this module.
+__all__ = ["ControlConfig", "ControlProcessor"]
 
 
 class ControlProcessor(QObject):
@@ -65,10 +59,10 @@ class ControlProcessor(QObject):
 
     def __init__(
         self,
-        wheel: WheelController,
-        winch: WinchController,
+        wheel: SupportsWheelTeleop,
+        winch: SupportsWinchTeleop,
         teensy: SupportsTeensyTeleop,
-        esp32_valve: ESP32ValveController,
+        esp32_valve: SupportsValveCommand,
         selection_model: JoystickSelectionModel,
         heartbeat_handler: UIHeartbeatHandler,
         settings_manager: SettingsManager | None,
@@ -205,55 +199,42 @@ class ControlProcessor(QObject):
 
     def _setup_controls(self) -> None:
         """Initialize control configurations and handler dispatch table."""
-        self.controls = {
-            "Winch Speed": ControlConfig(
-                scale=self.WINCH_SCALE,
-                min_interval=self.WINCH_UPDATE_INTERVAL,
-                min_value=-self._winch_max_speed_mmps,
-                max_value=self._winch_max_speed_mmps,
-                bidirectional=True,
-            ),
-            "Track Control Left": ControlConfig(scale=self.TRACK_SCALE, min_interval=self.TRACK_UPDATE_INTERVAL),
-            "Track Control Right": ControlConfig(scale=self.TRACK_SCALE, min_interval=self.TRACK_UPDATE_INTERVAL),
-            "EF arm": ControlConfig(scale=self.EF_ARM_SCALE, min_interval=self.EF_ARM_UPDATE_INTERVAL),
-            "EF prop joint": ControlConfig(scale=self.EF_JOINT_SCALE, min_interval=self.EF_JOINT_UPDATE_INTERVAL),
-            "EF spray trigger": ControlConfig(
-                scale=self.EF_TRIGGER_SCALE,
-                min_interval=self.EF_TRIGGER_UPDATE_INTERVAL,
-                offset=self.EF_TRIGGER_OFFSET,
-                min_value=self.EF_TRIGGER_MIN_VALUE,
-                value_cast="int",
-            ),
-            "EF top rail": ControlConfig(scale=self.EF_RAIL_SCALE, min_interval=self.EF_RAIL_UPDATE_INTERVAL),
-            "EF prop pwm": ControlConfig(
-                scale=self.EF_PWM_SCALE,
-                min_interval=self.EF_PWM_UPDATE_INTERVAL,
-                offset=self.EF_PWM_OFFSET,
-                min_value=self.EF_PWM_MIN_VALUE,
-                value_cast="int",
-            ),
-            "EF spray pitch": ControlConfig(
-                scale=self.EF_PITCH_SCALE, min_interval=self.EF_PITCH_UPDATE_INTERVAL, value_cast="int"
-            ),
-            "EF Yaw Angle": ControlConfig(scale=self.EF_YAW_SCALE, min_interval=self.EF_YAW_UPDATE_INTERVAL),
-            "EF Force": ControlConfig(scale=self.EF_FORCE_SCALE, min_interval=self.EF_FORCE_UPDATE_INTERVAL),
-            "Valve Turn": ControlConfig(scale=self.VALVE_TURN_SCALE, min_interval=self.VALVE_TURN_UPDATE_INTERVAL),
-            "Arm Rail Speed": ControlConfig(scale=self.ARM_RAIL_SPEED_SCALE, min_interval=self.EF_RAIL_UPDATE_INTERVAL),
-            "Wheel Travel Left": ControlConfig(
-                scale=self._get_wheel_travel_scale(),
-                min_interval=self.WHEEL_TRAVEL_UPDATE_INTERVAL,
-                min_value=-self._wheel_travel_max,
-                max_value=self._wheel_travel_max,
-                bidirectional=True,
-            ),
-            "Wheel Travel Right": ControlConfig(
-                scale=self._get_wheel_travel_scale(),
-                min_interval=self.WHEEL_TRAVEL_UPDATE_INTERVAL,
-                min_value=-self._wheel_travel_max,
-                max_value=self._wheel_travel_max,
-                bidirectional=True,
-            ),
-        }
+        # TD-055: control map built by pure policy module (deep: one place for scales).
+        self.controls = build_default_control_configs(
+            TeleopScaleConstants(
+                winch_scale=self.WINCH_SCALE,
+                winch_update_interval=self.WINCH_UPDATE_INTERVAL,
+                winch_max_speed_mmps=self._winch_max_speed_mmps,
+                track_scale=self.TRACK_SCALE,
+                track_update_interval=self.TRACK_UPDATE_INTERVAL,
+                ef_arm_scale=self.EF_ARM_SCALE,
+                ef_arm_update_interval=self.EF_ARM_UPDATE_INTERVAL,
+                ef_joint_scale=self.EF_JOINT_SCALE,
+                ef_joint_update_interval=self.EF_JOINT_UPDATE_INTERVAL,
+                ef_trigger_scale=self.EF_TRIGGER_SCALE,
+                ef_trigger_update_interval=self.EF_TRIGGER_UPDATE_INTERVAL,
+                ef_trigger_offset=self.EF_TRIGGER_OFFSET,
+                ef_trigger_min_value=self.EF_TRIGGER_MIN_VALUE,
+                ef_rail_scale=self.EF_RAIL_SCALE,
+                ef_rail_update_interval=self.EF_RAIL_UPDATE_INTERVAL,
+                ef_pwm_scale=self.EF_PWM_SCALE,
+                ef_pwm_update_interval=self.EF_PWM_UPDATE_INTERVAL,
+                ef_pwm_offset=self.EF_PWM_OFFSET,
+                ef_pwm_min_value=self.EF_PWM_MIN_VALUE,
+                ef_pitch_scale=self.EF_PITCH_SCALE,
+                ef_pitch_update_interval=self.EF_PITCH_UPDATE_INTERVAL,
+                ef_yaw_scale=self.EF_YAW_SCALE,
+                ef_yaw_update_interval=self.EF_YAW_UPDATE_INTERVAL,
+                ef_force_scale=self.EF_FORCE_SCALE,
+                ef_force_update_interval=self.EF_FORCE_UPDATE_INTERVAL,
+                valve_turn_scale=self.VALVE_TURN_SCALE,
+                valve_turn_update_interval=self.VALVE_TURN_UPDATE_INTERVAL,
+                arm_rail_speed_scale=self.ARM_RAIL_SPEED_SCALE,
+                wheel_travel_scale=self._get_wheel_travel_scale(),
+                wheel_travel_update_interval=self.WHEEL_TRAVEL_UPDATE_INTERVAL,
+                wheel_travel_max=self._wheel_travel_max,
+            )
+        )
 
         # Control handler dispatch table
         # Maps control names to their specialized handler methods.

@@ -9,7 +9,7 @@ Living document. Update when debt is discovered, addressed, or re-prioritised.
 
 **Architecture leverage** (optional tag on items): how much a fix improves FE↔BE program structure when doing architecture work, independent of ship-blocking urgency.
 
-Last multi-perspective re-validation: **2026-07-28** (deep software-only pass: composition/DI, QML contract injection, QML modules/kit, ports/domain modularity, test/CI control plane). Industrial HMI and operator-UX product work are **out of scope** for this tracker update. Prior 2026-07-27/28 program diagnoses reconfirmed; new TDs **048–053** added from evidence-backed research. **2026-07-29**: added **TD-054** (concurrent ROS publish + spin) from architecture concurrency review.
+Last multi-perspective re-validation: **2026-07-28** (deep software-only pass: composition/DI, QML contract injection, QML modules/kit, ports/domain modularity, test/CI control plane). Industrial HMI and operator-UX product work are **out of scope** for this tracker update. Prior 2026-07-27/28 program diagnoses reconfirmed; new TDs **048–053** added from evidence-backed research. **2026-07-29**: added **TD-054** (concurrent ROS publish + spin) from architecture concurrency review; added **TD-055** (layer responsibility depth / Problem 2) with plan `docs/plan/02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md`.
 
 **Research non-goals (do not invent debt for):** mega-`Backend` object; reopening TD-032 name-retirement mega-program; full URI QML module rewrite as a program; universal visual skin unification; HMI safety/legality ship defaults; `qmlRegisterSingletonInstance`.
 
@@ -21,23 +21,38 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 | Rank | ID | Why |
 |---|---|---|
-| — | **TD-054** | Runtime integrity: concurrent ROS publish + spin (schedule when touching ROS/teleop, or as a dedicated slice) |
+| 1 | **TD-055** | Layer responsibility depth (Problem 2): one hardware vocabulary, deep modules, peel UI/orchestration off controllers — plan `docs/plan/02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md` |
+| 2 | **TD-054** | Runtime integrity: concurrent ROS publish + spin (schedule when touching ROS/teleop, or as a dedicated slice; do not expand multi-thread publish while open) |
 | — | **TD-052 / TD-053** | When touching tuning/commands or dual-surface overlays |
 | — | **TD-002 / TD-016** | Opportunistic chrome only; out of pure program track |
 | — | **TD-040 residual** | Optional: `video_stream` / `base_top_view_service` pyright include (deferred 2026-07-29) |
 | — | **TD-041 / TD-042 / TD-043 / TD-051** | Resolved 2026-07-29 (hygiene band) |
-| — | **TD-049** | Resolved 2026-07-29 (shared ports Teensy teleop+halt+workflow body; residual *Actions Any) |
+| — | **TD-049** | Resolved 2026-07-29 (shared ports Teensy teleop+halt+workflow body; residual *Actions Any — continued under TD-055) |
 | — | **TD-050** | Resolved 2026-07-29 (public setters + require_ui_ports finalize; set-once not enforced) |
 | — | **TD-048** | Resolved 2026-07-29 (page/feature inject for actions/legality/settings/chrome) |
 | — | **TD-044 / TD-045 / TD-040** | Resolved 2026-07-29 (CI control plane) |
 | — | **TD-047** | Resolved 2026-07-28 (façade demirror + wiring/composer ports) |
-| — | **TD-046** | Resolved 2026-07-28 (docs + winch/wheel teleop extract; residual EF stick mass) |
+| — | **TD-046** | Resolved 2026-07-28 (docs + winch/wheel teleop extract; residual EF stick mass / post-halt inhibit) |
 | — | **TD-037** | Resolved 2026-07-28 (residual: videoRuntime multi-home only) |
 | — | **TD-038 / TD-032 / TD-036 / TD-039** | Resolved 2026-07-28 |
 
 ---
 
 ## Active Debt
+
+### TD-055 — Layer responsibility depth (Problem 2)
+**Area**: Backend / package boundaries / module depth  
+**Priority**: medium (maintainability / long-term structure; program track #1 for architecture)  
+**Effort**: high (phased; not one PR)  
+**Architecture leverage**: high  
+**Status**: **Phases 0–3 landed** 2026-07-29 on `td-055/layer-responsibility-depth` — dual HAL collapsed into shared `ports/` (winch/wheel/valve + teensy); Teensy peeled of popup/peer/demo (`demo_sequence`); pure `handlers/policy/*`; ControlProcessor + Winch/Wheel Actions retyped; review bans in AGENTS. **Residual**: Phase 4 status deepen; Phase 5 light rehome; remaining `*Actions` (teensy/tuning) still partially duck-typed; post-halt inhibit (TD-046) separate.  
+**Why it matters**: Folders look layered but responsibilities mixed (controllers as UI/orchestrators; dual HAL; policy in QObjects).  
+**What to do (remaining)**: Phase 4–5 optional per plan; extend typed surfaces to remaining Actions when touched.  
+**Acceptance (0–3)**: One hardware vocabulary for Teensy/Winch/wheel/valve clusters; Teensy without popup/peer/demo; legality + teleop maps pure-testable; hurt call sites not open `Any`+string dispatch.  
+**Files**: `ports/*`, `controllers/teensy.py`, `handlers/policy/*`, `handlers/demo_sequence.py`, `handlers/control_processor.py`, `models/*_actions.py`, `services/workflow/hardware.py`, `core/controller_factory.py`  
+**Plan**: `docs/plan/02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md`
+
+---
 
 ### TD-052 — Command/tuning parameter schemas still owned in QML
 **Area**: QML ↔ Python boundary

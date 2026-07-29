@@ -9,11 +9,11 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 ## Current Snapshot
 
 - Overall status: in progress
-- Active architecture program: none — the QML surface retirement program (Phases 0–8) is closing per `docs/tech-debt.md` TD-032; the master plan doc was deleted 2026-07-27 and is recoverable from git history
+- Active architecture program: **Problem 2 — layer responsibility depth** (`docs/plan/02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md`, **TD-055**). QML surface retirement program (Phases 0–8) is closed per TD-032; that master plan was deleted 2026-07-27 and is recoverable from git history
 - Most recent completed slice: **hygiene band TD-041/042/043/051** (2026-07-29); prior same-day **TD-049/050/048**
-- Debt tracker: next program-track **TD-054** (ROS concurrent I/O) when scheduled; opportunistic TD-052/053 — see `docs/tech-debt.md`
-- Core purpose: reduce global coupling, clarify ownership, shrink ambient QML *usage* (injection depth), and make composition/ports closer to a professional Qt program — without reopening TD-032 name-retirement
-- First-principles rule: success means fewer ambient leaf reads, thinner composition export, and real CI/type control planes — not wrapper proliferation or mega-Backend
+- Debt tracker: **TD-055** (layer depth program) is the Problem 2 track; **TD-054** (ROS concurrent I/O) remains a separate integrity track when scheduled; opportunistic TD-052/053 — see `docs/tech-debt.md`
+- Core purpose: reduce global coupling, clarify ownership, shrink ambient QML *usage* (injection depth), and make composition/ports closer to a professional Qt program — without reopening TD-032 name-retirement. Problem 2 adds: **deep modules**, one hardware vocabulary, devices that are only devices (Ousterhout depth over hexagonal ceremony)
+- First-principles rule: success means fewer ambient leaf reads, thinner composition export, real CI/type control planes, and **deeper modules with less change amplification** — not wrapper proliferation, mega-Backend, or empty layer folders
 - Last focused validation: `58 passed` for `tests/test_app_runtime_runtime.py tests/test_controller_factory_runtime.py tests/test_startup_smoke.py tests/test_startup_smoke_shell.py tests/test_startup_smoke_home.py tests/test_qml_imports.py tests/test_shell_router.py tests/test_qml_context_composer.py tests/test_signal_wiring.py` on 2026-07-24
 - Last full-suite baseline: `313 passed` for `python/paint_controller/venv/bin/python -m pytest tests -q` on 2026-07-24
 
@@ -22,11 +22,13 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 ### Now
 
 - Phase 8 is complete. **QML surface retirement program closed** (TD-032, 2026-07-28).
+- **Problem 2 Phases 0–3 landed** (2026-07-29) on branch `td-055/layer-responsibility-depth`: shared ports vocabulary, Teensy peel, pure policy, retyped hurt call sites. Plan: `docs/plan/02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md`.
 
 ### Next
 
+- **TD-055 residual** (optional Phase 4–5, remaining Actions typing) — only when a consumer is touched; do not open empty rehome.
 - **TD-048 / TD-050 / TD-049 / hygiene band resolved** (2026-07-29): inject-first; finalize ports; shared Teensy ports; docs/cleanup/StateStore/smoke dual-source hygiene.
-- **Software program track** (canonical order in `docs/tech-debt.md`): **TD-054** when scheduled; residual smoke Fake* property surfaces and CapabilityCatalog size are non-blocking.
+- **Separate integrity track**: **TD-054** when scheduled (ROS concurrent publish + spin). Do not expand multi-thread publish while open.
 - Root context contract remains frozen at `_EXPECTED_CONTEXT_PROPERTY_NAMES` (~26 names). Prefer **inject then retire last consumer**; do not open a new boundary-retirement mega-program.
 - Industrial HMI / operator-UX product work is **out of scope** for this architecture track unless explicitly reprioritized.
 
@@ -100,8 +102,9 @@ These files are allowed to keep temporary raw-global reads until their named fam
 
 ## Next Session Checklist
 
-1. Keep this file as the live unfinished-work board; durable rationale stays in `01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`.
-2. Follow `docs/tech-debt.md` program-track order (hygiene, then **TD-054** when scheduled).
+1. Keep this file as the live unfinished-work board; durable Qt rationale stays in `01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`; **Problem 2 execution plan** is `02_LAYER_RESPONSIBILITY_DEPTH_PLAN.md`.
+2. For layering/depth work: follow **TD-055** phases in `02_…` (0 bans → 1 dual-HAL → 2 peel controllers → 3 pure policy → 4 status → 5 light rehome). For ROS I/O integrity: **TD-054** when scheduled.
 3. Preserve frozen shell and launcher contracts.
 4. Keep quarantined remainder explicit by file (currently none).
 5. Do not open automation follow-on until there is a clear product need separate from ambient QML cleanup.
+6. Reject shallow “architecture” PRs: no empty layer packages, no pass-through-only types, no second HAL, no new popup/peer deps on controllers.

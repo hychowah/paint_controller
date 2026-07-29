@@ -9,7 +9,7 @@ from tests.fakes import FakeLogger
 class FakeTeensy:
     def __init__(self) -> None:
         self.spray_angle_calls: list[tuple[float, float]] = []
-        self.demo_calls: list[tuple[float, float, float, float, float]] = []
+        self.force_calls: list[tuple[float, float]] = []
         self.extend_calls: list[int] = []
         self.frequency_tap_calls: list[tuple[float, float]] = []
         self.tap_once_calls: list[float] = []
@@ -17,15 +17,8 @@ class FakeTeensy:
     def setSprayGunPitchAngle(self, angle: float, speed: float) -> None:
         self.spray_angle_calls.append((angle, speed))
 
-    def demoAction(
-        self,
-        pitch_angle: float,
-        pitch_speed: float,
-        cable_length: float,
-        cable_speed: float,
-        force_y: float,
-    ) -> None:
-        self.demo_calls.append((pitch_angle, pitch_speed, cable_length, cable_speed, force_y))
+    def set_ef_force(self, fx: float, fy: float) -> None:
+        self.force_calls.append((fx, fy))
 
     def extendArm(self, length: int) -> None:
         self.extend_calls.append(length)
@@ -41,10 +34,18 @@ class FakeWinch:
     def __init__(self, result: bool = True) -> None:
         self.result = result
         self.move_calls: list[tuple[int, int, int]] = []
+        self.absolute_calls: list[tuple[int, int, int]] = []
 
-    def moveIncrementWithAccel(self, distance: int, speed: int, acceleration: int) -> bool:
+    def move_increment_with_accel(self, distance: int, speed: int, acceleration: int) -> bool:
         self.move_calls.append((distance, speed, acceleration))
         return self.result
+
+    def move_absolute_with_accel(self, length: int, speed: int, acceleration: int = 30) -> bool:
+        self.absolute_calls.append((length, speed, acceleration))
+        return self.result
+
+    def get_cable_length(self) -> float:
+        return 0.0
 
 
 def _build_handler(
@@ -77,8 +78,9 @@ def test_execute_set_spray_gun_angle_coerces_float_parameters() -> None:
     assert logger.records[-1].message == "Command sent: Set Spray Gun Angle"
 
 
-def test_execute_demo_uses_gimbal_parameter_names_from_qml() -> None:
-    handler, teensy, _winch, _logger, _results = _build_handler()
+def test_execute_demo_uses_application_demo_sequence_not_teensy_method() -> None:
+    """TD-055: Demo orchestrates teensy + winch via demo_sequence (not Teensy.demoAction)."""
+    handler, teensy, winch, _logger, _results = _build_handler()
 
     success = handler.executeCommand(
         "Demo",
@@ -92,7 +94,10 @@ def test_execute_demo_uses_gimbal_parameter_names_from_qml() -> None:
     )
 
     assert success is True
-    assert teensy.demo_calls == [(10.0, 2.5, 100.0, 50.0, 8.5)]
+    assert teensy.spray_angle_calls == [(10.0, 2.5)]
+    assert winch.absolute_calls == [(100, 50, 30)]
+    assert teensy.force_calls == [(0.0, 8.5)]
+    assert not hasattr(teensy, "demoAction") or not callable(getattr(type(teensy), "demoAction", None))
 
 
 def test_execute_winch_control_accepts_integer_like_strings() -> None:

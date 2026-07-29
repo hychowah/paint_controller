@@ -178,9 +178,8 @@ def create_controllers(
 
     # === Layer 3: ROS2 + settings controllers ===
     winch = WinchController(node, settings_manager=settings_manager)
-    teensy = TeensyController(
-        node, settings_manager=settings_manager, winch_controller=winch, show_popup_fn=show_popup_fn
-    )
+    # TD-055: device adapter only — no UI popup or peer-winch orchestration.
+    teensy = TeensyController(node, settings_manager=settings_manager)
     safety_coordinator = SafetyCoordinator(
         winch=winch,
         teensy=teensy,
