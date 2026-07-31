@@ -18,35 +18,6 @@ from paint_controller.models.winch_status import WinchStatus
 
 logger = logging.getLogger(__name__)
 
-_EXPECTED_CONTEXT_PROPERTY_NAMES: tuple[str, ...] = (
-    "qtBridge",
-    "shellState",
-    "overlayHost",
-    "actionLegality",
-    "systemControlServices",
-    "videoRuntime",
-    "recordingStatus",
-    "wheelStatus",
-    "winchStatus",
-    "teensyStatus",
-    "valveStatus",
-    "lidarStatus",
-    "shellConnectivityStatus",
-    "launcherAdmin",
-    "overlayController",
-    "warningHandler",
-    "wheelActions",
-    "winchActions",
-    "tuningActions",
-    "recordingActions",
-    "teensyActions",
-    "systemActions",
-    "baseTopViewActions",
-    "baseTopViewStatus",
-    "shellRouter",
-    "settingsManager",
-)
-
 
 def _connect_if_signal(owner: object, signal_name: str, callback: Callable[..., None]) -> None:
     signal = getattr(owner, signal_name, None)
@@ -667,6 +638,136 @@ class QmlComposePorts:
     settings_manager: Any
 
 
+@dataclass(frozen=True)
+class ContextProp:
+    """Base entry for a QML root-context property."""
+
+    name: str
+
+
+@dataclass(frozen=True)
+class BundleProp(ContextProp):
+    """Passthrough property read from ``ControllerBundle``."""
+
+    field: str
+
+
+@dataclass(frozen=True)
+class PortsProp(ContextProp):
+    """Passthrough property read from ``QmlComposePorts``."""
+
+    field: str
+
+
+@dataclass(frozen=True)
+class WrapperProp(ContextProp):
+    """Property built from a factory callable receiving ``QmlComposePorts``."""
+
+    builder: Callable[[QmlComposePorts], object]
+
+
+def _wheel_status_builder(ports: QmlComposePorts) -> WheelStatus:
+    return WheelStatus(ports.bundle.wheel_controller)
+
+
+def _winch_status_builder(ports: QmlComposePorts) -> WinchStatus:
+    return WinchStatus(ports.bundle.winch_controller)
+
+
+def _teensy_status_builder(ports: QmlComposePorts) -> TeensyStatus:
+    return TeensyStatus(ports.bundle.teensy_controller)
+
+
+def _valve_status_builder(ports: QmlComposePorts) -> ValveStatus:
+    return ValveStatus(ports.bundle.esp32_valve_controller)
+
+
+def _lidar_status_builder(ports: QmlComposePorts) -> LidarStatus:
+    return LidarStatus(ports.bundle.lidar_controller)
+
+
+def _system_control_services_builder(ports: QmlComposePorts) -> _SystemControlServices:
+    bundle = ports.bundle
+    return _SystemControlServices(
+        workflow_runner=bundle.workflow_runner,
+        workflow_editor=bundle.workflow_editor,
+        manual_command_handler=bundle.manual_command_handler,
+    )
+
+
+def _video_runtime_builder(ports: QmlComposePorts) -> _VideoRuntime:
+    bundle = ports.bundle
+    return _VideoRuntime(
+        control_processor=bundle.control_processor,
+        video_stream_handler=ports.video_stream_handler,
+        ssh_controller=bundle.ssh_controller,
+        screen_recorder=bundle.screen_recorder,
+        system_monitor=bundle.system_monitor,
+        teensy_controller=bundle.teensy_controller,
+        winch_controller=bundle.winch_controller,
+    )
+
+
+def _recording_status_builder(ports: QmlComposePorts) -> _RecordingStatus:
+    bundle = ports.bundle
+    return _RecordingStatus(
+        video_stream_handler=ports.video_stream_handler,
+        screen_recorder=bundle.screen_recorder,
+        ros_bag_recorder=bundle.ros_bag_recorder,
+    )
+
+
+def _base_top_view_status_builder(ports: QmlComposePorts) -> _BaseTopViewStatus:
+    return _BaseTopViewStatus(ports.base_top_view_service)
+
+
+def _shell_connectivity_status_builder(ports: QmlComposePorts) -> _ShellConnectivityStatus:
+    bundle = ports.bundle
+    return _ShellConnectivityStatus(
+        ssh_controller=bundle.ssh_controller,
+        heartbeat_handler=bundle.heartbeat_handler,
+        winch_controller=bundle.winch_controller,
+        wheel_status=_wheel_status_builder(ports),
+        teensy_controller=bundle.teensy_controller,
+    )
+
+
+def _launcher_admin_builder(ports: QmlComposePorts) -> _LauncherAdmin:
+    return _LauncherAdmin(ports.bundle.ssh_controller)
+
+
+CONTEXT_PROPERTIES: tuple[ContextProp, ...] = (
+    PortsProp("qtBridge", "qt_bridge"),
+    PortsProp("shellState", "shell_state"),
+    PortsProp("overlayHost", "overlay_host"),
+    PortsProp("actionLegality", "action_legality"),
+    WrapperProp("systemControlServices", _system_control_services_builder),
+    WrapperProp("videoRuntime", _video_runtime_builder),
+    WrapperProp("recordingStatus", _recording_status_builder),
+    BundleProp("recordingActions", "recording_actions"),
+    WrapperProp("wheelStatus", _wheel_status_builder),
+    BundleProp("wheelActions", "wheel_actions"),
+    BundleProp("teensyActions", "teensy_actions"),
+    BundleProp("systemActions", "system_actions"),
+    WrapperProp("winchStatus", _winch_status_builder),
+    WrapperProp("teensyStatus", _teensy_status_builder),
+    WrapperProp("valveStatus", _valve_status_builder),
+    WrapperProp("lidarStatus", _lidar_status_builder),
+    WrapperProp("shellConnectivityStatus", _shell_connectivity_status_builder),
+    WrapperProp("launcherAdmin", _launcher_admin_builder),
+    BundleProp("overlayController", "overlay_controller"),
+    BundleProp("warningHandler", "warning_handler"),
+    BundleProp("winchActions", "winch_actions"),
+    BundleProp("tuningActions", "tuning_actions"),
+    BundleProp("baseTopViewActions", "base_top_view_actions"),
+    WrapperProp("baseTopViewStatus", _base_top_view_status_builder),
+    PortsProp("shellRouter", "shell_router"),
+    PortsProp("settingsManager", "settings_manager"),
+)
+
+_EXPECTED_CONTEXT_PROPERTY_NAMES: tuple[str, ...] = tuple(prop.name for prop in CONTEXT_PROPERTIES)
+
+
 class QmlContextComposer:
     """Builds the QML root-context property dict and the status wrappers it contains."""
 
@@ -676,69 +777,17 @@ class QmlContextComposer:
     def compose(self) -> dict[str, object]:
         """Create status wrappers and return the full context-property mapping."""
         ports = self._ports
-        bundle = ports.bundle
-        if bundle is None:
+        if ports.bundle is None:
             raise RuntimeError("ControllerBundle is required before composing QML context properties")
 
-        system_control_services = _SystemControlServices(
-            workflow_runner=bundle.workflow_runner,
-            workflow_editor=bundle.workflow_editor,
-            manual_command_handler=bundle.manual_command_handler,
-        )
-        video_runtime = _VideoRuntime(
-            control_processor=bundle.control_processor,
-            video_stream_handler=ports.video_stream_handler,
-            ssh_controller=bundle.ssh_controller,
-            screen_recorder=bundle.screen_recorder,
-            system_monitor=bundle.system_monitor,
-            teensy_controller=bundle.teensy_controller,
-            winch_controller=bundle.winch_controller,
-        )
-        recording_status = _RecordingStatus(
-            video_stream_handler=ports.video_stream_handler,
-            screen_recorder=bundle.screen_recorder,
-            ros_bag_recorder=bundle.ros_bag_recorder,
-        )
-        wheel_status = WheelStatus(bundle.wheel_controller)
-        winch_status = WinchStatus(bundle.winch_controller)
-        teensy_status = TeensyStatus(bundle.teensy_controller)
-        valve_status = ValveStatus(bundle.esp32_valve_controller)
-        lidar_status = LidarStatus(bundle.lidar_controller)
-        base_top_view_status = _BaseTopViewStatus(ports.base_top_view_service)
-        shell_connectivity_status = _ShellConnectivityStatus(
-            ssh_controller=bundle.ssh_controller,
-            heartbeat_handler=bundle.heartbeat_handler,
-            winch_controller=bundle.winch_controller,
-            wheel_status=wheel_status,
-            teensy_controller=bundle.teensy_controller,
-        )
-        launcher_admin = _LauncherAdmin(bundle.ssh_controller)
-
-        return {
-            "qtBridge": ports.qt_bridge,
-            "shellState": ports.shell_state,
-            "overlayHost": ports.overlay_host,
-            "actionLegality": ports.action_legality,
-            "systemControlServices": system_control_services,
-            "videoRuntime": video_runtime,
-            "recordingStatus": recording_status,
-            "recordingActions": bundle.recording_actions,
-            "wheelStatus": wheel_status,
-            "wheelActions": bundle.wheel_actions,
-            "teensyActions": bundle.teensy_actions,
-            "systemActions": bundle.system_actions,
-            "winchStatus": winch_status,
-            "teensyStatus": teensy_status,
-            "valveStatus": valve_status,
-            "lidarStatus": lidar_status,
-            "shellConnectivityStatus": shell_connectivity_status,
-            "launcherAdmin": launcher_admin,
-            "overlayController": bundle.overlay_controller,
-            "warningHandler": bundle.warning_handler,
-            "winchActions": bundle.winch_actions,
-            "tuningActions": bundle.tuning_actions,
-            "baseTopViewActions": bundle.base_top_view_actions,
-            "baseTopViewStatus": base_top_view_status,
-            "shellRouter": ports.shell_router,
-            "settingsManager": ports.settings_manager,
-        }
+        properties: dict[str, object] = {}
+        for prop in CONTEXT_PROPERTIES:
+            if isinstance(prop, BundleProp):
+                properties[prop.name] = getattr(ports.bundle, prop.field)
+            elif isinstance(prop, PortsProp):
+                properties[prop.name] = getattr(ports, prop.field)
+            elif isinstance(prop, WrapperProp):
+                properties[prop.name] = prop.builder(ports)
+            else:  # pragma: no cover - defensive guard
+                raise TypeError(f"Unknown context-property kind: {type(prop).__name__}")
+        return properties
