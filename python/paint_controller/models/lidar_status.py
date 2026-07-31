@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import Property, QObject, Signal
+from PySide6.QtCore import QObject
 
-from paint_controller.models.status_wiring import connect_required
+from paint_controller.models.simple_device_status import SimpleDeviceStatus, _make_status_field
 
 LIDAR_STATUS_SIGNAL_MAP: tuple[tuple[str, str], ...] = (
     ("distance_changed", "distanceChanged"),
@@ -16,33 +16,20 @@ LIDAR_STATUS_SIGNAL_MAP: tuple[tuple[str, str], ...] = (
 LIDAR_STATUS_PROPERTY_NAMES: tuple[str, ...] = ("distance", "angle")
 
 
-class LidarStatus(QObject):
+class LidarStatus(SimpleDeviceStatus):
     """Read-only camelCase projection of ``LidarController`` for QML.
 
     Note: any QML that listened to a blanket ``changed`` signal must use
     ``distanceChanged`` / ``angleChanged`` instead.
     """
 
-    distanceChanged = Signal()
-    angleChanged = Signal()
+    distanceChanged, distance = _make_status_field("distance", float, 0.0)
+    angleChanged, angle = _make_status_field("angle", float, 0.0)
+
+    _STATUS_SCHEMA: tuple[tuple[str, str, str, type], ...] = (
+        ("distance_changed", "distance", "distanceChanged", float),
+        ("angle_changed", "angle", "angleChanged", float),
+    )
 
     def __init__(self, lidar_controller: Any, parent: QObject | None = None) -> None:
-        super().__init__(parent)
-        self._c = lidar_controller
-        connect_required(lidar_controller, "distance_changed", self.distanceChanged.emit)
-        connect_required(lidar_controller, "angle_changed", self.angleChanged.emit)
-
-    def _float(self, name: str, default: float = 0.0) -> float:
-        value = getattr(self._c, name, default)
-        try:
-            return float(value or 0.0)
-        except (TypeError, ValueError):
-            return 0.0
-
-    @Property(float, notify=distanceChanged)
-    def distance(self) -> float:
-        return self._float("distance")
-
-    @Property(float, notify=angleChanged)
-    def angle(self) -> float:
-        return self._float("angle")
+        super().__init__(lidar_controller, parent)

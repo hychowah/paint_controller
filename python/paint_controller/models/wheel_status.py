@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import Property, QObject, Signal
+from PySide6.QtCore import QObject
 
-from paint_controller.models.status_wiring import connect_required
+from paint_controller.models.simple_device_status import SimpleDeviceStatus, _make_status_field
 
+# Producer signal → status property notify signal name (for tests / docs).
 WHEEL_STATUS_SIGNAL_MAP: tuple[tuple[str, str], ...] = (
     ("available_changed", "availableChanged"),
     ("enabled_changed", "enabledChanged"),
@@ -35,80 +36,32 @@ WHEEL_STATUS_PROPERTY_NAMES: tuple[str, ...] = (
 )
 
 
-class WheelStatus(QObject):
+class WheelStatus(SimpleDeviceStatus):
     """Read-only camelCase projection of ``WheelController`` for QML."""
 
-    availableChanged = Signal()
-    enabledChanged = Signal()
-    leftMotorAvailableChanged = Signal()
-    rightMotorAvailableChanged = Signal()
-    leftWheelSpeedChanged = Signal()
-    rightWheelSpeedChanged = Signal()
-    leftWheelCurrentChanged = Signal()
-    rightWheelCurrentChanged = Signal()
-    leftWheelPositionChanged = Signal()
-    rightWheelPositionChanged = Signal()
+    availableChanged, available = _make_status_field("available", bool, False)
+    enabledChanged, enabled = _make_status_field("enabled", bool, False)
+    leftMotorAvailableChanged, leftMotorAvailable = _make_status_field("left_motor_available", bool, False)
+    rightMotorAvailableChanged, rightMotorAvailable = _make_status_field("right_motor_available", bool, False)
+    leftWheelSpeedChanged, leftWheelSpeed = _make_status_field("left_wheel_speed", float, 0.0)
+    rightWheelSpeedChanged, rightWheelSpeed = _make_status_field("right_wheel_speed", float, 0.0)
+    leftWheelCurrentChanged, leftWheelCurrent = _make_status_field("left_wheel_current", float, 0.0)
+    rightWheelCurrentChanged, rightWheelCurrent = _make_status_field("right_wheel_current", float, 0.0)
+    leftWheelPositionChanged, leftWheelPosition = _make_status_field("left_wheel_position", float, 0.0)
+    rightWheelPositionChanged, rightWheelPosition = _make_status_field("right_wheel_position", float, 0.0)
+
+    _STATUS_SCHEMA: tuple[tuple[str, str, str, type], ...] = (
+        ("available_changed", "available", "availableChanged", bool),
+        ("enabled_changed", "enabled", "enabledChanged", bool),
+        ("left_motor_available_changed", "left_motor_available", "leftMotorAvailableChanged", bool),
+        ("right_motor_available_changed", "right_motor_available", "rightMotorAvailableChanged", bool),
+        ("left_wheel_speed_changed", "left_wheel_speed", "leftWheelSpeedChanged", float),
+        ("right_wheel_speed_changed", "right_wheel_speed", "rightWheelSpeedChanged", float),
+        ("left_wheel_current_changed", "left_wheel_current", "leftWheelCurrentChanged", float),
+        ("right_wheel_current_changed", "right_wheel_current", "rightWheelCurrentChanged", float),
+        ("left_wheel_position_changed", "left_wheel_position", "leftWheelPositionChanged", float),
+        ("right_wheel_position_changed", "right_wheel_position", "rightWheelPositionChanged", float),
+    )
 
     def __init__(self, wheel_controller: Any, parent: QObject | None = None) -> None:
-        super().__init__(parent)
-        self._c = wheel_controller
-        connect_required(wheel_controller, "available_changed", self.availableChanged.emit)
-        connect_required(wheel_controller, "enabled_changed", self.enabledChanged.emit)
-        connect_required(wheel_controller, "left_motor_available_changed", self.leftMotorAvailableChanged.emit)
-        connect_required(wheel_controller, "right_motor_available_changed", self.rightMotorAvailableChanged.emit)
-        connect_required(wheel_controller, "left_wheel_speed_changed", self.leftWheelSpeedChanged.emit)
-        connect_required(wheel_controller, "right_wheel_speed_changed", self.rightWheelSpeedChanged.emit)
-        connect_required(wheel_controller, "left_wheel_current_changed", self.leftWheelCurrentChanged.emit)
-        connect_required(wheel_controller, "right_wheel_current_changed", self.rightWheelCurrentChanged.emit)
-        connect_required(wheel_controller, "left_wheel_position_changed", self.leftWheelPositionChanged.emit)
-        connect_required(wheel_controller, "right_wheel_position_changed", self.rightWheelPositionChanged.emit)
-
-    def _bool(self, name: str, default: bool = False) -> bool:
-        return bool(getattr(self._c, name, default))
-
-    def _float(self, name: str, default: float = 0.0) -> float:
-        value = getattr(self._c, name, default)
-        try:
-            return float(value or 0.0)
-        except (TypeError, ValueError):
-            return 0.0
-
-    @Property(bool, notify=availableChanged)
-    def available(self) -> bool:
-        return self._bool("available")
-
-    @Property(bool, notify=enabledChanged)
-    def enabled(self) -> bool:
-        return self._bool("enabled")
-
-    @Property(bool, notify=leftMotorAvailableChanged)
-    def leftMotorAvailable(self) -> bool:
-        return self._bool("left_motor_available")
-
-    @Property(bool, notify=rightMotorAvailableChanged)
-    def rightMotorAvailable(self) -> bool:
-        return self._bool("right_motor_available")
-
-    @Property(float, notify=leftWheelSpeedChanged)
-    def leftWheelSpeed(self) -> float:
-        return self._float("left_wheel_speed")
-
-    @Property(float, notify=rightWheelSpeedChanged)
-    def rightWheelSpeed(self) -> float:
-        return self._float("right_wheel_speed")
-
-    @Property(float, notify=leftWheelCurrentChanged)
-    def leftWheelCurrent(self) -> float:
-        return self._float("left_wheel_current")
-
-    @Property(float, notify=rightWheelCurrentChanged)
-    def rightWheelCurrent(self) -> float:
-        return self._float("right_wheel_current")
-
-    @Property(float, notify=leftWheelPositionChanged)
-    def leftWheelPosition(self) -> float:
-        return self._float("left_wheel_position")
-
-    @Property(float, notify=rightWheelPositionChanged)
-    def rightWheelPosition(self) -> float:
-        return self._float("right_wheel_position")
+        super().__init__(wheel_controller, parent)

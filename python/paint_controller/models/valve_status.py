@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import Property, QObject, Signal
+from PySide6.QtCore import QObject
 
-from paint_controller.models.status_wiring import connect_required
+from paint_controller.models.simple_device_status import SimpleDeviceStatus, _make_status_field
 
 VALVE_STATUS_SIGNAL_MAP: tuple[tuple[str, str], ...] = (
     ("valve_position_changed", "valvePositionChanged"),
@@ -29,62 +29,26 @@ VALVE_STATUS_PROPERTY_NAMES: tuple[str, ...] = (
 )
 
 
-class ValveStatus(QObject):
+class ValveStatus(SimpleDeviceStatus):
     """Read-only camelCase projection of ``ESP32ValveController`` for QML."""
 
-    valvePositionChanged = Signal()
-    valveRateChanged = Signal()
-    totalVolumeChanged = Signal()
-    valveMotorCurrentChanged = Signal()
-    valveMotorConnectedChanged = Signal()
-    flowMeterConnectedChanged = Signal()
-    connectedChanged = Signal()
+    valvePositionChanged, valvePosition = _make_status_field("valve_position", float, 0.0)
+    valveRateChanged, valveRate = _make_status_field("valve_rate", float, 0.0)
+    totalVolumeChanged, totalVolume = _make_status_field("total_volume", float, 0.0)
+    valveMotorCurrentChanged, valveMotorCurrent = _make_status_field("valve_motor_current", float, 0.0)
+    valveMotorConnectedChanged, valveMotorConnected = _make_status_field("valve_motor_connected", bool, False)
+    flowMeterConnectedChanged, flowMeterConnected = _make_status_field("flow_meter_connected", bool, False)
+    connectedChanged, connected = _make_status_field("esp32_connected", bool, False)
+
+    _STATUS_SCHEMA: tuple[tuple[str, str, str, type], ...] = (
+        ("valve_position_changed", "valve_position", "valvePositionChanged", float),
+        ("valve_rate_changed", "valve_rate", "valveRateChanged", float),
+        ("total_volume_changed", "total_volume", "totalVolumeChanged", float),
+        ("valve_motor_current_changed", "valve_motor_current", "valveMotorCurrentChanged", float),
+        ("valve_motor_connected_changed", "valve_motor_connected", "valveMotorConnectedChanged", bool),
+        ("flow_meter_connected_changed", "flow_meter_connected", "flowMeterConnectedChanged", bool),
+        ("esp32_connected_changed", "esp32_connected", "connectedChanged", bool),
+    )
 
     def __init__(self, valve_controller: Any, parent: QObject | None = None) -> None:
-        super().__init__(parent)
-        self._c = valve_controller
-        connect_required(valve_controller, "valve_position_changed", self.valvePositionChanged.emit)
-        connect_required(valve_controller, "valve_rate_changed", self.valveRateChanged.emit)
-        connect_required(valve_controller, "total_volume_changed", self.totalVolumeChanged.emit)
-        connect_required(valve_controller, "valve_motor_current_changed", self.valveMotorCurrentChanged.emit)
-        connect_required(valve_controller, "valve_motor_connected_changed", self.valveMotorConnectedChanged.emit)
-        connect_required(valve_controller, "flow_meter_connected_changed", self.flowMeterConnectedChanged.emit)
-        connect_required(valve_controller, "esp32_connected_changed", self.connectedChanged.emit)
-
-    def _bool(self, name: str, default: bool = False) -> bool:
-        return bool(getattr(self._c, name, default))
-
-    def _float(self, name: str, default: float = 0.0) -> float:
-        value = getattr(self._c, name, default)
-        try:
-            return float(value or 0.0)
-        except (TypeError, ValueError):
-            return 0.0
-
-    @Property(float, notify=valvePositionChanged)
-    def valvePosition(self) -> float:
-        return self._float("valve_position")
-
-    @Property(float, notify=valveRateChanged)
-    def valveRate(self) -> float:
-        return self._float("valve_rate")
-
-    @Property(float, notify=totalVolumeChanged)
-    def totalVolume(self) -> float:
-        return self._float("total_volume")
-
-    @Property(float, notify=valveMotorCurrentChanged)
-    def valveMotorCurrent(self) -> float:
-        return self._float("valve_motor_current")
-
-    @Property(bool, notify=valveMotorConnectedChanged)
-    def valveMotorConnected(self) -> bool:
-        return self._bool("valve_motor_connected")
-
-    @Property(bool, notify=flowMeterConnectedChanged)
-    def flowMeterConnected(self) -> bool:
-        return self._bool("flow_meter_connected")
-
-    @Property(bool, notify=connectedChanged)
-    def connected(self) -> bool:
-        return self._bool("esp32_connected")
+        super().__init__(valve_controller, parent)

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import Property, QObject, Signal
+from PySide6.QtCore import QObject
 
-from paint_controller.models.status_wiring import connect_required
+from paint_controller.models.simple_device_status import SimpleDeviceStatus, _make_status_field
 
 # Producer signal → status property notify signal name (for tests / docs).
 WINCH_STATUS_SIGNAL_MAP: tuple[tuple[str, str], ...] = (
@@ -36,83 +36,35 @@ WINCH_STATUS_PROPERTY_NAMES: tuple[str, ...] = (
 )
 
 
-class WinchStatus(QObject):
+class WinchStatus(SimpleDeviceStatus):
     """Read-only camelCase projection of ``WinchController`` for QML.
 
     Each producer signal maps to exactly one property notify — no blanket ``changed``.
     """
 
-    availableChanged = Signal()
-    enabledChanged = Signal()
-    loadDetectionEnabledChanged = Signal()
-    cableLengthChanged = Signal()
-    cableSpeedChanged = Signal()
-    winchTorqueChanged = Signal()
-    motorTemperatureChanged = Signal()
-    motorVoltageChanged = Signal()
-    motorBrakeChanged = Signal()
-    unusualLoadDetectedChanged = Signal()
+    availableChanged, available = _make_status_field("available", bool, False)
+    enabledChanged, enabled = _make_status_field("enabled", bool, False)
+    loadDetectionEnabledChanged, loadDetectionEnabled = _make_status_field("load_detection_enabled", bool, False)
+    cableLengthChanged, cableLength = _make_status_field("cable_length", float, 0.0)
+    cableSpeedChanged, cableSpeed = _make_status_field("cable_speed", float, 0.0)
+    winchTorqueChanged, winchTorque = _make_status_field("winch_torque", float, 0.0)
+    motorTemperatureChanged, motorTemperature = _make_status_field("motor_temperature", float, 0.0)
+    motorVoltageChanged, motorVoltage = _make_status_field("motor_voltage", float, 0.0)
+    motorBrakeChanged, motorBrake = _make_status_field("motor_brake", bool, False)
+    unusualLoadDetectedChanged, unusualLoadDetected = _make_status_field("unusual_load_detected", bool, False)
+
+    _STATUS_SCHEMA: tuple[tuple[str, str, str, type], ...] = (
+        ("available_changed", "available", "availableChanged", bool),
+        ("enabled_changed", "enabled", "enabledChanged", bool),
+        ("load_detection_changed", "load_detection_enabled", "loadDetectionEnabledChanged", bool),
+        ("cable_length_changed", "cable_length", "cableLengthChanged", float),
+        ("cable_speed_changed", "cable_speed", "cableSpeedChanged", float),
+        ("winch_torque_changed", "winch_torque", "winchTorqueChanged", float),
+        ("motor_temperature_changed", "motor_temperature", "motorTemperatureChanged", float),
+        ("motor_voltage_changed", "motor_voltage", "motorVoltageChanged", float),
+        ("motor_brake_changed", "motor_brake", "motorBrakeChanged", bool),
+        ("unusual_load_detected_changed", "unusual_load_detected", "unusualLoadDetectedChanged", bool),
+    )
 
     def __init__(self, winch_controller: Any, parent: QObject | None = None) -> None:
-        super().__init__(parent)
-        self._c = winch_controller
-        connect_required(winch_controller, "available_changed", self.availableChanged.emit)
-        connect_required(winch_controller, "enabled_changed", self.enabledChanged.emit)
-        connect_required(winch_controller, "load_detection_changed", self.loadDetectionEnabledChanged.emit)
-        connect_required(winch_controller, "cable_length_changed", self.cableLengthChanged.emit)
-        connect_required(winch_controller, "cable_speed_changed", self.cableSpeedChanged.emit)
-        connect_required(winch_controller, "winch_torque_changed", self.winchTorqueChanged.emit)
-        connect_required(winch_controller, "motor_temperature_changed", self.motorTemperatureChanged.emit)
-        connect_required(winch_controller, "motor_voltage_changed", self.motorVoltageChanged.emit)
-        connect_required(winch_controller, "motor_brake_changed", self.motorBrakeChanged.emit)
-        connect_required(winch_controller, "unusual_load_detected_changed", self.unusualLoadDetectedChanged.emit)
-
-    def _bool(self, name: str, default: bool = False) -> bool:
-        return bool(getattr(self._c, name, default))
-
-    def _float(self, name: str, default: float = 0.0) -> float:
-        value = getattr(self._c, name, default)
-        try:
-            return float(value or 0.0)
-        except (TypeError, ValueError):
-            return 0.0
-
-    @Property(bool, notify=availableChanged)
-    def available(self) -> bool:
-        return self._bool("available")
-
-    @Property(bool, notify=enabledChanged)
-    def enabled(self) -> bool:
-        return self._bool("enabled")
-
-    @Property(bool, notify=loadDetectionEnabledChanged)
-    def loadDetectionEnabled(self) -> bool:
-        return self._bool("load_detection_enabled")
-
-    @Property(float, notify=cableLengthChanged)
-    def cableLength(self) -> float:
-        return self._float("cable_length")
-
-    @Property(float, notify=cableSpeedChanged)
-    def cableSpeed(self) -> float:
-        return self._float("cable_speed")
-
-    @Property(float, notify=winchTorqueChanged)
-    def winchTorque(self) -> float:
-        return self._float("winch_torque")
-
-    @Property(float, notify=motorTemperatureChanged)
-    def motorTemperature(self) -> float:
-        return self._float("motor_temperature")
-
-    @Property(float, notify=motorVoltageChanged)
-    def motorVoltage(self) -> float:
-        return self._float("motor_voltage")
-
-    @Property(bool, notify=motorBrakeChanged)
-    def motorBrake(self) -> bool:
-        return self._bool("motor_brake")
-
-    @Property(bool, notify=unusualLoadDetectedChanged)
-    def unusualLoadDetected(self) -> bool:
-        return self._bool("unusual_load_detected")
+        super().__init__(winch_controller, parent)
