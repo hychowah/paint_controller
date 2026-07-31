@@ -7,9 +7,10 @@ from typing import Any
 from PySide6.QtCore import QObject, Signal, Slot
 
 from paint_controller.models.action_keys import ActionKey
+from paint_controller.models.gated_action_mixin import GatedActionMixin
 
 
-class BaseTopViewActions(QObject):
+class BaseTopViewActions(QObject, GatedActionMixin):
     """Own base-top view calibration requests initiated from QML.
 
     This model absorbs the policy previously held by ``BaseTopViewAdminHandler``
@@ -73,17 +74,19 @@ class BaseTopViewActions(QObject):
 
     @Slot(result=bool)
     def saveSettings(self) -> bool:
-        return self._run(
+        return self._run_gated(
             action_key=ActionKey.CAMERA_BASE_TOP_VIEW_SAVE,
             name="Base top view save",
+            controller=self._base_top_view_service,
             invoke=lambda s: s.saveSettings(),
         )
 
     @Slot(result=bool)
     def resetToDefaults(self) -> bool:
-        return self._run(
+        return self._run_gated(
             action_key=ActionKey.CAMERA_BASE_TOP_VIEW_RESET,
             name="Base top view reset",
+            controller=self._base_top_view_service,
             invoke=lambda s: s.resetToDefaults(),
         )
 
@@ -104,29 +107,3 @@ class BaseTopViewActions(QObject):
         self._logger.info(message)
         self.operation_result.emit(True, message)
         return True
-
-    def _run(self, *, action_key: str, name: str, invoke) -> bool:
-        allowed, reason = self._admin_action_gate.check_action(action_key)
-        if not allowed:
-            return self._fail(reason)
-
-        if self._base_top_view_service is None:
-            return self._fail(f"{name} is unavailable")
-
-        try:
-            result = invoke(self._base_top_view_service)
-        except Exception as exc:  # pragma: no cover - defensive boundary guard
-            return self._fail(f"{name} failed: {exc}")
-
-        if result is False:
-            return self._fail(f"{name} was rejected by the backend")
-
-        message = f"{name} requested"
-        self._logger.info(message)
-        self.operation_result.emit(True, message)
-        return True
-
-    def _fail(self, message: str) -> bool:
-        self._logger.warning(message)
-        self.operation_result.emit(False, message)
-        return False

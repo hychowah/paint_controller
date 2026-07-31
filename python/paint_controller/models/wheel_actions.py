@@ -7,10 +7,11 @@ from typing import Any
 from PySide6.QtCore import QObject, Signal, Slot
 
 from paint_controller.models.action_keys import ActionKey
+from paint_controller.models.gated_action_mixin import GatedActionMixin
 from paint_controller.ports.wheel import SupportsWheelCommands
 
 
-class WheelActions(QObject):
+class WheelActions(QObject, GatedActionMixin):
     """Own page-level wheel requests initiated from QML.
 
     TD-055: typed against ``SupportsWheelCommands``; no stringly method-name dispatch.
@@ -32,9 +33,10 @@ class WheelActions(QObject):
 
     @Slot(bool, result=bool)
     def setEnabled(self, enabled: bool) -> bool:
-        return self._run(
+        return self._run_gated(
             action_key=ActionKey.WHEEL_ENABLE,
             name="Wheel enable",
+            controller=self._wheel,
             invoke=lambda w: w.setEnabled(enabled),
         )
 
@@ -45,34 +47,9 @@ class WheelActions(QObject):
 
     @Slot(result=bool)
     def resetPosition(self) -> bool:
-        return self._run(
+        return self._run_gated(
             action_key=ActionKey.WHEEL_RESET_POSITION,
             name="Reset wheel position",
+            controller=self._wheel,
             invoke=lambda w: w.resetWheelPosition(),
         )
-
-    def _run(self, *, action_key: str, name: str, invoke) -> bool:
-        allowed, reason = self._admin_action_gate.check_action(action_key)
-        if not allowed:
-            return self._fail(reason)
-
-        if self._wheel is None:
-            return self._fail(f"{name} is unavailable")
-
-        try:
-            result = invoke(self._wheel)
-        except Exception as exc:  # pragma: no cover - defensive boundary guard
-            return self._fail(f"{name} failed: {exc}")
-
-        if result is False:
-            return self._fail(f"{name} was rejected by the backend")
-
-        message = f"{name} requested"
-        self._logger.info(message)
-        self.operation_result.emit(True, message)
-        return True
-
-    def _fail(self, message: str) -> bool:
-        self._logger.warning(message)
-        self.operation_result.emit(False, message)
-        return False

@@ -7,6 +7,7 @@ from typing import Any, Protocol
 from PySide6.QtCore import QObject, Signal, Slot
 
 from paint_controller.models.action_keys import ActionKey
+from paint_controller.models.gated_action_mixin import GatedActionMixin
 
 
 class SupportsTeensyActions(Protocol):
@@ -48,7 +49,7 @@ class SupportsTeensyActions(Protocol):
     _lidar_power: bool
 
 
-class TeensyActions(QObject):
+class TeensyActions(QObject, GatedActionMixin):
     """Own Teensy feature toggles and power/home actions initiated from QML.
 
     Feature toggles stay ungated; power enable/relay use AdminActionGate.
@@ -72,9 +73,10 @@ class TeensyActions(QObject):
 
     @Slot(bool, result=bool)
     def requestTeensyRelayEnabled(self, enabled: bool) -> bool:
-        return self._run(
+        return self._run_gated(
             action_key=ActionKey.STATUS_TEENSY_RELAY,
             name="Teensy relay",
+            controller=self._teensy,
             invoke=lambda t: t.setRelayEnabled(enabled),
         )
 
@@ -84,9 +86,10 @@ class TeensyActions(QObject):
 
     @Slot(bool, result=bool)
     def requestTeensyEnabled(self, enabled: bool) -> bool:
-        return self._run(
+        return self._run_gated(
             action_key=ActionKey.STATUS_TEENSY_ENABLE,
             name="Teensy enable",
+            controller=self._teensy,
             invoke=lambda t: t.setEnabled(enabled),
         )
 
@@ -96,55 +99,55 @@ class TeensyActions(QObject):
 
     @Slot(result=bool)
     def homeTopRail(self) -> bool:
-        return self._run(name="Home top rail", invoke=lambda t: t.homeTopRail(True))
+        return self._run_ungated(name="Home top rail", controller=self._teensy, invoke=lambda t: t.homeTopRail(True))
 
     @Slot(result=bool)
     def homeArm(self) -> bool:
-        return self._run(name="Home arm rail", invoke=lambda t: t.homeArm(True))
+        return self._run_ungated(name="Home arm rail", controller=self._teensy, invoke=lambda t: t.homeArm(True))
 
     @Slot(result=bool)
     def toggleStability(self) -> bool:
         nxt = not self._intent("stability_enabled")
-        return self._run(name="Stability controller", invoke=lambda t: t.setStabilityEnabled(nxt))
+        return self._run_ungated(name="Stability controller", controller=self._teensy, invoke=lambda t: t.setStabilityEnabled(nxt))
 
     @Slot(result=bool)
     def toggleYaw(self) -> bool:
         nxt = not self._status_flag("yaw_enabled")
-        return self._run(name="Yaw control", invoke=lambda t: t.setYawEnabled(nxt))
+        return self._run_ungated(name="Yaw control", controller=self._teensy, invoke=lambda t: t.setYawEnabled(nxt))
 
     @Slot(result=bool)
     def toggleAutoCorrection(self) -> bool:
         nxt = not self._intent("auto_correction_enabled")
-        return self._run(name="Auto correction", invoke=lambda t: t.setAutoCorrectionEnabled(nxt))
+        return self._run_ungated(name="Auto correction", controller=self._teensy, invoke=lambda t: t.setAutoCorrectionEnabled(nxt))
 
     @Slot(result=bool)
     def toggleSprayGunLeveling(self) -> bool:
         nxt = not self._intent("spray_gun_leveling_enabled")
-        return self._run(name="Spray gun leveling", invoke=lambda t: t.setSprayGunLevelingEnabled(nxt))
+        return self._run_ungated(name="Spray gun leveling", controller=self._teensy, invoke=lambda t: t.setSprayGunLevelingEnabled(nxt))
 
     @Slot(result=bool)
     def toggleRollerSteering(self) -> bool:
         nxt = not self._intent("roller_steering_enabled")
-        return self._run(name="Roller steering", invoke=lambda t: t.setRollerSteeringEnabled(nxt))
+        return self._run_ungated(name="Roller steering", controller=self._teensy, invoke=lambda t: t.setRollerSteeringEnabled(nxt))
 
     @Slot(result=bool)
     def toggleSwingDamping(self) -> bool:
         nxt = not self._intent("swing_damping_enabled")
-        return self._run(name="Swing damping", invoke=lambda t: t.setSwingDampingEnabled(nxt))
+        return self._run_ungated(name="Swing damping", controller=self._teensy, invoke=lambda t: t.setSwingDampingEnabled(nxt))
 
     @Slot(result=bool)
     def toggleSprayGunLed(self) -> bool:
         nxt = not self._intent("spray_gun_led_on")
-        return self._run(name="Spray gun LED", invoke=lambda t: t.setSprayGunLED(nxt))
+        return self._run_ungated(name="Spray gun LED", controller=self._teensy, invoke=lambda t: t.setSprayGunLED(nxt))
 
     @Slot(bool, result=bool)
     def setLidarPower(self, enabled: bool) -> bool:
-        return self._run(name="Lidar power", invoke=lambda t: t.setLidarPower(enabled))
+        return self._run_ungated(name="Lidar power", controller=self._teensy, invoke=lambda t: t.setLidarPower(enabled))
 
     @Slot(result=bool)
     def toggleLidarPower(self) -> bool:
         nxt = not self._intent("_lidar_power")
-        return self._run(name="Lidar power", invoke=lambda t: t.setLidarPower(nxt))
+        return self._run_ungated(name="Lidar power", controller=self._teensy, invoke=lambda t: t.setLidarPower(nxt))
 
     def _intent(self, attribute: str) -> bool:
         if self._teensy is None:
@@ -155,32 +158,3 @@ class TeensyActions(QObject):
         if self._teensy is None:
             return False
         return bool(self._teensy.get_status().get(key, False))
-
-    def _run(self, *, name: str, invoke, action_key: str | None = None) -> bool:
-        if action_key is not None:
-            if self._admin_action_gate is None:
-                return self._fail(f"{name} gate is unavailable")
-            allowed, reason = self._admin_action_gate.check_action(action_key)
-            if not allowed:
-                return self._fail(reason)
-
-        if self._teensy is None:
-            return self._fail(f"{name} is unavailable")
-
-        try:
-            result = invoke(self._teensy)
-        except Exception as exc:  # pragma: no cover
-            return self._fail(f"{name} failed: {exc}")
-
-        if result is False:
-            return self._fail(f"{name} was rejected by the backend")
-
-        message = f"{name} requested"
-        self._logger.info(message)
-        self.operation_result.emit(True, message)
-        return True
-
-    def _fail(self, message: str) -> bool:
-        self._logger.warning(message)
-        self.operation_result.emit(False, message)
-        return False
