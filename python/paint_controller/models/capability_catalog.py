@@ -5,6 +5,8 @@ from typing import Any
 
 from PySide6.QtCore import Property, QObject, Slot
 
+from paint_controller.models.action_keys import ActionKey
+
 _SETTINGS_ROUTE_PAGES: tuple[dict[str, Any], ...] = (
     {
         "page": "main",
@@ -284,7 +286,7 @@ _SETTING_CAPABILITIES: dict[str, dict[str, Any]] = {
 
 
 _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
-    "camera.base_top_view.live_adjustments": {
+    ActionKey.CAMERA_BASE_TOP_VIEW_LIVE_ADJUSTMENTS.value: {
         "title": "Base Top View Live Adjustments",
         "surfaceKeys": ["overlay_popup:base_top_view"],
         "primarySurface": "overlay_popup:base_top_view",
@@ -306,7 +308,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
             "base_top_view_src_points",
         ],
     },
-    "camera.base_top_view.save": {
+    ActionKey.CAMERA_BASE_TOP_VIEW_SAVE.value: {
         "title": "Base Top View Save",
         "surfaceKeys": ["overlay_popup:base_top_view"],
         "primarySurface": "overlay_popup:base_top_view",
@@ -328,7 +330,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
             "base_top_view_src_points",
         ],
     },
-    "camera.base_top_view.reset": {
+    ActionKey.CAMERA_BASE_TOP_VIEW_RESET.value: {
         "title": "Base Top View Reset",
         "surfaceKeys": ["overlay_popup:base_top_view"],
         "primarySurface": "overlay_popup:base_top_view",
@@ -350,7 +352,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
             "base_top_view_src_points",
         ],
     },
-    "tuning.short_yaw_pid": {
+    ActionKey.TUNING_SHORT_YAW_PID.value: {
         "title": "Short Yaw PID",
         "surfaceKeys": ["page:tuning"],
         "primarySurface": "page:tuning",
@@ -360,7 +362,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
         "immediateRuntimeSideEffect": True,
         "persistenceKeys": [],
     },
-    "tuning.long_yaw_pid": {
+    ActionKey.TUNING_LONG_YAW_PID.value: {
         "title": "Long Yaw PID",
         "surfaceKeys": ["page:tuning"],
         "primarySurface": "page:tuning",
@@ -370,7 +372,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
         "immediateRuntimeSideEffect": True,
         "persistenceKeys": [],
     },
-    "status.winch_enable": {
+    ActionKey.STATUS_WINCH_ENABLE.value: {
         "title": "Winch Enable Toggle",
         "surfaceKeys": ["overlay:systemcontrol:devices", "page:status", "page:winch"],
         "primarySurface": "page:status",
@@ -380,7 +382,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
         "immediateRuntimeSideEffect": True,
         "persistenceKeys": [],
     },
-    "status.teensy_enable": {
+    ActionKey.STATUS_TEENSY_ENABLE.value: {
         "title": "Teensy Enable Toggle",
         "surfaceKeys": ["overlay:systemcontrol:devices", "page:status"],
         "primarySurface": "page:status",
@@ -390,7 +392,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
         "immediateRuntimeSideEffect": True,
         "persistenceKeys": [],
     },
-    "status.teensy_relay": {
+    ActionKey.STATUS_TEENSY_RELAY.value: {
         "title": "Teensy Relay Toggle",
         "surfaceKeys": ["overlay:systemcontrol:devices", "page:status"],
         "primarySurface": "page:status",
@@ -400,7 +402,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
         "immediateRuntimeSideEffect": True,
         "persistenceKeys": [],
     },
-    "wheel.enable": {
+    ActionKey.WHEEL_ENABLE.value: {
         "title": "Wheel Enable Toggle",
         "surfaceKeys": ["overlay:systemcontrol:devices", "page:wheel"],
         "primarySurface": "page:wheel",
@@ -410,7 +412,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
         "immediateRuntimeSideEffect": True,
         "persistenceKeys": [],
     },
-    "wheel.reset_position": {
+    ActionKey.WHEEL_RESET_POSITION.value: {
         "title": "Reset Wheel Position",
         "surfaceKeys": ["overlay:systemcontrol:devices", "page:wheel"],
         "primarySurface": "page:wheel",
@@ -420,7 +422,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
         "immediateRuntimeSideEffect": True,
         "persistenceKeys": [],
     },
-    "winch.load_detection": {
+    ActionKey.WINCH_LOAD_DETECTION.value: {
         "title": "Load Detection Toggle",
         "surfaceKeys": ["overlay:systemcontrol:devices", "page:winch"],
         "primarySurface": "page:winch",
@@ -430,7 +432,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
         "immediateRuntimeSideEffect": True,
         "persistenceKeys": [],
     },
-    "winch.move_increment": {
+    ActionKey.WINCH_MOVE_INCREMENT.value: {
         "title": "Winch Increment Move",
         "surfaceKeys": ["page:winch"],
         "primarySurface": "page:winch",
@@ -440,7 +442,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
         "immediateRuntimeSideEffect": True,
         "persistenceKeys": [],
     },
-    "winch.move_absolute": {
+    ActionKey.WINCH_MOVE_ABSOLUTE.value: {
         "title": "Winch Absolute Move",
         "surfaceKeys": ["page:winch"],
         "primarySurface": "page:winch",
@@ -450,7 +452,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
         "immediateRuntimeSideEffect": True,
         "persistenceKeys": [],
     },
-    "winch.retract_full": {
+    ActionKey.WINCH_RETRACT_FULL.value: {
         "title": "Winch Full Retract",
         "surfaceKeys": ["page:winch"],
         "primarySurface": "page:winch",
@@ -460,7 +462,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
         "immediateRuntimeSideEffect": True,
         "persistenceKeys": [],
     },
-    "winch.extend_one_meter": {
+    ActionKey.WINCH_EXTEND_ONE_METER.value: {
         "title": "Winch Extend 1m",
         "surfaceKeys": ["page:winch"],
         "primarySurface": "page:winch",
@@ -470,7 +472,7 @@ _ACTION_CAPABILITIES: dict[str, dict[str, Any]] = {
         "immediateRuntimeSideEffect": True,
         "persistenceKeys": [],
     },
-    "winch.emergency_stop": {
+    ActionKey.WINCH_EMERGENCY_STOP.value: {
         "title": "Winch Emergency Stop",
         "surfaceKeys": ["page:winch"],
         "primarySurface": "page:winch",

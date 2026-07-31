@@ -6,6 +6,8 @@ from typing import Any, Protocol
 
 from PySide6.QtCore import QObject, Signal, Slot
 
+from paint_controller.models.action_keys import ActionKey
+
 
 class SupportsTuningTeensy(Protocol):
     def setShortParams(self, p_value: float, i_value: float, d_value: float) -> object: ...
@@ -36,7 +38,7 @@ class TuningActions(QObject):
     @Slot(float, float, float, result=bool)
     def setShortYawPid(self, p_value: float, i_value: float, d_value: float) -> bool:
         return self._run(
-            action_key="tuning.short_yaw_pid",
+            action_key=ActionKey.TUNING_SHORT_YAW_PID,
             name="Short yaw PID",
             invoke=lambda t: t.setShortParams(p_value, i_value, d_value),
         )
@@ -44,7 +46,7 @@ class TuningActions(QObject):
     @Slot(float, float, float, result=bool)
     def setLongYawPid(self, p_value: float, i_value: float, d_value: float) -> bool:
         return self._run(
-            action_key="tuning.long_yaw_pid",
+            action_key=ActionKey.TUNING_LONG_YAW_PID,
             name="Long yaw PID",
             invoke=lambda t: t.setLongParams(p_value, i_value, d_value),
         )

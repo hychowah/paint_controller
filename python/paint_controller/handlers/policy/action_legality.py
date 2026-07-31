@@ -9,6 +9,7 @@ import os
 from copy import deepcopy
 from typing import Any, Mapping, TypedDict
 
+from paint_controller.models.action_keys import ActionKey
 from paint_controller.utils.constants import HeartbeatStatus
 
 _ENFORCEMENT_ENV_VAR = "PAINT_ACTION_LEGALITY_ENFORCED"
@@ -43,39 +44,39 @@ LEGAL_STATE_ALLOWED_HEARTBEAT_STATES: dict[str, tuple[int, ...]] = {
 }
 
 ACTION_METADATA_OVERRIDES: dict[str, dict[str, Any]] = {
-    "wheel.enable": {
+    ActionKey.WHEEL_ENABLE.value: {
         "title": "Wheel Enable Toggle",
         "legalStateClass": "status-admin",
     },
-    "wheel.reset_position": {
+    ActionKey.WHEEL_RESET_POSITION.value: {
         "title": "Reset Wheel Position",
         "legalStateClass": "maintenance-preset",
     },
-    "winch.load_detection": {
+    ActionKey.WINCH_LOAD_DETECTION.value: {
         "title": "Load Detection Toggle",
         "legalStateClass": "status-admin",
     },
-    "winch.move_increment": {
+    ActionKey.WINCH_MOVE_INCREMENT.value: {
         "title": "Winch Increment Move",
         "legalStateClass": "live-operational-motion",
     },
-    "winch.move_absolute": {
+    ActionKey.WINCH_MOVE_ABSOLUTE.value: {
         "title": "Winch Absolute Move",
         "legalStateClass": "live-operational-motion",
     },
-    "winch.retract_full": {
+    ActionKey.WINCH_RETRACT_FULL.value: {
         "title": "Winch Full Retract",
         "legalStateClass": "live-operational-motion",
     },
-    "winch.extend_one_meter": {
+    ActionKey.WINCH_EXTEND_ONE_METER.value: {
         "title": "Winch Extend 1m",
         "legalStateClass": "live-operational-motion",
     },
-    "winch.emergency_stop": {
+    ActionKey.WINCH_EMERGENCY_STOP.value: {
         "title": "Winch Emergency Stop",
         "legalStateClass": "emergency-exception",
     },
-    "status.teensy_relay": {
+    ActionKey.STATUS_TEENSY_RELAY.value: {
         "title": "Teensy Relay Toggle",
         "legalStateClass": "status-admin-warning-ok",
     },

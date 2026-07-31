@@ -6,6 +6,7 @@ from typing import Any
 
 from PySide6.QtCore import QObject, Signal, Slot
 
+from paint_controller.models.action_keys import ActionKey
 from paint_controller.ports.wheel import SupportsWheelCommands
 
 
@@ -32,7 +33,7 @@ class WheelActions(QObject):
     @Slot(bool, result=bool)
     def setEnabled(self, enabled: bool) -> bool:
         return self._run(
-            action_key="wheel.enable",
+            action_key=ActionKey.WHEEL_ENABLE,
             name="Wheel enable",
             invoke=lambda w: w.setEnabled(enabled),
         )
@@ -45,7 +46,7 @@ class WheelActions(QObject):
     @Slot(result=bool)
     def resetPosition(self) -> bool:
         return self._run(
-            action_key="wheel.reset_position",
+            action_key=ActionKey.WHEEL_RESET_POSITION,
             name="Reset wheel position",
             invoke=lambda w: w.resetWheelPosition(),
         )

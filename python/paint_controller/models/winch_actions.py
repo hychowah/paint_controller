@@ -6,6 +6,7 @@ from typing import Any, Protocol
 
 from PySide6.QtCore import QObject, Signal, Slot
 
+from paint_controller.models.action_keys import ActionKey
 from paint_controller.ports.winch import SupportsWinchMotion
 
 
@@ -46,7 +47,7 @@ class WinchActions(QObject):
     @Slot(int, int, result=bool)
     def moveIncrement(self, length_mm: int, speed_mm_s: int) -> bool:
         return self._run(
-            action_key="winch.move_increment",
+            action_key=ActionKey.WINCH_MOVE_INCREMENT,
             name="Winch increment move",
             invoke=lambda w: w.move_increment(length_mm, speed_mm_s),
         )
@@ -54,7 +55,7 @@ class WinchActions(QObject):
     @Slot(int, int, result=bool)
     def moveAbsolute(self, length_mm: int, speed_mm_s: int) -> bool:
         return self._run(
-            action_key="winch.move_absolute",
+            action_key=ActionKey.WINCH_MOVE_ABSOLUTE,
             name="Winch absolute move",
             invoke=lambda w: w.move_absolute(length_mm, speed_mm_s),
         )
@@ -62,7 +63,7 @@ class WinchActions(QObject):
     @Slot(result=bool)
     def retractFull(self) -> bool:
         return self._run(
-            action_key="winch.retract_full",
+            action_key=ActionKey.WINCH_RETRACT_FULL,
             name="Winch full retract",
             invoke=lambda w: w.move_absolute(0, 500),
         )
@@ -70,7 +71,7 @@ class WinchActions(QObject):
     @Slot(result=bool)
     def extendOneMeter(self) -> bool:
         return self._run(
-            action_key="winch.extend_one_meter",
+            action_key=ActionKey.WINCH_EXTEND_ONE_METER,
             name="Winch extend 1m",
             invoke=lambda w: w.move_increment(1000, 500),
         )
@@ -78,7 +79,7 @@ class WinchActions(QObject):
     @Slot(result=bool)
     def emergencyStop(self) -> bool:
         return self._run(
-            action_key="winch.emergency_stop",
+            action_key=ActionKey.WINCH_EMERGENCY_STOP,
             name="Winch emergency stop",
             invoke=lambda w: w.move_increment(0, 0),
         )
@@ -86,7 +87,7 @@ class WinchActions(QObject):
     @Slot(bool, result=bool)
     def setLoadDetectionEnabled(self, enabled: bool) -> bool:
         return self._run(
-            action_key="winch.load_detection",
+            action_key=ActionKey.WINCH_LOAD_DETECTION,
             name="Load detection",
             invoke=lambda w: w.setLoadDetectionEnabled(enabled),
         )
@@ -99,7 +100,7 @@ class WinchActions(QObject):
     @Slot(bool, result=bool)
     def setEnabled(self, enabled: bool) -> bool:
         return self._run(
-            action_key="status.winch_enable",
+            action_key=ActionKey.STATUS_WINCH_ENABLE,
             name="Winch enable",
             invoke=lambda w: w.setEnabled(enabled),
         )

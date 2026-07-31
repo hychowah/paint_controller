@@ -6,6 +6,8 @@ from typing import Any, Protocol
 
 from PySide6.QtCore import QObject, Signal, Slot
 
+from paint_controller.models.action_keys import ActionKey
+
 
 class SupportsTeensyActions(Protocol):
     """Teensy surface used by feature-root actions (not full controller API)."""
@@ -71,7 +73,7 @@ class TeensyActions(QObject):
     @Slot(bool, result=bool)
     def requestTeensyRelayEnabled(self, enabled: bool) -> bool:
         return self._run(
-            action_key="status.teensy_relay",
+            action_key=ActionKey.STATUS_TEENSY_RELAY,
             name="Teensy relay",
             invoke=lambda t: t.setRelayEnabled(enabled),
         )
@@ -83,7 +85,7 @@ class TeensyActions(QObject):
     @Slot(bool, result=bool)
     def requestTeensyEnabled(self, enabled: bool) -> bool:
         return self._run(
-            action_key="status.teensy_enable",
+            action_key=ActionKey.STATUS_TEENSY_ENABLE,
             name="Teensy enable",
             invoke=lambda t: t.setEnabled(enabled),
         )

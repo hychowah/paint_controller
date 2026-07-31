@@ -6,6 +6,8 @@ from typing import Any
 
 from PySide6.QtCore import QObject, Signal, Slot
 
+from paint_controller.models.action_keys import ActionKey
+
 
 class BaseTopViewActions(QObject):
     """Own base-top view calibration requests initiated from QML.
@@ -72,7 +74,7 @@ class BaseTopViewActions(QObject):
     @Slot(result=bool)
     def saveSettings(self) -> bool:
         return self._run(
-            action_key="camera.base_top_view.save",
+            action_key=ActionKey.CAMERA_BASE_TOP_VIEW_SAVE,
             name="Base top view save",
             invoke=lambda s: s.saveSettings(),
         )
@@ -80,13 +82,13 @@ class BaseTopViewActions(QObject):
     @Slot(result=bool)
     def resetToDefaults(self) -> bool:
         return self._run(
-            action_key="camera.base_top_view.reset",
+            action_key=ActionKey.CAMERA_BASE_TOP_VIEW_RESET,
             name="Base top view reset",
             invoke=lambda s: s.resetToDefaults(),
         )
 
     def _set_property(self, name: str, property_name: str, value: Any) -> bool:
-        allowed, reason = self._admin_action_gate.check_action("camera.base_top_view.live_adjustments")
+        allowed, reason = self._admin_action_gate.check_action(ActionKey.CAMERA_BASE_TOP_VIEW_LIVE_ADJUSTMENTS)
         if not allowed:
             return self._fail(reason)
 
