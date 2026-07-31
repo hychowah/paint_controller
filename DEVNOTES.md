@@ -1,6 +1,15 @@
 # Development Notes
 
 ---
+### 2026-07-31 - JoystickOverlay lingering pressed background fix
+
+**Goal**: Fix the lighter-blue pressed background that remained on the previously selected control mode in the joystick selection menu.
+**Issues**: The delegate's `visuallyPressed` state was set on press but never cleared when the commit timer fired and closed the menu. `ListView` recycles delegates, so the stale pressed highlight could reappear on the wrong row when the menu reopened. Also, `parent` inside a `Timer` refers to the Timer's parent (the `MouseArea`), not the delegate, so clearing had to use the delegate's id.
+**Tried**: Added `delegateRoot.visuallyPressed = false` in the commit timer trigger and guarded the pressed-feedback `Rectangle` with `visible: delegateRoot.visuallyPressed && menuOverlay.menuVisible`. Added object names to the delegate, ListView, menu containers, and pressed feedback for testability. Added a QML regression test that asserts the feedback disappears when the menu is hidden.
+**Result**: ✅ Focused band `30 passed` (joystick_overlay, joystick_selection, overlay_controller, startup_smoke_shell, startup_smoke_home, qml_imports); `qmllint` clean on `JoystickOverlay.qml`.
+**Files**: `python/paint_controller/qml/overlays/JoystickOverlay.qml`, `tests/test_joystick_overlay.py`
+
+---
 ### 2026-07-29 - Teleop mode catalog (A+B+C)
 
 **Goal**: Single SOT for continuous stick modes; kill index-based selection policy.

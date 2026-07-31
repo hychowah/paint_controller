@@ -58,6 +58,7 @@ Item {
 
         ListView {
             id: optionsList
+            objectName: "joystickOptionsList"
             width: parent.width - CommonStyle.spacingXxl - CommonStyle.spacingSm
             anchors {
                 top: menuTitleLabel.bottom
@@ -71,9 +72,11 @@ Item {
             model: overlayLayer.controlOptions
 
             delegate: Rectangle {
+                id: delegateRoot
                 width: optionsList.width
                 height: CommonStyle.listRowHeight
                 color: "transparent"
+                objectName: "joystickMenuDelegate"
                 property bool visuallyPressed: false
 
                 Rectangle {
@@ -103,25 +106,31 @@ Item {
                 MouseArea {
                     id: delegateMouse
                     anchors.fill: parent
-                    onPressed: parent.visuallyPressed = true
+                    onPressed: delegateRoot.visuallyPressed = true
                     onClicked: commitTimer.start()
-                    onCanceled: parent.visuallyPressed = false
+                    onCanceled: delegateRoot.visuallyPressed = false
                     onExited: {
-                        if (!commitTimer.running) parent.visuallyPressed = false
+                        if (!commitTimer.running) delegateRoot.visuallyPressed = false
                     }
 
                     Timer {
                         id: commitTimer
+                        objectName: "joystickCommitTimer"
                         interval: 150
                         repeat: false
-                        onTriggered: overlayLayer.overlayController.select_index(index)
+                        onTriggered: {
+                            delegateRoot.visuallyPressed = false
+                            overlayLayer.overlayController.select_index(index)
+                        }
                     }
                 }
 
                 // Touch-down feedback: high-contrast highlight that lingers
                 // briefly after release so the operator sees what was tapped.
                 Rectangle {
-                    visible: parent.visuallyPressed
+                    id: pressedFeedback
+                    objectName: "joystickPressedFeedback"
+                    visible: delegateRoot.visuallyPressed && menuOverlay.menuVisible
                     anchors.fill: parent
                     color: CommonStyle.accentPrimary
                     opacity: 0.5
@@ -189,6 +198,7 @@ Item {
 
     JoystickMenuOverlay {
         id: leftMenuContainer
+        objectName: "leftMenuContainer"
         z: 1000
         menuVisible: showLeftMenu
         menuTitle: "Left Joystick Control"
@@ -198,6 +208,7 @@ Item {
 
     JoystickMenuOverlay {
         id: rightMenuContainer
+        objectName: "rightMenuContainer"
         z: 1001
         menuVisible: showRightMenu
         menuTitle: "Right Joystick Control"
