@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 import yaml
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
+from .action_schema import validate_action_params
 from .workflow_catalog import WorkflowCatalog
 
 if TYPE_CHECKING:
@@ -272,6 +273,8 @@ class WorkflowEditor(QObject):
         if not isinstance(params, dict):
             raise ValueError(f"Workflow action {index + 1} params must be an object")
         normalized["params"] = params
+
+        validate_action_params(normalized["type"], params, action_name=f"Workflow action {index + 1}")
 
         trigger = normalized.get("trigger")
         if trigger is not None and not isinstance(trigger, dict):

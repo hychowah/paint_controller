@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
+from .action_schema import get_action_type
+
 
 class TimingMode(Enum):
     """Timing modes for action scheduling."""
@@ -113,7 +115,8 @@ class ActionScheduler:
 
             # Check if this is a winch action and extract target position
             action_type = action.get("type")
-            is_winch_action = action_type in ("winch_absolute", "winch_move_absolute")
+            action_meta = get_action_type(action_type)
+            is_winch_action = action_meta is not None and action_meta.metadata.is_winch_action
             winch_target_mm = None
             if is_winch_action:
                 params = action.get("params", {})
@@ -177,7 +180,8 @@ class ActionScheduler:
             return action["wait_after"] / 1000.0  # Convert ms to seconds
 
         # Auto-calculate for winch movements
-        if action_type in ("winch_absolute", "winch_move_absolute"):
+        action_meta = get_action_type(action_type)
+        if action_meta is not None and action_meta.metadata.is_winch_action:
             params = action.get("params", {})
             target_length = params.get("length", 0)
             distance = params.get("distance", 0)
@@ -266,8 +270,9 @@ class ActionScheduler:
             # Negative: before previous completes
             prev_action = scheduled[-1]
             prev_type = prev_action.action_config.get("type")
+            prev_meta = get_action_type(prev_type)
 
-            if prev_type in ("winch_absolute", "winch_move_absolute"):
+            if prev_meta is not None and prev_meta.metadata.is_winch_action:
                 # Use the already calculated duration from prev_action
                 # which now includes actual current position
                 completion_time = prev_action.scheduled_time + prev_action.estimated_duration

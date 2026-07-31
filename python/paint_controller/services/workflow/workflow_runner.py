@@ -6,6 +6,7 @@ from typing import Any
 
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
+from .action_schema import build_action_description
 from .hardware import HardwareControllers
 from .workflow_catalog import WorkflowCatalog
 from .workflow_executor import ExecutionState, WorkFlowExecutor
@@ -323,45 +324,7 @@ class WorkFlowRunner(QObject):
         base_desc = action.get("description", "")
 
         if not base_desc:
-            # Generate description based on action type
-            if action_type in ("winch_absolute", "winch_move_absolute"):
-                length = params.get("length", 0)
-                speed = params.get("speed", 1)
-                base_desc = f"Move to {length}mm at {speed}mm/s"
-
-            elif action_type == "winch_increment":
-                length = params.get("length", 0)
-                speed = params.get("speed", 1)
-                direction = "up" if length < 0 else "down"
-                base_desc = f"Move {abs(length)}mm {direction} at {speed}mm/s"
-
-            elif action_type == "valve_turn":
-                turn_value = params.get("turn_value", 0.0)
-                if turn_value == 0.0:
-                    base_desc = "Close valve"
-                else:
-                    base_desc = f"Open valve to {turn_value:.1f}"
-
-            elif action_type in ("spray_gimbal", "teensy_gimbal"):
-                angle = params.get("angle", 0)
-                speed = params.get("speed", 10)
-                base_desc = f"Gimbal to {angle}° at {speed}°/s"
-
-            elif action_type in ("arm_extend", "teensy_arm_extend"):
-                distance = params.get("distance", 0)
-                base_desc = f"Extend arm to {distance}mm"
-
-            elif action_type == "ef_force":
-                fx = params.get("fx", 0.0)
-                fy = params.get("fy", 0.0)
-                base_desc = f"Set force Fx={fx:.1f}, Fy={fy:.1f}"
-
-            # Default: show all parameters
-            elif params:
-                param_str = ", ".join([f"{k}={v}" for k, v in params.items()])
-                base_desc = param_str
-            else:
-                base_desc = "No parameters"
+            base_desc = build_action_description(action_type, params)
 
         # Add timing information
         timing_parts = []

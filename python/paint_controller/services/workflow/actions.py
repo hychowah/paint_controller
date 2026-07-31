@@ -8,6 +8,7 @@ Provides pluggable action handlers with clean interface and error handling.
 from abc import ABC, abstractmethod
 from typing import Any
 
+from .action_schema import ACTION_TYPES
 from .hardware import ControllerNotAvailable, HardwareControllers
 
 
@@ -250,18 +251,10 @@ class ActionRegistry:
         self._register_default_handlers()
 
     def _register_default_handlers(self) -> None:
-        """Register default action handlers."""
-        self.register("winch_increment", WinchIncrementHandler(self._hardware, self._logger))
-        self.register("winch_absolute", WinchAbsoluteHandler(self._hardware, self._logger))
-        self.register("winch_move_absolute", WinchAbsoluteHandler(self._hardware, self._logger))
-        self.register("valve_turn", ValveTurnHandler(self._hardware, self._logger))
-        self.register("spray_gimbal", SprayGimbalHandler(self._hardware, self._logger))
-        self.register("arm_extend", ArmExtendHandler(self._hardware, self._logger, self._ros_node))
-        self.register("ef_force", EFForceHandler(self._hardware, self._logger, self._ros_node))
-
-        # Legacy aliases
-        self.register("teensy_gimbal", SprayGimbalHandler(self._hardware, self._logger))
-        self.register("teensy_arm_extend", ArmExtendHandler(self._hardware, self._logger, self._ros_node))
+        """Register default action handlers from the central schema."""
+        for action_type in ACTION_TYPES:
+            handler = action_type.handler_factory(self._hardware, self._logger, self._ros_node)
+            self.register(action_type.name, handler)
 
     def register(self, action_type: str, handler: ActionHandler) -> None:
         """
