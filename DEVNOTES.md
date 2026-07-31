@@ -1,6 +1,20 @@
 # Development Notes
 
 ---
+### 2026-07-31 - Extensibility slices: ActionKey, GatedActionMixin, context schema, status base, workflow ActionType
+
+**Goal**: Reduce manual wiring when adding controllers/actions while preserving QML↔Python boundaries, safety gates, and deterministic construction/cleanup order.
+**Issues**: Action keys duplicated across QML/catalog/actions/overrides; `*Actions` repeated `_run`/`_fail` boilerplate; context-property list and `compose()` updated separately; simple status wrappers were ~100 LOC of mechanical boilerplate; workflow action type knowledge duplicated in handlers/runner/scheduler/editor.
+**Tried**: 
+- `ActionKey(str, Enum)` + `tests/test_action_key_integrity.py` for Python/catalog/QML parity
+- `GatedActionMixin` with `_run_gated`/`_run_ungated`/`_fail` for `WheelActions`, `WinchActions`, `TeensyActions`, `TuningActions`, `BaseTopViewActions`
+- `ContextProp`/`BundleProp`/`PortsProp`/`WrapperProp` schema in `qml_context_composer.py`; `_EXPECTED_CONTEXT_PROPERTY_NAMES` derived from it
+- `SimpleDeviceStatus` base + `_make_status_field` for `WheelStatus`, `WinchStatus`, `ValveStatus`, `LidarStatus`; `TeensyStatus` stays custom
+- `ActionType`/`ParamSpec`/`ActionMetadata` registry in `services/workflow/action_schema.py`; drives handler registration, runner descriptions, scheduler winch detection, and editor param validation
+**Result**: ✅ Full suite **515 passed**; startup smoke **12 passed**; pyright green on touched files. Committed as five separate slices.
+**Files**: `models/action_keys.py`, `models/gated_action_mixin.py`, `models/simple_device_status.py`, `core/qml_context_composer.py`, `services/workflow/action_schema.py`, `docs/extensibility-review.md`, plus refactored actions/status/workflow files and new integrity tests
+
+---
 ### 2026-07-31 - JoystickOverlay lingering pressed background fix
 
 **Goal**: Fix the lighter-blue pressed background that remained on the previously selected control mode in the joystick selection menu.
