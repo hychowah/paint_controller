@@ -1,8 +1,8 @@
 # Level C — Pure-Python Device HAL (Durable Plan)
 
-**Status**: Partial program active — **P0 landed**; P1+ optional (not default live board track)  
+**Status**: Full Level C program in progress — **P0–P1 landed**  
 **Saved**: 2026-08-05  
-**Last refreshed**: 2026-08-05 (P0 seams landed)  
+**Last refreshed**: 2026-08-05 (P1 Lidar pure pilot landed)  
 **Depends on**: Level A (`@Slot` strip) and Level B (`Property` → `@property`) — **both landed**  
 **Do not overwrite** this file with concurrency-test or feature plans; those are separate tracks. Refresh this file when Level C scope or prerequisites change.
 

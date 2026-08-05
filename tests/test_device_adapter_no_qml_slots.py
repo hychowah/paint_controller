@@ -37,7 +37,8 @@ _SOURCE_FILES: dict[str, str] = {
     "TeensyController": "teensy.py",
     "WheelController": "wheel.py",
     "WinchController": "winch.py",
-    "LidarController": "lidar.py",
+    # Level C P1: presentation shell; pure HAL is lidar.py (no Qt slots).
+    "LidarController": "lidar_shell.py",
     "ESP32ValveController": "esp32_valve.py",
 }
 

@@ -1,6 +1,13 @@
 # Development Notes
 
 ---
+### 2026-08-05 - Level C P1 Lidar pure HAL pilot
+
+**Goal**: Lidar pure HAL (no PySide6) + Qt shell owning bridges/Signals; Status contracts intact.
+**Result**: ✅ Full suite green. Pure ban in `tests/test_pure_hal_no_pyside.py`.
+**Files**: `controllers/lidar.py`, `controllers/lidar_shell.py`, `core/controller_factory.py`, `tests/test_lidar_pure_hal.py`
+
+---
 ### 2026-08-05 - Level C P0 seams (DeviceNotifier + external bridge parent)
 
 **Goal**: Land Level C P0 only — notification Protocol + prove `RosTelemetryBridge` can parent to a non-adapter shell. No pure-HAL device rewires.
