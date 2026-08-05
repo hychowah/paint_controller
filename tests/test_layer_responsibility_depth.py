@@ -174,12 +174,14 @@ def test_run_demo_action_sequences_teensy_and_winch() -> None:
 
 def test_teensy_controller_ctor_rejects_foreign_concerns() -> None:
     """Teensy is a device adapter: no show_popup_fn / winch_controller / demoAction."""
-    teensy_mod = importlib.import_module("paint_controller.controllers.teensy")
-    ctor = inspect.signature(teensy_mod.TeensyController.__init__)
-    params = set(ctor.parameters)
-    assert "show_popup_fn" not in params
-    assert "winch_controller" not in params
-    assert not hasattr(teensy_mod.TeensyController, "demoAction")
+    pure = importlib.import_module("paint_controller.controllers.teensy")
+    shell = importlib.import_module("paint_controller.controllers.teensy_shell")
+    for cls in (pure.TeensyHal, shell.TeensyController):
+        ctor = inspect.signature(cls.__init__)
+        params = set(ctor.parameters)
+        assert "show_popup_fn" not in params
+        assert "winch_controller" not in params
+        assert not hasattr(cls, "demoAction")
 
 
 def test_workflow_hardware_has_no_parallel_abc_interfaces() -> None:

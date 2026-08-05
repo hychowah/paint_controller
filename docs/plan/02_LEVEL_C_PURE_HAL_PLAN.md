@@ -1,8 +1,8 @@
 # Level C — Pure-Python Device HAL (Durable Plan)
 
-**Status**: Full Level C program in progress — **P0–P3 landed**  
+**Status**: Full Level C program in progress — **P0–P4 landed**  
 **Saved**: 2026-08-05  
-**Last refreshed**: 2026-08-05 (P3 winch+wheel pure HAL landed)  
+**Last refreshed**: 2026-08-05 (P4 Teensy pure HAL landed)  
 **Depends on**: Level A (`@Slot` strip) and Level B (`Property` → `@property`) — **both landed**  
 **Do not overwrite** this file with concurrency-test or feature plans; those are separate tracks. Refresh this file when Level C scope or prerequisites change.
 
@@ -233,11 +233,13 @@ Production controllers still parent bridges on adapters (unchanged). No QML / fa
 
 **Acceptance**: Status/shell/safety notify paths green; bound bus + worker affinity tests green. ✅
 
-### P4 — Teensy pure (High)
+### P4 — Teensy pure (High) — **LANDED 2026-08-05**
 
 - Status dict + intent signals + thrust ramp timer on shell.
 - Settings fan-in extraction.
 - videoRuntime / shell connectivity still work.
+
+**Landed**: pure `teensy.py` (`TeensyHal`); `teensy_shell.TeensyController` owns Signals/bridge/watchdog/thrust timer/settings.
 
 ### P5 — ESP32 split (High)
 

@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
+"""Pure Teensy HAL (Level C P4) — no Qt imports.
+
+Timers, bridges, and SettingsManager Signal fan-in live on teensy_shell.
+"""
 
 from __future__ import annotations
 
 import threading
 import time
 from typing import TYPE_CHECKING, Any, TypedDict, cast
+from collections.abc import Callable
+
+from paint_controller.core.availability import AvailabilityState
+from paint_controller.ports.notifier import DeviceNotifier, NullDeviceNotifier
 
 from geometry_msgs.msg import Twist, Vector3
 from paint_interfaces.msg import TeensyStatus, TeensyYaw
-from PySide6.QtCore import QTimer, Signal
 from rclpy.node import Node
 from std_msgs.msg import Bool, Float32, Float32MultiArray, Int32, Int32MultiArray
 
-from paint_controller.controllers._base import RosStatusController
-from paint_controller.core.ros_telemetry import RosTelemetryBridge
 
 if TYPE_CHECKING:
     from paint_controller.core.ros_io import RosCommandBus
@@ -98,30 +103,24 @@ _USER_CONTROLLED_FIELDS = (
 )
 
 
-class TeensyController(RosStatusController):
-    # Define Qt signals
-    status_changed = Signal(dict)
-    connection_changed = Signal(bool)
-    spray_gun_leveling_changed = Signal(bool)
-    spray_gun_led_changed = Signal(bool)
-    auto_correction_enabled_changed = Signal(bool)
-    stability_enabled_changed = Signal(bool)
-    thrust_force_changed = Signal(float)
-    thrust_force_enabled_changed = Signal(bool)
-    roller_steering_enabled_changed = Signal(bool)
-    swing_damping_enabled_changed = Signal(bool)
+class TeensyHal:
 
     def __init__(
         self,
         node: Node,
-        settings_manager: SettingsManager | None = None,
-        command_bus: RosCommandBus | None = None,
         *,
-        io_shell: object | None = None,
+        notifier: DeviceNotifier | None = None,
+        post_status: Callable[[object], None] | None = None,
+        command_bus: RosCommandBus | None = None,
+        thrust_force: float = -1.0,
+        thrust_ramp_rate: float = 1.0,
+        connection_timeout: float = 1.0,
     ) -> None:
-        super().__init__(node, io_shell=io_shell)  # type: ignore[arg-type]
-        self._settings_manager = settings_manager
+        self._node = node
+        self._notifier: DeviceNotifier = notifier if notifier is not None else NullDeviceNotifier()
+        self._post_status = post_status
         self._command_bus = command_bus
+        self._availability = AvailabilityState(connection_timeout)
 
         # Initialize status variables with default values instead of empty dictionary
         self._status: TeensyStatusDict = {
@@ -198,40 +197,48 @@ class TeensyController(RosStatusController):
         self._target_yaw = 0.0
         self._roller_steering_enabled = False
         self._swing_damping_enabled = False
-        # Get thrust_force from settings_manager if available, otherwise use default
-        if self._settings_manager is not None:
-            self._thrust_force = self._settings_manager.get("thrust_force") or -1.0
-            self._settings_manager.thrust_force_changed.connect(self._on_thrust_force_setting_changed)
-        else:
-            self._thrust_force = -1.0
+        self._thrust_force = float(thrust_force)
         self._thrust_force_enabled = False
 
-        # Thrust force ramping state
+        # Thrust force ramping state (timer lives on shell)
         self._current_thrust_force = 0.0  # Current ramped thrust value
         self._target_thrust_force = 0.0  # Target thrust value (either 0 or _thrust_force)
         self._last_published_thrust = 0.0  # Last published value to avoid redundant messages
-        if self._settings_manager is not None:
-            self._thrust_ramp_rate = self._settings_manager.get("thrust_ramp_rate", 1.0)
-            self._settings_manager.thrust_ramp_rate_changed.connect(self._on_thrust_ramp_rate_changed)
-        else:
-            self._thrust_ramp_rate = 1.0
-
-        # TD-056 residual + Level C P2: bridge parented to io_shell.
-        self._telemetry = RosTelemetryBridge(
-            self._apply_status_snapshot, parent=self._lifetime_parent()
-        )
+        self._thrust_ramp_rate = float(thrust_ramp_rate)
 
         # Configure publishers and subscribers
         self._setup_publishers()
         self._setup_subscribers()
 
-        # Create connection check timer
-        self._start_availability_timer()
+    @property
+    def _available(self) -> bool:
+        return self._availability.available
 
-        # Create thrust ramping timer (10Hz)
-        self._thrust_ramp_timer = QTimer(self)
-        self._thrust_ramp_timer.timeout.connect(self._update_thrust_ramp)
-        self._thrust_ramp_timer.start(100)  # 100ms = 10Hz
+    @_available.setter
+    def _available(self, value: bool) -> None:
+        self._availability.available = bool(value)
+
+    @property
+    def _last_status_update_time(self) -> float:
+        return self._availability.last_status_update_time
+
+    @_last_status_update_time.setter
+    def _last_status_update_time(self, value: float) -> None:
+        self._availability.last_status_update_time = float(value)
+
+    @property
+    def _connection_timeout(self) -> float:
+        return self._availability.connection_timeout
+
+    @_connection_timeout.setter
+    def _connection_timeout(self, value: float) -> None:
+        self._availability.connection_timeout = float(value)
+
+    def get_available(self) -> bool:
+        return self._availability.available
+
+    def set_available(self, value: bool) -> bool:
+        return self._availability.set_available(value)
 
     def _bind_cmd(self, publisher: Any, *, continuous: bool = False) -> Any:
         """TD-054: wrap command publishers; call sites keep ``.publish(msg)``."""
@@ -361,10 +368,10 @@ class TeensyController(RosStatusController):
                 self._node.get_logger().warning(
                     f"Teensy considered disconnected: {time_since_last_update:.1f}s since last status update"
                 )
-                self.connection_changed.emit(False)
+                self._notifier.notify("connection_changed", False)
         elif self.set_available(True):
             self._node.get_logger().info("Teensy connection established")
-            self.connection_changed.emit(True)
+            self._notifier.notify("connection_changed", True)
 
     def _get_status_snapshot(self) -> TeensyStatusDict:
         with self._status_lock:
@@ -427,9 +434,13 @@ class TeensyController(RosStatusController):
         }
 
     def _status_callback(self, msg: TeensyStatus) -> None:
-        """ROS spin: post device POD only — no status_changed emit."""
+        """ROS spin: post device POD only — no status notify on spin thread."""
         try:
-            self._telemetry.post(self._device_snapshot_from_msg(msg))
+            snap = self._device_snapshot_from_msg(msg)
+            if self._post_status is not None:
+                self._post_status(snap)
+            else:
+                self._apply_status_snapshot(snap)
         except Exception as e:
             self._node.get_logger().error(f"Error in Teensy status callback: {e}")
 
@@ -452,7 +463,7 @@ class TeensyController(RosStatusController):
         time_since_last_update = current_time - self._last_ui_update_time
         if time_since_last_update > self._last_ui_update_interval:
             self._last_ui_update_time = current_time
-            self.status_changed.emit(status_snapshot)
+            self._notifier.notify("status_changed", status_snapshot)
 
     def get_status(self) -> TeensyStatusDict:
         """Get current Teensy status"""
@@ -472,7 +483,7 @@ class TeensyController(RosStatusController):
         """Enable/disable Teensy control"""
         self._publish_bool(self.teensy_enable_pub, enabled)
         self._node.get_logger().info(f"Teensy {'enabled' if enabled else 'disabled'}")
-        self.status_changed.emit(self._get_status_snapshot())
+        self._notifier.notify("status_changed", self._get_status_snapshot())
 
     def setRelayEnabled(self, enabled: bool):
         """Enable/disable Teensy relay"""
@@ -480,7 +491,7 @@ class TeensyController(RosStatusController):
         status_snapshot = self._update_status_fields(relay_enabled=enabled)
         self._publish_bool(self.teensy_relay_pub, enabled)
         self._node.get_logger().info(f"Teensy relay {'enabled' if enabled else 'disabled'}")
-        self.status_changed.emit(status_snapshot)
+        self._notifier.notify("status_changed", status_snapshot)
 
     def setTopRailSpeed(self, speed: float):
         """Set the top rail speed"""
@@ -531,8 +542,8 @@ class TeensyController(RosStatusController):
         self._publish_bool(self.ef_spray_level_enable_pub, enabled)
         self._spray_gun_leveling_enabled = enabled
         status_snapshot = self._update_status_fields(spray_gun_leveling_enabled=enabled)
-        self.spray_gun_leveling_changed.emit(enabled)
-        self.status_changed.emit(status_snapshot)
+        self._notifier.notify("spray_gun_leveling_changed", enabled)
+        self._notifier.notify("status_changed", status_snapshot)
 
     def setSprayGunPitchAngle(self, angle: float, speed: float):
         """Set the spray gun pitch angle and speed"""
@@ -546,7 +557,7 @@ class TeensyController(RosStatusController):
         self._node.get_logger().info(f"Spray gun LED {'on' if on else 'off'}")
         self._publish_bool(self.ef_spray_led_pub, on)
         self._spray_gun_led_on = on
-        self.spray_gun_led_changed.emit(on)
+        self._notifier.notify("spray_gun_led_changed", on)
 
     def setLidarPower(self, on: bool):
         """Turn the Lidar power on/off"""
@@ -554,7 +565,7 @@ class TeensyController(RosStatusController):
         self._lidar_power = on
         status_snapshot = self._update_status_fields(lidar_power=on)
         self._publish_bool(self.ef_lidar_power_pub, on)
-        self.status_changed.emit(status_snapshot)
+        self._notifier.notify("status_changed", status_snapshot)
 
     def setStabilityEnabled(self, enabled: bool):
         """Enable/disable stability controller (master enable for force and yaw control)"""
@@ -562,8 +573,8 @@ class TeensyController(RosStatusController):
         status_snapshot = self._update_status_fields(stability_enabled=enabled)
         self._publish_bool(self.stability_enable_pub, enabled)
         self._node.get_logger().info(f"Stability controller {'enabled' if enabled else 'disabled'}")
-        self.stability_enabled_changed.emit(enabled)
-        self.status_changed.emit(status_snapshot)
+        self._notifier.notify("stability_enabled_changed", enabled)
+        self._notifier.notify("status_changed", status_snapshot)
 
     def setYawEnabled(self, enabled: bool):
         """Enable/disable yaw control"""
@@ -575,8 +586,8 @@ class TeensyController(RosStatusController):
         status_snapshot = self._update_status_fields(auto_correction_enabled=enabled)
         self._publish_bool(self.stability_auto_correction_enable_pub, enabled)
         self._node.get_logger().info(f"Auto correction {'enabled' if enabled else 'disabled'}")
-        self.auto_correction_enabled_changed.emit(enabled)
-        self.status_changed.emit(status_snapshot)
+        self._notifier.notify("auto_correction_enabled_changed", enabled)
+        self._notifier.notify("status_changed", status_snapshot)
 
     def setRollerSteeringEnabled(self, enabled: bool):
         """Enable/disable roller steering"""
@@ -584,8 +595,8 @@ class TeensyController(RosStatusController):
         status_snapshot = self._update_status_fields(roller_steering_enabled=enabled)
         self._publish_bool(self.roller_steering_enable_pub, enabled)
         self._node.get_logger().info(f"Roller steering {'enabled' if enabled else 'disabled'}")
-        self.roller_steering_enabled_changed.emit(enabled)
-        self.status_changed.emit(status_snapshot)
+        self._notifier.notify("roller_steering_enabled_changed", enabled)
+        self._notifier.notify("status_changed", status_snapshot)
 
     def setSwingDampingEnabled(self, enabled: bool):
         """Enable/disable swing damping"""
@@ -593,8 +604,8 @@ class TeensyController(RosStatusController):
         status_snapshot = self._update_status_fields(swing_damping_enabled=enabled)
         self._publish_bool(self.swing_damping_enable_pub, enabled)
         self._node.get_logger().info(f"Swing damping {'enabled' if enabled else 'disabled'}")
-        self.swing_damping_enabled_changed.emit(enabled)
-        self.status_changed.emit(status_snapshot)
+        self._notifier.notify("swing_damping_enabled_changed", enabled)
+        self._notifier.notify("status_changed", status_snapshot)
 
     def setYawAngle(self, angle: float):
         """Set the yaw angle"""
@@ -715,7 +726,7 @@ class TeensyController(RosStatusController):
 
         if self._thrust_force != clamped_value:
             self._thrust_force = clamped_value
-            self.thrust_force_changed.emit(self._thrust_force)
+            self._notifier.notify("thrust_force_changed", self._thrust_force)
             self._node.get_logger().info(f"Thrust force set to {self._thrust_force:.2f}")
 
     def get_thrust_force_enabled(self) -> bool:
@@ -726,7 +737,7 @@ class TeensyController(RosStatusController):
         """Toggle thrust force on/off with ramping"""
         if self._thrust_force_enabled != enabled:
             self._thrust_force_enabled = enabled
-            self.thrust_force_enabled_changed.emit(self._thrust_force_enabled)
+            self._notifier.notify("thrust_force_enabled_changed", self._thrust_force_enabled)
 
             if enabled:
                 # Set target to current thrust force, ramping will handle the rest
@@ -741,7 +752,7 @@ class TeensyController(RosStatusController):
         """Toggle thrust force on/off instantly (without ramping)"""
         if self._thrust_force_enabled != enabled:
             self._thrust_force_enabled = enabled
-            self.thrust_force_enabled_changed.emit(self._thrust_force_enabled)
+            self._notifier.notify("thrust_force_enabled_changed", self._thrust_force_enabled)
 
             # Set both current and target immediately for instant response
             if enabled:
@@ -771,16 +782,16 @@ class TeensyController(RosStatusController):
     def thrust_force_enabled(self, value: bool) -> None:
         self.set_thrust_force_enabled(value)
 
-    def _on_thrust_force_setting_changed(self, new_value: float):
+    def apply_thrust_force_setting(self, new_value: float):
         """Handle thrust_force change from SettingsManager"""
         # Update internal value without re-triggering setting save
         clamped_value = max(-1.0, min(1.0, new_value))
         if self._thrust_force != clamped_value:
             self._thrust_force = clamped_value
-            self.thrust_force_changed.emit(self._thrust_force)
+            self._notifier.notify("thrust_force_changed", self._thrust_force)
             self._node.get_logger().info(f"Thrust force updated from settings: {clamped_value}")
 
-    def _on_thrust_ramp_rate_changed(self, new_value: float):
+    def apply_thrust_ramp_rate_setting(self, new_value: float):
         """Handle thrust_ramp_rate change from SettingsManager"""
         self._thrust_ramp_rate = new_value
         self._node.get_logger().info(f"Thrust ramp rate updated to: {new_value}")
@@ -792,7 +803,7 @@ class TeensyController(RosStatusController):
         self._target_thrust_force = 0.0
         self._current_thrust_force = 0.0
         if was_enabled:
-            self.thrust_force_enabled_changed.emit(False)
+            self._notifier.notify("thrust_force_enabled_changed", False)
         if abs(self._last_published_thrust) > 0.001:
             self.set_ef_force(0.0, 0.0)
             self._last_published_thrust = 0.0
@@ -828,7 +839,5 @@ class TeensyController(RosStatusController):
                 self._last_published_thrust = self._current_thrust_force
 
     def cleanup(self) -> None:
-        """Clean up resources when shutting down"""
-        super().cleanup()
-        if hasattr(self, "_thrust_ramp_timer") and self._thrust_ramp_timer.isActive():
-            self._thrust_ramp_timer.stop()
+        """Clean up resources when shutting down."""
+        return None

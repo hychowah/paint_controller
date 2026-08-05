@@ -14,6 +14,7 @@ _PURE_HAL_MODULES: tuple[str, ...] = (
     "lidar.py",
     "wheel.py",
     "winch.py",
+    "teensy.py",
 )
 
 

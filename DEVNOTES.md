@@ -1,6 +1,13 @@
 # Development Notes
 
 ---
+### 2026-08-05 - Level C P4 Teensy pure HAL
+
+**Goal**: TeensyHal without PySide6; shell owns timers/bridge/settings.
+**Result**: ✅ Full suite green.
+**Files**: teensy.py, teensy_shell.py, factory, tests/test_teensy_pure_hal.py
+
+---
 ### 2026-08-05 - Level C P3 Winch + Wheel pure HAL
 
 **Goal**: Pure wheel/winch HAL (no PySide6) + shells; continuous-zero e-stop; settings inject on shell.

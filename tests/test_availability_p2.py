@@ -52,15 +52,14 @@ def test_wheel_bridge_and_watchdog_parented_to_io_shell(qt_app, fake_node) -> No
 
 
 def test_winch_and_teensy_bridge_parent_is_shell(qt_app, fake_node) -> None:
-    from paint_controller.controllers.teensy import TeensyController
+    from paint_controller.controllers.teensy_shell import TeensyController
     from paint_controller.controllers.winch_shell import WinchController
 
     winch = WinchController(fake_node)
     teensy = TeensyController(fake_node)
-    # P3 winch shell is its own lifetime parent; teensy still uses DeviceIoShell.
+    # P3/P4 shells are their own lifetime parents for bridges.
     assert winch._telemetry.parent() is winch.io_shell
     assert teensy._telemetry.parent() is teensy.io_shell
-    assert teensy._telemetry.parent() is not teensy
     winch.cleanup()
     teensy.cleanup()
 

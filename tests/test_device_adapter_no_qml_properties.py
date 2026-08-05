@@ -20,7 +20,7 @@ _CONTROLLERS_DIR = (
 )
 
 _SOURCE_FILES: dict[str, str] = {
-    "TeensyController": "teensy.py",
+    "TeensyController": "teensy_shell.py",
     "WheelController": "wheel_shell.py",
     "WinchController": "winch_shell.py",
     # Level C P1: presentation shell; pure HAL is lidar.py (no Qt Property).

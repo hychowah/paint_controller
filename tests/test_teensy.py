@@ -31,7 +31,7 @@ class FakeSettingsManager:
 
 
 def _teensy_controller_class():
-    return importlib.import_module("paint_controller.controllers.teensy").TeensyController
+    return importlib.import_module("paint_controller.controllers.teensy_shell").TeensyController
 
 
 def _teensy_status_class():

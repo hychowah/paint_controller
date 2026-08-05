@@ -9,7 +9,7 @@ from paint_controller.controllers.esp32_valve import ESP32ValveController
 from paint_controller.controllers.lidar_shell import LidarController
 from paint_controller.controllers.ssh import UISSHController
 from paint_controller.controllers.system_monitor import SystemMonitor
-from paint_controller.controllers.teensy import TeensyController
+from paint_controller.controllers.teensy_shell import TeensyController
 from paint_controller.controllers.wheel_shell import WheelController
 from paint_controller.controllers.winch_shell import WinchController
 from paint_controller.controllers.wind_monitor import WindMonitor
