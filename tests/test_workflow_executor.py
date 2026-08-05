@@ -79,7 +79,11 @@ def test_workflow_executor_load_play_and_stop_manage_state(monkeypatch, tmp_path
     logger = _FakeLogger()
     executor = module.WorkFlowExecutor(_FakeNode(logger), hardware=object(), logger=logger)
     workflow_path = tmp_path / "demo.yaml"
-    workflow_path.write_text("name: demo\nloop: true\nactions:\n  - id: move\n    type: winch_increment\n")
+    workflow_path.write_text(
+        "name: demo\nloop: true\nactions:\n"
+        "  - id: move\n    type: winch_increment\n"
+        "    params: {length: 50, speed: 10, acceleration: 10}\n"
+    )
 
     assert executor.load_workflow(str(workflow_path)) is True
     assert executor.is_loop_enabled() is True

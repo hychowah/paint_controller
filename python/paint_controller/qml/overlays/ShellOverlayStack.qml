@@ -1,6 +1,7 @@
 import QtQuick
 import "../features/systemcontrol"
 import "../features/video"
+import "../features/workflow"
 
 /**
  * Shared dual-surface overlay composition (TD-053 / Ousterhout Slice 5).
@@ -57,6 +58,7 @@ Item {
     property alias systemControlMenu: systemControlWorkspace
     property alias joystickOverlay: joystickOverlayItem
     property alias emergencyOverlay: emergencyOverlayItem
+    property alias workflowEditorWorkspace: workflowEditorWorkspaceItem
 
     SystemControlWorkspace {
         id: systemControlWorkspace
@@ -79,6 +81,19 @@ Item {
         settingsManager: stack.settingsManager
         overlayController: stack.overlayController
         visible: stack.systemControlVisible
+                   && !(stack.systemControlServices
+                        && stack.systemControlServices.workflowEditor
+                        && stack.systemControlServices.workflowEditor.is_open)
+    }
+
+    WorkflowEditorWorkspace {
+        id: workflowEditorWorkspaceItem
+        anchors.fill: parent
+        z: stack.systemControlLayer + 50
+        workflowEditor: stack.systemControlServices
+                        ? stack.systemControlServices.workflowEditor
+                        : null
+        overlayController: stack.overlayController
     }
 
     JoystickOverlay {

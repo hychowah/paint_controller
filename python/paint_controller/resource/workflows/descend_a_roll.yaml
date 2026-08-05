@@ -1,30 +1,29 @@
+schema_version: 2
 name: descend_a_roll
 description: Descend and Roll
 loop: false
-actions:
+steps:
 - id: open_valve
-  name: open_valve
+  kind: action
   type: valve_turn
   params:
     turn_value: 5.6
-  estimated_duration: 2000
-  wait_for_completion: true
+  continue: wait_complete
 - id: main_winch_descent
-  name: winch_move
+  kind: action
   type: winch_absolute
   params:
     length: 2200
     speed: 200
     acceleration: 10
-  wait_for_completion: true
+  continue: wait_complete
 - id: close_valve
-  name: close_valve
+  kind: action
   type: valve_turn
   params:
     turn_value: 0
-  trigger:
-    reference_action: main_winch_descent
-    timing_mode: before_complete
+  continue: wait_complete
+  timing:
+    mode: before_complete
     offset_ms: 500
-  estimated_duration: 1000
-  wait_for_completion: true
+    reference: main_winch_descent

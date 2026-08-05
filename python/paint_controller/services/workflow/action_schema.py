@@ -132,6 +132,13 @@ def _ef_force_description(params: dict[str, Any]) -> str:
     return f"Set force Fx={fx:.1f}, Fy={fy:.1f}"
 
 
+def _time_wait_description(params: dict[str, Any]) -> str:
+    duration_ms = int(params.get("duration_ms", 0) or 0)
+    if duration_ms >= 1000 and duration_ms % 1000 == 0:
+        return f"Wait {duration_ms // 1000}s"
+    return f"Wait {duration_ms}ms"
+
+
 _WINCH_PARAMS = ParamSpec(
     {
         "length": ParamField(required=True, py_type=int),
@@ -212,6 +219,19 @@ ACTION_TYPES: tuple[ActionType, ...] = (
         handler_factory=lambda hardware, logger, ros_node: __import__(
             "paint_controller.services.workflow.actions", fromlist=["EFForceHandler"]
         ).EFForceHandler(hardware, logger, ros_node),
+        metadata=ActionMetadata(),
+    ),
+    ActionType(
+        name="time_wait",
+        param_spec=ParamSpec(
+            {
+                "duration_ms": ParamField(required=True, py_type=int, min=1),
+            }
+        ),
+        description_template=_time_wait_description,
+        handler_factory=lambda hardware, logger, ros_node: __import__(
+            "paint_controller.services.workflow.actions", fromlist=["TimeWaitHandler"]
+        ).TimeWaitHandler(logger),
         metadata=ActionMetadata(),
     ),
     # Legacy aliases

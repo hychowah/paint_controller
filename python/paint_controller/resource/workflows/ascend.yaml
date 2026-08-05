@@ -1,11 +1,13 @@
+schema_version: 2
 name: ascend
 description: ascend
-actions:
+loop: false
+steps:
 - id: Ascend_to_top
-  name: winch_move
+  kind: action
   type: winch_absolute
   params:
     length: 7639
     speed: 200
     acceleration: 10
-  wait_for_completion: true
+  continue: wait_complete

@@ -150,7 +150,6 @@ Item {
                         ListElement { tabText: "Command"; tabIndex: 1 }
                         ListElement { tabText: "Settings"; tabIndex: 2 }
                         ListElement { tabText: "WorkFlow"; tabIndex: 3 }
-                        ListElement { tabText: "Edit WorkFlow"; tabIndex: 4 }
                     }
 
                     delegate: TabButton {
@@ -197,11 +196,8 @@ Item {
                 LegacySystemControl.WorkFlowTab {
                     id: workFlowTabContent
                     workflowRunner: systemControlWorkspace.systemControlServices.workflowRunner
-                }
-
-                LegacySystemControl.EditWorkFlowTab {
-                    id: editWorkFlowTabContent
                     workflowEditor: systemControlWorkspace.systemControlServices.workflowEditor
+                    overlayController: systemControlWorkspace.overlayController
                 }
             }
         }

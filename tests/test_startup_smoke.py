@@ -860,6 +860,8 @@ Item {{
     WorkFlowTab {{
         anchors.fill: parent
         workflowRunner: systemControlServices.workflowRunner
+        workflowEditor: systemControlServices.workflowEditor
+        overlayController: overlayController
     }}
 }}
 '''.encode(),

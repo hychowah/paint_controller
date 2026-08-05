@@ -926,14 +926,83 @@ class FakeActionLegality(QObject):
 class FakeWorkflowEditor(QObject):
     workflow_list_changed = Signal()
     error_occurred = Signal(str)
+    document_changed = Signal()
+    dirty_changed = Signal(bool)
+    selected_index_changed = Signal(int)
+    is_open_changed = Signal(bool)
+    loop_changed = Signal(bool)
+    name_changed = Signal(str)
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self._is_open = False
+        self._dirty = False
+        self._selected_index = -1
+        self._loop = False
+        self._name = "demo"
+        self._steps: list[dict] = []
 
     @Property(list, notify=workflow_list_changed)
     def workflow_list(self):
-        return []
+        return ["demo"]
+
+    @Property(bool, notify=is_open_changed)
+    def is_open(self) -> bool:
+        return self._is_open
+
+    @Property(bool, notify=dirty_changed)
+    def is_dirty(self) -> bool:
+        return self._dirty
+
+    @Property(str, notify=name_changed)
+    def workflow_name(self) -> str:
+        return self._name
+
+    @Property(bool, notify=loop_changed)
+    def loop(self) -> bool:
+        return self._loop
+
+    @Property(list, notify=document_changed)
+    def steps(self):
+        return self._steps
+
+    @Property(int, notify=selected_index_changed)
+    def selected_index(self) -> int:
+        return self._selected_index
+
+    @Property(list, constant=True)
+    def palette(self):
+        return [
+            {"type": "winch_absolute", "kind": "action", "label": "Winch Absolute"},
+            {"type": "valve_turn", "kind": "action", "label": "Valve"},
+            {"type": "spray_gimbal", "kind": "action", "label": "Spray Gimbal"},
+            {"type": "time_wait", "kind": "wait", "label": "Wait"},
+            {"type": "parallel", "kind": "parallel", "label": "Parallel group"},
+        ]
+
+    @Slot(result=bool)
+    def open_editor(self) -> bool:
+        self._is_open = True
+        self.is_open_changed.emit(True)
+        return True
+
+    @Slot(result=bool)
+    def close_editor(self) -> bool:
+        self._is_open = False
+        self.is_open_changed.emit(False)
+        return True
 
     @Slot(str, result="QVariant")
     def load_document(self, _workflow_name: str):
-        return {}
+        return {"schema_version": 2, "name": "demo", "steps": [], "loop": False}
+
+    @Slot(result=bool)
+    def save(self) -> bool:
+        return True
+
+    @Slot(str, result=bool)
+    def save_as(self, _name: str) -> bool:
+        return True
 
     @Slot(str, str, bool, list, result=bool)
     def save_document(
@@ -944,6 +1013,32 @@ class FakeWorkflowEditor(QObject):
         _actions: list,
     ) -> bool:
         return True
+
+    @Slot(str, result=bool)
+    def add_step(self, _palette_type: str) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def remove_selected_step(self) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def move_selected_up(self) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def move_selected_down(self) -> bool:
+        return True
+
+    @Slot(int)
+    def select_step(self, index: int) -> None:
+        self._selected_index = index
+        self.selected_index_changed.emit(index)
+
+    @Slot(bool)
+    def set_loop(self, enabled: bool) -> None:
+        self._loop = bool(enabled)
+        self.loop_changed.emit(self._loop)
 
 
 class FakeWorkFlowRunner(QObject):

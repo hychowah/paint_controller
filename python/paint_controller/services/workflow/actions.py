@@ -230,6 +230,31 @@ class EFForceHandler(ActionHandler):
         return 1.5  # Force application takes about 1.5 seconds
 
 
+class TimeWaitHandler(ActionHandler):
+    """First-class wait step: block the execution thread for duration_ms."""
+
+    def __init__(self, logger=None):
+        self.logger = logger
+
+    def execute(self, params: dict[str, Any]) -> None:
+        import time
+
+        duration_ms = int(params.get("duration_ms", 0) or 0)
+        if duration_ms <= 0:
+            return
+        if self.logger:
+            self.logger.debug(f"Waiting {duration_ms}ms")
+        # Chunked sleep so stop can interrupt more responsively at the scheduler level.
+        remaining = duration_ms / 1000.0
+        while remaining > 0:
+            slice_s = min(remaining, 0.05)
+            time.sleep(slice_s)
+            remaining -= slice_s
+
+    def estimate_duration(self, params: dict[str, Any]) -> float:
+        return max(int(params.get("duration_ms", 0) or 0), 0) / 1000.0
+
+
 class ActionRegistry:
     """Registry for action handlers."""
 

@@ -6,6 +6,8 @@ Rectangle {
     id: workFlowTab
     color: "transparent"
     required property var workflowRunner
+    required property var workflowEditor
+    required property var overlayController
 
     ColumnLayout {
         anchors {
@@ -14,17 +16,55 @@ Rectangle {
         }
         spacing: 15
 
-        // WorkFlow Selection
+        // WorkFlow Selection + full-page Edit entry
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 8
 
-            Text {
-                text: "WorkFlow"
-                color: "#FFFFFF"
-                font.family: "Helvetica"
-                font.pixelSize: 14
-                font.bold: true
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
+
+                Text {
+                    text: "WorkFlow"
+                    color: "#FFFFFF"
+                    font.family: "Helvetica"
+                    font.pixelSize: 14
+                    font.bold: true
+                    Layout.fillWidth: true
+                }
+
+                Rectangle {
+                    width: 120
+                    height: 48
+                    radius: 8
+                    color: editMouse.containsMouse ? "#3A5A8C" : "#2A3040"
+                    border.color: "#3A5A8C"
+                    border.width: 1
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Edit"
+                        color: "#FFFFFF"
+                        font.family: "Helvetica"
+                        font.pixelSize: 16
+                        font.bold: true
+                    }
+
+                    MouseArea {
+                        id: editMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            // Close system control, open full-page editor overlay
+                            if (workFlowTab.overlayController)
+                                workFlowTab.overlayController.hide_menu()
+                            if (workFlowTab.workflowEditor)
+                                workFlowTab.workflowEditor.open_editor()
+                        }
+                    }
+                }
             }
 
             Rectangle {

@@ -10,6 +10,7 @@ Key improvements:
 - Minimal logging
 """
 
+import os
 import threading
 import time
 from datetime import datetime
@@ -20,6 +21,7 @@ import yaml
 from PySide6.QtCore import QThread, Signal
 
 from .actions import ActionRegistry
+from .document_compile import load_workflow_mapping
 from .hardware import HardwareControllers
 from .scheduler import ActionScheduler, ScheduledAction
 
@@ -184,18 +186,21 @@ class WorkFlowExecutor:
         """
         try:
             with open(yaml_path) as f:
-                self.current_workflow = yaml.safe_load(f)
+                raw = yaml.safe_load(f)
 
-            workflow = self.current_workflow
-            if not isinstance(workflow, dict):
-                self.logger.error("Loaded workflow is not a mapping")
-                return False
+            default_name = os.path.splitext(os.path.basename(yaml_path))[0]
+            workflow = load_workflow_mapping(raw, default_name=default_name)
+            self.current_workflow = workflow
             name = workflow.get("name", "unknown")
-            self._loop_enabled = workflow.get("loop", False)
+            self._loop_enabled = bool(workflow.get("loop", False))
             self._loop_iteration = 0
 
             loop_status = " (looping enabled)" if self._loop_enabled else ""
-            self.logger.info(f"Loaded workflow: {name}{loop_status}")
+            step_count = len(workflow.get("steps") or [])
+            action_count = len(workflow.get("actions") or [])
+            self.logger.info(
+                f"Loaded workflow: {name}{loop_status} ({step_count} steps → {action_count} actions)"
+            )
             return True
 
         except Exception as e:
