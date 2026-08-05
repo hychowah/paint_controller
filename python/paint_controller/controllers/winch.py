@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from paint_interfaces.msg import MoveWinchLength, WinchStatus
-from PySide6.QtCore import Property, Signal, Slot
+from PySide6.QtCore import Property, Signal
 from rclpy.node import Node
 from std_msgs.msg import Bool, Float64
 
@@ -411,35 +411,29 @@ class WinchController(RosStatusController):
     )
     unusual_load_detected = Property(bool, get_unusual_load_detected, notify=unusual_load_detected_changed)
 
-    # Slot methods for QML
-    @Slot(float)
+    # Command surface (plain HAL — QML via WinchActions)
     def setSpeed(self, speed: float) -> bool:
-        """Set winch speed from QML"""
+        """Set winch speed (rpm)."""
         return self.command_speed_rpm(speed)
 
-    @Slot(int, int)
     def moveIncrement(self, length_mm: int, speed_mm_s: int) -> bool:
-        """Move winch by increment from QML"""
+        """Move winch by increment (camelCase alias of move_increment)."""
         return self.move_increment(length_mm, speed_mm_s)
 
-    @Slot(int, int)
     def moveAbsolute(self, length_mm: int, speed_mm_s: int) -> bool:
-        """Move winch to absolute position from QML"""
+        """Move winch to absolute position (camelCase alias of move_absolute)."""
         return self.move_absolute(length_mm, speed_mm_s)
 
-    @Slot(int, int, int)
     def moveIncrementWithAccel(self, length_mm: int, speed_mm_s: int, acceleration_rpm_s: int) -> bool:
-        """Move winch by increment with custom acceleration from QML"""
+        """Move winch by increment with custom acceleration."""
         return self.move_increment_with_accel(length_mm, speed_mm_s, acceleration_rpm_s)
 
-    @Slot(int, int, int)
     def moveAbsoluteWithAccel(self, length_mm: int, speed_mm_s: int, acceleration_rpm_s: int) -> bool:
-        """Move winch to absolute position with custom acceleration from QML"""
+        """Move winch to absolute position with custom acceleration."""
         return self.move_absolute_with_accel(length_mm, speed_mm_s, acceleration_rpm_s)
 
-    @Slot(bool)
     def setEnabled(self, enabled: bool) -> bool:
-        """Enable/disable winch from QML"""
+        """Enable/disable winch."""
         if not self._available:
             self._node.get_logger().warning("Cannot enable winch: Winch not available")
             return False
@@ -451,9 +445,8 @@ class WinchController(RosStatusController):
         self._node.get_logger().info(f"Winch {'enabled' if enabled else 'disabled'}")
         return True
 
-    @Slot(bool)
     def setLoadDetectionEnabled(self, enabled: bool) -> None:
-        """Enable/disable load detection from QML"""
+        """Enable/disable load detection."""
         self.set_load_detection_mode(enabled)
 
     def cleanup(self) -> None:

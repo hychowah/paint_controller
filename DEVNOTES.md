@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-08-05 - Level A: strip device-adapter QML `@Slot` (dual-role)
+
+**Goal**: Device HAL adapters must not expose QML-invokable `@Slot` command APIs; QML stays on `*Actions` / `*Status`.
+**Tried**: Decorator-only strip on teensy/wheel/winch/lidar + `setValveTurn`; keep ESP32 `_finish_discovery_and_connect` (QueuedConnection worker). Structural ban `tests/test_device_adapter_no_qml_slots.py`. SSH/SystemMonitor out of scope.
+**Result**: ✅ Full suite **517 passed**. Level B (Property retirement) deferred.
+**Files**: `controllers/{teensy,wheel,winch,lidar,esp32_valve}.py`, `tests/test_device_adapter_no_qml_slots.py`
+
+---
 ### 2026-07-31 - Extensibility slices: ActionKey, GatedActionMixin, context schema, status base, workflow ActionType
 
 **Goal**: Reduce manual wiring when adding controllers/actions while preserving QML↔Python boundaries, safety gates, and deterministic construction/cleanup order.

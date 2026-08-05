@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from paint_interfaces.msg import MoveVehiclePos, MoveVehicleSpd, VehicleStatus
-from PySide6.QtCore import Property, Signal, Slot
+from PySide6.QtCore import Property, Signal
 from rclpy.node import Node
 from std_msgs.msg import Bool
 
@@ -392,7 +392,6 @@ class WheelController(RosStatusController):
     left_motor_available = Property(bool, get_left_motor_available, notify=left_motor_available_changed)
     right_motor_available = Property(bool, get_right_motor_available, notify=right_motor_available_changed)
 
-    @Slot(bool)
     def setEnabled(self, enabled: bool) -> None:
         """
         Enable or disable wheel control
@@ -408,33 +407,27 @@ class WheelController(RosStatusController):
         self._disable_pub.publish(msg)
         logger.info("Wheel controller %s", "enabled" if enabled else "disabled")
 
-    @Slot(float)
     def setLeftSpeed(self, speed: float) -> bool:
-        """Set left wheel speed from QML"""
+        """Set left wheel speed (alias of command_left_wheel_speed)."""
         return self.command_left_wheel_speed(speed)
 
-    @Slot(float)
     def setRightSpeed(self, speed: float) -> bool:
-        """Set right wheel speed from QML"""
+        """Set right wheel speed (alias of command_right_wheel_speed)."""
         return self.command_right_wheel_speed(speed)
 
-    @Slot(int, int)
     def setSpeed(self, left_rpm: int, right_rpm: int) -> bool:
-        """Set both wheel speeds from QML using unified command"""
+        """Set both wheel speeds using unified command."""
         return self.command_speed(left_rpm, right_rpm)
 
-    @Slot(int, int, int, bool)
     def setPosition(self, left_mm: int, right_mm: int, rpm_limit: int, relative: bool) -> bool:
-        """Command position from QML"""
+        """Command wheel position (alias of command_position)."""
         return self.command_position(left_mm, right_mm, rpm_limit, relative)
 
-    @Slot()
     def emergency_stop(self) -> None:
         """Emergency stop - immediately set both wheels to zero speed"""
         self.command_speed(0, 0)
         logger.info("Wheel controller emergency stop activated")
 
-    @Slot()
     def resetWheelPosition(self) -> None:
         """
         Reset both wheel positions to zero

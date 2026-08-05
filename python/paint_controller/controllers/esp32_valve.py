@@ -429,14 +429,8 @@ class ESP32ValveController(QObject):
         except Exception as e:
             logging.error("Failed to send valve command: %s", e)
 
-    @Slot(float)
     def setValveTurn(self, position_pct: float):
-        """
-        QML-callable method to set valve position
-
-        Args:
-            position_pct: Target position in percent (0.0-100.0)
-        """
+        """Set valve position (percent). Plain HAL method; not a QML slot."""
         # Clamp to valid range
         position_pct = max(0.0, min(100.0, position_pct))
 

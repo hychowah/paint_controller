@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, Signal
 from rclpy.node import Node
 from std_msgs.msg import Float32
 
@@ -85,11 +85,9 @@ class LidarController(QObject):
     distance = Property(float, get_distance, set_distance, notify=distance_changed)
     angle = Property(float, get_angle, set_angle, notify=angle_changed)
 
-    @Slot(result=float)
     def getDistance(self) -> float:
         return self.get_distance()
 
-    @Slot(result=float)
     def getAngle(self) -> float:
         return self.get_angle()
 

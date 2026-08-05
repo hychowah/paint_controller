@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 from geometry_msgs.msg import Twist, Vector3
 from paint_interfaces.msg import TeensyStatus, TeensyYaw
-from PySide6.QtCore import Property, QTimer, Signal, Slot
+from PySide6.QtCore import Property, QTimer, Signal
 from rclpy.node import Node
 from std_msgs.msg import Bool, Float32, Float32MultiArray, Int32, Int32MultiArray
 
@@ -454,25 +454,22 @@ class TeensyController(RosStatusController):
         """Get current Teensy status"""
         return self._get_status_snapshot()
 
-    @Slot(str, result="QVariant")
     def get_status_value(self, key: str) -> Any:
         """Get a specific status value by key"""
         with self._status_lock:
             return self._status.get(key)
 
     #############################################
-    ### Device command methods (legacy @Slot retained; no new Slots — TD-055)
+    ### Device command methods (plain HAL — QML via TeensyActions / TuningActions)
     ### Presentation formatting lives in TeensyStatus / pure helpers, not here.
     #############################################
 
-    @Slot(bool)
     def setEnabled(self, enabled: bool):
         """Enable/disable Teensy control"""
         self._publish_bool(self.teensy_enable_pub, enabled)
         self._node.get_logger().info(f"Teensy {'enabled' if enabled else 'disabled'}")
         self.status_changed.emit(self._get_status_snapshot())
 
-    @Slot(bool)
     def setRelayEnabled(self, enabled: bool):
         """Enable/disable Teensy relay"""
         self._relay_enabled = enabled
@@ -481,61 +478,49 @@ class TeensyController(RosStatusController):
         self._node.get_logger().info(f"Teensy relay {'enabled' if enabled else 'disabled'}")
         self.status_changed.emit(status_snapshot)
 
-    @Slot(float)
     def setTopRailSpeed(self, speed: float):
         """Set the top rail speed"""
         self._publish_float32(self.ef_move_top_rail_speed_pub, speed)
 
-    @Slot(bool)
     def homeTopRail(self, home: bool):
         """Home the top rail"""
         self._publish_bool(self.ef_home_top_rail_pub, True)
 
-    @Slot(float)
     def setArmRailSpeed(self, speed: float):
         """Set the arm rail speed"""
         self._publish_float32(self.ef_move_arm_rail_speed_pub, speed)
 
-    @Slot(int)
     def extendArm(self, dist: int):
         self._publish_int32(self.ef_move_arm_rail_pos_pub, dist)
 
-    @Slot(bool)
     def homeArm(self, home: bool):
         """Home the arm rail"""
         self._publish_bool(self.ef_home_arm_rail_pub, home)
 
-    @Slot(int)
     def setLeftPropPWM(self, pwm: int):
         """Set the left propeller PWM"""
         self._publish_int32(self.prop_left_pwm_pub, pwm)
 
-    @Slot(int)
     def setRightPropPWM(self, pwm: int):
         """Set the right propeller PWM"""
         self._publish_int32(self.prop_right_pwm_pub, pwm)
 
-    @Slot(float)
     def setLeftPropJoint(self, position: float):
         """Set the left propeller joint position"""
         self._publish_float32(self.prop_left_joint_pub, position)
 
-    @Slot(float)
     def setRightPropJoint(self, position: float):
         """Set the right propeller joint position"""
         self._publish_float32(self.prop_right_joint_pub, position)
 
-    @Slot(int)
     def setSprayTrigger(self, value: int):
         """Set the spray gun trigger value"""
         self._publish_int32(self.ef_spray_trigger_pub, value)
 
-    @Slot(int)
     def setSprayPitchSpeed(self, speed: int):
         """Set the spray gun pitch speed"""
         self._publish_int32(self.ef_spray_pitch_speed_pub, speed)
 
-    @Slot(bool)
     def setSprayGunLevelingEnabled(self, enabled: bool):
         """Enable/disable spray gun leveling"""
         self._node.get_logger().info(f"Spray gun leveling {'enabled' if enabled else 'disabled'}")
@@ -545,7 +530,6 @@ class TeensyController(RosStatusController):
         self.spray_gun_leveling_changed.emit(enabled)
         self.status_changed.emit(status_snapshot)
 
-    @Slot(float, float)
     def setSprayGunPitchAngle(self, angle: float, speed: float):
         """Set the spray gun pitch angle and speed"""
         self._node.get_logger().info(f"Setting spray gun pitch angle to {angle} with speed {speed}")
@@ -553,7 +537,6 @@ class TeensyController(RosStatusController):
         msg.data = [float(angle), float(speed)]
         self.ef_spray_pitch_pub.publish(msg)
 
-    @Slot(bool)
     def setSprayGunLED(self, on: bool):
         """Turn the spray gun LED on/off"""
         self._node.get_logger().info(f"Spray gun LED {'on' if on else 'off'}")
@@ -561,7 +544,6 @@ class TeensyController(RosStatusController):
         self._spray_gun_led_on = on
         self.spray_gun_led_changed.emit(on)
 
-    @Slot(bool)
     def setLidarPower(self, on: bool):
         """Turn the Lidar power on/off"""
         self._node.get_logger().info(f"Lidar power {'on' if on else 'off'}")
@@ -570,7 +552,6 @@ class TeensyController(RosStatusController):
         self._publish_bool(self.ef_lidar_power_pub, on)
         self.status_changed.emit(status_snapshot)
 
-    @Slot(bool)
     def setStabilityEnabled(self, enabled: bool):
         """Enable/disable stability controller (master enable for force and yaw control)"""
         self._stability_enabled = enabled
@@ -580,12 +561,10 @@ class TeensyController(RosStatusController):
         self.stability_enabled_changed.emit(enabled)
         self.status_changed.emit(status_snapshot)
 
-    @Slot(bool)
     def setYawEnabled(self, enabled: bool):
         """Enable/disable yaw control"""
         self._publish_bool(self.stability_yaw_enable_pub, enabled)
 
-    @Slot(bool)
     def setAutoCorrectionEnabled(self, enabled: bool):
         """Enable/disable yaw auto correction"""
         self._auto_correction_enabled = enabled
@@ -595,7 +574,6 @@ class TeensyController(RosStatusController):
         self.auto_correction_enabled_changed.emit(enabled)
         self.status_changed.emit(status_snapshot)
 
-    @Slot(bool)
     def setRollerSteeringEnabled(self, enabled: bool):
         """Enable/disable roller steering"""
         self._roller_steering_enabled = enabled
@@ -605,7 +583,6 @@ class TeensyController(RosStatusController):
         self.roller_steering_enabled_changed.emit(enabled)
         self.status_changed.emit(status_snapshot)
 
-    @Slot(bool)
     def setSwingDampingEnabled(self, enabled: bool):
         """Enable/disable swing damping"""
         self._swing_damping_enabled = enabled
@@ -615,12 +592,10 @@ class TeensyController(RosStatusController):
         self.swing_damping_enabled_changed.emit(enabled)
         self.status_changed.emit(status_snapshot)
 
-    @Slot(float)
     def setYawAngle(self, angle: float):
         """Set the yaw angle"""
         self._publish_float32(self.stability_yaw_angle_pub, angle)
 
-    @Slot(float, float, float)
     def setShortParams(self, p: float, i: float, d: float):
         """Set the yaw PID parameters"""
         msg = TeensyYaw()
@@ -629,7 +604,6 @@ class TeensyController(RosStatusController):
         msg.yaw_pid_d = d
         self.stability_short_param_pub.publish(msg)
 
-    @Slot(float, float, float)
     def setLongParams(self, p: float, i: float, d: float):
         """Set the yaw PID parameters"""
         msg = TeensyYaw()
@@ -638,7 +612,6 @@ class TeensyController(RosStatusController):
         msg.yaw_pid_d = d
         self.stability_long_param_pub.publish(msg)
 
-    @Slot(float, float)
     def startTapFreq(self, power: float, period: float):
         """Start tapping the frequency"""
         self._node.get_logger().info(f"Starting tap frequency with Power: {power} Period: {period}")
@@ -646,26 +619,22 @@ class TeensyController(RosStatusController):
         msg.data = [int(power), int(period * 1000)]
         self.ef_tap_freq_pub.publish(msg)
 
-    @Slot(float)
     def tapOnce(self, power: float):
         """Tap once"""
         self._node.get_logger().info(f"Tapping once with Power: {power}")
         self._publish_int32(self.ef_tap_once_pub, int(power))
 
-    @Slot(float)
     def tapStop(self, power: float):
         """Stop tapping"""
         self._node.get_logger().info(f"Stopping tap with Power: {power}")
         self._publish_bool(self.ef_tap_stop_pub, True)
 
-    @Slot(bool)
     def setThrustForceEnabled(self, enabled: bool):
-        """Toggle thrust force on/off with ramping (QML callable)"""
+        """Toggle thrust force on/off with ramping."""
         self.set_thrust_force_enabled(enabled)
 
-    @Slot(bool)
     def setThrustForceInstant(self, enabled: bool):
-        """Toggle thrust force on/off instantly without ramping (QML callable)"""
+        """Toggle thrust force on/off instantly without ramping."""
         self.set_thrust_force_instant(enabled)
 
     def _set_yaw_control(self, enabled: bool, target: float, p: float, i: float, d: float, pwm: int):
