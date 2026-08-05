@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from paint_interfaces.msg import MoveVehiclePos, MoveVehicleSpd, VehicleStatus
-from PySide6.QtCore import Property, Signal
+from PySide6.QtCore import Signal
 from rclpy.node import Node
 from std_msgs.msg import Bool
 
@@ -368,29 +368,82 @@ class WheelController(RosStatusController):
     def get_right_motor_available(self) -> bool:
         return self._right_motor_available
 
-    # Define Qt properties
-    left_wheel_speed = Property(float, get_left_wheel_speed, set_left_wheel_speed, notify=left_wheel_speed_changed)
-    right_wheel_speed = Property(float, get_right_wheel_speed, set_right_wheel_speed, notify=right_wheel_speed_changed)
-    left_wheel_current = Property(
-        float, get_left_wheel_current, set_left_wheel_current, notify=left_wheel_current_changed
-    )
-    right_wheel_current = Property(
-        float, get_right_wheel_current, set_right_wheel_current, notify=right_wheel_current_changed
-    )
-    left_wheel_position = Property(
-        float, get_left_wheel_position, set_left_wheel_position, notify=left_wheel_position_changed
-    )
-    right_wheel_position = Property(
-        float, get_right_wheel_position, set_right_wheel_position, notify=right_wheel_position_changed
-    )
-    available = Property(bool, RosStatusController.get_available, notify=available_changed)
-    enabled = Property(bool, get_enabled, set_enabled, notify=enabled_changed)
+    # Plain Python properties (Level B) — QML surface is WheelStatus.
+    @property
+    def left_wheel_speed(self) -> float:
+        return self.get_left_wheel_speed()
 
-    # New Qt properties for error and motor availability
-    left_error = Property(bool, get_left_error, notify=left_error_changed)
-    right_error = Property(bool, get_right_error, notify=right_error_changed)
-    left_motor_available = Property(bool, get_left_motor_available, notify=left_motor_available_changed)
-    right_motor_available = Property(bool, get_right_motor_available, notify=right_motor_available_changed)
+    @left_wheel_speed.setter
+    def left_wheel_speed(self, value: float) -> None:
+        self.set_left_wheel_speed(value)
+
+    @property
+    def right_wheel_speed(self) -> float:
+        return self.get_right_wheel_speed()
+
+    @right_wheel_speed.setter
+    def right_wheel_speed(self, value: float) -> None:
+        self.set_right_wheel_speed(value)
+
+    @property
+    def left_wheel_current(self) -> float:
+        return self.get_left_wheel_current()
+
+    @left_wheel_current.setter
+    def left_wheel_current(self, value: float) -> None:
+        self.set_left_wheel_current(value)
+
+    @property
+    def right_wheel_current(self) -> float:
+        return self.get_right_wheel_current()
+
+    @right_wheel_current.setter
+    def right_wheel_current(self, value: float) -> None:
+        self.set_right_wheel_current(value)
+
+    @property
+    def left_wheel_position(self) -> float:
+        return self.get_left_wheel_position()
+
+    @left_wheel_position.setter
+    def left_wheel_position(self, value: float) -> None:
+        self.set_left_wheel_position(value)
+
+    @property
+    def right_wheel_position(self) -> float:
+        return self.get_right_wheel_position()
+
+    @right_wheel_position.setter
+    def right_wheel_position(self, value: float) -> None:
+        self.set_right_wheel_position(value)
+
+    @property
+    def available(self) -> bool:
+        return self.get_available()
+
+    @property
+    def enabled(self) -> bool:
+        return self.get_enabled()
+
+    @enabled.setter
+    def enabled(self, value: bool) -> None:
+        self.set_enabled(value)
+
+    @property
+    def left_error(self) -> bool:
+        return self.get_left_error()
+
+    @property
+    def right_error(self) -> bool:
+        return self.get_right_error()
+
+    @property
+    def left_motor_available(self) -> bool:
+        return self.get_left_motor_available()
+
+    @property
+    def right_motor_available(self) -> bool:
+        return self.get_right_motor_available()
 
     def setEnabled(self, enabled: bool) -> None:
         """

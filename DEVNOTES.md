@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-08-05 - Level B: strip Qt `@Property` from device adapters
+
+**Goal**: Device HAL telemetry is plain Python `@property` + Signals; QML reads only via `*Status`.
+**Tried**: Convert Property→`@property` on teensy/wheel/winch/lidar/esp32/wind; keep all producer Signals and public names for getattr. Structural ban `tests/test_device_adapter_no_qml_properties.py`.
+**Result**: ✅ Full suite green (see session validation). Level C (no-QObject HAL) still deferred.
+**Files**: `controllers/{teensy,wheel,winch,lidar,esp32_valve,wind_monitor}.py`, `tests/test_device_adapter_no_qml_properties.py`
+
+---
 ### 2026-08-05 - Level A: strip device-adapter QML `@Slot` (dual-role)
 
 **Goal**: Device HAL adapters must not expose QML-invokable `@Slot` command APIs; QML stays on `*Actions` / `*Status`.

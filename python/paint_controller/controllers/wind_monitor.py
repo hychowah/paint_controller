@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Property, QObject, Signal
+from PySide6.QtCore import QObject, Signal
 from rclpy.node import Node
 from std_msgs.msg import Float32
 
 
 class WindMonitor(QObject):
+    """Wind telemetry adapter. Not currently on production QML context."""
+
     windSpeedChanged = Signal()
     windDirectionChanged = Signal()
 
@@ -36,8 +38,14 @@ class WindMonitor(QObject):
         self._node.create_subscription(Float32, "/wind/speed", self._speed_callback, 10)
         self._node.create_subscription(Float32, "/wind/direction", self._direction_callback, 10)
 
-    windSpeed = Property(float, get_speed, notify=windSpeedChanged)
-    windDirection = Property(float, get_direction, notify=windDirectionChanged)
+    # Plain Python properties (Level B consistency).
+    @property
+    def windSpeed(self) -> float:
+        return self.get_speed()
+
+    @property
+    def windDirection(self) -> float:
+        return self.get_direction()
 
     def cleanup(self) -> None:
         """Clean up wind monitor resources"""

@@ -18,7 +18,7 @@ from enum import IntEnum
 from pathlib import Path
 
 from paint_interfaces.msg import ValveStatus
-from PySide6.QtCore import Property, QObject, Qt, QThread, QTimer, Signal, Slot
+from PySide6.QtCore import QObject, Qt, QThread, QTimer, Signal, Slot
 from rclpy.node import Node
 from std_msgs.msg import Float32
 
@@ -516,13 +516,31 @@ class ESP32ValveController(QObject):
         except Exception:
             pass
 
-    # Qt Properties for QML binding
-    valve_position = Property(float, lambda self: self._valve_position, notify=valve_position_changed)
-    valve_rate = Property(float, lambda self: self._valve_rate, notify=valve_rate_changed)
-    total_volume = Property(float, lambda self: self._total_volume, notify=total_volume_changed)
-    valve_motor_current = Property(int, lambda self: self._valve_motor_current, notify=valve_motor_current_changed)
-    valve_motor_connected = Property(
-        bool, lambda self: self._valve_motor_connected, notify=valve_motor_connected_changed
-    )
-    flow_meter_connected = Property(bool, lambda self: self._flow_meter_connected, notify=flow_meter_connected_changed)
-    esp32_connected = Property(bool, lambda self: self._esp32_connected, notify=esp32_connected_changed)
+    # Plain Python properties (Level B) — QML surface is ValveStatus.
+    @property
+    def valve_position(self) -> float:
+        return self._valve_position
+
+    @property
+    def valve_rate(self) -> float:
+        return self._valve_rate
+
+    @property
+    def total_volume(self) -> float:
+        return self._total_volume
+
+    @property
+    def valve_motor_current(self) -> int:
+        return self._valve_motor_current
+
+    @property
+    def valve_motor_connected(self) -> bool:
+        return self._valve_motor_connected
+
+    @property
+    def flow_meter_connected(self) -> bool:
+        return self._flow_meter_connected
+
+    @property
+    def esp32_connected(self) -> bool:
+        return self._esp32_connected

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from paint_interfaces.msg import MoveWinchLength, WinchStatus
-from PySide6.QtCore import Property, Signal
+from PySide6.QtCore import Signal
 from rclpy.node import Node
 from std_msgs.msg import Bool, Float64
 
@@ -397,19 +397,78 @@ class WinchController(RosStatusController):
             self._unusual_load_detected = value
             self.unusual_load_detected_changed.emit()
 
-    # Define Qt properties
-    cable_length = Property(float, get_cable_length, set_cable_length, notify=cable_length_changed)
-    cable_speed = Property(float, get_cable_speed, set_cable_speed, notify=cable_speed_changed)
-    winch_torque = Property(float, get_winch_torque, set_winch_torque, notify=winch_torque_changed)
-    motor_temperature = Property(float, get_motor_temperature, set_motor_temperature, notify=motor_temperature_changed)
-    motor_voltage = Property(float, get_motor_voltage, set_motor_voltage, notify=motor_voltage_changed)
-    motor_brake = Property(bool, get_motor_brake, set_motor_brake, notify=motor_brake_changed)
-    available = Property(bool, RosStatusController.get_available, notify=available_changed)
-    enabled = Property(bool, get_enabled, set_enabled, notify=enabled_changed)
-    load_detection_enabled = Property(
-        bool, get_load_detection_enabled, set_load_detection_enabled, notify=load_detection_changed
-    )
-    unusual_load_detected = Property(bool, get_unusual_load_detected, notify=unusual_load_detected_changed)
+    # Plain Python properties (Level B) — QML surface is WinchStatus.
+    @property
+    def cable_length(self) -> float:
+        return self.get_cable_length()
+
+    @cable_length.setter
+    def cable_length(self, value: float) -> None:
+        self.set_cable_length(value)
+
+    @property
+    def cable_speed(self) -> float:
+        return self.get_cable_speed()
+
+    @cable_speed.setter
+    def cable_speed(self, value: float) -> None:
+        self.set_cable_speed(value)
+
+    @property
+    def winch_torque(self) -> float:
+        return self.get_winch_torque()
+
+    @winch_torque.setter
+    def winch_torque(self, value: float) -> None:
+        self.set_winch_torque(value)
+
+    @property
+    def motor_temperature(self) -> float:
+        return self.get_motor_temperature()
+
+    @motor_temperature.setter
+    def motor_temperature(self, value: float) -> None:
+        self.set_motor_temperature(value)
+
+    @property
+    def motor_voltage(self) -> float:
+        return self.get_motor_voltage()
+
+    @motor_voltage.setter
+    def motor_voltage(self, value: float) -> None:
+        self.set_motor_voltage(value)
+
+    @property
+    def motor_brake(self) -> bool:
+        return self.get_motor_brake()
+
+    @motor_brake.setter
+    def motor_brake(self, value: bool) -> None:
+        self.set_motor_brake(value)
+
+    @property
+    def available(self) -> bool:
+        return self.get_available()
+
+    @property
+    def enabled(self) -> bool:
+        return self.get_enabled()
+
+    @enabled.setter
+    def enabled(self, value: bool) -> None:
+        self.set_enabled(value)
+
+    @property
+    def load_detection_enabled(self) -> bool:
+        return self.get_load_detection_enabled()
+
+    @load_detection_enabled.setter
+    def load_detection_enabled(self, value: bool) -> None:
+        self.set_load_detection_enabled(value)
+
+    @property
+    def unusual_load_detected(self) -> bool:
+        return self.get_unusual_load_detected()
 
     # Command surface (plain HAL — QML via WinchActions)
     def setSpeed(self, speed: float) -> bool:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from PySide6.QtCore import Property, QObject, Signal
+from PySide6.QtCore import QObject, Signal
 from rclpy.node import Node
 from std_msgs.msg import Float32
 
@@ -25,7 +25,10 @@ class LidarAngleSnapshot:
 
 
 class LidarController(QObject):
-    """Wall-detection lidar telemetry (TD-056 pattern)."""
+    """Wall-detection lidar telemetry (TD-056 pattern).
+
+    QML surface is ``LidarStatus``; public names + Signals for getattr projectors.
+    """
 
     distance_changed = Signal()
     angle_changed = Signal()
@@ -82,8 +85,22 @@ class LidarController(QObject):
         if isinstance(snap, LidarAngleSnapshot):
             self.set_angle(snap.angle)
 
-    distance = Property(float, get_distance, set_distance, notify=distance_changed)
-    angle = Property(float, get_angle, set_angle, notify=angle_changed)
+    # Plain Python properties (Level B) — not Qt Property; QML uses LidarStatus.
+    @property
+    def distance(self) -> float:
+        return self.get_distance()
+
+    @distance.setter
+    def distance(self, value: float) -> None:
+        self.set_distance(value)
+
+    @property
+    def angle(self) -> float:
+        return self.get_angle()
+
+    @angle.setter
+    def angle(self, value: float) -> None:
+        self.set_angle(value)
 
     def getDistance(self) -> float:
         return self.get_distance()

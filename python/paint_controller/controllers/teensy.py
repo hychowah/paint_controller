@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 from geometry_msgs.msg import Twist, Vector3
 from paint_interfaces.msg import TeensyStatus, TeensyYaw
-from PySide6.QtCore import Property, QTimer, Signal
+from PySide6.QtCore import QTimer, Signal
 from rclpy.node import Node
 from std_msgs.msg import Bool, Float32, Float32MultiArray, Int32, Int32MultiArray
 
@@ -664,28 +664,41 @@ class TeensyController(RosStatusController):
         else:
             self._node.get_logger().error("Stability force publisher not initialized. Cannot send force values.")
 
-    # Define a property to expose the entire status dictionary
     def get_all_status(self) -> TeensyStatusDict:
         return self._get_status_snapshot()
 
-    # Define a property for availability
-    # Define Qt properties
-    available = Property(bool, RosStatusController.get_available, notify=connection_changed)
-    all_status = Property(dict, get_all_status, notify=status_changed)
-    spray_gun_leveling_enabled = Property(
-        bool, lambda self: self._spray_gun_leveling_enabled, notify=spray_gun_leveling_changed
-    )
-    spray_gun_led_on = Property(bool, lambda self: self._spray_gun_led_on, notify=spray_gun_led_changed)
-    auto_correction_enabled = Property(
-        bool, lambda self: self._auto_correction_enabled, notify=auto_correction_enabled_changed
-    )
-    stability_enabled = Property(bool, lambda self: self._stability_enabled, notify=stability_enabled_changed)
-    roller_steering_enabled = Property(
-        bool, lambda self: self._roller_steering_enabled, notify=roller_steering_enabled_changed
-    )
-    swing_damping_enabled = Property(
-        bool, lambda self: self._swing_damping_enabled, notify=swing_damping_enabled_changed
-    )
+    # Plain Python properties (Level B) — QML surface is TeensyStatus / Actions.
+    @property
+    def available(self) -> bool:
+        return self.get_available()
+
+    @property
+    def all_status(self) -> TeensyStatusDict:
+        return self.get_all_status()
+
+    @property
+    def spray_gun_leveling_enabled(self) -> bool:
+        return self._spray_gun_leveling_enabled
+
+    @property
+    def spray_gun_led_on(self) -> bool:
+        return self._spray_gun_led_on
+
+    @property
+    def auto_correction_enabled(self) -> bool:
+        return self._auto_correction_enabled
+
+    @property
+    def stability_enabled(self) -> bool:
+        return self._stability_enabled
+
+    @property
+    def roller_steering_enabled(self) -> bool:
+        return self._roller_steering_enabled
+
+    @property
+    def swing_damping_enabled(self) -> bool:
+        return self._swing_damping_enabled
 
     def get_thrust_force(self) -> float:
         """Get current thrust force value"""
@@ -738,10 +751,21 @@ class TeensyController(RosStatusController):
                 self.set_ef_force(0.0, 0.0)
                 self._node.get_logger().info("Thrust force disabled instantly")
 
-    thrust_force = Property(float, get_thrust_force, set_thrust_force, notify=thrust_force_changed)
-    thrust_force_enabled = Property(
-        bool, get_thrust_force_enabled, set_thrust_force_enabled, notify=thrust_force_enabled_changed
-    )
+    @property
+    def thrust_force(self) -> float:
+        return self.get_thrust_force()
+
+    @thrust_force.setter
+    def thrust_force(self, value: float) -> None:
+        self.set_thrust_force(value)
+
+    @property
+    def thrust_force_enabled(self) -> bool:
+        return self.get_thrust_force_enabled()
+
+    @thrust_force_enabled.setter
+    def thrust_force_enabled(self, value: bool) -> None:
+        self.set_thrust_force_enabled(value)
 
     def _on_thrust_force_setting_changed(self, new_value: float):
         """Handle thrust_force change from SettingsManager"""
