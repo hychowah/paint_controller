@@ -43,6 +43,23 @@ def test_speed_commands_rejected_when_unavailable(qt_app, fake_node):
     assert fake_node.publishers[1].published_messages == []
 
 
+def test_command_bus_defers_continuous_speed_until_pump(qt_app, fake_node):
+    """TD-054: winch continuous speed commands enqueue until RosCommandBus.pump()."""
+    from paint_controller.core.ros_io import RosCommandBus
+
+    bus = RosCommandBus()
+    controller = _winch_controller_class()(fake_node, command_bus=bus)
+    controller.set_available(True)
+    rpm_pub = fake_node.publishers[0]
+
+    assert controller.command_speed_rpm(100.0) is True
+    assert rpm_pub.published_messages == []
+    assert bus.pending_counts()[1] == 1
+
+    assert bus.pump() == 1
+    assert len(rpm_pub.published_messages) == 1
+
+
 def test_move_commands_guard_when_unavailable(qt_app, fake_node):
     controller = _winch_controller_class()(fake_node)
 
@@ -191,3 +208,54 @@ def test_status_callback_does_not_mutate_until_events(qt_app, fake_node):
     qt_app.processEvents()
     assert controller2.available is True
     assert controller2.cable_length == 99.0
+
+
+def test_status_callback_from_worker_thread_defers_apply(qt_app, fake_node):
+    """Worker-thread ROS callback posts only; cable_length applies after main processEvents."""
+    import threading
+
+    controller = _winch_controller_class()(fake_node)
+
+    class _Msg:
+        enabled = True
+        cable_length = 42.0
+        cable_speed = 0.5
+        winch_torque = 1.0
+        motor_temperature = 30.0
+        motor_voltage = 48.0
+        motor_brake = False
+        load_detection_mode = True
+        unusual_load_detected = False
+
+    errors: list[BaseException] = []
+    main_tid = threading.get_ident()
+    apply_tids: list[int] = []
+    orig_apply = controller._telemetry._apply_fn
+
+    def tracking_apply(snap):
+        apply_tids.append(threading.get_ident())
+        return orig_apply(snap)
+
+    controller._telemetry._apply_fn = tracking_apply
+
+    def worker() -> None:
+        try:
+            controller._status_callback(_Msg())
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    thread = threading.Thread(target=worker, name="winch-status-worker")
+    thread.start()
+    thread.join(timeout=5.0)
+    assert not thread.is_alive()
+    assert errors == []
+
+    assert controller.available is False
+    assert controller.cable_length == 0.0
+    assert apply_tids == []
+
+    qt_app.processEvents()
+
+    assert controller.available is True
+    assert controller.cable_length == 42.0
+    assert apply_tids == [main_tid], f"apply must run on main thread, got {apply_tids}"

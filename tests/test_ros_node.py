@@ -119,3 +119,65 @@ def test_ros_thread_pumps_command_bus_before_spin(monkeypatch, qt_core_app):
     assert thread.wait(2000)
     assert spin_calls["n"] >= 1
     assert raw.published_messages == ["cmd"]
+
+
+def test_ros_thread_final_drain_delivers_oneshot_after_shutdown_request(monkeypatch, qt_core_app):
+    """TD-054: final pump on exit must deliver oneshots enqueued late in the loop."""
+    import rclpy
+
+    from paint_controller.core.ros_io import RosCommandBus, TrafficKind
+
+    bus = RosCommandBus()
+    raw = FakePublisher()
+    handle = bus.bind(raw, kind=TrafficKind.ONESHOT)
+
+    mod = _ros_node_module(monkeypatch)
+    node = mod.PaintRosNode(state_store=FakeStateStore(HeartbeatStatus.IDLE.value))
+    thread = mod.RosThread(node, command_bus=bus)
+
+    spin_calls = {"n": 0}
+
+    def fake_spin_once(_node, timeout_sec=0.05):
+        spin_calls["n"] += 1
+        if spin_calls["n"] == 1:
+            # Enqueue after first pump+spin iteration, then request shutdown.
+            # Final drain after loop break must publish this oneshot.
+            handle.publish("late_halt")
+            thread.request_shutdown()
+
+    monkeypatch.setattr(rclpy, "ok", lambda: True)
+    monkeypatch.setattr(rclpy, "spin_once", fake_spin_once)
+
+    thread.start()
+    assert thread.wait(2000)
+    assert spin_calls["n"] >= 1
+    assert "late_halt" in raw.published_messages
+
+
+def test_ros_thread_close_rejects_new_enqueues_but_final_pump_drains_pending(monkeypatch, qt_core_app):
+    """close() drops new enqueues; pending traffic still drains on RosThread exit."""
+    import rclpy
+
+    from paint_controller.core.ros_io import RosCommandBus, TrafficKind
+
+    bus = RosCommandBus()
+    raw = FakePublisher()
+    handle = bus.bind(raw, kind=TrafficKind.ONESHOT)
+    handle.publish("pending_before_close")
+    bus.close()
+    handle.publish("after_close_dropped")
+
+    mod = _ros_node_module(monkeypatch)
+    node = mod.PaintRosNode(state_store=FakeStateStore(HeartbeatStatus.IDLE.value))
+    thread = mod.RosThread(node, command_bus=bus)
+
+    def fake_spin_once(_node, timeout_sec=0.05):
+        thread.request_shutdown()
+
+    monkeypatch.setattr(rclpy, "ok", lambda: True)
+    monkeypatch.setattr(rclpy, "spin_once", fake_spin_once)
+
+    thread.start()
+    assert thread.wait(2000)
+    assert raw.published_messages == ["pending_before_close"]
+    assert "after_close_dropped" not in raw.published_messages

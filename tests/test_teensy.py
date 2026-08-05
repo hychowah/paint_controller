@@ -76,6 +76,51 @@ def test_status_callback_preserves_user_controlled_fields(qt_app, fake_node):
     assert current["target_yaw"] == 44.0
 
 
+def test_status_callback_from_worker_thread_defers_device_fields(qt_app, fake_node):
+    """Worker-thread status callback must not apply device telemetry until main processEvents."""
+    import threading
+
+    controller = _teensy_controller_class()(fake_node)
+    status = _teensy_status_class()()
+    status.runtime = 123000
+    status.top_rail_position = 7.0
+    status.orientation.z = 12.0
+    errors: list[BaseException] = []
+    main_tid = threading.get_ident()
+    apply_tids: list[int] = []
+    orig_apply = controller._telemetry._apply_fn
+
+    def tracking_apply(snap):
+        apply_tids.append(threading.get_ident())
+        return orig_apply(snap)
+
+    controller._telemetry._apply_fn = tracking_apply
+
+    def worker() -> None:
+        try:
+            controller._status_callback(status)
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    thread = threading.Thread(target=worker, name="teensy-status-worker")
+    thread.start()
+    thread.join(timeout=5.0)
+    assert not thread.is_alive()
+    assert errors == []
+
+    # Device snapshot fields still defaults until apply.
+    before = controller.get_status()
+    assert before.get("top_rail_position", 0.0) == 0.0
+    assert before.get("imu_yaw", 0.0) == 0.0
+    assert apply_tids == []
+
+    qt_app.processEvents()
+    after = controller.get_status()
+    assert float(after["top_rail_position"]) == 7.0
+    assert float(after["imu_yaw"]) == 12.0
+    assert apply_tids == [main_tid], f"apply must run on main thread, got {apply_tids}"
+
+
 def test_set_relay_enabled_updates_status_and_publishes(qt_app, fake_node):
     controller = _teensy_controller_class()(fake_node)
 

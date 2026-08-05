@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-08-05 - Concurrency lock pack (ROS↔Qt / command bus)
+
+**Goal**: Prove worker-thread post/callback affinity and halt vs continuous bus races so Level C (or any threading move) has a before/after bar.
+**Tried**: Bridge/bus/RosThread real-thread contracts; device worker affinity + apply tid; product path: bound `command_bus` no raw publish until pump; SafetyCoordinator+live teleop+latch blocks ControlProcessor; wheel error signal only after main processEvents; Wind residual fence (documents sync mutate on calling thread).
+**Result**: ✅ Full suite green. Level C deferred at `docs/plan/02_LEVEL_C_PURE_HAL_PLAN.md`. Residual still open: ESP32 real-thread stress; Wind not yet on TD-056 (fence only).
+**Files**: `tests/test_ros_telemetry.py`, `tests/test_ros_io.py`, `tests/test_ros_node.py`, `tests/test_wheel.py`, `tests/test_winch.py`, `tests/test_teensy.py`, `tests/test_concurrency_product_paths.py`
+
+---
 ### 2026-08-05 - Level B: strip Qt `@Property` from device adapters
 
 **Goal**: Device HAL telemetry is plain Python `@property` + Signals; QML reads only via `*Status`.
