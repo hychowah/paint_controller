@@ -21,6 +21,7 @@ import yaml
 from PySide6.QtCore import QThread, Signal
 
 from .actions import ActionRegistry
+from .completion import CompletionTracker
 from .document_compile import load_workflow_mapping
 from .hardware import HardwareControllers
 from .scheduler import ActionScheduler, ScheduledAction
@@ -132,9 +133,13 @@ class WorkFlowExecutor:
         self._active_position_triggers: dict[str, tuple] = {}  # ref_id -> (action, last_position)
         self._fired_position_triggers: set = set()  # action_ids that have fired
 
-        # Winch completion tracking
-        self._active_winch_action: ScheduledAction | None = None  # Currently executing winch action
-        self._winch_position_tolerance: float = 50.0  # mm tolerance for position-based completion
+        # Wait-done completion (policy-driven; winch is a feedback reader consumer)
+        self._completion = CompletionTracker(
+            self.hardware,
+            default_winch_tolerance=50.0,
+            logger=self.logger,
+        )
+        self._winch_position_tolerance: float = 50.0  # used by must-complete winch checks
 
         # Must-complete action tracking (industry pattern: implicit dependencies)
         self._must_complete_actions: dict[
@@ -376,8 +381,8 @@ class WorkFlowExecutor:
                 # Determine wait time until next action or completion
                 wait_until = self._calculate_wait_until(scheduled, action_index, scheduled_actions, start_time)
 
-                # Wait (pass current action ID for position trigger completion handling)
-                self._wait_with_pause(wait_until, start_time, scheduled.action_id)
+                # Wait via completion policy (timed / feedback / hybrid)
+                self._wait_with_pause(wait_until, start_time, scheduled)
 
                 action_index += 1
 
@@ -394,7 +399,7 @@ class WorkFlowExecutor:
                 # Reset state for next iteration and rebuild position trigger lists
                 self._active_position_triggers = {}
                 self._fired_position_triggers = set()
-                self._active_winch_action = None
+                self._completion.clear()
                 self._must_complete_actions = {}
 
                 # Rebuild position trigger list from all_scheduled_actions
@@ -437,14 +442,6 @@ class WorkFlowExecutor:
 
             # Activate any position triggers that reference this action
             self._activate_position_triggers_for(scheduled.action_id)
-
-            # Track winch actions for position-based completion
-            if scheduled.is_winch_action and scheduled.winch_target_mm is not None:
-                self._active_winch_action = scheduled
-                self.logger.debug(
-                    f"Tracking winch action '{scheduled.action_id}' for position-based completion "
-                    f"(target: {scheduled.winch_target_mm}mm)"
-                )
 
             if not isinstance(action_type, str) or not action_type:
                 self.logger.warn(f"Missing action type for: {action_name}")
@@ -576,38 +573,6 @@ class WorkFlowExecutor:
             self._fired_position_triggers.add(trigger.action_id)
             del self._active_position_triggers[trigger.action_id]
 
-    def _check_winch_completion(self) -> bool:
-        """
-        Check if the active winch action has reached its target position.
-
-        Returns:
-            True if winch has reached target (within tolerance), False otherwise
-        """
-        if not self._active_winch_action:
-            return True  # No active winch action, consider complete
-
-        target = self._active_winch_action.winch_target_mm
-        if target is None:
-            return True
-
-        try:
-            current_position = _require_winch_length(self.hardware)
-            distance_to_target = abs(current_position - target)
-
-            if distance_to_target <= self._winch_position_tolerance:
-                self.logger.info(
-                    f"Winch action '{self._active_winch_action.action_id}' reached target "
-                    f"{target:.0f}mm (current: {current_position:.0f}mm)"
-                )
-                self._active_winch_action = None
-                return True
-
-            return False
-
-        except Exception as e:
-            self.logger.warn(f"Failed to check winch position: {e}")
-            return False
-
     def _calculate_wait_until(
         self,
         current_scheduled: ScheduledAction,
@@ -632,72 +597,70 @@ class WorkFlowExecutor:
 
         return wait_until
 
-    def _wait_with_pause(self, wait_until: float, start_time: float, current_action_id: str | None = None) -> None:
+    def _wait_with_pause(
+        self,
+        wait_until: float,
+        start_time: float,
+        scheduled: ScheduledAction | str | None = None,
+    ) -> None:
         """
-        Wait until specified time, handling pause state, position triggers, and winch completion.
+        Wait until completion policy is satisfied, handling pause and position triggers.
 
         Args:
-            wait_until: Absolute time to wait until (relative to start_time)
+            wait_until: Schedule end time (elapsed seconds from start_time)
             start_time: Execution start time
-            current_action_id: ID of the action currently being waited on (for position trigger completion)
+            scheduled: Scheduled action being waited on (or legacy action_id str)
         """
+        if isinstance(scheduled, str) or scheduled is None:
+            current_action_id = scheduled
+            scheduled_obj = None
+        else:
+            current_action_id = scheduled.action_id
+            scheduled_obj = scheduled
+
+        if scheduled_obj is not None:
+            self._completion.begin_from_scheduled(scheduled_obj, wait_until=wait_until)
+        else:
+            self._completion.clear()
+
         last_position_check = 0.0
         position_check_interval = 0.1  # 10Hz polling
 
-        # Check if there are active position triggers for this action
         def has_active_triggers_for_action() -> bool:
             if not current_action_id:
                 return False
-            for action_id, (trigger, _) in self._active_position_triggers.items():
+            for _action_id, (trigger, _) in self._active_position_triggers.items():
                 if trigger.position_reference_action == current_action_id:
                     return True
             return False
 
-        # Wait until:
-        # 1. Winch has reached target (if this is a winch action), AND
-        # 2. All position triggers for this action have fired
         while not self._stop_requested:
             current_time_elapsed = time.time() - start_time
             has_active_triggers = has_active_triggers_for_action()
-            winch_complete = self._check_winch_completion()
+            action_complete = self._completion.is_complete(current_time_elapsed)
 
-            # For winch actions: wait for position-based completion
-            # For non-winch actions: use time-based wait
-            if self._active_winch_action is None:
-                # No active winch action - use time-based completion
-                action_complete = current_time_elapsed >= wait_until
-            else:
-                # Active winch action - use position-based completion
-                action_complete = winch_complete
-
-            # Exit if: action complete AND no active position triggers for this action
             if action_complete and not has_active_triggers:
                 break
 
-            # Handle pause
             while self.current_state == ExecutionState.PAUSED and not self._stop_requested:
                 time.sleep(0.1)
 
             if self._stop_requested:
                 break
 
-            # Check position triggers at 10Hz
             current_time = time.time()
             if current_time - last_position_check >= position_check_interval:
                 self._check_position_triggers()
                 last_position_check = current_time
 
-            time.sleep(0.05)  # Small sleep for responsiveness
+            time.sleep(0.05)
 
-        # Clear active winch action when done
-        self._active_winch_action = None
+        self._completion.clear()
 
-        # Mark must-complete action as finished
         if current_action_id and current_action_id in self._must_complete_actions:
             del self._must_complete_actions[current_action_id]
             self.logger.debug(f"Must-complete action '{current_action_id}' finished")
 
-        # When we finish waiting for an action, check if any position triggers referenced it
         if current_action_id:
             self._handle_reference_action_complete(current_action_id)
 
@@ -733,22 +696,31 @@ class WorkFlowExecutor:
 
             current_time = time.time()
             if current_time - last_check >= check_interval:
-                # Check winch completion for must-complete winch actions
+                # Check feedback completion for must-complete actions (policy-driven)
                 actions_to_remove = []
                 for action_id, action in self._must_complete_actions.items():
-                    if action.is_winch_action and action.winch_target_mm is not None:
-                        try:
-                            current_position = _require_winch_length(self.hardware)
-                            distance = abs(current_position - action.winch_target_mm)
-
-                            if distance <= self._winch_position_tolerance:
-                                self.logger.info(
-                                    f"Must-complete winch action '{action_id}' reached target "
-                                    f"({current_position:.0f}mm, target={action.winch_target_mm:.0f}mm)"
-                                )
-                                actions_to_remove.append(action_id)
-                        except Exception as e:
-                            self.logger.warn(f"Failed to check winch position for '{action_id}': {e}")
+                    target = action.completion_target
+                    if target is None:
+                        target = action.winch_target_mm
+                    reader = action.completion_reader
+                    if reader is None and action.is_winch_action:
+                        reader = "winch_cable_length"
+                    if target is None or not reader:
+                        continue
+                    try:
+                        reader_fn = self._completion._readers.get(reader)
+                        if reader_fn is None:
+                            continue
+                        current_position = float(reader_fn())
+                        tolerance = float(getattr(action, "completion_tolerance", self._winch_position_tolerance))
+                        if abs(current_position - target) <= tolerance:
+                            self.logger.info(
+                                f"Must-complete action '{action_id}' reached target "
+                                f"({current_position:.0f}, target={target:.0f})"
+                            )
+                            actions_to_remove.append(action_id)
+                    except Exception as e:
+                        self.logger.warn(f"Failed to check completion for '{action_id}': {e}")
 
                 for action_id in actions_to_remove:
                     del self._must_complete_actions[action_id]

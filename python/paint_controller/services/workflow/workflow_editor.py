@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 import yaml
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
+from .action_schema import param_fields_for_type
 from .document import (
     CONTINUE_IMMEDIATELY,
     CONTINUE_WAIT_COMPLETE,
@@ -121,6 +122,11 @@ class WorkflowEditor(QObject):
     @Property(list, constant=True)
     def palette(self) -> list[dict[str, Any]]:
         return palette_entries()
+
+    @Slot(str, result="QVariant")
+    def param_fields(self, action_type: str) -> list[dict[str, Any]]:
+        """Schema-driven editor fields for an action type (QML presentation only)."""
+        return param_fields_for_type(action_type or "")
 
     @Property("QVariant", notify=document_changed)
     def document(self) -> dict[str, Any]:

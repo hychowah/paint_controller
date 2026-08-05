@@ -10,7 +10,7 @@ Use `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture 
 
 - Overall status: in progress
 - Active architecture program: none — **TD-054** and **TD-056** closed; **TD-055** residual only. QML surface retirement closed (TD-032).
-- Most recent completed slice: **TD-056** RosTelemetryBridge + wheel/winch main-thread apply (2026-07-29)
+- Most recent completed slice: **TD-056** RosTelemetryBridge + wheel/winch main-thread apply (2026-07-29). Product workflow editor v2 + maintainability structure landed on feature branch (not architecture-debt track; plan docs pruned after land).
 - Debt tracker: TD-055 residual optional 4′/5′; opportunistic TD-052/053; heartbeat telemetry residual — see `docs/tech-debt.md`
 - Core purpose: reduce global coupling, clarify ownership, shrink ambient QML *usage* (injection depth), and make composition/ports closer to a professional Qt program — without reopening TD-032 name-retirement.
 - First-principles rule: success means fewer ambient leaf reads, thinner composition export, real CI/type control planes, and **deeper modules with less change amplification** — not wrapper proliferation, mega-Backend, or empty layer folders

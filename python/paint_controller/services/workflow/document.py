@@ -10,7 +10,12 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any
 
-from .action_schema import get_action_type, validate_action_params
+from .action_schema import (
+    get_action_type,
+    param_fields_for_type,
+    registry_palette_entries,
+    validate_action_params,
+)
 
 SCHEMA_VERSION = 2
 
@@ -279,71 +284,37 @@ class WorkflowDocument:
         return cls(name=name, description="", loop=False, steps=[])
 
 
-# Palette types shown in the touch editor (exclude legacy aliases).
-PALETTE_ACTION_TYPES: tuple[str, ...] = (
-    "winch_absolute",
-    "winch_increment",
-    "valve_turn",
-    "spray_gimbal",
-    "arm_extend",
-    "ef_force",
-    "time_wait",
-)
-
-
 def palette_entries() -> list[dict[str, Any]]:
-    """QML list of addable step types."""
-    entries: list[dict[str, Any]] = []
-    for name in PALETTE_ACTION_TYPES:
-        if name == "time_wait":
-            entries.append(
-                {
-                    "type": "time_wait",
-                    "kind": KIND_WAIT,
-                    "label": "Wait",
-                    "description": "Wait for a duration",
-                }
-            )
-            continue
-        action = get_action_type(name)
-        if action is None:
-            continue
-        entries.append(
-            {
-                "type": name,
-                "kind": KIND_ACTION,
-                "label": name.replace("_", " ").title(),
-                "description": name,
-            }
-        )
-    entries.append(
-        {
-            "type": "parallel",
-            "kind": KIND_PARALLEL,
-            "label": "Parallel group",
-            "description": "Start multiple actions together",
-        }
-    )
-    return entries
+    """QML list of addable step types — derived from the action registry."""
+    return registry_palette_entries()
 
 
 def default_params_for_type(action_type: str) -> dict[str, Any]:
-    """Sensible defaults for a new palette action."""
+    """Sensible defaults for a new palette action from schema defaults."""
     if action_type == "time_wait":
         return {"duration_ms": 1000}
     if action_type == "winch_absolute":
         return {"length": 1000, "speed": 100, "acceleration": 10}
     if action_type == "winch_increment":
         return {"length": 100, "speed": 50, "acceleration": 10}
-    if action_type == "valve_turn":
-        return {"turn_value": 0.0}
-    if action_type == "spray_gimbal":
-        return {"angle": 0.0, "speed": 10.0}
-    if action_type == "arm_extend":
-        return {"distance": 0}
-    if action_type == "ef_force":
-        return {"fx": 0.0, "fy": 0.0}
     action = get_action_type(action_type)
     if action is None:
         return {}
-    return action.param_spec.with_defaults({})
+    # Prefer schema defaults, then fill remaining required with zeros
+    merged = action.param_spec.with_defaults({})
+    for name, field in action.param_spec.fields.items():
+        if name not in merged:
+            if field.default is not None:
+                merged[name] = field.default
+            elif field.py_type is int:
+                merged[name] = 0
+            elif field.py_type is float:
+                merged[name] = 0.0
+            else:
+                merged[name] = None
+    return merged
+
+
+def param_fields_for_editor(action_type: str) -> list[dict[str, Any]]:
+    """Re-export registry field list for the editor session."""
+    return param_fields_for_type(action_type)

@@ -203,6 +203,8 @@ def test_workflow_editor_open_close_and_palette(qt_app, tmp_path) -> None:
         assert "winch_absolute" in types
         assert "time_wait" in types
         assert "parallel" in types
+        fields = editor.param_fields("winch_absolute")
+        assert [f["key"] for f in fields] == ["length", "speed", "acceleration"]
         assert editor.close_editor() is True
         assert editor.is_open is False
     finally:

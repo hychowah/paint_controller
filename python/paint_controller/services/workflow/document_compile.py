@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from .action_schema import get_action_type
 from .document import (
     CONTINUE_WAIT_COMPLETE,
     KIND_ACTION,
@@ -14,6 +13,7 @@ from .document import (
     WorkflowDocument,
     WorkflowStep,
 )
+from .estimate import estimate_duration_ms
 
 
 def compile_document_to_actions(document: WorkflowDocument) -> list[dict[str, Any]]:
@@ -164,31 +164,10 @@ def _timing_to_trigger(timing: dict[str, Any] | None) -> dict[str, Any] | None:
 
 
 def _estimate_duration_ms(action_type: str, params: dict[str, Any]) -> int | None:
-    if action_type == "time_wait":
-        return int(params.get("duration_ms", 0) or 0)
-
-    action = get_action_type(action_type)
-    if action is None:
+    """Stamp compile output using the shared estimate SOT."""
+    if not action_type:
         return None
-
-    # Lightweight estimates without hardware
-    if action_type in ("winch_absolute", "winch_increment", "winch_move_absolute"):
-        length = abs(int(params.get("length", 0) or 0))
-        speed = max(int(params.get("speed", 1) or 1), 1)
-        return int((length / speed) * 1000)
-
-    if action_type in ("spray_gimbal", "teensy_gimbal"):
-        angle = abs(float(params.get("angle", 0) or 0))
-        speed = max(float(params.get("speed", 10) or 10), 0.1)
-        return int((angle / speed) * 1000)
-
-    if action_type == "valve_turn":
-        return 500
-    if action_type in ("arm_extend", "teensy_arm_extend"):
-        return 2000
-    if action_type == "ef_force":
-        return 1500
-    return 1000
+    return int(round(estimate_duration_ms(action_type, params)))
 
 
 def load_workflow_mapping(raw: Any, *, default_name: str | None = None) -> dict[str, Any]:

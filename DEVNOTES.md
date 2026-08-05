@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-08-05 - Workflow editor v2 + maintainability structure
+
+**Goal**: Touch-first full-page workflow editor; structure for easy extension (estimate/completion/registry).
+**Tried**: v2 step document + migrate/compile; `WorkflowEditor` session; full-page `WorkflowEditorWorkspace` from WorkFlow → Edit; retire System Control Edit tab; then `estimate.py` SOT, `completion.py` policy path (winch absolute hybrid), registry-driven palette/param fields, operator summary helper.
+**Result**: ✅ Focused workflow band green (document/editor/executor/runner/scheduler/estimate/completion/integrity/smoke/imports). Completed plan docs deleted after land (`02`/`03` workflow plans).
+**Files**: `services/workflow/*`, `qml/features/workflow/*`, `WorkFlowTab.qml`, `ShellOverlayStack.qml`, `SystemControlWorkspace.qml`, `resource/workflows/*`, workflow tests, `ARCHITECTURE.md`, `README.md`
+
+---
 ### 2026-08-05 - Track control deselect zero + stick-side display
 
 **Goal**: Fix stale opposite-track RPM after leaving Track Control Left/Right, and wrong ControlInfoPanel when Track modes are cross-assigned.

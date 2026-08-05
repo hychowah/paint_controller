@@ -9,7 +9,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
-from .action_schema import get_action_type
+from .action_schema import CompletionKind, get_action_type
+from .estimate import estimate_duration_s
 
 
 class TimingMode(Enum):
@@ -34,9 +35,14 @@ class ScheduledAction:
     position_trigger_mm: float | None = None  # Target position to trigger at
     position_reference_action: str | None = None  # Reference action ID for position trigger
     is_position_triggered: bool = False  # True if this action uses position-based triggering
-    # Winch completion tracking (optional)
-    winch_target_mm: float | None = None  # Target position for winch actions
-    is_winch_action: bool = False  # True if this is a winch movement action
+    # Wait-done completion bind (generic; readers registered on CompletionTracker)
+    completion_kind: str = CompletionKind.TIMED
+    completion_target: float | None = None
+    completion_reader: str | None = None
+    completion_tolerance: float = 50.0
+    # Backward-compatible aliases used by older executor paths / tests
+    winch_target_mm: float | None = None
+    is_winch_action: bool = False
     # Completion dependency tracking
     must_complete_before_workflow_end: bool = False  # True if workflow must wait for this action to complete
 
@@ -77,7 +83,7 @@ class ActionScheduler:
             action_id = action.get("id", f"action_{idx}")
             action_name = action.get("name", action_id)
 
-            # Calculate duration
+            # Calculate duration via shared estimate SOT
             duration = self._calculate_duration(action)
 
             # Calculate scheduled time and check for position triggers
@@ -113,14 +119,29 @@ class ActionScheduler:
             if not is_position_triggered:
                 scheduled_time = max(0.0, scheduled_time)
 
-            # Check if this is a winch action and extract target position
             action_type = action.get("type")
             action_meta = get_action_type(action_type)
             is_winch_action = action_meta is not None and action_meta.metadata.is_winch_action
-            winch_target_mm = None
-            if is_winch_action:
-                params = action.get("params", {})
-                winch_target_mm = params.get("length")
+            params = action.get("params", {}) or {}
+
+            completion_kind = CompletionKind.TIMED
+            completion_target = None
+            completion_reader = None
+            completion_tolerance = 50.0
+            if action_meta is not None:
+                cspec = action_meta.metadata.completion
+                completion_kind = cspec.kind
+                if cspec.feedback is not None:
+                    completion_reader = cspec.feedback.reader_key
+                    completion_tolerance = float(cspec.feedback.tolerance)
+                    raw = params.get(cspec.feedback.target_param)
+                    try:
+                        completion_target = float(raw) if raw is not None else None
+                    except (TypeError, ValueError):
+                        completion_target = None
+
+            # Alias for older tests / logging
+            winch_target_mm = completion_target if is_winch_action else None
 
             sched = ScheduledAction(
                 action_index=idx,
@@ -131,6 +152,10 @@ class ActionScheduler:
                 position_trigger_mm=position_trigger_mm,
                 position_reference_action=position_reference_action,
                 is_position_triggered=is_position_triggered,
+                completion_kind=completion_kind,
+                completion_target=completion_target,
+                completion_reader=completion_reader,
+                completion_tolerance=completion_tolerance,
                 winch_target_mm=winch_target_mm,
                 is_winch_action=is_winch_action,
             )
@@ -161,56 +186,18 @@ class ActionScheduler:
         return scheduled
 
     def _calculate_duration(self, action: dict[str, Any]) -> float:
-        """
-        Calculate estimated duration for an action in seconds.
-
-        Args:
-            action: Action configuration
-
-        Returns:
-            Duration in seconds
-        """
+        """Calculate estimated duration in seconds via shared estimate SOT."""
         action_type = action.get("type")
-
-        # Check for explicit duration
-        if "estimated_duration" in action:
-            return action["estimated_duration"] / 1000.0  # Convert ms to seconds
-
-        if "wait_after" in action:
-            return action["wait_after"] / 1000.0  # Convert ms to seconds
-
-        # Auto-calculate for winch movements
-        action_meta = get_action_type(action_type)
-        if action_meta is not None and action_meta.metadata.is_winch_action:
-            params = action.get("params", {})
-            target_length = params.get("length", 0)
-            distance = params.get("distance", 0)
-            speed = params.get("speed", 1)
-
-            # If distance is explicitly provided, use it
-            if distance > 0:
-                actual_distance = distance
-            else:
-                # Calculate distance from current position to target
-                actual_distance = target_length
-                if self.hardware and self.hardware.winch:
-                    try:
-                        current_length = self.hardware.winch.get_cable_length()
-                        actual_distance = abs(target_length - current_length)
-                        if self.logger:
-                            self.logger.debug(
-                                f"Winch duration calculation: target={target_length}mm, "
-                                f"current={current_length}mm, distance={actual_distance}mm"
-                            )
-                    except Exception as e:
-                        if self.logger:
-                            self.logger.warn(f"Could not get current cable length: {e}, using target as distance")
-
-            if speed > 0:
-                return actual_distance / speed  # Returns seconds
-
-        # Default duration
-        return 1.0  # 1 second default
+        params = action.get("params", {}) or {}
+        explicit = action.get("estimated_duration")
+        if explicit is None and "wait_after" in action:
+            explicit = action.get("wait_after")
+        return estimate_duration_s(
+            action_type,
+            params,
+            hardware=self.hardware,
+            explicit_estimated_duration_ms=explicit,
+        )
 
     def _calculate_trigger_time(self, trigger: dict[str, Any], action_map: dict[str, ScheduledAction]) -> float:
         """

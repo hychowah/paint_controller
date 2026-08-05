@@ -154,7 +154,7 @@ Despite the name, these are mostly **QObjects** that form the stable API toward 
 | Area | Examples |
 |---|---|
 | Video | `video_stream.py`, `base_top_view_service.py` |
-| Workflow | `services/workflow/*` (catalog, editor, runner, executor, scheduler) |
+| Workflow | `services/workflow/*` — document (v2 steps), catalog, editor session, estimate, completion, compile, runner, executor, scheduler, action registry |
 | Capture / screens | `screen_manager`, `screen_recorder`, `ros_bag_recorder` |
 
 ### `ui/` · `widgets/` · `utils/`
@@ -193,7 +193,7 @@ Each folder typically has a `qmldir`. Imports are mostly **relative** (`import "
 3. **Shell / navigation** through `shellRouter`, `shellState`, `overlayHost`.
 4. **Feature roots** (`features/…`) receive dependencies via `required property` injection from the shell when possible, instead of reaching for every global.
 
-Large leaves (e.g. `pages/winch/PageWinch.qml`, workflow editor tabs) still concentrate a lot of logic; prefer extracting components and moving document/policy logic into Python when you touch them.
+Large leaves (e.g. `pages/winch/PageWinch.qml`) still concentrate a lot of logic; prefer extracting components and moving document/policy logic into Python when you touch them. Workflow **edit** is a full-page `features/workflow/WorkflowEditorWorkspace.qml` opened from WorkFlow → Edit (not a System Control tab); document mutations and save live in Python `WorkflowEditor`.
 
 ---
 
@@ -461,7 +461,7 @@ Do **not** hand-sync separate lists in selection model, control map, and engine 
 | Continuous motion from sticks | `ContinuousTeleopEngine` (+ `teleop_modes` catalog); `ControlProcessor` is Qt façade |
 | Halt-all effectors | `SafetyCoordinator` |
 | Settings schema & persistence | `SettingsManager` |
-| Workflow run / edit | `services/workflow/*` via `systemControlServices` (and related) |
+| Workflow run / edit | `services/workflow/*` via `systemControlServices` (runner + editor); full-page editor workspace; action types/estimate/completion SOT in `action_schema` + `estimate`/`completion` |
 | Fullscreen video family (touched surface) | `videoRuntime` |
 
 Frozen contracts and quarantine exceptions are listed on the live board:  

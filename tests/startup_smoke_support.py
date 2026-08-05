@@ -1040,6 +1040,10 @@ class FakeWorkflowEditor(QObject):
         self._loop = bool(enabled)
         self.loop_changed.emit(self._loop)
 
+    @Slot(str, result="QVariant")
+    def param_fields(self, _action_type: str):
+        return [{"key": "length", "label": "Length", "required": True, "type": "int"}]
+
 
 class FakeWorkFlowRunner(QObject):
     workflow_list_changed = Signal()

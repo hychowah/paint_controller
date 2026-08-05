@@ -6,7 +6,7 @@ from typing import Any
 
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
-from .action_schema import build_action_description
+from .action_schema import build_operator_summary
 from .hardware import HardwareControllers
 from .workflow_catalog import WorkflowCatalog
 from .workflow_executor import ExecutionState, WorkFlowExecutor
@@ -309,73 +309,8 @@ class WorkFlowRunner(QObject):
         self.loaded_workflow_reload_state_changed.emit(needs_reload)
 
     def _generate_action_description(self, action_type: str, params: dict, action: dict) -> str:
-        """
-        Generate human-readable description from action parameters.
-
-        Args:
-            action_type: Type of action
-            params: Action parameters
-            action: Full action config (for additional fields)
-
-        Returns:
-            Formatted description string with timing information
-        """
-        # Use explicit description if provided
-        base_desc = action.get("description", "")
-
-        if not base_desc:
-            base_desc = build_action_description(action_type, params)
-
-        # Add timing information
-        timing_parts = []
-
-        # Add estimated duration if present
-        estimated_duration = action.get("estimated_duration")
-        if estimated_duration is not None:
-            duration_sec = estimated_duration / 1000.0
-            if duration_sec < 1:
-                timing_parts.append(f"~{estimated_duration}ms")
-            else:
-                timing_parts.append(f"~{duration_sec:.1f}s")
-
-        # Add trigger/offset information if present
-        trigger = action.get("trigger")
-        if trigger:
-            ref_action = trigger.get("reference_action", "?")
-            timing_mode = trigger.get("timing_mode", "after_start")
-            offset_ms = trigger.get("offset_ms", 0)
-
-            # Build timing description
-            if timing_mode == "before_complete":
-                offset_sec = offset_ms / 1000.0
-                if offset_sec < 1:
-                    timing_parts.append(f"{offset_ms}ms before '{ref_action}' completes")
-                else:
-                    timing_parts.append(f"{offset_sec:.1f}s before '{ref_action}' completes")
-            elif timing_mode == "after_complete":
-                if offset_ms > 0:
-                    offset_sec = offset_ms / 1000.0
-                    if offset_sec < 1:
-                        timing_parts.append(f"{offset_ms}ms after '{ref_action}' completes")
-                    else:
-                        timing_parts.append(f"{offset_sec:.1f}s after '{ref_action}' completes")
-                else:
-                    timing_parts.append(f"after '{ref_action}' completes")
-            elif timing_mode == "after_start":
-                if offset_ms > 0:
-                    offset_sec = offset_ms / 1000.0
-                    if offset_sec < 1:
-                        timing_parts.append(f"{offset_ms}ms after '{ref_action}' starts")
-                    else:
-                        timing_parts.append(f"{offset_sec:.1f}s after '{ref_action}' starts")
-                else:
-                    timing_parts.append(f"with '{ref_action}'")
-
-        # Combine base description with timing information
-        if timing_parts:
-            return f"{base_desc} ({', '.join(timing_parts)})"
-
-        return base_desc
+        """Operator summary via shared registry helper."""
+        return build_operator_summary(action_type, params, action=action)
 
     @Slot()
     def play(self) -> bool:

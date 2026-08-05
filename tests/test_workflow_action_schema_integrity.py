@@ -4,12 +4,18 @@ from __future__ import annotations
 
 from paint_controller.services.workflow.action_schema import (
     ACTION_TYPES,
+    CompletionKind,
+    EstimateMode,
     _ACTION_TYPE_MAP,
     build_action_description,
     get_action_type,
+    param_fields_for_type,
+    palette_action_types,
+    registry_palette_entries,
     validate_action_params,
 )
 from paint_controller.services.workflow.actions import ActionRegistry
+from paint_controller.services.workflow.document import palette_entries
 from paint_controller.services.workflow.hardware import HardwareControllers
 
 
@@ -37,6 +43,62 @@ def test_action_type_map_is_complete() -> None:
     assert len(_ACTION_TYPE_MAP) == len(ACTION_TYPES)
     for action_type in ACTION_TYPES:
         assert _ACTION_TYPE_MAP[action_type.name] is action_type
+
+
+def test_every_type_has_estimate_and_completion_policies() -> None:
+    for action_type in ACTION_TYPES:
+        est = action_type.metadata.estimate
+        comp = action_type.metadata.completion
+        assert est is not None and est.mode
+        assert est.mode in {
+            EstimateMode.FIXED_MS,
+            EstimateMode.DURATION_MS_PARAM,
+            EstimateMode.ABS_PARAM_OVER_SPEED,
+            EstimateMode.SIGNED_PARAM_OVER_SPEED,
+        }
+        assert comp is not None and comp.kind
+        assert comp.kind in {
+            CompletionKind.TIMED,
+            CompletionKind.FEEDBACK,
+            CompletionKind.HYBRID,
+            CompletionKind.IMMEDIATE,
+        }
+        if comp.kind in (CompletionKind.FEEDBACK, CompletionKind.HYBRID):
+            assert comp.feedback is not None
+            assert comp.feedback.reader_key
+            assert comp.feedback.target_param
+
+
+def test_palette_entries_subset_of_registered_types() -> None:
+    registered = {a.name for a in ACTION_TYPES}
+    for entry in registry_palette_entries():
+        if entry["type"] == "parallel":
+            continue  # structural step, not an ActionType
+        assert entry["type"] in registered
+    for action in palette_action_types():
+        assert action.metadata.palette is True
+        assert action.name in registered
+
+
+def test_document_palette_derives_from_registry() -> None:
+    from_reg = registry_palette_entries()
+    from_doc = palette_entries()
+    assert from_doc == from_reg
+    types = {e["type"] for e in from_doc}
+    assert "winch_absolute" in types
+    assert "time_wait" in types
+    assert "parallel" in types
+    assert "teensy_gimbal" not in types  # legacy alias not on palette
+
+
+def test_param_fields_for_type_matches_schema_keys() -> None:
+    fields = param_fields_for_type("winch_absolute")
+    keys = [f["key"] for f in fields]
+    assert keys == ["length", "speed", "acceleration"]
+    assert all("label" in f for f in fields)
+    valve = param_fields_for_type("valve_turn")
+    assert [f["key"] for f in valve] == ["turn_value"]
+    assert param_fields_for_type("not_a_type") == []
 
 
 def test_schema_description_matches_known_templates() -> None:

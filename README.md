@@ -222,7 +222,11 @@ Useful focused handoff bands:
   - `tests/test_workflow_scheduler.py` — Action registry and scheduler
   - `tests/test_workflow_executor.py` — WorkFlowExecutor state machine
   - `tests/test_workflow_runner.py` — QML-facing workflow runner
-  - `tests/test_workflow_editor.py` — Workflow persistence boundary
+  - `tests/test_workflow_editor.py` — Editor session (document mutations, save/load)
+  - `tests/test_workflow_document.py` — v2 document / migrate / compile
+  - `tests/test_workflow_estimate.py` — Shared duration estimate SOT
+  - `tests/test_workflow_completion.py` — Wait-done completion policies
+  - `tests/test_workflow_action_schema_integrity.py` — ActionType registry integrity
 
 - **Video, base-top view, and runtime services**
   - `tests/test_base_top_view_service.py` — Base-top worker-thread cleanup and map ownership
