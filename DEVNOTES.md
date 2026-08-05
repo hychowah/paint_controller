@@ -1,6 +1,13 @@
 # Development Notes
 
 ---
+### 2026-08-05 - Level C P2 availability + bridge ownership
+
+**Goal**: Pure AvailabilityState; watchdog + telemetry bridges parented to DeviceIoShell.
+**Result**: ✅ Full suite green. Adapters still hold Signals until P3.
+**Files**: `core/availability.py`, `core/availability_watchdog.py`, `core/device_io_shell.py`, `controllers/_base.py`, wheel/winch/teensy bridge parent, `tests/test_availability_p2.py`
+
+---
 ### 2026-08-05 - Level C P1 Lidar pure HAL pilot
 
 **Goal**: Lidar pure HAL (no PySide6) + Qt shell owning bridges/Signals; Status contracts intact.

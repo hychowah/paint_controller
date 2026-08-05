@@ -116,8 +116,10 @@ class TeensyController(RosStatusController):
         node: Node,
         settings_manager: SettingsManager | None = None,
         command_bus: RosCommandBus | None = None,
+        *,
+        io_shell: object | None = None,
     ) -> None:
-        super().__init__(node)
+        super().__init__(node, io_shell=io_shell)  # type: ignore[arg-type]
         self._settings_manager = settings_manager
         self._command_bus = command_bus
 
@@ -214,8 +216,10 @@ class TeensyController(RosStatusController):
         else:
             self._thrust_ramp_rate = 1.0
 
-        # TD-056 residual: ROS status via bridge; main apply owns status_changed.
-        self._telemetry = RosTelemetryBridge(self._apply_status_snapshot, parent=self)
+        # TD-056 residual + Level C P2: bridge parented to io_shell.
+        self._telemetry = RosTelemetryBridge(
+            self._apply_status_snapshot, parent=self._lifetime_parent()
+        )
 
         # Configure publishers and subscribers
         self._setup_publishers()

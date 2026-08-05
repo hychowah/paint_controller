@@ -56,8 +56,10 @@ class WinchController(RosStatusController):
         node: Node,
         settings_manager: SettingsManager | None = None,
         command_bus: RosCommandBus | None = None,
+        *,
+        io_shell: object | None = None,
     ) -> None:
-        super().__init__(node)
+        super().__init__(node, io_shell=io_shell)  # type: ignore[arg-type]
         self._command_bus = command_bus
 
         # Initialize property values
@@ -86,8 +88,10 @@ class WinchController(RosStatusController):
         self._last_update_time = 0.0
         self._min_update_interval = 0.1
 
-        # TD-056: ROS callback only posts POD; main apply owns QObject fields.
-        self._telemetry = RosTelemetryBridge(self._apply_status_snapshot, parent=self)
+        # TD-056 + Level C P2: bridge parented to io_shell, not the adapter.
+        self._telemetry = RosTelemetryBridge(
+            self._apply_status_snapshot, parent=self._lifetime_parent()
+        )
 
         # Setup publishers and subscribers
         self._setup_publishers()

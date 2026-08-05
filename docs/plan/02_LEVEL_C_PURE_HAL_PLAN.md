@@ -1,8 +1,8 @@
 # Level C — Pure-Python Device HAL (Durable Plan)
 
-**Status**: Full Level C program in progress — **P0–P1 landed**  
+**Status**: Full Level C program in progress — **P0–P2 landed**  
 **Saved**: 2026-08-05  
-**Last refreshed**: 2026-08-05 (P1 Lidar pure pilot landed)  
+**Last refreshed**: 2026-08-05 (P2 availability + bridge ownership landed)  
 **Depends on**: Level A (`@Slot` strip) and Level B (`Property` → `@property`) — **both landed**  
 **Do not overwrite** this file with concurrency-test or feature plans; those are separate tracks. Refresh this file when Level C scope or prerequisites change.
 
@@ -170,13 +170,22 @@ Production controllers still parent bridges on adapters (unchanged). No QML / fa
 3. Frozen concurrency bar + full suite green. ✅ (`545 passed`)
 4. No QML / `CONTEXT_PROPERTIES` contract change. ✅
 
-### P1 — Pilot pure HAL (Low–Med) — **Lidar preferred**
+### P1 — Pilot pure HAL (Low–Med) — **LANDED 2026-08-05 (Lidar)**
 
 **Primary: Lidar**
 
 - Plain adapter + composition proxy for `distance_changed` / `angle_changed`.
 - `LidarStatus` keeps QML names; wiring may attach to proxy for Signals and adapter for fields (or proxy forwards getattr).
 - Structural ban: `lidar.py` imports no PySide6 after pilot.
+
+**Landed**
+
+| Piece | Location |
+|---|---|
+| Pure HAL | `controllers/lidar.py` (`LidarHal`, no PySide6) |
+| Qt shell | `controllers/lidar_shell.py` (`LidarController` + bridges + `SignalDeviceNotifier`) |
+| Factory | imports shell `LidarController` |
+| Tests | `tests/test_lidar_pure_hal.py`, `tests/test_pure_hal_no_pyside.py` |
 
 **Why Lidar first**
 
@@ -283,6 +292,7 @@ Per-phase restore of adapters/factory/proxy; no ROS msg migration.
 | 2026-08-05 | Plan refresh: Lidar preferred P1 pilot; Wind optional; prerequisites + validation commands |
 | 2026-08-05 | User chose **P0 only** this session (not full program; not auto-P1) |
 | 2026-08-05 | **P0 landed**: `DeviceNotifier`, `SignalDeviceNotifier`, external-shell bridge test path; no production adapter rewires |
+| 2026-08-05 | **P1 landed**: Lidar pure HAL + shell; factory uses `lidar_shell.LidarController`; PySide ban on `lidar.py` |
 
 ---
 

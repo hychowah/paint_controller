@@ -50,7 +50,7 @@ def test_speed_command_reaches_real_ros_subscriber(qt_app, ros_context):
 
         assert received == [125.0]
     finally:
-        controller._availability_timer.stop()
+        controller.cleanup()
         controller.deleteLater()
         subscriber_node.destroy_subscription(subscription)
         controller_node.destroy_node()
