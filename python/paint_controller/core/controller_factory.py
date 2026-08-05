@@ -10,8 +10,8 @@ from paint_controller.controllers.lidar_shell import LidarController
 from paint_controller.controllers.ssh import UISSHController
 from paint_controller.controllers.system_monitor import SystemMonitor
 from paint_controller.controllers.teensy import TeensyController
-from paint_controller.controllers.wheel import WheelController
-from paint_controller.controllers.winch import WinchController
+from paint_controller.controllers.wheel_shell import WheelController
+from paint_controller.controllers.winch_shell import WinchController
 from paint_controller.controllers.wind_monitor import WindMonitor
 from paint_controller.handlers.control_processor import ControlProcessor
 from paint_controller.handlers.emergency import EmergencyButtonHandler

@@ -38,7 +38,7 @@ def test_availability_watchdog_ticks(qt_core_app) -> None:
 
 
 def test_wheel_bridge_and_watchdog_parented_to_io_shell(qt_app, fake_node) -> None:
-    from paint_controller.controllers.wheel import WheelController
+    from paint_controller.controllers.wheel_shell import WheelController
     from paint_controller.core.device_io_shell import DeviceIoShell
 
     shell = DeviceIoShell("wheel-test")
@@ -53,20 +53,20 @@ def test_wheel_bridge_and_watchdog_parented_to_io_shell(qt_app, fake_node) -> No
 
 def test_winch_and_teensy_bridge_parent_is_shell(qt_app, fake_node) -> None:
     from paint_controller.controllers.teensy import TeensyController
-    from paint_controller.controllers.winch import WinchController
+    from paint_controller.controllers.winch_shell import WinchController
 
     winch = WinchController(fake_node)
     teensy = TeensyController(fake_node)
+    # P3 winch shell is its own lifetime parent; teensy still uses DeviceIoShell.
     assert winch._telemetry.parent() is winch.io_shell
     assert teensy._telemetry.parent() is teensy.io_shell
-    assert winch._telemetry.parent() is not winch
     assert teensy._telemetry.parent() is not teensy
     winch.cleanup()
     teensy.cleanup()
 
 
 def test_wheel_availability_timeout_still_works(qt_app, fake_node) -> None:
-    from paint_controller.controllers.wheel import WheelController
+    from paint_controller.controllers.wheel_shell import WheelController
 
     controller = WheelController(fake_node)
     controller._left_motor_available = True

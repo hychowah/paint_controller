@@ -9,7 +9,7 @@ from paint_controller.controllers.wheel import WheelStatusSnapshot
 
 
 def _wheel_controller_class():
-    return importlib.import_module("paint_controller.controllers.wheel").WheelController
+    return importlib.import_module("paint_controller.controllers.wheel_shell").WheelController
 
 
 def _vehicle_status_class():

@@ -18,7 +18,7 @@ from tests.fakes import FakeEsp32Valve, FakeLogger, FakeStateStore, FakeTeensy
 
 
 def _wheel_cls():
-    return importlib.import_module("paint_controller.controllers.wheel").WheelController
+    return importlib.import_module("paint_controller.controllers.wheel_shell").WheelController
 
 
 def _control_processor_cls():

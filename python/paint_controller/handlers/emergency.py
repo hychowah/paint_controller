@@ -13,8 +13,8 @@ from paint_controller.utils.constants import HeartbeatStatus
 if TYPE_CHECKING:
     from paint_controller.controllers.esp32_valve import ESP32ValveController
     from paint_controller.controllers.teensy import TeensyController
-    from paint_controller.controllers.wheel import WheelController
-    from paint_controller.controllers.winch import WinchController
+    from paint_controller.controllers.wheel_shell import WheelController
+    from paint_controller.controllers.winch_shell import WinchController
     from paint_controller.core.settings import SettingsManager
     from paint_controller.core.state_store import StateStore
     from paint_controller.handlers.safety_coordinator import SafetyCoordinator

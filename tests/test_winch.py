@@ -31,7 +31,7 @@ class FakeSettingsManager:
 
 
 def _winch_controller_class():
-    return importlib.import_module("paint_controller.controllers.winch").WinchController
+    return importlib.import_module("paint_controller.controllers.winch_shell").WinchController
 
 
 def test_speed_commands_rejected_when_unavailable(qt_app, fake_node):

@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
+"""Pure winch HAL (Level C P3) — no PySide6.
+
+Settings max-speed is injected via ``set_max_speed`` (shell owns Settings signals).
+"""
 
 from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from paint_interfaces.msg import MoveWinchLength, WinchStatus
-from PySide6.QtCore import Signal
 from rclpy.node import Node
 from std_msgs.msg import Bool, Float64
 
-from paint_controller.controllers._base import RosStatusController
-from paint_controller.core.ros_telemetry import RosTelemetryBridge
-
-if TYPE_CHECKING:
-    from paint_controller.core.ros_io import RosCommandBus
-    from paint_controller.core.settings import SettingsManager
+from paint_controller.core.availability import AvailabilityState
+from paint_controller.ports.notifier import DeviceNotifier, NullDeviceNotifier
 
 logger = logging.getLogger(__name__)
 
@@ -38,37 +38,25 @@ class WinchStatusSnapshot:
     unusual_load_detected: bool
 
 
-class WinchController(RosStatusController):
-    # Define signals for property changes
-    cable_length_changed = Signal()
-    cable_speed_changed = Signal()
-    winch_torque_changed = Signal()
-    motor_temperature_changed = Signal()
-    motor_voltage_changed = Signal()
-    motor_brake_changed = Signal()
-    available_changed = Signal()
-    enabled_changed = Signal()
-    load_detection_changed = Signal()
-    unusual_load_detected_changed = Signal()
+class WinchHal:
+    """Winch device HAL (Qt-free)."""
 
     def __init__(
         self,
         node: Node,
-        settings_manager: SettingsManager | None = None,
-        command_bus: RosCommandBus | None = None,
         *,
-        io_shell: object | None = None,
+        notifier: DeviceNotifier | None = None,
+        post_status: Callable[[object], None] | None = None,
+        command_bus: Any | None = None,
+        max_speed: float = 400.0,
+        connection_timeout: float = 1.0,
     ) -> None:
-        super().__init__(node, io_shell=io_shell)  # type: ignore[arg-type]
+        self._node = node
+        self._notifier: DeviceNotifier = notifier if notifier is not None else NullDeviceNotifier()
+        self._post_status = post_status
         self._command_bus = command_bus
-
-        # Initialize property values
-        # Get max_speed from settings_manager if available, otherwise use default
-        if settings_manager is not None:
-            self._max_speed = settings_manager.get("winch_max_speed_mmps") or 400.0
-            settings_manager.winch_max_speed_mmps_changed.connect(self._on_max_speed_changed)
-        else:
-            self._max_speed = 400.0  # default output mm/s
+        self._availability = AvailabilityState(connection_timeout)
+        self._max_speed = float(max_speed)
 
         self._cable_length = 0.0
         self._cable_speed = 0.0
@@ -80,28 +68,56 @@ class WinchController(RosStatusController):
         self._load_detection_enabled = False
         self._unusual_load_detected = False
 
-        # Status tracking
         self._last_command_time = time.time()
         self._watchdog_timeout = 1.0
-
-        # Throttle variables (telemetry applied on main)
         self._last_update_time = 0.0
         self._min_update_interval = 0.1
 
-        # TD-056 + Level C P2: bridge parented to io_shell, not the adapter.
-        self._telemetry = RosTelemetryBridge(
-            self._apply_status_snapshot, parent=self._lifetime_parent()
-        )
-
-        # Setup publishers and subscribers
         self._setup_publishers()
         self._setup_subscribers()
 
-        # Create availability check timer
-        self._start_availability_timer()
+    @property
+    def _available(self) -> bool:
+        return self._availability.available
+
+    @_available.setter
+    def _available(self, value: bool) -> None:
+        self._availability.available = bool(value)
+
+    @property
+    def _last_status_update_time(self) -> float:
+        return self._availability.last_status_update_time
+
+    @_last_status_update_time.setter
+    def _last_status_update_time(self, value: float) -> None:
+        self._availability.last_status_update_time = float(value)
+
+    @property
+    def _connection_timeout(self) -> float:
+        return self._availability.connection_timeout
+
+    @_connection_timeout.setter
+    def _connection_timeout(self, value: float) -> None:
+        self._availability.connection_timeout = float(value)
+
+    def get_available(self) -> bool:
+        return self._availability.available
+
+    def set_available(self, value: bool) -> bool:
+        return self._availability.set_available(value)
+
+    def _time_since_last_status(self, current_time: float | None = None) -> float:
+        return self._availability.time_since_last_status(current_time)
+
+    def set_max_speed(self, value: float) -> None:
+        """Inject max speed (shell wires SettingsManager without HAL .connect)."""
+        self._max_speed = float(value)
+        try:
+            self._node.get_logger().info(f"[WinchHal] Max speed updated to: {value}")
+        except Exception:
+            logger.info("[WinchHal] Max speed updated to: %s", value)
 
     def _bind_cmd(self, publisher: Any, *, continuous: bool = False) -> Any:
-        """TD-054: wrap command publishers; call sites keep ``.publish(msg)``."""
         bus = self._command_bus
         if bus is None:
             return publisher
@@ -111,7 +127,6 @@ class WinchController(RosStatusController):
         return bus.bind(publisher, kind=kind)
 
     def _setup_publishers(self) -> None:
-        """Setup ROS publishers for winch control"""
         self._speed_rpm_pub = self._bind_cmd(
             self._node.create_publisher(Float64, "winch/move/speed/rpm/cmd", 1),
             continuous=True,
@@ -132,24 +147,27 @@ class WinchController(RosStatusController):
         )
 
     def _setup_subscribers(self) -> None:
-        """Setup ROS subscribers for winch status"""
-        self._status_sub = self._node.create_subscription(WinchStatus, "winch/status", self._status_callback, 10)
+        self._status_sub = self._node.create_subscription(
+            WinchStatus, "winch/status", self._status_callback, 10
+        )
         self._node.get_logger().info("Winch status subscriber set up on topic 'winch/status'")
 
     def _status_callback(self, msg: WinchStatus) -> None:
-        """ROS spin thread: pack POD and post — no QObject field mutation."""
         try:
-            self._telemetry.post(self._snapshot_from_msg(msg))
+            snap = self._snapshot_from_msg(msg)
+            if self._post_status is not None:
+                self._post_status(snap)
+            else:
+                self._apply_status_snapshot(snap)
         except Exception as e:
             self._node.get_logger().error(f"Error in winch status callback: {e}")
 
     def _check_availability(self) -> None:
-        """Main-thread timer: mark disconnected when status is stale."""
         current_time = time.time()
         time_since_last_update = self._time_since_last_status(current_time)
         if time_since_last_update > self._connection_timeout:
             if self.set_available(False):
-                self.available_changed.emit()
+                self._notifier.notify("available_changed")
                 self._node.get_logger().warning(
                     f"Winch considered disconnected: {time_since_last_update:.1f}s since last message"
                 )
@@ -170,16 +188,16 @@ class WinchController(RosStatusController):
         )
 
     def _apply_status_snapshot(self, snap: object) -> None:
-        """Main thread only: mutate fields and NOTIFY."""
         if not isinstance(snap, WinchStatusSnapshot):
-            self._node.get_logger().error(f"Winch status apply expected WinchStatusSnapshot, got {type(snap)}")
+            self._node.get_logger().error(
+                f"Winch status apply expected WinchStatusSnapshot, got {type(snap)}"
+            )
             return
 
         self._last_status_update_time = float(snap.recv_mono)
 
-        # Message received ⇒ connected (msg.available false can still mean "error but linked").
         if self.set_available(True):
-            self.available_changed.emit()
+            self._notifier.notify("available_changed")
             self._node.get_logger().info("Winch connection restored")
 
         current_time = time.time()
@@ -196,7 +214,6 @@ class WinchController(RosStatusController):
             self.set_unusual_load_detected(snap.unusual_load_detected)
 
     def command_speed_rpm(self, speed: float) -> bool:
-        """Command winch speed with safety limits (RPM)"""
         if not self._available:
             self._node.get_logger().warning("Cannot command speed: Winch not available")
             return False
@@ -208,7 +225,6 @@ class WinchController(RosStatusController):
         return True
 
     def command_speed_mmps(self, speed: float) -> bool:
-        """Command winch speed in mm/s with clamping to ±max_speed"""
         if not self._available:
             self._node.get_logger().warning("Cannot command speed: Winch not available")
             return False
@@ -220,16 +236,13 @@ class WinchController(RosStatusController):
         return True
 
     def move_increment(self, length_mm: int, speed_mm_s: int) -> bool:
-        """Move winch by an increment (uses default acceleration of 30 RPM/s)"""
         if not self._available:
             self._node.get_logger().warning("Cannot move increment: Winch not available")
             return False
-
         try:
             msg = MoveWinchLength()
             msg.length_mm = int(length_mm)
             msg.speed_mm_s = int(speed_mm_s)
-            # acceleration_rpm_s will use message default (30 RPM/s)
             self._move_increment_pub.publish(msg)
             self._node.get_logger().info(f"Moving winch by: {length_mm} mm at {speed_mm_s} mm/s")
             return True
@@ -238,11 +251,9 @@ class WinchController(RosStatusController):
             return False
 
     def move_increment_with_accel(self, length_mm: int, speed_mm_s: int, acceleration_rpm_s: int) -> bool:
-        """Move winch by an increment with custom acceleration"""
         if not self._available:
             self._node.get_logger().warning("Cannot move increment: Winch not available")
             return False
-
         try:
             msg = MoveWinchLength()
             msg.length_mm = int(length_mm)
@@ -258,16 +269,13 @@ class WinchController(RosStatusController):
             return False
 
     def move_absolute(self, length_mm: int, speed_mm_s: int) -> bool:
-        """Move winch to an absolute position (uses default acceleration of 30 RPM/s)"""
         if not self._available:
             self._node.get_logger().warning("Cannot move absolute: Winch not available")
             return False
-
         try:
             msg = MoveWinchLength()
             msg.length_mm = int(length_mm)
             msg.speed_mm_s = int(speed_mm_s)
-            # acceleration_rpm_s will use message default (30 RPM/s)
             self._move_absolute_pub.publish(msg)
             self._node.get_logger().info(f"Moving winch to: {length_mm} mm at {speed_mm_s} mm/s")
             return True
@@ -276,11 +284,9 @@ class WinchController(RosStatusController):
             return False
 
     def move_absolute_with_accel(self, length_mm: int, speed_mm_s: int, acceleration_rpm_s: int) -> bool:
-        """Move winch to an absolute position with custom acceleration"""
         if not self._available:
             self._node.get_logger().warning("Cannot move absolute: Winch not available")
             return False
-
         try:
             msg = MoveWinchLength()
             msg.length_mm = int(length_mm)
@@ -299,7 +305,6 @@ class WinchController(RosStatusController):
         if not self.available:
             self._node.get_logger().warning("Cannot set load detection: Winch not available")
             return False
-
         try:
             msg = Bool()
             msg.data = enable
@@ -311,31 +316,22 @@ class WinchController(RosStatusController):
             return False
 
     def _apply_safety_limits(self, speed: float) -> float:
-        """Apply safety limits to winch speed"""
         return max(min(speed, self._max_speed), -self._max_speed)
-
-    def _on_max_speed_changed(self, new_value: float) -> None:
-        """Handle max_speed change from SettingsManager"""
-        self._max_speed = new_value
-        self._node.get_logger().info(f"[WinchController] Max speed updated to: {new_value}")
 
     @property
     def is_enabled(self) -> bool:
-        """Check if winch is enabled and watchdog is alive"""
         return self._enabled and self._check_watchdog()
 
     def _check_watchdog(self) -> bool:
-        """Check if commands have been sent recently enough to keep watchdog alive"""
         return time.time() - self._last_command_time < self._watchdog_timeout
 
-    # Property getters and setters
     def get_cable_length(self) -> float:
         return self._cable_length
 
     def set_cable_length(self, value: float) -> None:
         if self._cable_length != value:
             self._cable_length = value
-            self.cable_length_changed.emit()
+            self._notifier.notify("cable_length_changed")
 
     def get_cable_speed(self) -> float:
         return self._cable_speed
@@ -343,7 +339,7 @@ class WinchController(RosStatusController):
     def set_cable_speed(self, value: float) -> None:
         if self._cable_speed != value:
             self._cable_speed = value
-            self.cable_speed_changed.emit()
+            self._notifier.notify("cable_speed_changed")
 
     def get_winch_torque(self) -> float:
         return self._winch_torque
@@ -351,7 +347,7 @@ class WinchController(RosStatusController):
     def set_winch_torque(self, value: float) -> None:
         if self._winch_torque != value:
             self._winch_torque = value
-            self.winch_torque_changed.emit()
+            self._notifier.notify("winch_torque_changed")
 
     def get_motor_temperature(self) -> float:
         return self._motor_temperature
@@ -359,7 +355,7 @@ class WinchController(RosStatusController):
     def set_motor_temperature(self, value: float) -> None:
         if self._motor_temperature != value:
             self._motor_temperature = value
-            self.motor_temperature_changed.emit()
+            self._notifier.notify("motor_temperature_changed")
 
     def get_motor_voltage(self) -> float:
         return self._motor_voltage
@@ -367,7 +363,7 @@ class WinchController(RosStatusController):
     def set_motor_voltage(self, value: float) -> None:
         if self._motor_voltage != value:
             self._motor_voltage = value
-            self.motor_voltage_changed.emit()
+            self._notifier.notify("motor_voltage_changed")
 
     def get_motor_brake(self) -> bool:
         return self._motor_brake
@@ -375,7 +371,7 @@ class WinchController(RosStatusController):
     def set_motor_brake(self, value: bool) -> None:
         if self._motor_brake != value:
             self._motor_brake = value
-            self.motor_brake_changed.emit()
+            self._notifier.notify("motor_brake_changed")
 
     def get_enabled(self) -> bool:
         return self._enabled
@@ -383,7 +379,7 @@ class WinchController(RosStatusController):
     def set_enabled(self, value: bool) -> None:
         if self._enabled != value:
             self._enabled = value
-            self.enabled_changed.emit()
+            self._notifier.notify("enabled_changed")
 
     def get_load_detection_enabled(self) -> bool:
         return self._load_detection_enabled
@@ -391,7 +387,7 @@ class WinchController(RosStatusController):
     def set_load_detection_enabled(self, value: bool) -> None:
         if self._load_detection_enabled != value:
             self._load_detection_enabled = value
-            self.load_detection_changed.emit()
+            self._notifier.notify("load_detection_changed")
 
     def get_unusual_load_detected(self) -> bool:
         return self._unusual_load_detected
@@ -399,9 +395,8 @@ class WinchController(RosStatusController):
     def set_unusual_load_detected(self, value: bool) -> None:
         if self._unusual_load_detected != value:
             self._unusual_load_detected = value
-            self.unusual_load_detected_changed.emit()
+            self._notifier.notify("unusual_load_detected_changed")
 
-    # Plain Python properties (Level B) — QML surface is WinchStatus.
     @property
     def cable_length(self) -> float:
         return self.get_cable_length()
@@ -474,34 +469,25 @@ class WinchController(RosStatusController):
     def unusual_load_detected(self) -> bool:
         return self.get_unusual_load_detected()
 
-    # Command surface (plain HAL — QML via WinchActions)
     def setSpeed(self, speed: float) -> bool:
-        """Set winch speed (rpm)."""
         return self.command_speed_rpm(speed)
 
     def moveIncrement(self, length_mm: int, speed_mm_s: int) -> bool:
-        """Move winch by increment (camelCase alias of move_increment)."""
         return self.move_increment(length_mm, speed_mm_s)
 
     def moveAbsolute(self, length_mm: int, speed_mm_s: int) -> bool:
-        """Move winch to absolute position (camelCase alias of move_absolute)."""
         return self.move_absolute(length_mm, speed_mm_s)
 
     def moveIncrementWithAccel(self, length_mm: int, speed_mm_s: int, acceleration_rpm_s: int) -> bool:
-        """Move winch by increment with custom acceleration."""
         return self.move_increment_with_accel(length_mm, speed_mm_s, acceleration_rpm_s)
 
     def moveAbsoluteWithAccel(self, length_mm: int, speed_mm_s: int, acceleration_rpm_s: int) -> bool:
-        """Move winch to absolute position with custom acceleration."""
         return self.move_absolute_with_accel(length_mm, speed_mm_s, acceleration_rpm_s)
 
     def setEnabled(self, enabled: bool) -> bool:
-        """Enable/disable winch."""
         if not self._available:
             self._node.get_logger().warning("Cannot enable winch: Winch not available")
             return False
-
-        # Send command to enable/disable winch
         msg = Bool()
         msg.data = enabled
         self._enable_pub.publish(msg)
@@ -509,9 +495,7 @@ class WinchController(RosStatusController):
         return True
 
     def setLoadDetectionEnabled(self, enabled: bool) -> None:
-        """Enable/disable load detection."""
         self.set_load_detection_mode(enabled)
 
     def cleanup(self) -> None:
-        """Clean up resources when shutting down"""
-        super().cleanup()
+        logger.info("Cleaning up WinchHal...")

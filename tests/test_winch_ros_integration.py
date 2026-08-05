@@ -14,7 +14,7 @@ from std_msgs.msg import Float64
 
 
 def _winch_controller_class():
-    return importlib.import_module("paint_controller.controllers.winch").WinchController
+    return importlib.import_module("paint_controller.controllers.winch_shell").WinchController
 
 
 @pytest.fixture

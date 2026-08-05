@@ -1,8 +1,8 @@
 # Level C — Pure-Python Device HAL (Durable Plan)
 
-**Status**: Full Level C program in progress — **P0–P2 landed**  
+**Status**: Full Level C program in progress — **P0–P3 landed**  
 **Saved**: 2026-08-05  
-**Last refreshed**: 2026-08-05 (P2 availability + bridge ownership landed)  
+**Last refreshed**: 2026-08-05 (P3 winch+wheel pure HAL landed)  
 **Depends on**: Level A (`@Slot` strip) and Level B (`Property` → `@property`) — **both landed**  
 **Do not overwrite** this file with concurrency-test or feature plans; those are separate tracks. Refresh this file when Level C scope or prerequisites change.
 
@@ -205,22 +205,33 @@ Production controllers still parent bridges on adapters (unchanged). No QML / fa
 2. Status / notify contracts green; concurrency band green.
 3. Full suite green.
 
-### P2 — Availability + bridge ownership (Med)
+### P2 — Availability + bridge ownership (Med) — **LANDED 2026-08-05**
 
 - Non-Qt availability state core (extract from `RosStatusController`).
 - `AvailabilityWatchdog(QObject)` at composition or per-shell.
 - Reparent bridges off adapters for ROS devices that use the bridge.
 - Adapters may still temporarily hold Signals until P3.
 
-**Acceptance**: availability still timeouts correctly under unit tests; bridges parented to shells; frozen bar + full suite green.
+**Landed**
 
-### P3 — Winch + Wheel pure (Med)
+| Piece | Location |
+|---|---|
+| Pure state | `core/availability.py` (`AvailabilityState`) |
+| Watchdog | `core/availability_watchdog.py` |
+| Shell parent | `core/device_io_shell.py`; `RosStatusController` + wheel/winch/teensy bridge parent |
+| Tests | `tests/test_availability_p2.py` |
+
+**Acceptance**: availability still timeouts correctly under unit tests; bridges parented to shells; frozen bar + full suite green. ✅
+
+### P3 — Winch + Wheel pure (Med) — **LANDED 2026-08-05**
 
 - Proxy emits Status schema signals + wheel `error_state_changed`.
 - Settings max-speed inject without adapter `.connect` to SettingsManager Signals.
 - Halt traffic kind: **no silent change** (see design hazard).
 
-**Acceptance**: Status/shell/safety notify paths green; bound bus + worker affinity tests green.
+**Landed**: pure `wheel.py`/`winch.py`; shells `wheel_shell.py`/`winch_shell.py`; continuous-zero e-stop retained.
+
+**Acceptance**: Status/shell/safety notify paths green; bound bus + worker affinity tests green. ✅
 
 ### P4 — Teensy pure (High)
 
@@ -293,6 +304,7 @@ Per-phase restore of adapters/factory/proxy; no ROS msg migration.
 | 2026-08-05 | User chose **P0 only** this session (not full program; not auto-P1) |
 | 2026-08-05 | **P0 landed**: `DeviceNotifier`, `SignalDeviceNotifier`, external-shell bridge test path; no production adapter rewires |
 | 2026-08-05 | **P1 landed**: Lidar pure HAL + shell; factory uses `lidar_shell.LidarController`; PySide ban on `lidar.py` |
+| 2026-08-05 | **P2 landed**: AvailabilityState + AvailabilityWatchdog + DeviceIoShell; wheel/winch/teensy bridges parented to shells |
 
 ---
 

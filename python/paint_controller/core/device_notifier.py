@@ -1,6 +1,6 @@
 """Qt Signal mirror for :class:`~paint_controller.ports.notifier.DeviceNotifier`.
 
-Used by composition-owned I/O shells / future pure-HAL pilots (Level C P1+).
+Used by composition-owned I/O shells / pure-HAL pilots (Level C).
 Not a hardware HAL — only maps notify names to ``Signal.emit``.
 """
 
@@ -10,7 +10,7 @@ from PySide6.QtCore import QObject
 
 
 class SignalDeviceNotifier(QObject):
-    """Maps ``DeviceNotifier`` names to ``owner.<name>.emit()``.
+    """Maps ``DeviceNotifier`` names to ``owner.<name>.emit(*args)``.
 
     ``owner`` may be this object or an external shell that declares the Signals
     Status models already wire via ``connect_required``.
@@ -22,11 +22,14 @@ class SignalDeviceNotifier(QObject):
             raise TypeError("owner must not be None")
         self._owner = owner
 
-    def notify(self, name: str) -> None:
+    def notify(self, name: str, *args: object) -> None:
         sig = getattr(self._owner, name, None)
         if sig is None or not hasattr(sig, "emit"):
             owner_name = type(self._owner).__name__
             raise AttributeError(
                 f"Required signal {owner_name}.{name} is missing or not emittable"
             )
-        sig.emit()
+        if args:
+            sig.emit(*args)
+        else:
+            sig.emit()

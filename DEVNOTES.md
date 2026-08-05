@@ -1,6 +1,13 @@
 # Development Notes
 
 ---
+### 2026-08-05 - Level C P3 Winch + Wheel pure HAL
+
+**Goal**: Pure wheel/winch HAL (no PySide6) + shells; continuous-zero e-stop; settings inject on shell.
+**Result**: ✅ Full suite green.
+**Files**: wheel.py/winch.py pure, wheel_shell/winch_shell, factory, tests/test_wheel_winch_pure_hal.py
+
+---
 ### 2026-08-05 - Level C P2 availability + bridge ownership
 
 **Goal**: Pure AvailabilityState; watchdog + telemetry bridges parented to DeviceIoShell.
