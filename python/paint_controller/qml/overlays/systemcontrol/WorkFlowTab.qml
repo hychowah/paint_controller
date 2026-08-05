@@ -366,14 +366,20 @@ Rectangle {
                     }
                 }
 
-                // Stop Button
+                // Stop Button (enabled when not Idle — Running/Paused/Completed/Error)
                 Rectangle {
                     Layout.fillWidth: true
                     height: 70
-                    color: stopMouseArea.containsMouse ? "#D32F2F" : "#B71C1C"
-                    border.color: "#EF5350"
+                    opacity: stopEnabled ? 1.0 : 0.45
+                    color: !stopEnabled
+                           ? "#4A1515"
+                           : (stopMouseArea.containsMouse ? "#D32F2F" : "#B71C1C")
+                    border.color: stopEnabled ? "#EF5350" : "#6B3A3A"
                     border.width: 2
                     radius: 8
+
+                    readonly property bool stopEnabled: workflowRunner
+                        && workflowRunner.execution_state !== 0
 
                     Text {
                         anchors.centerIn: parent
@@ -387,10 +393,13 @@ Rectangle {
                     MouseArea {
                         id: stopMouseArea
                         anchors.fill: parent
+                        enabled: parent.stopEnabled
                         hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
+                        cursorShape: parent.stopEnabled
+                                     ? Qt.PointingHandCursor
+                                     : Qt.ArrowCursor
                         onClicked: {
-                            if (workflowRunner) {
+                            if (workflowRunner && parent.stopEnabled) {
                                 workflowRunner.stop()
                             }
                         }

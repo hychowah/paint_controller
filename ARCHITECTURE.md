@@ -339,7 +339,7 @@ Main:       bridge QueuedConnection → controller._apply_status_snapshot(pod)
 
 **Heartbeat ownership:** outbound `/controller/heartbeat` is **PaintRosNode** only (StateStore-driven). `UIHeartbeatHandler` publishes clear-error on `/clear/error` only.
 
-**Workflow + halt:** `SafetyCoordinator` late-binds `WorkFlowRunner.stop_execution()` (non-blocking, no `_emergency_shutdown`). Order: latch → invalidate continuous → stop_execution → device zeros. `play`/`resume` refuse while latched. Operator UI `stop()` may still call local `_emergency_shutdown` (separate product path).
+**Workflow + halt:** `SafetyCoordinator` late-binds `WorkFlowRunner.stop_execution()` (non-blocking, no post-stop hardware matrix). Order: latch → invalidate continuous → stop_execution → device zeros. `play`/`resume` refuse while latched. Operator UI `stop()` may still call local `_workflow_stop_hardware_matrix` (separate product path; idempotent when already Idle).
 
 **Other residuals:** in-flight workflow oneshot may still publish before stop is seen; ESP32 UDP already QueuedConnection; BaseTopView scalar residual opportunistic.
 

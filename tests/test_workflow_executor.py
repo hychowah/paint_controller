@@ -126,6 +126,11 @@ def test_workflow_executor_load_play_and_stop_manage_state(monkeypatch, tmp_path
     assert executor.current_action_index == -1
     assert executor.get_loop_iteration() == 0
 
+    # Idempotent: already-idle stop succeeds without re-joining the worker.
+    assert executor.stop() is True
+    assert executor.execution_thread.wait_calls == [5000]
+    assert executor.current_state == module.ExecutionState.IDLE
+
 
 def test_workflow_executor_completion_and_error_callbacks_reset_public_state() -> None:
     module = _executor_module()

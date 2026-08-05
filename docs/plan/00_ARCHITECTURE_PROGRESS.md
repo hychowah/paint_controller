@@ -98,7 +98,7 @@ These files are allowed to keep temporary raw-global reads until their named fam
 - The app-scope QML context contract is still broader than ideal (~26 frozen names); shrink only with last-consumer proof, not vanity rename programs.
 - Harness drift remains a risk where smoke fixtures re-implement production contracts by hand (TD-042 hygiene).
 - In-flight workflow action may still oneshot-publish before cooperative stop is seen.
-- Operator UI workflow `stop()` may still use local `_emergency_shutdown` (not the global halt matrix).
+- Operator UI workflow `stop()` may still use local `_workflow_stop_hardware_matrix` (not the global halt matrix; idempotent when already Idle).
 - Do not reintroduce raw multi-thread ROS **command** `publish` outside `RosCommandBus.pump`, or unlocked ROS-thread QObject mutation on property-bag / status devices.
 
 ## Next Session Checklist

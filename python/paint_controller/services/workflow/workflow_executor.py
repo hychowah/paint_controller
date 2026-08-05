@@ -310,9 +310,13 @@ class WorkFlowExecutor:
         return True
 
     def stop(self) -> bool:
-        """Stop workflow execution and wait for the worker (operator stop)."""
+        """Stop workflow execution and wait for the worker (operator stop).
+
+        Idempotent: already-idle is a no-op success (same contract as
+        request_stop_nonblocking for halt paths).
+        """
         if self.current_state == ExecutionState.IDLE:
-            return False
+            return True
 
         self._stop_requested = True
         if self.execution_thread:

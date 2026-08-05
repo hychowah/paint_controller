@@ -375,12 +375,18 @@ class WorkFlowRunner(QObject):
 
     @Slot()
     def stop(self) -> bool:
-        """Stop workflow execution and perform emergency shutdown."""
+        """Stop workflow execution and run the post-stop hardware safety matrix.
+
+        Idempotent: already-idle returns success without re-commanding hardware.
+        This is the operator Stop path (not Steam emergency / SafetyCoordinator).
+        """
+        if self.executor.current_state == ExecutionState.IDLE:
+            return True
+
         success = self.executor.stop()
 
         if success:
-            # Emergency shutdown: stop winch and close valve
-            self._emergency_shutdown()
+            self._workflow_stop_hardware_matrix()
             self._workflow_start_time = 0.0
             self.execution_state_changed.emit(self.executor.current_state.value)
         else:
@@ -390,8 +396,8 @@ class WorkFlowRunner(QObject):
 
         return success
 
-    def _emergency_shutdown(self) -> None:
-        """Perform emergency shutdown of critical systems.
+    def _workflow_stop_hardware_matrix(self) -> None:
+        """After operator stop: retract winch and close valve.
 
         Each controller is stopped independently so a failure in one
         does not prevent the others from being stopped.
@@ -402,17 +408,17 @@ class WorkFlowRunner(QObject):
         try:
             if hardware.winch:
                 hardware.winch.move_absolute_with_accel(0, 1)  # Move to 0mm at minimum speed
-                self.logger.info("Emergency stop: Winch moving to retracted position")
+                self.logger.info("Workflow stop: Winch moving to retracted position")
         except Exception as e:
-            self.logger.error(f"Emergency stop: Failed to stop winch: {e}")
+            self.logger.error(f"Workflow stop: Failed to stop winch: {e}")
 
         # Close valve immediately
         try:
             if hardware.teensy:
                 hardware.teensy.setValveTurn(0.0)
-                self.logger.info("Emergency stop: Valve closed")
+                self.logger.info("Workflow stop: Valve closed")
         except Exception as e:
-            self.logger.error(f"Emergency stop: Failed to close valve: {e}")
+            self.logger.error(f"Workflow stop: Failed to close valve: {e}")
 
     @Property(int, notify=current_action_index_changed)
     def current_action_index(self) -> int:

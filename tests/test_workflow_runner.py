@@ -82,7 +82,7 @@ class FakeExecutor:
     def stop(self) -> bool:
         self.stop_calls += 1
         if self.current_state == ExecutionState.IDLE:
-            return False
+            return True
         self.current_state = ExecutionState.IDLE
         self.current_action_index = -1
         return True
@@ -165,7 +165,7 @@ def test_workflow_runner_rejects_loading_new_workflow_while_active(qt_app, monke
         catalog.cleanup()
 
 
-def test_workflow_runner_controls_execution_and_emergency_shutdown(qt_app, monkeypatch, tmp_path) -> None:
+def test_workflow_runner_controls_execution_and_stop_hardware_matrix(qt_app, monkeypatch, tmp_path) -> None:
     (tmp_path / "demo.yaml").write_text("name: demo\nactions: []\n", encoding="utf-8")
     runner, catalog = _make_runner(monkeypatch, tmp_path)
     state_events: list[int] = []
@@ -185,6 +185,8 @@ def test_workflow_runner_controls_execution_and_emergency_shutdown(qt_app, monke
         assert runner.pause() is True
         assert runner.resume() is True
         assert runner.stop() is True
+        # Second stop while Idle: success, no ERROR, no second hardware matrix.
+        assert runner.stop() is True
 
         assert state_events == [
             ExecutionState.RUNNING.value,
@@ -195,6 +197,7 @@ def test_workflow_runner_controls_execution_and_emergency_shutdown(qt_app, monke
         assert runner.executor.play_calls == 1
         assert runner.executor.pause_calls == 1
         assert runner.executor.resume_calls == 1
+        # Runner short-circuits before executor when already Idle.
         assert runner.executor.stop_calls == 1
         assert winch_calls == [(0, 1)]
         assert valve_calls == [0.0]
