@@ -118,3 +118,57 @@ def test_missing_controller_is_reported() -> None:
 
     assert results[-1] == (False, "Short yaw PID is unavailable")
     assert logger.records[-1].message == "Short yaw PID is unavailable"
+
+
+def test_parameter_sets_catalog_is_python_sot() -> None:
+    actions, _teensy, _gate, _logger, _results = _build_actions()
+    catalog = actions.parameterSets
+    ids = {row["id"] for row in catalog}
+    labels = {row["label"] for row in catalog}
+
+    assert "short_yaw_pid" in ids
+    assert "long_yaw_pid" in ids
+    assert "Short Yaw PID" in labels
+    for row in catalog:
+        assert row["chartSeries"]
+        assert row["currentStatusKey"]
+        assert row["targetStatusKey"]
+        assert isinstance(row["parameters"], list)
+        assert any(p["name"] == "P Value" and p["send"] is True for p in row["parameters"])
+        assert any(p["name"] == "Target" and p["send"] is False for p in row["parameters"])
+
+
+def test_send_parameter_set_uses_explicit_values_and_gate() -> None:
+    actions, teensy, admin_action_gate, _logger, results = _build_actions()
+
+    assert actions.sendParameterSet(
+        "short_yaw_pid",
+        {"P Value": 1.5, "I Value": 2.5, "D Value": 3.5},
+    ) is True
+
+    assert teensy.short_calls == [(1.5, 2.5, 3.5)]
+    assert admin_action_gate.calls == ["tuning.short_yaw_pid"]
+    assert results[-1][0] is True
+
+
+def test_send_parameter_set_fills_missing_from_status_reader() -> None:
+    class StatusTeensy(FakeTeensy):
+        def get_status_value(self, key: str) -> float:
+            return {"yaw_pid_p": 9.0, "yaw_pid_i": 8.0, "yaw_pid_d": 7.0}.get(key, 0.0)
+
+    teensy = StatusTeensy()
+    gate = FakeAdminActionGate()
+    logger = FakeLogger()
+    actions = TuningActions(teensy=teensy, admin_action_gate=gate, logger=logger)
+
+    assert actions.sendParameterSet("Short Yaw PID", {"P Value": 1.0}) is True
+    assert teensy.short_calls == [(1.0, 8.0, 7.0)]
+
+
+def test_send_parameter_set_gate_denial() -> None:
+    actions, teensy, admin_action_gate, _logger, results = _build_actions()
+    admin_action_gate.set_result("tuning.long_yaw_pid", False, "blocked")
+
+    assert actions.sendParameterSet("long_yaw_pid", {"P Value": 1, "I Value": 2, "D Value": 3}) is False
+    assert teensy.long_calls == []
+    assert results[-1] == (False, "blocked")

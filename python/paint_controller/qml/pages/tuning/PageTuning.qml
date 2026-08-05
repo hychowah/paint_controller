@@ -10,105 +10,59 @@ Item {
     required property var teensyStatus
     required property var tuningActions
     required property var qtBridge
-    
+
     property int timeWindow: 30000
     property var startTime: new Date().getTime()
     property real yAxisMin: -180
     property real yAxisMax: 180
-    
-    // Parameter set definitions with their parameters
-    property var parameterSetDefinitions: {
-        "Short Yaw PID": {
-            description: "Tune yaw axis PID parameters",
-            chartSeries: "yaw",
-            currentValueGetter: () => pidTuningPage.teensyStatus.imuYaw,
-            targetValueGetter: () => pidTuningPage.teensyStatus.yawCommand,
-            parameters: [
-                { 
-                    name: "P Value", 
-                    type: "number", 
-                    currentGetter: () => pidTuningPage.teensyStatus.yawPidP,
-                    unit: "",
-                    stepPercent: 5 
-                },
-                { 
-                    name: "I Value", 
-                    type: "number", 
-                    currentGetter: () => pidTuningPage.teensyStatus.yawPidI,
-                    unit: "",
-                    stepPercent: 5 
-                },
-                { 
-                    name: "D Value", 
-                    type: "number", 
-                    currentGetter: () => pidTuningPage.teensyStatus.yawPidD,
-                    unit: "",
-                    stepPercent: 5 
-                },
-                { 
-                    name: "Target", 
-                    type: "number", 
-                    currentGetter: () => pidTuningPage.teensyStatus.yawCommand,
-                    unit: "degrees",
-                    stepPercent: 10 
-                }
-            ],
-            sendFunction: (params) => {
-                return pidTuningPage.tuningActions.setShortYawPid(
-                    params["P Value"] !== undefined ? params["P Value"] : pidTuningPage.teensyStatus.yawPidP,
-                    params["I Value"] !== undefined ? params["I Value"] : pidTuningPage.teensyStatus.yawPidI,
-                    params["D Value"] !== undefined ? params["D Value"] : pidTuningPage.teensyStatus.yawPidD
-                )
-            }
-        },
-        "Long Yaw PID": {
-            description: "Tune long yaw axis PID parameters",
-            chartSeries: "yaw",
-            currentValueGetter: () => pidTuningPage.teensyStatus.imuYaw,
-            targetValueGetter: () => pidTuningPage.teensyStatus.yawCommand,
-            parameters: [
-                { 
-                    name: "P Value", 
-                    type: "number", 
-                    currentGetter: () => pidTuningPage.teensyStatus.yawPidP,
-                    unit: "",
-                    stepPercent: 5 
-                },
-                { 
-                    name: "I Value", 
-                    type: "number", 
-                    currentGetter: () => pidTuningPage.teensyStatus.yawPidI,
-                    unit: "",
-                    stepPercent: 5 
-                },
-                { 
-                    name: "D Value", 
-                    type: "number", 
-                    currentGetter: () => pidTuningPage.teensyStatus.yawPidD,
-                    unit: "",
-                    stepPercent: 5 
-                },
-                { 
-                    name: "Target", 
-                    type: "number", 
-                    currentGetter: () => pidTuningPage.teensyStatus.yawCommand,
-                    unit: "degrees",
-                    stepPercent: 10 
-                }
-            ],
-            sendFunction: (params) => {
-                return pidTuningPage.tuningActions.setLongYawPid(
-                    params["P Value"] !== undefined ? params["P Value"] : pidTuningPage.teensyStatus.yawPidP,
-                    params["I Value"] !== undefined ? params["I Value"] : pidTuningPage.teensyStatus.yawPidI,
-                    params["D Value"] !== undefined ? params["D Value"] : pidTuningPage.teensyStatus.yawPidD
-                )
-            }
-        }
-    }
 
-    property string selectedParameterSet: "Short Yaw PID"
+    // TD-052: form catalog is Python-owned (tuningActions.parameterSets).
+    readonly property var parameterSets: tuningActions ? tuningActions.parameterSets : []
+    property string selectedParameterSetId: "short_yaw_pid"
+    property var selectedSet: null
     property var currentParameters: []
     property var parameterValues: ({})
+
+    function findSetById(setId) {
+        for (var i = 0; i < parameterSets.length; i++) {
+            if (parameterSets[i].id === setId)
+                return parameterSets[i]
+        }
+        return null
+    }
+
+    function selectParameterSet(setId) {
+        var entry = findSetById(setId)
+        selectedParameterSetId = setId
+        selectedSet = entry
+        currentParameters = entry ? entry.parameters : []
+        parameterValues = ({})
+    }
+
+    function statusNumber(statusKey) {
+        if (!teensyStatus || !statusKey)
+            return 0
+        var value = teensyStatus[statusKey]
+        if (value === undefined || value === null)
+            return 0
+        return Number(value)
+    }
+
+    function getChartSeries() {
+        return selectedSet ? selectedSet.chartSeries : "yaw"
+    }
+
+    function getCurrentValue() {
+        if (!selectedSet)
+            return 0
+        return statusNumber(selectedSet.currentStatusKey)
+    }
+
+    function getTargetValue() {
+        if (!selectedSet)
+            return 0
+        return statusNumber(selectedSet.targetStatusKey)
+    }
 
     Timer {
         id: updateTimer
@@ -117,24 +71,23 @@ Item {
         repeat: true
         onTriggered: {
             var currentTime = new Date().getTime()
-            
+
             pitchSeries.append(currentTime - startTime, pidTuningPage.teensyStatus.imuPitch)
             rollSeries.append(currentTime - startTime, pidTuningPage.teensyStatus.imuRoll)
             yawSeries.append(currentTime - startTime, pidTuningPage.teensyStatus.imuYaw)
-            
-            while (pitchSeries.count > 0 && 
+
+            while (pitchSeries.count > 0 &&
                    pitchSeries.at(0).x < currentTime - startTime - timeWindow) {
                 pitchSeries.remove(0)
                 rollSeries.remove(0)
                 yawSeries.remove(0)
             }
-            
+
             axisX.min = currentTime - startTime - timeWindow
             axisX.max = currentTime - startTime
-            
-            // Update Y axis based on current values
-            if (selectedParameterSet && parameterSetDefinitions[selectedParameterSet]) {
-                let targetValue = parameterSetDefinitions[selectedParameterSet].targetValueGetter()
+
+            if (selectedSet) {
+                var targetValue = getTargetValue()
                 axisY.min = targetValue - 10
                 axisY.max = targetValue + 10
             }
@@ -145,7 +98,6 @@ Item {
         anchors.fill: parent
         spacing: 10
 
-        // Chart View
         ChartView {
             id: chartView
             Layout.fillWidth: true
@@ -200,7 +152,6 @@ Item {
             }
         }
 
-        // Tuning Controls Area
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: parent.height * 0.4
@@ -214,16 +165,14 @@ Item {
                 anchors.margins: 20
                 spacing: 20
 
-                // Parameter Controls (Left Side - 3/4 of the space)
                 ColumnLayout {
                     Layout.fillHeight: true
                     Layout.preferredWidth: parent.width * 0.75
                     spacing: 15
 
-                    // Header
                     RowLayout {
                         Layout.fillWidth: true
-                        
+
                         Text {
                             text: "Tuning Parameters"
                             color: "#FFFFFF"
@@ -231,11 +180,11 @@ Item {
                             font.pixelSize: 18
                             font.bold: true
                         }
-                        
+
                         Item { Layout.fillWidth: true }
-                        
+
                         Text {
-                            text: selectedParameterSet
+                            text: selectedSet ? selectedSet.label : ""
                             color: "#4CAF50"
                             font.pixelSize: 16
                             font.bold: true
@@ -244,37 +193,35 @@ Item {
 
                     Text {
                         Layout.fillWidth: true
-                        text: parameterSetDefinitions[selectedParameterSet] ? parameterSetDefinitions[selectedParameterSet].description : ""
+                        text: selectedSet ? selectedSet.description : ""
                         color: "#CCCCCC"
                         font.pixelSize: 13
                         wrapMode: Text.WordWrap
                     }
 
-                    // Parameters Section
                     ScrollView {
                         id: scrollView
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         clip: true
-                        
+
                         ScrollBar.vertical.policy: ScrollBar.AsNeeded
                         ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                        
+
                         ColumnLayout {
                             width: scrollView.width
                             spacing: 15
-                            
-                            // Dynamic parameter inputs
+
                             Repeater {
                                 model: currentParameters
-                                
+
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     spacing: 8
-                                    
+
                                     RowLayout {
                                         Layout.fillWidth: true
-                                        
+
                                         Text {
                                             text: modelData.name + (modelData.unit ? " (" + modelData.unit + ")" : "")
                                             color: "#FFFFFF"
@@ -282,39 +229,38 @@ Item {
                                             font.bold: true
                                             Layout.preferredWidth: 140
                                         }
-                                        
+
                                         Text {
-                                            text: "Current: " + (modelData.currentGetter ? modelData.currentGetter().toFixed(6) : "N/A")
+                                            text: "Current: " + statusNumber(modelData.statusKey).toFixed(6)
                                             color: "#CCCCCC"
                                             font.pixelSize: 12
                                             Layout.fillWidth: true
                                         }
                                     }
-                                    
+
                                     RowLayout {
                                         Layout.fillWidth: true
                                         spacing: 8
-                                        
-                                        // Decrease button
+
                                         Rectangle {
                                             width: 80
                                             height: 40
                                             color: decreaseArea.containsMouse ? "#d32f2f" : "#f44336"
                                             radius: 4
-                                            
+
                                             MouseArea {
                                                 id: decreaseArea
                                                 anchors.fill: parent
                                                 hoverEnabled: true
                                                 onClicked: {
-                                                    let currentVal = modelData.currentGetter ? modelData.currentGetter() : 0
-                                                    let stepPercent = modelData.stepPercent || 5
-                                                    let newVal = currentVal * (1 - stepPercent / 100)
+                                                    var currentVal = statusNumber(modelData.statusKey)
+                                                    var stepPercent = modelData.stepPercent || 5
+                                                    var newVal = currentVal * (1 - stepPercent / 100)
                                                     parameterInput.text = newVal.toFixed(6)
                                                     parameterValues[modelData.name] = newVal
                                                 }
                                             }
-                                            
+
                                             Text {
                                                 anchors.centerIn: parent
                                                 text: "-" + (modelData.stepPercent || 5) + "%"
@@ -323,8 +269,7 @@ Item {
                                                 font.bold: true
                                             }
                                         }
-                                        
-                                        // Input field
+
                                         Rectangle {
                                             Layout.fillWidth: true
                                             height: 40
@@ -332,7 +277,7 @@ Item {
                                             border.color: parameterInput.activeFocus ? "#3A5A8C" : "#333333"
                                             border.width: 1
                                             radius: 4
-                                            
+
                                             TextInput {
                                                 id: parameterInput
                                                 anchors.fill: parent
@@ -342,7 +287,7 @@ Item {
                                                 font.pixelSize: 14
                                                 verticalAlignment: TextInput.AlignVCenter
                                                 validator: DoubleValidator { bottom: -999999; top: 999999; decimals: 6 }
-                                                
+
                                                 onTextChanged: {
                                                     if (text !== "") {
                                                         parameterValues[modelData.name] = parseFloat(text)
@@ -351,38 +296,37 @@ Item {
                                                     }
                                                 }
                                             }
-                                            
+
                                             Text {
                                                 anchors.fill: parameterInput
                                                 anchors.margins: 10
-                                                text: modelData.currentGetter ? modelData.currentGetter().toFixed(6) : "0.000000"
+                                                text: statusNumber(modelData.statusKey).toFixed(6)
                                                 color: "#666666"
                                                 font.pixelSize: 14
                                                 verticalAlignment: Text.AlignVCenter
                                                 visible: parameterInput.text === "" && !parameterInput.activeFocus
                                             }
                                         }
-                                        
-                                        // Increase button
+
                                         Rectangle {
                                             width: 80
                                             height: 40
                                             color: increaseArea.containsMouse ? "#2e7d32" : "#4caf50"
                                             radius: 4
-                                            
+
                                             MouseArea {
                                                 id: increaseArea
                                                 anchors.fill: parent
                                                 hoverEnabled: true
                                                 onClicked: {
-                                                    let currentVal = modelData.currentGetter ? modelData.currentGetter() : 0
-                                                    let stepPercent = modelData.stepPercent || 5
-                                                    let newVal = currentVal * (1 + stepPercent / 100)
+                                                    var currentVal = statusNumber(modelData.statusKey)
+                                                    var stepPercent = modelData.stepPercent || 5
+                                                    var newVal = currentVal * (1 + stepPercent / 100)
                                                     parameterInput.text = newVal.toFixed(6)
                                                     parameterValues[modelData.name] = newVal
                                                 }
                                             }
-                                            
+
                                             Text {
                                                 anchors.centerIn: parent
                                                 text: "+" + (modelData.stepPercent || 5) + "%"
@@ -397,7 +341,6 @@ Item {
                         }
                     }
 
-                    // Send Button
                     Rectangle {
                         id: sendButton
                         Layout.alignment: Qt.AlignHCenter
@@ -408,7 +351,7 @@ Item {
                         color: sendButtonArea.containsMouse ? "#4CAF50" : "#3A8F3A"
                         border.color: "#4CAF50"
                         border.width: 1
-                        
+
                         MouseArea {
                             id: sendButtonArea
                             anchors.fill: parent
@@ -416,17 +359,17 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: sendParameters()
                         }
-                        
+
                         RowLayout {
                             anchors.centerIn: parent
                             spacing: 8
-                            
+
                             Text {
                                 text: "▶"
                                 color: "#FFFFFF"
                                 font.pixelSize: 14
                             }
-                            
+
                             Text {
                                 text: "SEND"
                                 color: "#FFFFFF"
@@ -437,7 +380,6 @@ Item {
                     }
                 }
 
-                // Parameter Set Selection (Right Side - 1/4 of the space)
                 Rectangle {
                     Layout.preferredWidth: parent.width * 0.25
                     Layout.fillHeight: true
@@ -465,25 +407,24 @@ Item {
                             color: "#333333"
                         }
 
-                        // Scrollable parameter set list
                         ScrollView {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             clip: true
-                            
+
                             ScrollBar.vertical.policy: ScrollBar.AsNeeded
                             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
                             ListView {
                                 anchors.fill: parent
-                                model: Object.keys(parameterSetDefinitions)
+                                model: parameterSets
                                 spacing: 8
 
                                 delegate: Rectangle {
                                     width: ListView.view.width
                                     height: 60
-                                    color: selectedParameterSet === modelData ? "#3A5A8C" : (paramSetMouseArea.containsMouse ? "#2A3040" : "transparent")
-                                    border.color: selectedParameterSet === modelData ? "#4CAF50" : "#333333"
+                                    color: selectedParameterSetId === modelData.id ? "#3A5A8C" : (paramSetMouseArea.containsMouse ? "#2A3040" : "transparent")
+                                    border.color: selectedParameterSetId === modelData.id ? "#4CAF50" : "#333333"
                                     border.width: 1
                                     radius: 6
 
@@ -492,11 +433,7 @@ Item {
                                         anchors.fill: parent
                                         hoverEnabled: true
                                         cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            selectedParameterSet = modelData
-                                            currentParameters = parameterSetDefinitions[selectedParameterSet] ? parameterSetDefinitions[selectedParameterSet].parameters : []
-                                            parameterValues = {}
-                                        }
+                                        onClicked: selectParameterSet(modelData.id)
                                     }
 
                                     ColumnLayout {
@@ -505,15 +442,15 @@ Item {
                                         spacing: 4
 
                                         Text {
-                                            text: modelData
-                                            color: selectedParameterSet === modelData ? "#FFFFFF" : "#CCCCCC"
-                                            font.bold: selectedParameterSet === modelData
+                                            text: modelData.label
+                                            color: selectedParameterSetId === modelData.id ? "#FFFFFF" : "#CCCCCC"
+                                            font.bold: selectedParameterSetId === modelData.id
                                             font.pointSize: 11
                                             Layout.fillWidth: true
                                         }
 
                                         Text {
-                                            text: parameterSetDefinitions[modelData] ? parameterSetDefinitions[modelData].description : ""
+                                            text: modelData.description
                                             color: "#999999"
                                             font.pointSize: 9
                                             wrapMode: Text.WordWrap
@@ -531,46 +468,22 @@ Item {
         }
     }
 
-    // Helper functions
-    function getChartSeries() {
-        return parameterSetDefinitions[selectedParameterSet] ? parameterSetDefinitions[selectedParameterSet].chartSeries : "yaw"
-    }
-
-    function getCurrentValue() {
-        let getter = parameterSetDefinitions[selectedParameterSet] ? parameterSetDefinitions[selectedParameterSet].currentValueGetter : null
-        return getter ? getter() : 0
-    }
-
-    function getTargetValue() {
-        let getter = parameterSetDefinitions[selectedParameterSet] ? parameterSetDefinitions[selectedParameterSet].targetValueGetter : null
-        return getter ? getter() : 0
-    }
-
     function sendParameters() {
-        if (!selectedParameterSet || !parameterSetDefinitions[selectedParameterSet]) return
-        
-        console.log("Sending parameters for:", selectedParameterSet)
-        console.log("Parameters:", JSON.stringify(parameterValues))
-        
-        let sendFunc = parameterSetDefinitions[selectedParameterSet].sendFunction
-        if (sendFunc) {
-            let success = sendFunc(parameterValues)
-            pidTuningPage.qtBridge.show_popup(
-                success ? "TUNING" : "TUNING BLOCKED",
-                success ? (selectedParameterSet + " request sent") : (selectedParameterSet + " request rejected"),
-                success ? "info" : "error",
-                2000
-            )
-        }
-        
-        // Clear inputs after sending
-        parameterValues = {}
+        if (!selectedParameterSetId || !tuningActions)
+            return
+
+        var label = selectedSet ? selectedSet.label : selectedParameterSetId
+        var success = tuningActions.sendParameterSet(selectedParameterSetId, parameterValues)
+        pidTuningPage.qtBridge.show_popup(
+            success ? "TUNING" : "TUNING BLOCKED",
+            success ? (label + " request sent") : (label + " request rejected"),
+            success ? "info" : "error",
+            2000
+        )
+        parameterValues = ({})
     }
 
-    // Initialize with default selection
     Component.onCompleted: {
-        selectedParameterSet = "Short Yaw PID"
-        currentParameters = parameterSetDefinitions[selectedParameterSet].parameters
-        parameterValues = {}
+        selectParameterSet("short_yaw_pid")
     }
 }

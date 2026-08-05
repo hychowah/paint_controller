@@ -432,9 +432,44 @@ class FakeLidarStatus(QObject):
 
 
 class FakeManualCommandHandler(QObject):
+    """Smoke stand-in; catalog shape matches ManualCommandHandler.commandCatalog."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._catalog = [
+            {
+                "id": "spray_gun_angle",
+                "label": "Set Spray Gun Angle",
+                "description": "Configure spray gun angle",
+                "supported": True,
+                "parameters": [
+                    {"name": "Angle", "type": "number", "unit": "degrees", "placeholder": "0.0", "options": []},
+                    {"name": "Speed", "type": "number", "unit": "degrees/s", "placeholder": "1.0", "options": []},
+                ],
+            },
+            {
+                "id": "demo",
+                "label": "Demo",
+                "description": "Run demo action",
+                "supported": True,
+                "parameters": [
+                    {"name": "Gimbal Angle", "type": "number", "unit": "degrees", "placeholder": "0.0", "options": []},
+                ],
+            },
+        ]
+
+    @Property("QVariantList", constant=True)
+    def commandCatalog(self) -> list:
+        return list(self._catalog)
+
     @Slot(str, result=bool)
     def isCommandSupported(self, command_name: str) -> bool:
-        return command_name != "Move to Position"
+        if command_name == "Move to Position":
+            return False
+        for entry in self._catalog:
+            if entry["id"] == command_name or entry["label"] == command_name:
+                return bool(entry["supported"])
+        return command_name not in ("", "Move to Position")
 
     @Slot(str, "QVariantMap", result=bool)
     def executeCommand(self, _command_name: str, _parameter_values) -> bool:
@@ -777,6 +812,83 @@ class FakeWinchActions(QObject):
 
 
 class FakeTuningActions(QObject):
+    """Smoke stand-in; parameterSets shape matches TuningActions catalog."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._sets = [
+            {
+                "id": "short_yaw_pid",
+                "label": "Short Yaw PID",
+                "description": "Tune yaw axis PID parameters",
+                "chartSeries": "yaw",
+                "actionKey": "tuning.short_yaw_pid",
+                "currentStatusKey": "imuYaw",
+                "targetStatusKey": "yawCommand",
+                "parameters": [
+                    {
+                        "name": "P Value",
+                        "statusKey": "yawPidP",
+                        "unit": "",
+                        "stepPercent": 5.0,
+                        "send": True,
+                        "type": "number",
+                    },
+                    {
+                        "name": "I Value",
+                        "statusKey": "yawPidI",
+                        "unit": "",
+                        "stepPercent": 5.0,
+                        "send": True,
+                        "type": "number",
+                    },
+                    {
+                        "name": "D Value",
+                        "statusKey": "yawPidD",
+                        "unit": "",
+                        "stepPercent": 5.0,
+                        "send": True,
+                        "type": "number",
+                    },
+                    {
+                        "name": "Target",
+                        "statusKey": "yawCommand",
+                        "unit": "degrees",
+                        "stepPercent": 10.0,
+                        "send": False,
+                        "type": "number",
+                    },
+                ],
+            },
+            {
+                "id": "long_yaw_pid",
+                "label": "Long Yaw PID",
+                "description": "Tune long yaw axis PID parameters",
+                "chartSeries": "yaw",
+                "actionKey": "tuning.long_yaw_pid",
+                "currentStatusKey": "imuYaw",
+                "targetStatusKey": "yawCommand",
+                "parameters": [
+                    {
+                        "name": "P Value",
+                        "statusKey": "yawPidP",
+                        "unit": "",
+                        "stepPercent": 5.0,
+                        "send": True,
+                        "type": "number",
+                    },
+                ],
+            },
+        ]
+
+    @Property("QVariantList", constant=True)
+    def parameterSets(self) -> list:
+        return list(self._sets)
+
+    @Slot(str, "QVariantMap", result=bool)
+    def sendParameterSet(self, _set_id: str, _params) -> bool:
+        return True
+
     @Slot(float, float, float, result=bool)
     def setShortYawPid(self, _p: float, _i: float, _d: float) -> bool:
         return True

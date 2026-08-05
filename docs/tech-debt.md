@@ -24,7 +24,7 @@ When the goal is **software architecture toward a professional Qt program** (not
 | — | **TD-056** | **Resolved 2026-07-29** — `RosTelemetryBridge` + wheel/winch main-thread apply (see Resolved). Residual: heartbeat restore fields; Teensy stays lock+snapshot |
 | — | **TD-054** | **Resolved 2026-07-29** — RosCommandBus + continuous-motion latch (see Resolved table) |
 | — | **TD-055** | Landed Wave 1+2; residual only (see Active Debt). Not the primary next program track. |
-| — | **TD-052** | When touching tuning/commands (TD-053 dual-surface overlay stack resolved 2026-08-05) |
+| — | **TD-052** | **Resolved 2026-08-05** — command/tuning form catalogs Python-owned (see Resolved) |
 | — | **TD-053** | **Resolved 2026-08-05** — `ShellOverlayStack.qml` single composition (see Resolved) |
 | — | **TD-002 / TD-016** | Opportunistic chrome only; out of pure program track |
 | — | **TD-040 residual** | Optional: `video_stream` / `base_top_view_service` pyright include (deferred 2026-07-29) |
@@ -53,18 +53,6 @@ When the goal is **software architecture toward a professional Qt program** (not
 **Residual**: SignalWiring still takes whole bundle; CP test-compat proxies over engine remain; package rehome not done.  
 **Acceptance**: Structural coverage in `tests/test_layer_responsibility_depth.py`; full suite green at land.  
 **Files**: `ports/*`, `handlers/continuous_teleop_engine.py`, `handlers/control_processor.py`, `models/*_actions.py`, `core/controller_factory.py`, `services/workflow/*`
-
----
-
-### TD-052 — Command/tuning parameter schemas still owned in QML
-**Area**: QML ↔ Python boundary
-**Priority**: low–medium
-**Effort**: medium
-**Architecture leverage**: medium
-**Why it matters**: Post-TD-038, workflow **document** load/save is Python-owned, but `PageTuning.qml` still embeds large `parameterSetDefinitions` (names, units, getters, send functions → `tuningActions.*`) and `CommandTab.qml` embeds `commandDefinitions` schemas. That is untyped view-owned schema/policy: adding a PID set or command requires editing QML, not config/Python.
-**What to do**: Move definition tables to Python models (list/map APIs); QML renders generic forms and calls one send API — same pattern as workflow document ownership. Do not reopen EditWorkFlowTab LOC vanity; residual type→form routing there is acceptable.
-**Acceptance**: No command/PID parameter schema literals in QML (layout metadata only); adding a set is a Python/config change; focused smokes green.
-**Files**: `qml/pages/tuning/PageTuning.qml`, `qml/overlays/systemcontrol/CommandTab.qml`, corresponding Python action/handler modules
 
 ---
 
@@ -97,6 +85,7 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 | ID | Title | Resolved | Notes |
 |---|---|---|---|
+| TD-052 | Command/tuning parameter schemas owned in QML | 2026-08-05 | `ManualCommandHandler.commandCatalog` + `TuningActions.parameterSets` / `sendParameterSet`; CommandTab/PageTuning generic forms only; integrity ban on QML schema literals |
 | TD-053 | Dual-surface overlay composition duplication | 2026-08-05 | `ShellOverlayStack.qml` with explicit injected visibility/active/objectName/z/models; `MainWindow` + `MultiScreenListUI` thin hosts; emergency dual-surface flags host-driven. Ousterhout plan Slice 5. Shell/import/notify smokes green |
 | TD-056 | ROS callback → Qt telemetry marshal | 2026-07-29 | `RosTelemetryBridge`; wheel/winch/lidar/heartbeat; later Teensy device-key bridge (user fields main-only). ARCHITECTURE §8 |
 | TD-054 | Concurrent ROS command I/O + post-halt motion latch | 2026-07-29 | RosCommandBus + latch + e-stop-before-teleop; later `bind_execution_stop` + play gate. Residual: in-flight workflow oneshot; UI stop local retract. ARCHITECTURE §8 |

@@ -1,16 +1,22 @@
-"""Python-owned manual command boundary for the system-control overlay."""
+"""Python-owned manual command boundary for the system-control overlay.
+
+TD-052: form catalog (labels, units, placeholders, param lists) lives here with
+coerce + dispatch so QML only renders a generic form.
+"""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from paint_controller.handlers.demo_sequence import run_demo_action
 from paint_controller.ports.teensy import SupportsTeensyWorkflowBody
 from paint_controller.ports.winch import SupportsWinchMotion
+
+ParamType = Literal["number", "dropdown"]
 
 
 class SupportsManualTeensyCommands(SupportsTeensyWorkflowBody, Protocol):
@@ -25,16 +31,24 @@ class SupportsManualTeensyCommands(SupportsTeensyWorkflowBody, Protocol):
 class _ParameterSpec:
     name: str
     coerce: Callable[[str], object]
+    type: ParamType = "number"
+    unit: str = ""
+    placeholder: str = ""
+    options: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
 class _CommandSpec:
+    id: str
+    label: str
+    description: str
     parameters: tuple[_ParameterSpec, ...]
     executor: Callable[[dict[str, object]], bool | None]
+    supported: bool = True
 
 
 class ManualCommandHandler(QObject):
-    """Own manual command validation, coercion, and dispatch for QML."""
+    """Own manual command catalog, validation, coercion, and dispatch for QML."""
 
     operation_result = Signal(bool, str)
 
@@ -49,62 +63,110 @@ class ManualCommandHandler(QObject):
         self._teensy = teensy
         self._winch = winch
         self._logger = logger
-        # Stable command ids (TD-055.7). Legacy English labels kept as aliases for QML.
+        # Single registry: stable id + form metadata + coerce + executor (TD-052).
+        # "Move to Position" is intentionally omitted (unsupported phantom not in catalog).
         self._command_specs: dict[str, _CommandSpec] = {
             "spray_gun_angle": _CommandSpec(
+                id="spray_gun_angle",
+                label="Set Spray Gun Angle",
+                description="Configure spray gun angle",
                 parameters=(
-                    _ParameterSpec("Angle", self._to_float),
-                    _ParameterSpec("Speed", self._to_float),
+                    _ParameterSpec("Angle", self._to_float, unit="degrees", placeholder="0.0"),
+                    _ParameterSpec("Speed", self._to_float, unit="degrees/s", placeholder="1.0"),
                 ),
                 executor=self._execute_set_spray_gun_angle,
             ),
             "demo": _CommandSpec(
+                id="demo",
+                label="Demo",
+                description="Run demo action",
                 parameters=(
-                    _ParameterSpec("Gimbal Angle", self._to_float),
-                    _ParameterSpec("Gimbal Speed", self._to_float),
-                    _ParameterSpec("Cable Length", self._to_float),
-                    _ParameterSpec("Cable Speed", self._to_float),
-                    _ParameterSpec("Force Y", self._to_float),
+                    _ParameterSpec("Gimbal Angle", self._to_float, unit="degrees", placeholder="0.0"),
+                    _ParameterSpec("Gimbal Speed", self._to_float, unit="degrees/s", placeholder="1.0"),
+                    _ParameterSpec("Cable Length", self._to_float, unit="m", placeholder="1.0"),
+                    _ParameterSpec("Cable Speed", self._to_float, unit="m/s", placeholder="0.5"),
+                    _ParameterSpec("Force Y", self._to_float, unit="N", placeholder="0.0"),
                 ),
                 executor=self._execute_demo,
             ),
             "winch_control": _CommandSpec(
+                id="winch_control",
+                label="Winch Control",
+                description="Control winch movement",
                 parameters=(
-                    _ParameterSpec("Distance", self._to_int),
-                    _ParameterSpec("Speed", self._to_int),
-                    _ParameterSpec("Acceleration", self._to_int),
+                    _ParameterSpec("Distance", self._to_int, unit="mm", placeholder="0"),
+                    _ParameterSpec("Speed", self._to_int, unit="mm/s", placeholder="500"),
+                    _ParameterSpec("Acceleration", self._to_int, unit="RPM/s", placeholder="30"),
                 ),
                 executor=self._execute_winch_control,
             ),
             "frequency_tap": _CommandSpec(
+                id="frequency_tap",
+                label="Frequency Tap",
+                description="Start Frequency Tap",
                 parameters=(
-                    _ParameterSpec("Power", self._to_float),
-                    _ParameterSpec("Period", self._to_float),
+                    _ParameterSpec("Power", self._to_float, unit="%", placeholder="1.0"),
+                    _ParameterSpec("Period", self._to_float, unit="s", placeholder="1.0"),
                 ),
                 executor=self._execute_frequency_tap,
             ),
             "tap_once": _CommandSpec(
-                parameters=(_ParameterSpec("Power", self._to_float),),
+                id="tap_once",
+                label="Tap Once",
+                description="Tap once",
+                parameters=(_ParameterSpec("Power", self._to_float, unit="%", placeholder="1.0"),),
                 executor=self._execute_tap_once,
             ),
             "extend_arm": _CommandSpec(
-                parameters=(_ParameterSpec("Length", self._to_int),),
+                id="extend_arm",
+                label="Extend Arm",
+                description="Extend the robotic arm",
+                parameters=(_ParameterSpec("Length", self._to_int, unit="mm", placeholder="1.0"),),
                 executor=self._execute_extend_arm,
             ),
         }
+        # English labels → ids for one-release compat (executeCommand accepts either).
         self._command_aliases: dict[str, str] = {
-            "Set Spray Gun Angle": "spray_gun_angle",
-            "Demo": "demo",
-            "Winch Control": "winch_control",
-            "Frequency Tap": "frequency_tap",
-            "Tap Once": "tap_once",
-            "Extend Arm": "extend_arm",
+            spec.label: command_id for command_id, spec in self._command_specs.items()
         }
+        self._catalog_cache: list[dict[str, Any]] = self._build_catalog()
+
+    def _build_catalog(self) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for command_id, spec in self._command_specs.items():
+            rows.append(
+                {
+                    "id": command_id,
+                    "label": spec.label,
+                    "description": spec.description,
+                    "supported": spec.supported,
+                    "parameters": [
+                        {
+                            "name": p.name,
+                            "type": p.type,
+                            "unit": p.unit,
+                            "placeholder": p.placeholder,
+                            "options": list(p.options),
+                        }
+                        for p in spec.parameters
+                    ],
+                }
+            )
+        return rows
+
+    @Property("QVariantList", constant=True)
+    def commandCatalog(self) -> list[dict[str, Any]]:
+        """Form catalog for CommandTab (id, label, description, supported, parameters)."""
+        return list(self._catalog_cache)
 
     def _resolve_command_id(self, command_name: str) -> str | None:
         if command_name in self._command_specs:
-            return command_name
-        return self._command_aliases.get(command_name)
+            spec = self._command_specs[command_name]
+            return command_name if spec.supported else None
+        alias_id = self._command_aliases.get(command_name)
+        if alias_id is None:
+            return None
+        return alias_id if self._command_specs[alias_id].supported else None
 
     @Slot(str, result=bool)
     def isCommandSupported(self, command_name: str) -> bool:
@@ -121,11 +183,12 @@ class ManualCommandHandler(QObject):
         except ValueError as exc:
             return self._fail(str(exc))
 
+        display_name = self._command_specs[command_id].label
         result = self._command_specs[command_id].executor(parameters)
         if result is False:
-            return self._fail(f"Command '{command_name}' was rejected by the backend")
+            return self._fail(f"Command '{display_name}' was rejected by the backend")
 
-        message = f"Command sent: {command_name}"
+        message = f"Command sent: {display_name}"
         self._logger.info(message)
         self.operation_result.emit(True, message)
         return True

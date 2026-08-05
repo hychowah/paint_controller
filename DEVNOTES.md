@@ -1,6 +1,13 @@
 # Development Notes
 
 ---
+### 2026-08-05 - TD-052 command/tuning form catalogs Python-owned
+
+**Goal**: Move command and tuning form schemas out of QML; generic forms only.
+**Result**: ✅ Slices A–C. `commandCatalog` / `parameterSets` + `sendParameterSet`; integrity ban on QML literals; TD-052 resolved.
+**Files**: `handlers/manual_commands.py`, `CommandTab.qml`, `models/tuning_actions.py`, `PageTuning.qml`, `tests/test_form_schema_ownership.py`, smoke fakes.
+
+---
 ### 2026-08-05 - Ousterhout change-amplification slices (plan 03)
 
 **Goal**: Reduce cross-layer contract duplication; implement plan slices 5→1→2→3→3b→4 with review constraints.

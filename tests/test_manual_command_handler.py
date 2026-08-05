@@ -64,7 +64,25 @@ def test_is_command_supported_distinguishes_live_and_unimplemented_commands() ->
     handler, _teensy, _winch, _logger, _results = _build_handler()
 
     assert handler.isCommandSupported("Demo") is True
+    assert handler.isCommandSupported("demo") is True
     assert handler.isCommandSupported("Move to Position") is False
+
+
+def test_command_catalog_is_python_sot_without_qml_phantoms() -> None:
+    handler, _teensy, _winch, _logger, _results = _build_handler()
+    catalog = handler.commandCatalog
+    labels = {row["label"] for row in catalog}
+    ids = {row["id"] for row in catalog}
+
+    assert "Move to Position" not in labels
+    assert "Set Spray Gun Angle" in labels
+    assert "spray_gun_angle" in ids
+    for row in catalog:
+        assert row["supported"] is True
+        assert isinstance(row["parameters"], list)
+        for param in row["parameters"]:
+            assert "name" in param and "type" in param and "unit" in param
+            assert "placeholder" in param
 
 
 def test_execute_set_spray_gun_angle_coerces_float_parameters() -> None:
