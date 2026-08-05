@@ -3,8 +3,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 import "../pages/status"
-import "../features/video"
-import "../features/systemcontrol"
 import "../overlays"
 
 /**
@@ -71,19 +69,35 @@ Window {
         lidarStatus: multiScreenWindow.lidarStatusModel
     }
     
-    // SystemControlMenu appears on this screen when in dual-monitor mode
-    SystemControlWorkspace {
+    // Shared dual-surface overlay composition (TD-053). Host computes secondary flags.
+    ShellOverlayStack {
+        id: shellOverlayStack
         anchors.fill: parent
-        id: systemControlMenuSecondary
-        objectName: "systemControlMenuSecondary"
-        z: overlayHost ? overlayHost.system_control_layer : 1001
-        showOverlay: multiScreenWindow.overlayControllerModel.show_overlay
-        activeMenu: multiScreenWindow.overlayControllerModel.active_menu
+        systemControlVisible: overlayHost
+            ? overlayHost.system_control_on_secondary_surface
+            : (shellState ? shellState.show_system_control_on_secondary_surface : true)
+        joystickVisible: overlayHost ? overlayHost.joystick_overlay_on_secondary_surface : false
+        emergencyVisible: overlayHost ? overlayHost.emergency_overlay_on_secondary_surface : false
+        videoFullscreenActive: overlayHost
+            ? (overlayHost.video_fullscreen_active && overlayHost.video_fullscreen_on_secondary_surface)
+            : false
+        systemControlObjectName: "systemControlMenuSecondary"
+        joystickObjectName: "joystickOverlaySecondary"
+        videoFullscreenObjectName: "videoFullscreenOverlaySecondary"
+        emergencyObjectName: "emergencyOverlaySecondary"
+        systemControlLayer: overlayHost ? overlayHost.system_control_layer : 1001
+        joystickLayer: overlayHost ? overlayHost.joystick_overlay_layer : 1000
+        videoFullscreenLayer: overlayHost ? overlayHost.video_fullscreen_layer : 500
+        emergencyLayer: overlayHost ? overlayHost.emergency_overlay_layer : 3000
+        overlayController: multiScreenWindow.overlayControllerModel
         systemControlServices: multiScreenWindow.systemControlServicesModel
         recordingStatus: multiScreenWindow.recordingStatusModel
         wheelStatus: multiScreenWindow.wheelStatusModel
         winchStatus: multiScreenWindow.winchStatusModel
         teensyStatus: multiScreenWindow.teensyStatusModel
+        valveStatus: multiScreenWindow.valveStatusModel
+        lidarStatus: multiScreenWindow.lidarStatusModel
+        videoRuntime: multiScreenWindow.videoRuntimeModel
         wheelActions: multiScreenWindow.wheelActionsModel
         winchActions: multiScreenWindow.winchActionsModel
         teensyActions: multiScreenWindow.teensyActionsModel
@@ -91,51 +105,10 @@ Window {
         systemActions: multiScreenWindow.systemActionsModel
         actionLegality: multiScreenWindow.actionLegalityModel
         settingsManager: multiScreenWindow.settingsManagerModel
-        overlayController: multiScreenWindow.overlayControllerModel
-        visible: overlayHost ? overlayHost.system_control_on_secondary_surface : (shellState ? shellState.show_system_control_on_secondary_surface : true)
-    }
-
-    JoystickOverlay {
-        anchors.fill: parent
-        id: joystickOverlaySecondary
-        objectName: "joystickOverlaySecondary"
-        z: overlayHost ? overlayHost.joystick_overlay_layer : 1000
-        showOverlay: multiScreenWindow.overlayControllerModel.show_overlay
-        leftSelectedIndex: multiScreenWindow.overlayControllerModel.left_selected_index
-        rightSelectedIndex: multiScreenWindow.overlayControllerModel.right_selected_index
-        activeMenu: multiScreenWindow.overlayControllerModel.active_menu
-        controlOptions: multiScreenWindow.overlayControllerModel.control_options
-        overlayController: multiScreenWindow.overlayControllerModel
-        visible: overlayHost ? overlayHost.joystick_overlay_on_secondary_surface : false
-    }
-
-    VideoFullscreenWorkspace {
-        anchors.fill: parent
-        id: videoFullscreenOverlaySecondary
-        objectName: "videoFullscreenOverlaySecondary"
-        z: overlayHost ? overlayHost.video_fullscreen_layer : 500
-        active: overlayHost ? (overlayHost.video_fullscreen_active && overlayHost.video_fullscreen_on_secondary_surface) : false
-        videoSource: overlayHost ? overlayHost.video_fullscreen_source : ""
-        workflowServices: multiScreenWindow.systemControlServicesModel
-        videoRuntime: multiScreenWindow.videoRuntimeModel
-        wheelStatus: multiScreenWindow.wheelStatusModel
-        winchStatus: multiScreenWindow.winchStatusModel
-        teensyStatus: multiScreenWindow.teensyStatusModel
-        valveStatus: multiScreenWindow.valveStatusModel
-        lidarStatus: multiScreenWindow.lidarStatusModel
-        overlayController: multiScreenWindow.overlayControllerModel
         baseTopViewStatus: multiScreenWindow.baseTopViewStatusModel
         baseTopViewActions: multiScreenWindow.baseTopViewActionsModel
-        actionLegality: multiScreenWindow.actionLegalityModel
-    }
-
-    EmergencyOverlay {
-        anchors.fill: parent
-        id: emergencyOverlaySecondary
-        objectName: "emergencyOverlaySecondary"
-        z: overlayHost ? overlayHost.emergency_overlay_layer : 3000
         qtBridge: multiScreenWindow.qtBridgeModel
-        visible: overlayHost ? overlayHost.emergency_overlay_on_secondary_surface : false
+        videoSource: overlayHost ? overlayHost.video_fullscreen_source : ""
     }
     
     Component.onCompleted: {

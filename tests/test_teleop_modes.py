@@ -192,3 +192,26 @@ def test_joystick_control_enum_matches_catalog() -> None:
     assert side <= enum_values
     # No stray enum values outside catalog populations.
     assert enum_values <= (menu | side)
+
+
+def test_wheel_travel_display_metadata_from_catalog() -> None:
+    configs = teleop_modes.build_control_configs(_sample_constants())
+    for label in ("Wheel Travel Left", "Wheel Travel Right"):
+        assert configs[label].display_decimals == 0
+        assert configs[label].display_unit == "mm"
+
+
+def test_special_handler_keys_remain_explicit_in_engine_source() -> None:
+    """SPECIAL physics stays as explicit dict keys, not a dynamic registry."""
+    from pathlib import Path
+
+    engine_src = (
+        Path(__file__).resolve().parent.parent
+        / "python"
+        / "paint_controller"
+        / "handlers"
+        / "continuous_teleop_engine.py"
+    ).read_text()
+    assert "_control_handlers = {" in engine_src
+    for key in teleop_modes.SPECIAL_HANDLER_KEYS:
+        assert f'"{key}"' in engine_src

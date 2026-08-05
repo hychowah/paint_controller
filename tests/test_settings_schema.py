@@ -62,23 +62,33 @@ def test_schema_type_values_are_supported() -> None:
 
 
 def test_signal_property_pairs_match_schema_entries() -> None:
-    tree = _read_settings_tree()
+    """Exposed keys get one Signal+Property each via schema-driven class-body install."""
+    from paint_controller.core.settings import (
+        SettingsManager,
+        qml_exposed_setting_keys,
+        should_expose_qml_property,
+    )
+
     schema = _get_schema()
-    signal_types = {"float", "int", "bool", "list"}
+    expected_keys = {key for key, meta in schema.items() if should_expose_qml_property(key, meta)}
+    assert set(qml_exposed_setting_keys()) == expected_keys
 
-    generated_keys = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call):
-            func = node.func
-            if isinstance(func, ast.Name) and func.id == "_make_setting_pair":
-                if node.args and isinstance(node.args[0], ast.Constant):
-                    generated_keys.add(node.args[0].value)
+    for key in expected_keys:
+        assert hasattr(SettingsManager, key), f"SettingsManager missing Property for {key}"
+        assert hasattr(SettingsManager, f"{key}_changed"), f"SettingsManager missing Signal for {key}"
 
-    expected_keys = {key for key, meta in schema.items() if meta["type"] in signal_types}
-    missing = expected_keys - generated_keys
-    extra = generated_keys - expected_keys
-    assert not missing, f"Schema entries without _make_setting_pair: {missing}"
-    assert not extra, f"_make_setting_pair calls without schema entries: {extra}"
+    # Chrome / non-property schema keys must not become normal QML properties.
+    assert should_expose_qml_property("ui_section_states", schema["ui_section_states"]) is False
+    assert not hasattr(SettingsManager, "ui_section_states") or not callable(
+        getattr(type(SettingsManager), "ui_section_states", None)
+    )
+
+
+def test_each_exposed_setting_has_distinct_notify_signal() -> None:
+    from paint_controller.core.settings import SettingsManager, qml_exposed_setting_keys
+
+    signals = [getattr(SettingsManager, f"{key}_changed") for key in qml_exposed_setting_keys()]
+    assert len(signals) == len(set(id(s) for s in signals)), "Per-key NOTIFY signals must be distinct"
 
 
 def test_legality_schema_defaults_off_for_development() -> None:

@@ -167,6 +167,8 @@ _SETTINGS_SCHEMA: dict[str, dict[str, Any]] = {
         "type": "dict",
         "requires_restart": False,
         "description": "Collapsed/expanded state of UI sections",
+        # Chrome-only: use getSectionExpanded/setSectionExpanded; not a QML Property.
+        "expose_qml_property": False,
     },
     "base_top_view_zoom": {
         "default": 0.51,
@@ -259,17 +261,51 @@ _SETTINGS_SCHEMA: dict[str, dict[str, Any]] = {
         "type": "bool",
         "requires_restart": False,
         "description": "Enforce heartbeat-state action legality gate (not QML-writable; force via PAINT_ACTION_LEGALITY_ENFORCED env)",
+        # Notify-only Property for observers; never invent a normal QML apply path.
+        "expose_qml_property": True,
+        "qml_writable": False,
     },
 }
 
+# Types that can become per-key Signal + Property pairs (one NOTIFY each).
 _SIGNAL_TYPES = {"float": float, "int": int, "bool": bool, "list": object}
 _PROPERTY_TYPES = {"float": float, "int": int, "bool": bool, "list": "QVariantList"}
+_EXPOSABLE_PROPERTY_TYPES = frozenset(_PROPERTY_TYPES)
+
+# Route subtitle templates for Settings hub cards (schema keys only; no layout).
+_ROUTE_SUMMARY_TEMPLATES: dict[str, str] = {
+    "winch": "Max speed: {winch_max_speed_mmps:.1f} mm/s",
+    "wheels": "Track max: {track_max_speed:.1f}, travel max: {wheel_travel_max:.0f} mm",
+    "camera": "Base-top zoom: {base_top_view_zoom:.2f}; full calibration remains overlay-primary",
+    "arm": "Retract: {arm_retract_length} mm, extend: {arm_extend_length} mm",
+}
+
+
+def should_expose_qml_property(key: str, meta: dict[str, Any] | None = None) -> bool:
+    """Whether ``SettingsManager`` installs a per-key notify-only QML Property."""
+    schema = meta if meta is not None else _SETTINGS_SCHEMA.get(key)
+    if not schema:
+        return False
+    if schema.get("expose_qml_property") is False:
+        return False
+    if key in _UI_CHROME_KEYS:
+        return False
+    if schema["type"] not in _EXPOSABLE_PROPERTY_TYPES:
+        return False
+    # Explicit False wins; missing defaults to True for exposable types.
+    return schema.get("expose_qml_property", True) is not False
+
+
+def qml_exposed_setting_keys() -> tuple[str, ...]:
+    """Schema keys that receive a per-key Signal + Property on SettingsManager."""
+    return tuple(key for key, meta in _SETTINGS_SCHEMA.items() if should_expose_qml_property(key, meta))
 
 
 def _make_setting_pair(key):
     """Create a (Signal, read-only Property) pair for a setting key from the schema.
 
     Properties are notify-only (TD-036): QML must use gated apply* slots to write.
+    One Signal instance per key — never share a blanket settingsChanged NOTIFY.
     """
     schema = _SETTINGS_SCHEMA[key]
     sig_type = _SIGNAL_TYPES[schema["type"]]
@@ -313,35 +349,41 @@ class SettingsManager(QObject):
 
     _settings_schema = _SETTINGS_SCHEMA
 
-    # Setting signals and properties (auto-generated from schema via _make_setting_pair)
-    winch_max_speed_mmps_changed, winch_max_speed_mmps = _make_setting_pair("winch_max_speed_mmps")
-    track_max_speed_changed, track_max_speed = _make_setting_pair("track_max_speed")
-    track_min_speed_changed, track_min_speed = _make_setting_pair("track_min_speed")
-    thrust_force_changed, thrust_force = _make_setting_pair("thrust_force")
-    thrust_ramp_rate_changed, thrust_ramp_rate = _make_setting_pair("thrust_ramp_rate")
-    valve_turn_max_changed, valve_turn_max = _make_setting_pair("valve_turn_max")
-    arm_retract_length_changed, arm_retract_length = _make_setting_pair("arm_retract_length")
-    arm_extend_length_changed, arm_extend_length = _make_setting_pair("arm_extend_length")
-    wheel_travel_max_changed, wheel_travel_max = _make_setting_pair("wheel_travel_max")
-    wheel_travel_rate_changed, wheel_travel_rate = _make_setting_pair("wheel_travel_rate")
-    wheel_travel_rpm_changed, wheel_travel_rpm = _make_setting_pair("wheel_travel_rpm")
-    emergency_hold_duration_s_changed, emergency_hold_duration_s = _make_setting_pair("emergency_hold_duration_s")
-    base_top_view_zoom_changed, base_top_view_zoom = _make_setting_pair("base_top_view_zoom")
-    base_top_view_offset_x_changed, base_top_view_offset_x = _make_setting_pair("base_top_view_offset_x")
-    base_top_view_offset_y_changed, base_top_view_offset_y = _make_setting_pair("base_top_view_offset_y")
-    base_top_view_crop_enabled_changed, base_top_view_crop_enabled = _make_setting_pair("base_top_view_crop_enabled")
-    base_top_view_crop_width_ratio_changed, base_top_view_crop_width_ratio = _make_setting_pair(
-        "base_top_view_crop_width_ratio"
-    )
-    base_top_view_crop_center_x_changed, base_top_view_crop_center_x = _make_setting_pair("base_top_view_crop_center_x")
-    base_top_view_k1_changed, base_top_view_k1 = _make_setting_pair("base_top_view_k1")
-    base_top_view_k2_changed, base_top_view_k2 = _make_setting_pair("base_top_view_k2")
-    base_top_view_k3_changed, base_top_view_k3 = _make_setting_pair("base_top_view_k3")
-    base_top_view_k4_changed, base_top_view_k4 = _make_setting_pair("base_top_view_k4")
-    base_top_view_src_points_changed, base_top_view_src_points = _make_setting_pair("base_top_view_src_points")
-    action_legality_enforced_changed, action_legality_enforced = _make_setting_pair("action_legality_enforced")
+    # Schema-driven per-key Signal + Property (one NOTIFY each). Class-body loop so
+    # PySide6 sees descriptors as class attributes. Annotations below keep pyright/IDE.
+    for _setting_key in qml_exposed_setting_keys():
+        _signal, _prop = _make_setting_pair(_setting_key)
+        locals()[f"{_setting_key}_changed"] = _signal
+        locals()[_setting_key] = _prop
+    del _setting_key, _signal, _prop  # noqa: F821 — loop temps only
 
-    # Generic signals
+    # Explicit annotations for schema-exposed properties (stubs for type checkers).
+    winch_max_speed_mmps: float
+    track_max_speed: float
+    track_min_speed: float
+    thrust_force: float
+    thrust_ramp_rate: float
+    valve_turn_max: float
+    arm_retract_length: int
+    arm_extend_length: int
+    wheel_travel_max: float
+    wheel_travel_rate: float
+    wheel_travel_rpm: int
+    emergency_hold_duration_s: float
+    base_top_view_zoom: float
+    base_top_view_offset_x: float
+    base_top_view_offset_y: float
+    base_top_view_crop_enabled: bool
+    base_top_view_crop_width_ratio: float
+    base_top_view_crop_center_x: float
+    base_top_view_k1: float
+    base_top_view_k2: float
+    base_top_view_k3: float
+    base_top_view_k4: float
+    base_top_view_src_points: list
+    action_legality_enforced: bool
+
+    # Generic signals (not a substitute for per-key NOTIFY)
     setting_changed = Signal(str, object)
     operation_result = Signal(bool, str)
     setting_saved = Signal(str, object, str)
@@ -824,19 +866,31 @@ class SettingsManager(QObject):
 
     @Slot(str, result=str)
     def getRouteSummary(self, route_key: str) -> str:
-        """Return the current subtitle text for a settings route summary card."""
-        if route_key == "winch":
-            return f"Max speed: {self.getFloat('winch_max_speed_mmps'):.1f} mm/s"
-        if route_key == "wheels":
-            return (
-                f"Track max: {self.getFloat('track_max_speed'):.1f}, "
-                f"travel max: {self.getFloat('wheel_travel_max'):.0f} mm"
-            )
-        if route_key == "camera":
-            return f"Base-top zoom: {self.getFloat('base_top_view_zoom'):.2f}; full calibration remains overlay-primary"
-        if route_key == "arm":
-            return f"Retract: {self.getInt('arm_retract_length')} mm, extend: {self.getInt('arm_extend_length')} mm"
-        return ""
+        """Return the current subtitle text for a settings route summary card.
+
+        Templates live in ``_ROUTE_SUMMARY_TEMPLATES`` and only reference schema keys.
+        """
+        template = _ROUTE_SUMMARY_TEMPLATES.get(route_key)
+        if not template:
+            return ""
+        values: dict[str, Any] = {}
+        for key, meta in _SETTINGS_SCHEMA.items():
+            if key not in template:
+                continue
+            typ = meta["type"]
+            if typ == "float":
+                values[key] = self.getFloat(key)
+            elif typ == "int":
+                values[key] = self.getInt(key)
+            elif typ == "bool":
+                values[key] = bool(self.get(key, meta["default"]))
+            else:
+                values[key] = self.get(key, meta["default"])
+        try:
+            return template.format(**values)
+        except (KeyError, ValueError) as exc:
+            logger.warning("Route summary template failed for %s: %s", route_key, exc)
+            return ""
 
     @Slot(result=str)
     def getCameraCalibrationSummary(self) -> str:

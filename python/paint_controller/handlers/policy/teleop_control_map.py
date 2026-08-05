@@ -22,6 +22,9 @@ class ControlConfig:
     max_value: float = float("inf")
     value_cast: ValueCast = "float"
     bidirectional: bool = False  # True for controls that support negative values
+    # Simple display formatting (ControlProcessor); special modes keep explicit code.
+    display_decimals: int | None = 2  # None = no float formatting (use str/value_cast)
+    display_unit: str = ""  # e.g. "mm"; empty = no unit suffix
 
 
 @dataclass(frozen=True)

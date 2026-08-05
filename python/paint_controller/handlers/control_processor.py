@@ -235,6 +235,20 @@ class ControlProcessor(QObject):
         except Exception as e:
             logger.error("Error processing input: %s", e)
 
+    def _format_simple_value(self, mode: str, value: object) -> str:
+        """Data-driven scalar formatting from ControlConfig; special cases stay explicit."""
+        config = self._engine.controls.get(mode) if hasattr(self, "_engine") else None
+        unit = config.display_unit if config is not None else ""
+        decimals = config.display_decimals if config is not None else 2
+        if decimals is None:
+            return f"{value}{unit}"
+        if isinstance(value, (int, float)):
+            return f"{float(value):.{decimals}f}{unit}"
+        try:
+            return f"{float(str(value)):.{decimals}f}{unit}"
+        except (TypeError, ValueError):
+            return f"{value}{unit}"
+
     def _update_display(self) -> None:
         if not self._can_send_message():
             return
@@ -247,31 +261,27 @@ class ControlProcessor(QObject):
                 return "None", "None", ""
             mode = str(cv[f"{side}_mode"])
             value = cv[f"{side}_value"]
+            # Special cases kept explicit (winch lock, track raw, EF Force tuples).
             if mode == "Winch Speed" and self._is_winch_control_locked():
-                part = f"{mode} {value:.2f} (LOCKED)" if mode else "None"
+                part = f"{mode} {self._format_simple_value(mode, value)} (LOCKED)" if mode else "None"
+                val_str = self._format_simple_value(mode, value)
             elif mode in ["Track Control Left", "Track Control Right"]:
                 part = f"{mode} {value}" if mode else "None"
-            elif mode in ["Wheel Travel Left", "Wheel Travel Right"]:
-                part = f"{mode} {value:.0f}mm"
+                val_str = str(value)
             elif mode == "EF Force":
                 if isinstance(value, tuple):
-                    part = f"{mode} Fx:{value[0]:.2f} Fy:{value[1]:.2f}"
+                    val_str = f"Fx:{value[0]:.2f} Fy:{value[1]:.2f}"
+                    part = f"{mode} {val_str}"
                 else:
-                    part = f"{mode} {value:.2f}"
+                    val_str = self._format_simple_value(mode, value)
+                    part = f"{mode} {val_str}"
             else:
-                try:
-                    part = f"{mode} {float(value):.2f}" if mode else "None"
-                except (TypeError, ValueError):
-                    part = f"{mode} {value}" if mode else "None"
-            return part, mode, str(value) if not isinstance(value, tuple) else f"{value}"
+                val_str = self._format_simple_value(mode, value) if mode else ""
+                part = f"{mode} {val_str}" if mode else "None"
+            return part, mode, val_str
 
         left_part, left_mode_s, left_val = format_side(left_mode, "left")
         right_part, right_mode_s, right_val = format_side(right_mode, "right")
-        # Mirror prior dual-side formatting for EF Force tuples
-        if left_mode != "None" and cv["left_mode"] == "EF Force" and isinstance(cv["left_value"], tuple):
-            left_val = f"Fx:{cv['left_value'][0]:.2f} Fy:{cv['left_value'][1]:.2f}"
-        if right_mode != "None" and cv["right_mode"] == "EF Force" and isinstance(cv["right_value"], tuple):
-            right_val = f"Fx:{cv['right_value'][0]:.2f} Fy:{cv['right_value'][1]:.2f}"
 
         self.left_control_mode = left_mode_s if left_mode != "None" else "None"
         self.left_control_value = left_val if left_mode != "None" else ""

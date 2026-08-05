@@ -1,3 +1,4 @@
 EmergencyOverlay 1.0 EmergencyOverlay.qml
 MultiScreenListUI 1.0 MultiScreenListUI.qml
 JoystickOverlay 1.0 JoystickOverlay.qml
+ShellOverlayStack 1.0 ShellOverlayStack.qml

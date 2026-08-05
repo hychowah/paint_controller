@@ -7,7 +7,23 @@ from typing import Any, Protocol
 from PySide6.QtCore import QObject, Signal, Slot
 
 from paint_controller.models.action_keys import ActionKey
+from paint_controller.models.action_schema import ActionSchema, schema_map
 from paint_controller.models.gated_action_mixin import GatedActionMixin
+
+ACTION_SCHEMAS = schema_map(
+    ActionSchema(
+        ActionKey.TUNING_SHORT_YAW_PID,
+        "Short Yaw PID",
+        "tuning-calibration",
+        "tuningActions.setShortYawPid",
+    ),
+    ActionSchema(
+        ActionKey.TUNING_LONG_YAW_PID,
+        "Long Yaw PID",
+        "tuning-calibration",
+        "tuningActions.setLongYawPid",
+    ),
+)
 
 
 class SupportsTuningTeensy(Protocol):

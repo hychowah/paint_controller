@@ -7,7 +7,29 @@ from typing import Any
 from PySide6.QtCore import QObject, Signal, Slot
 
 from paint_controller.models.action_keys import ActionKey
+from paint_controller.models.action_schema import ActionSchema, schema_map
 from paint_controller.models.gated_action_mixin import GatedActionMixin
+
+ACTION_SCHEMAS = schema_map(
+    ActionSchema(
+        ActionKey.CAMERA_BASE_TOP_VIEW_LIVE_ADJUSTMENTS,
+        "Base Top View Live Adjustments",
+        "overlay-primary-calibration",
+        "baseTopViewActions",
+    ),
+    ActionSchema(
+        ActionKey.CAMERA_BASE_TOP_VIEW_SAVE,
+        "Base Top View Save",
+        "overlay-primary-calibration",
+        "baseTopViewActions.saveSettings",
+    ),
+    ActionSchema(
+        ActionKey.CAMERA_BASE_TOP_VIEW_RESET,
+        "Base Top View Reset",
+        "overlay-primary-calibration",
+        "baseTopViewActions.resetToDefaults",
+    ),
+)
 
 
 class BaseTopViewActions(QObject, GatedActionMixin):

@@ -7,8 +7,24 @@ from typing import Any
 from PySide6.QtCore import QObject, Signal, Slot
 
 from paint_controller.models.action_keys import ActionKey
+from paint_controller.models.action_schema import ActionSchema, schema_map
 from paint_controller.models.gated_action_mixin import GatedActionMixin
 from paint_controller.ports.wheel import SupportsWheelCommands
+
+ACTION_SCHEMAS = schema_map(
+    ActionSchema(
+        ActionKey.WHEEL_ENABLE,
+        "Wheel Enable Toggle",
+        "status-admin",
+        "wheelActions.setEnabled",
+    ),
+    ActionSchema(
+        ActionKey.WHEEL_RESET_POSITION,
+        "Reset Wheel Position",
+        "maintenance-preset",
+        "wheelActions.resetPosition",
+    ),
+)
 
 
 class WheelActions(QObject, GatedActionMixin):

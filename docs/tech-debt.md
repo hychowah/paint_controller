@@ -24,7 +24,8 @@ When the goal is **software architecture toward a professional Qt program** (not
 | — | **TD-056** | **Resolved 2026-07-29** — `RosTelemetryBridge` + wheel/winch main-thread apply (see Resolved). Residual: heartbeat restore fields; Teensy stays lock+snapshot |
 | — | **TD-054** | **Resolved 2026-07-29** — RosCommandBus + continuous-motion latch (see Resolved table) |
 | — | **TD-055** | Landed Wave 1+2; residual only (see Active Debt). Not the primary next program track. |
-| — | **TD-052 / TD-053** | When touching tuning/commands or dual-surface overlays |
+| — | **TD-052** | When touching tuning/commands (TD-053 dual-surface overlay stack resolved 2026-08-05) |
+| — | **TD-053** | **Resolved 2026-08-05** — `ShellOverlayStack.qml` single composition (see Resolved) |
 | — | **TD-002 / TD-016** | Opportunistic chrome only; out of pure program track |
 | — | **TD-040 residual** | Optional: `video_stream` / `base_top_view_service` pyright include (deferred 2026-07-29) |
 | — | **TD-041 / TD-042 / TD-043 / TD-051** | Resolved 2026-07-29 (hygiene band) |
@@ -67,17 +68,7 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 ---
 
-### TD-053 — Dual-surface overlay composition duplication
-**Area**: QML shell composition
-**Priority**: low
-**Effort**: medium
-**Architecture leverage**: medium *for shell contracts*
-**Why it matters**: `MainWindow.qml` and `MultiScreenListUI.qml` each instantiate `SystemControlWorkspace`, `JoystickOverlay`, `VideoFullscreenWorkspace`, and `EmergencyOverlay` with parallel prop lists. `OverlayHostPolicy` / `ShellState` correctly own visibility and z; composition wiring is dual-maintained. Adding a required property (pairs with TD-048) is a two-file change with silent drift risk. Shell contracts are otherwise frozen — do not schedule as active program work unless a multi-surface change forces dual edits.
-**What to do**: Extract `ShellOverlayStack.qml` (or similar) taking surface/policy flags + models; both hosts become thin. Visibility remains driven by `overlayHost` flags.
-**Acceptance**: Overlay types appear once in composition QML; shell + multiscreen smokes green; status/command inject props not copy-pasted across hosts.
-**Files**: `qml/core/MainWindow.qml`, `qml/overlays/MultiScreenListUI.qml`, optional new stack QML under `qml/core/` or `qml/overlays/`
 
----
 
 ### TD-002 — Design-token adoption incomplete on page/admin islands
 **Area**: QML UI
@@ -106,6 +97,7 @@ When the goal is **software architecture toward a professional Qt program** (not
 
 | ID | Title | Resolved | Notes |
 |---|---|---|---|
+| TD-053 | Dual-surface overlay composition duplication | 2026-08-05 | `ShellOverlayStack.qml` with explicit injected visibility/active/objectName/z/models; `MainWindow` + `MultiScreenListUI` thin hosts; emergency dual-surface flags host-driven. Ousterhout plan Slice 5. Shell/import/notify smokes green |
 | TD-056 | ROS callback → Qt telemetry marshal | 2026-07-29 | `RosTelemetryBridge`; wheel/winch/lidar/heartbeat; later Teensy device-key bridge (user fields main-only). ARCHITECTURE §8 |
 | TD-054 | Concurrent ROS command I/O + post-halt motion latch | 2026-07-29 | RosCommandBus + latch + e-stop-before-teleop; later `bind_execution_stop` + play gate. Residual: in-flight workflow oneshot; UI stop local retract. ARCHITECTURE §8 |
 | TD-041 | Governance/doc hygiene: stale plan entries, KNOWLEDGE mis-citation | 2026-07-29 | Frozen route ownership → ShellRouter; AGENTS launch/ fixed; KNOWLEDGE singleton note accurate for this repo; progress checklist no longer offers Phase 7 |

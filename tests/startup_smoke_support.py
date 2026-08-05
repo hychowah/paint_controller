@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
@@ -957,6 +958,63 @@ def _settings_manager(monkeypatch, tmp_path: Path) -> SettingsManager:
     return SettingsManager()
 
 
+def _passthrough_fake_builders(
+    *,
+    settings_manager: QObject,
+) -> dict[str, Callable[[], QObject]]:
+    """Builders for BundleProp/PortsProp context names only (not WrapperProp).
+
+    Driven by CONTEXT_PROPERTIES so new passthrough roots fail loud if the
+    smoke bag is not updated. Wrapper composites keep explicit fakes below.
+    """
+    return {
+        "qtBridge": FakeBackend,
+        "shellState": FakeShellState,
+        "overlayHost": lambda: FakeOverlayHost(
+            video_fullscreen_active=True,
+            video_fullscreen_source="image://base_front_live/frame",
+        ),
+        "actionLegality": FakeActionLegality,
+        "recordingActions": FakeRecordingActions,
+        "wheelActions": FakeWheelActions,
+        "teensyActions": FakeTeensyActions,
+        "systemActions": FakeSystemActions,
+        "overlayController": FakeOverlayController,
+        "warningHandler": lambda: DynamicObject(active_warning=""),
+        "winchActions": FakeWinchActions,
+        "tuningActions": FakeTuningActions,
+        "baseTopViewActions": FakeBaseTopViewActions,
+        "shellRouter": FakeShellRouter,
+        "settingsManager": lambda: settings_manager,
+    }
+
+
+def build_passthrough_context_fakes(settings_manager: QObject) -> dict[str, QObject]:
+    """Instantiate fakes for every BundleProp/PortsProp in CONTEXT_PROPERTIES."""
+    from paint_controller.core.qml_context_composer import (
+        CONTEXT_PROPERTIES,
+        BundleProp,
+        PortsProp,
+    )
+
+    builders = _passthrough_fake_builders(settings_manager=settings_manager)
+    result: dict[str, QObject] = {}
+    missing: list[str] = []
+    for prop in CONTEXT_PROPERTIES:
+        if not isinstance(prop, (BundleProp, PortsProp)):
+            continue
+        builder = builders.get(prop.name)
+        if builder is None:
+            missing.append(prop.name)
+            continue
+        result[prop.name] = builder()
+    if missing:
+        raise AssertionError(
+            f"No smoke fake builder for BundleProp/PortsProp context names: {missing}"
+        )
+    return result
+
+
 def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
     settings_manager = _settings_manager(monkeypatch, tmp_path)
     workflow_runner = FakeWorkFlowRunner()
@@ -1071,38 +1129,31 @@ def _context_objects(monkeypatch, tmp_path: Path) -> dict[str, QObject]:
         endEffectorIpAddress="10.0.0.3",
     )
 
-    return {
-        "qtBridge": FakeBackend(),
-        "shellState": FakeShellState(),
-        "overlayHost": FakeOverlayHost(
-            video_fullscreen_active=True,
-            video_fullscreen_source="image://base_front_live/frame",
-        ),
-        "overlayController": FakeOverlayController(),
-        "actionLegality": FakeActionLegality(),
-        "systemControlServices": FakeSystemControlServices(
-            workflow_runner=workflow_runner,
-            workflow_editor=workflow_editor,
-            manual_command_handler=manual_command_handler,
-        ),
-        "videoRuntime": video_runtime,
-        "recordingStatus": recording_status,
-        "wheelStatus": wheel_status,
-        "winchStatus": winch_status,
-        "teensyStatus": teensy_status,
-        "valveStatus": valve_status,
-        "lidarStatus": lidar_status,
-        "shellConnectivityStatus": shell_connectivity_status,
-        "warningHandler": DynamicObject(active_warning=""),
-        "wheelActions": FakeWheelActions(),
-        "winchActions": FakeWinchActions(),
-        "recordingActions": FakeRecordingActions(),
-        "teensyActions": FakeTeensyActions(),
-        "systemActions": FakeSystemActions(),
-        "launcherAdmin": FakeLauncherAdmin(),
-        "shellRouter": FakeShellRouter(),
-        "settingsManager": settings_manager,
-        "tuningActions": FakeTuningActions(),
-        "baseTopViewActions": FakeBaseTopViewActions(),
-        "baseTopViewStatus": FakeBaseTopViewStatus(),
-    }
+    # BundleProp/PortsProp fakes are schema-driven; WrapperProp composites stay explicit.
+    objects = build_passthrough_context_fakes(settings_manager)
+    objects.update(
+        {
+            "systemControlServices": FakeSystemControlServices(
+                workflow_runner=workflow_runner,
+                workflow_editor=workflow_editor,
+                manual_command_handler=manual_command_handler,
+            ),
+            "videoRuntime": video_runtime,
+            "recordingStatus": recording_status,
+            "wheelStatus": wheel_status,
+            "winchStatus": winch_status,
+            "teensyStatus": teensy_status,
+            "valveStatus": valve_status,
+            "lidarStatus": lidar_status,
+            "shellConnectivityStatus": shell_connectivity_status,
+            "launcherAdmin": FakeLauncherAdmin(),
+            "baseTopViewStatus": FakeBaseTopViewStatus(),
+        }
+    )
+
+    from paint_controller.core.qml_context_composer import _EXPECTED_CONTEXT_PROPERTY_NAMES
+
+    missing_context = set(_EXPECTED_CONTEXT_PROPERTY_NAMES) - set(objects)
+    if missing_context:
+        raise AssertionError(f"Smoke context missing CONTEXT_PROPERTIES names: {sorted(missing_context)}")
+    return objects

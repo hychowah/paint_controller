@@ -14,8 +14,6 @@ import "../navigation"
 import "../components/displays"
 import "../components/popups"
 import "../overlays"
-import "../features/systemcontrol"
-import "../features/video"
 import "../overlays/lidar"
 import "../theme"
 
@@ -61,8 +59,8 @@ ApplicationWindow {
 
     property int sidebarWidth: CommonStyle.shellSidebarExpandedWidth
 
-    // Expose the video fullscreen overlay as a property
-    property alias videoFullscreenOverlay: videoFullscreenOverlay
+    // Expose the video fullscreen overlay as a property (re-export from shell stack)
+    property alias videoFullscreenOverlay: shellOverlayStack.videoFullscreenOverlay
 
     // Minimal QML-side mapping from route key to page component. The route
     // registry (order, titles, icons) lives in Python-owned shellRouter.
@@ -322,18 +320,41 @@ ApplicationWindow {
         }
     }
 
-    SystemControlWorkspace {
+    CustomPopup {
+        id: messagePopup
+    }
+
+    // Shared dual-surface overlay composition (TD-053). Host computes surface flags
+    // and home-route video policy; stack does not read root-context globals.
+    ShellOverlayStack {
+        id: shellOverlayStack
         anchors.fill: parent
-        id: systemControlMenu
-        objectName: "systemControlMenuMain"
-        z: overlayHost ? overlayHost.system_control_layer : 1001
-        showOverlay: mainWindow.overlayControllerModel.show_overlay
-        activeMenu: mainWindow.overlayControllerModel.active_menu
+        systemControlVisible: showSystemControlOnMainSurface
+        joystickVisible: showJoystickOverlayOnMainSurface
+        emergencyVisible: showEmergencyOverlayOnMainSurface
+        videoFullscreenActive: overlayHost
+            ? (overlayHost.video_fullscreen_active
+               && overlayHost.video_fullscreen_on_main_surface
+               && shellRouter
+               && shellRouter.currentRoute === "home")
+            : false
+        systemControlObjectName: "systemControlMenuMain"
+        joystickObjectName: "joystickOverlayMain"
+        videoFullscreenObjectName: "videoFullscreenOverlayMain"
+        emergencyObjectName: "emergencyOverlayMain"
+        systemControlLayer: overlayHost ? overlayHost.system_control_layer : 1001
+        joystickLayer: overlayHost ? overlayHost.joystick_overlay_layer : 1000
+        videoFullscreenLayer: overlayHost ? overlayHost.video_fullscreen_layer : 500
+        emergencyLayer: overlayHost ? overlayHost.emergency_overlay_layer : 3000
+        overlayController: mainWindow.overlayControllerModel
         systemControlServices: mainWindow.systemControlServicesModel
         recordingStatus: mainWindow.recordingStatusModel
         wheelStatus: mainWindow.wheelStatusModel
         winchStatus: mainWindow.winchStatusModel
         teensyStatus: mainWindow.teensyStatusModel
+        valveStatus: mainWindow.valveStatusModel
+        lidarStatus: mainWindow.lidarStatusModel
+        videoRuntime: mainWindow.videoRuntimeModel
         wheelActions: mainWindow.wheelActionsModel
         winchActions: mainWindow.winchActionsModel
         teensyActions: mainWindow.teensyActionsModel
@@ -341,57 +362,10 @@ ApplicationWindow {
         systemActions: mainWindow.systemActionsModel
         actionLegality: mainWindow.actionLegalityModel
         settingsManager: mainWindow.settingsManagerModel
-        overlayController: mainWindow.overlayControllerModel
-        visible: showSystemControlOnMainSurface
-    }
-
-    CustomPopup {
-        id: messagePopup
-    }
-
-    JoystickOverlay {
-        anchors.fill: parent
-        id: joystickOverlayMain
-        objectName: "joystickOverlayMain"
-        z: overlayHost ? overlayHost.joystick_overlay_layer : 1000
-        showOverlay: mainWindow.overlayControllerModel.show_overlay
-        leftSelectedIndex: mainWindow.overlayControllerModel.left_selected_index
-        rightSelectedIndex: mainWindow.overlayControllerModel.right_selected_index
-        activeMenu: mainWindow.overlayControllerModel.active_menu
-        controlOptions: mainWindow.overlayControllerModel.control_options
-        overlayController: mainWindow.overlayControllerModel
-        visible: showJoystickOverlayOnMainSurface
-    }
-
-    // Emergency Overlay - highest z-index to appear on top
-    EmergencyOverlay {
-        id: emergencyOverlay
-        objectName: "emergencyOverlayMain"
-        anchors.fill: parent
-        z: overlayHost ? overlayHost.emergency_overlay_layer : 3000
-        qtBridge: mainWindow.qtBridgeModel
-        visible: showEmergencyOverlayOnMainSurface
-    }
-
-    // Video Fullscreen Overlay - for fullscreen video with DJI-style overlay
-    VideoFullscreenWorkspace {
-        id: videoFullscreenOverlay
-        objectName: "videoFullscreenOverlayMain"
-        anchors.fill: parent
-        z: overlayHost ? overlayHost.video_fullscreen_layer : 500
-        active: overlayHost ? (overlayHost.video_fullscreen_active && overlayHost.video_fullscreen_on_main_surface && shellRouter && shellRouter.currentRoute === "home") : false
-        videoSource: overlayHost ? overlayHost.video_fullscreen_source : ""
-        workflowServices: mainWindow.systemControlServicesModel
-        videoRuntime: mainWindow.videoRuntimeModel
-        wheelStatus: mainWindow.wheelStatusModel
-        winchStatus: mainWindow.winchStatusModel
-        teensyStatus: mainWindow.teensyStatusModel
-        valveStatus: mainWindow.valveStatusModel
-        lidarStatus: mainWindow.lidarStatusModel
-        overlayController: mainWindow.overlayControllerModel
         baseTopViewStatus: mainWindow.baseTopViewStatusModel
         baseTopViewActions: mainWindow.baseTopViewActionsModel
-        actionLegality: mainWindow.actionLegalityModel
+        qtBridge: mainWindow.qtBridgeModel
+        videoSource: overlayHost ? overlayHost.video_fullscreen_source : ""
     }
 
     // LiDAR 3D View

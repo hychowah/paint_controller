@@ -1,6 +1,13 @@
 # Development Notes
 
 ---
+### 2026-08-05 - Ousterhout change-amplification slices (plan 03)
+
+**Goal**: Reduce cross-layer contract duplication; implement plan slices 5→1→2→3→3b→4 with review constraints.
+**Result**: ✅ Full suite 582 passed. TD-053 closed via `ShellOverlayStack`. Action schemas + legalStateClass/authority integrity; context passthrough fakes; settings schema-driven Properties + route summaries; base-top defaults from schema (draft-live vs Save/Reset); teleop display metadata.
+**Files**: `qml/overlays/ShellOverlayStack.qml`, `models/action_schema.py`, `models/*_actions.py`, `core/settings.py`, `services/base_top_view_service.py`, `handlers/control_processor.py`, integrity tests. Plan doc deleted after land (git history).
+
+---
 ### 2026-08-05 - Level C P5 ESP32 protocol/HAL split
 
 **Goal**: Pure ESP32 protocol+HAL (no PySide6); transport shell keeps QThread/timers/discovery.

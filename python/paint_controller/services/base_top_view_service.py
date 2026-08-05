@@ -23,7 +23,30 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QImage
 from PySide6.QtQuick import QQuickImageProvider
 
+from paint_controller.core.settings import _SETTINGS_SCHEMA
+
 from .video_stream import CameraType, VideoStreamHandler
+
+# Draft-live service attributes ↔ SettingsManager schema keys.
+# Live slider ticks mutate service draft properties only; Save/Reset persist.
+_BASE_TOP_SETTING_KEYS: tuple[tuple[str, str], ...] = (
+    ("zoom", "base_top_view_zoom"),
+    ("offsetX", "base_top_view_offset_x"),
+    ("offsetY", "base_top_view_offset_y"),
+    ("cropEnabled", "base_top_view_crop_enabled"),
+    ("cropWidthRatio", "base_top_view_crop_width_ratio"),
+    ("cropCenterX", "base_top_view_crop_center_x"),
+    ("k1", "base_top_view_k1"),
+    ("k2", "base_top_view_k2"),
+    ("k3", "base_top_view_k3"),
+    ("k4", "base_top_view_k4"),
+)
+_BASE_TOP_SRC_POINTS_KEY = "base_top_view_src_points"
+
+
+def _schema_default(key: str):
+    """Return the Settings schema default for a base-top key (single source of truth)."""
+    return _SETTINGS_SCHEMA[key]["default"]
 
 
 class BaseTopViewTransformer:
@@ -494,20 +517,12 @@ class BaseTopViewService(QObject):
         if self.settings_manager:
             self._migrate_settings()
 
-        # Load settings from settings_manager if available
+        # Seed draft-live state from SettingsManager (defaults from schema).
         if self.settings_manager:
-            self.zoom = self.settings_manager.get("base_top_view_zoom", 0.51)
-            self.offsetX = self.settings_manager.get("base_top_view_offset_x", 0.026)
-            self.offsetY = self.settings_manager.get("base_top_view_offset_y", 0.474)
-            self.cropEnabled = self.settings_manager.get("base_top_view_crop_enabled", True)
-            self.cropWidthRatio = self.settings_manager.get("base_top_view_crop_width_ratio", 0.9)
-            self.cropCenterX = self.settings_manager.get("base_top_view_crop_center_x", 0.5)
-            self.k1 = self.settings_manager.get("base_top_view_k1", -0.389)
-            self.k2 = self.settings_manager.get("base_top_view_k2", 0.142)
-            self.k3 = self.settings_manager.get("base_top_view_k3", 0.0)
-            self.k4 = self.settings_manager.get("base_top_view_k4", 0.0)
+            for attr, key in _BASE_TOP_SETTING_KEYS:
+                setattr(self, attr, self.settings_manager.get(key, _schema_default(key)))
             src_points = self.settings_manager.get(
-                "base_top_view_src_points", [[0.012, 1.0], [0.988, 1.0], [0.837, 0.727], [0.372, 0.727]]
+                _BASE_TOP_SRC_POINTS_KEY, _schema_default(_BASE_TOP_SRC_POINTS_KEY)
             )
             self.worker.transformer.src_points_normalized = src_points
             self.logger.info("Base top view settings loaded from SettingsManager")
@@ -697,58 +712,36 @@ class BaseTopViewService(QObject):
 
     @Slot()
     def resetToDefaults(self):
-        """Reset all parameters to default values"""
-        self.zoom = 0.51
-        self.offsetX = 0.026
-        self.offsetY = 0.474
-        self.cropEnabled = True
-        self.cropWidthRatio = 0.9
-        self.cropCenterX = 0.5
-        self.k1 = -0.389
-        self.k2 = 0.142
-        self.k3 = 0.0
-        self.k4 = 0.0
+        """Reset draft-live state to schema defaults, then persist via SettingsManager.
 
-        # Reset source points to default
-        default_src_points = [[0.012, 1.0], [0.988, 1.0], [0.837, 0.727], [0.372, 0.727]]
+        Live calibration still lives on this service; Save/Reset are the only
+        settings persistence boundaries (not per-slider apply).
+        """
+        for attr, key in _BASE_TOP_SETTING_KEYS:
+            setattr(self, attr, _schema_default(key))
+
+        default_src_points = list(_schema_default(_BASE_TOP_SRC_POINTS_KEY))
         self.worker.transformer.src_points_normalized = default_src_points
         self.sourcePointsChanged.emit()
 
-        # Save all defaults to settings_manager if available
         if self.settings_manager:
-            self.settings_manager.set("base_top_view_zoom", 0.51)
-            self.settings_manager.set("base_top_view_offset_x", 0.026)
-            self.settings_manager.set("base_top_view_offset_y", 0.474)
-            self.settings_manager.set("base_top_view_crop_enabled", True)
-            self.settings_manager.set("base_top_view_crop_width_ratio", 0.9)
-            self.settings_manager.set("base_top_view_crop_center_x", 0.5)
-            self.settings_manager.set("base_top_view_k1", -0.389)
-            self.settings_manager.set("base_top_view_k2", 0.142)
-            self.settings_manager.set("base_top_view_k3", 0.0)
-            self.settings_manager.set("base_top_view_k4", 0.0)
-            self.settings_manager.set("base_top_view_src_points", default_src_points)
+            for attr, key in _BASE_TOP_SETTING_KEYS:
+                self.settings_manager.set(key, getattr(self, attr))
+            self.settings_manager.set(_BASE_TOP_SRC_POINTS_KEY, default_src_points)
             self.settings_manager.save_all()
-            self.logger.info("Base top view settings reset to defaults and saved")
+            self.logger.info("Base top view settings reset to schema defaults and saved")
 
     @Slot(result=bool)
     def saveSettings(self) -> bool:
-        """Save current base top view settings to file (QML callable)"""
+        """Persist current draft-live service state into SettingsManager (QML callable)."""
         if not self.settings_manager:
             self.logger.warning("Cannot save: no settings_manager")
             return False
 
         try:
-            self.settings_manager.set("base_top_view_zoom", self.zoom)
-            self.settings_manager.set("base_top_view_offset_x", self.offsetX)
-            self.settings_manager.set("base_top_view_offset_y", self.offsetY)
-            self.settings_manager.set("base_top_view_crop_enabled", self.cropEnabled)
-            self.settings_manager.set("base_top_view_crop_width_ratio", self.cropWidthRatio)
-            self.settings_manager.set("base_top_view_crop_center_x", self.cropCenterX)
-            self.settings_manager.set("base_top_view_k1", self.k1)
-            self.settings_manager.set("base_top_view_k2", self.k2)
-            self.settings_manager.set("base_top_view_k3", self.k3)
-            self.settings_manager.set("base_top_view_k4", self.k4)
-            self.settings_manager.set("base_top_view_src_points", self.sourcePoints)
+            for attr, key in _BASE_TOP_SETTING_KEYS:
+                self.settings_manager.set(key, getattr(self, attr))
+            self.settings_manager.set(_BASE_TOP_SRC_POINTS_KEY, self.sourcePoints)
             success, msg = self.settings_manager.save_all()
             if success:
                 self.logger.info("Base top view settings saved")

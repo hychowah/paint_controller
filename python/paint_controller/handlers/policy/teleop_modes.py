@@ -245,6 +245,8 @@ def build_control_configs(constants: TeleopScaleConstants) -> dict[str, ControlC
             min_value=-constants.wheel_travel_max,
             max_value=constants.wheel_travel_max,
             bidirectional=True,
+            display_decimals=0,
+            display_unit="mm",
         ),
         "Wheel Travel Right": ControlConfig(
             scale=constants.wheel_travel_scale,
@@ -252,6 +254,8 @@ def build_control_configs(constants: TeleopScaleConstants) -> dict[str, ControlC
             min_value=-constants.wheel_travel_max,
             max_value=constants.wheel_travel_max,
             bidirectional=True,
+            display_decimals=0,
+            display_unit="mm",
         ),
     }
 

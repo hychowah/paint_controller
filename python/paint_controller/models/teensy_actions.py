@@ -7,7 +7,23 @@ from typing import Any, Protocol
 from PySide6.QtCore import QObject, Signal, Slot
 
 from paint_controller.models.action_keys import ActionKey
+from paint_controller.models.action_schema import ActionSchema, schema_map
 from paint_controller.models.gated_action_mixin import GatedActionMixin
+
+ACTION_SCHEMAS = schema_map(
+    ActionSchema(
+        ActionKey.STATUS_TEENSY_ENABLE,
+        "Teensy Enable Toggle",
+        "status-admin",
+        "teensyActions.requestTeensyEnabled",
+    ),
+    ActionSchema(
+        ActionKey.STATUS_TEENSY_RELAY,
+        "Teensy Relay Toggle",
+        "status-admin",
+        "teensyActions.requestTeensyRelayEnabled",
+    ),
+)
 
 
 class SupportsTeensyActions(Protocol):
