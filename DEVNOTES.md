@@ -1,6 +1,15 @@
 # Development Notes
 
 ---
+### 2026-08-05 - Track control deselect zero + stick-side display
+
+**Goal**: Fix stale opposite-track RPM after leaving Track Control Left/Right, and wrong ControlInfoPanel when Track modes are cross-assigned.
+**Issues**: (1) `WheelHal` partner-holds last partner RPM; engine stopped calling a side on mode deselect without sending `0`. (2) `_process_track_control` wrote `current_values` by wheel side, not stick. Suite used `FakeWheel` (no partner hold) so lifecycle never failed.
+**Tried**: Engine-owned zero on selection-pair change; stick-side `current_values`; `PartnerHoldWheel` regression double for deselect path; cross-stick display tests.
+**Result**: ✅ Full suite **594 passed**. Gotcha extracted to `KNOWLEDGE.md`; continuous-teleop note in `ARCHITECTURE.md`.
+**Files**: `handlers/continuous_teleop_engine.py`, `tests/test_control_processor.py`, `KNOWLEDGE.md`, `ARCHITECTURE.md`
+
+---
 ### 2026-08-05 - TD-052 command/tuning form catalogs Python-owned
 
 **Goal**: Move command and tuning form schemas out of QML; generic forms only.

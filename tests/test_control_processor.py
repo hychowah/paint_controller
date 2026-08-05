@@ -556,3 +556,111 @@ def test_display_properties_follow_selection_model(qt_app) -> None:
     assert cp.left_control_mode_display == "Track Left"
     assert cp.right_control_mode == "EF Yaw Angle"
     assert cp.right_control_mode_display == "Yaw"
+
+
+# ---------------------------------------------------------------------------
+# Track mode lifecycle + cross-stick display (partner-hold seam)
+# ---------------------------------------------------------------------------
+
+
+class PartnerHoldWheel:
+    """Mirrors WheelHal: each side command republishes the last partner RPM."""
+
+    def __init__(self) -> None:
+        self.pairs: list[tuple[int, int]] = []
+        self._left = 0
+        self._right = 0
+
+    def command_left_wheel_speed(self, speed: float) -> None:
+        self._left = int(speed)
+        self.pairs.append((self._left, self._right))
+
+    def command_right_wheel_speed(self, speed: float) -> None:
+        self._right = int(speed)
+        self.pairs.append((self._left, self._right))
+
+    def command_position(self, left_mm: float, right_mm: float, rpm_limit: float, relative: bool) -> bool:
+        return True
+
+    def emergency_stop(self) -> None:
+        self._left = 0
+        self._right = 0
+        self.pairs.append((0, 0))
+
+
+def _clear_engine_rate_limits(cp: Any) -> None:
+    """Allow the next process_input tick to pass mode min_interval gates."""
+    cp._engine.last_command_times.clear()
+
+
+def test_deselecting_track_right_zeros_right_while_left_track_continues(qt_app) -> None:
+    """Leaving Track Control Right must publish right=0; partner hold must not keep it spinning.
+
+    FakeWheel hides this bug because it never republishes partner RPM. PartnerHoldWheel
+    mirrors production WheelHal so the teleop deselect path is exercised for real.
+    """
+    wheel = PartnerHoldWheel()
+    overlay = FakeOverlay(left="Track Control Left", right="Track Control Right")
+    cp = _make_cp(wheel=wheel, overlay=overlay)
+
+    cp.process_input(_stick_state(ly=JOYSTICK_MAX, ry=JOYSTICK_MAX))
+    assert wheel.pairs, "expected both tracks to publish"
+    assert wheel.pairs[-1][0] != 0 and wheel.pairs[-1][1] != 0
+
+    overlay._right = "None"
+    _clear_engine_rate_limits(cp)
+    cp.process_input(_stick_state(ly=JOYSTICK_MAX, ry=0))
+
+    last_left, last_right = wheel.pairs[-1]
+    assert last_right == 0, f"deselected right track must zero, got pair {wheel.pairs[-1]}"
+    assert last_left != 0, f"active left track must keep commanding, got pair {wheel.pairs[-1]}"
+
+
+def test_deselecting_track_left_zeros_left_while_right_track_continues(qt_app) -> None:
+    """Symmetric lifecycle: removing Track Control Left must zero the left wheel."""
+    wheel = PartnerHoldWheel()
+    overlay = FakeOverlay(left="Track Control Left", right="Track Control Right")
+    cp = _make_cp(wheel=wheel, overlay=overlay)
+
+    cp.process_input(_stick_state(ly=JOYSTICK_MAX, ry=JOYSTICK_MAX))
+    overlay._left = "None"
+    _clear_engine_rate_limits(cp)
+    cp.process_input(_stick_state(ly=0, ry=JOYSTICK_MAX))
+
+    last_left, last_right = wheel.pairs[-1]
+    assert last_left == 0, f"deselected left track must zero, got pair {wheel.pairs[-1]}"
+    assert last_right != 0, f"active right track must keep commanding, got pair {wheel.pairs[-1]}"
+
+
+def test_track_left_on_right_stick_drives_left_wheel_and_right_panel(qt_app) -> None:
+    """Mode selects the wheel; stick selects input and display side."""
+    wheel = FakeWheel()
+    overlay = FakeOverlay(left="None", right="Track Control Left")
+    cp = _make_cp(wheel=wheel, overlay=overlay)
+
+    cp.process_input(_stick_state(ly=0, ry=JOYSTICK_MAX))
+
+    assert len(wheel.left_speed_commands) == 1
+    assert wheel.left_speed_commands[0] != 0
+    assert wheel.right_speed_commands == []
+    assert cp.right_control_mode == "Track Control Left"
+    assert cp.right_control_value != ""
+    assert cp.left_control_mode == "None"
+    assert cp.left_control_value == ""
+
+
+def test_track_left_on_right_stick_does_not_clobber_left_panel_display(qt_app) -> None:
+    """Track Control Left on the right stick must not overwrite left stick display values."""
+    from paint_controller.models.joystick_selection import JoystickSelectionModel
+
+    wheel = FakeWheel()
+    model = JoystickSelectionModel()
+    model.set_joystick_controls("EF arm", "Track Control Left")
+    cp = _make_cp(wheel=wheel, overlay=model)
+
+    cp.process_input(_stick_state(ly=JOYSTICK_MAX, ry=JOYSTICK_MAX))
+
+    assert wheel.left_speed_commands  # track mode still drives left wheel
+    assert cp.left_control_mode == "EF arm"
+    assert cp.right_control_mode == "Track Control Left"
+    assert "L:" in cp.right_control_value or cp.right_control_value != ""

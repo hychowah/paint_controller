@@ -165,6 +165,9 @@ For hardware requiring a periodic heartbeat, re-send the last command only if id
 ### Deadzone Timeout Pattern for Continuous Motor Commands
 When publishing continuous motor/speed commands, stop transmitting after the joystick stays in the deadzone for > N seconds (e.g. 1 s). Resume immediately when the stick exits. Prevents command flooding when the operator leaves the stick centered and reduces bus load during idle periods.
 
+### Track Modes: Mode→Wheel, Stick→Input, Zero on Deselect
+Track Control Left/Right: **mode name** chooses which track motor; **which stick** provides the axis and the ControlInfoPanel side. `WheelHal.command_left/right_wheel_speed` always republishes the last partner RPM (intentional dual-track hold). When a track mode fully leaves the joystick selection pair, `ContinuousTeleopEngine.note_selection` must explicitly zero that side — otherwise the inactive track keeps the last non-zero command. Tests that only use a side-independent `FakeWheel` will miss this; use a partner-hold double (or real HAL) for lifecycle regressions.
+
 ### QTimer-Based Hardware Command Ramping
 For actuators that cannot handle step changes (e.g. thrust force), implement a QTimer that steps `_current` toward `_target` at a configurable `ramp_rate` (units/second) on each tick. Keep a separate `set_instant()` path for cases that must bypass the ramp. Expose `ramp_rate` as a user-configurable setting.
 

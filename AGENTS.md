@@ -31,6 +31,63 @@ python/paint_controller/venv/bin/python -m pytest tests -q
 
 ---
 
+## Key design rule — Ousterhout × professional Qt
+
+**Always follow the core of John Ousterhout's *A Philosophy of Software Design* without violating good design for a professional Qt (PySide6/QML) program.**
+
+### Ousterhout core (what to optimize for)
+
+Complexity is anything that makes software hard to understand or modify. Prefer designs that reduce:
+
+1. **Change amplification** — one conceptual feature must not force edits across many unrelated homes
+2. **Cognitive load** — a correct change should not require holding the whole graph in mind
+3. **Unknown unknowns** — illegal or incomplete states should be hard to ship silently (deep ownership + integrity tests; not drift-by-default)
+
+Prefer **deep modules**: small clear interfaces that **own real decisions** and hide implementation. Prefer **information hiding / co-located ownership** over pass-through layers, mega-façades, or multi-table hand-sync without a single owner.
+
+Integrity tests are a **safety net for inevitable multi-representation boundaries** (QML↔Python strings, smoke fakes). They do **not** replace collapsing multi-home facts into one deep owner when that is possible in the same language/layer.
+
+### Professional Qt (must not break)
+
+For this product, professional Qt means:
+
+- **QML** stays declarative and light on policy; layout/chrome only
+- **Python** owns safety, hardware, ROS, persistence, legality, and machine-affecting behavior
+- **`setContextProperty()`** composition bag — **no** mega-`Backend`, **no** `qmlRegisterSingletonInstance`
+- Feature roots and overlays use **required property injection**; no ambient root-context reads inside shared stacks
+- **Per-property NOTIFY** on status/settings (no blanket `changed` that storms bindings)
+- **Discrete gated path** (`*Actions` + explicit `AdminActionGate.check_action`) stays separate from **continuous teleop** (`ControlProcessor` / engine — not under the gate)
+- ROS callbacks do not freely mutate QObject properties off the UI thread (command bus / telemetry marshal)
+
+Durable detail: `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` (“What Professional Qt Means Here”).
+
+### Compatible “deep module” moves (do these)
+
+- Co-locate form/action schemas with the owning Python module; QML binds list/map APIs
+- `CONTEXT_PROPERTIES` as SOT for root names; limited smoke-fake generation for passthroughs
+- Teleop catalog as SOT for menu/config/STANDARD apply; SPECIAL physics stay explicit code
+- `ShellOverlayStack`-style shared composition with injected deps
+- Shared mixins that keep safety calls **visible** (`GatedActionMixin._run_gated`)
+
+### Rejected shortcuts (false Ousterhout / anti-Qt)
+
+| Temptation | Why it fails |
+|---|---|
+| Mega-`Backend` / one god context object | Ambient coupling; fights feature roots and tests |
+| Import-time self-registering controllers | Breaks typed factory graph, cleanup order, namespace-stub harness |
+| Policy / legality / actuator math in QML | Moves safety into the declarative layer |
+| Collapsing discrete admin + continuous teleop into one “Action” API | Wrong affinity (event vs ~60 Hz) and wrong safety model |
+| Decorator magic that hides `@Slot` or the gate call | Breaks QML introspection and safety visibility |
+| “Fewer files” by skipping factory / inject / smoke contracts | Correct Qt DI cost is not accidental spaghetti |
+
+### When planning or reviewing
+
+- Ask: *does this reduce change amplification / unknown unknowns for a real extension path (new toggle, command form, teleop mode, device family)?*
+- Ask: *does it still look like professional Qt for this repo (inject, Python policy, no mega-Backend, dual control paths)?*
+- If the two conflict, **keep professional Qt** and take the smaller depth win (co-located schema, integrity, thinner QML) rather than a façade that only renames ambient access.
+
+---
+
 ## Kimi CLI Tool Mapping
 
 Use the current Kimi CLI tools to implement the workflow below with less friction and better accountability:
@@ -89,6 +146,7 @@ For non-trivial tasks, call `EnterPlanMode` before writing the plan. The plan li
 **Cross-Layer Impact**: [None | QML↔Python | Python↔ROS2 | describe boundary]
 
 **Approach**: [High-level strategy, step by step]
+**Ousterhout × Qt check**: [How this reduces change amplification / unknown unknowns without mega-Backend, policy-in-QML, or collapsing discrete vs continuous paths]
 **Risks**: [Potential issues or breaking changes]
 **Rollback Plan**: [How to revert if broken] *(required for Medium/High complexity)*
 ```
@@ -227,8 +285,9 @@ Short title + 2-4 line explanation. Group by category.
 
 ## General Rules
 
-1. **No standalone documentation files** unless user explicitly requests
-2. **Check `KNOWLEDGE.md`** before debugging — solution may already exist
-3. **Update `DEVNOTES.md`** after significant debugging sessions or feature work
-4. **`INDEX.md` is the session-start map** — consult it in any fresh session before any other file
-5. **Update `docs/tech-debt.md`** when new debt is discovered or existing items are resolved — move resolved items to the Resolved table with date and one-line note
+1. **Ousterhout × professional Qt** — follow the Key design rule above on every structural change
+2. **No standalone documentation files** unless user explicitly requests
+3. **Check `KNOWLEDGE.md`** before debugging — solution may already exist
+4. **Update `DEVNOTES.md`** after significant debugging sessions or feature work
+5. **`INDEX.md` is the session-start map** — consult it in any fresh session before any other file
+6. **Update `docs/tech-debt.md`** when new debt is discovered or existing items are resolved — move resolved items to the Resolved table with date and one-line note

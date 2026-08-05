@@ -265,6 +265,7 @@ SignalWiring status timer (~60 Hz default)
 - Effector-specific locks and rate limits live in `ControlProcessor` (and helpers such as `winch_teleop` / `wheel_travel_teleop`).
 - Shared hard stop sequence lives in `SafetyCoordinator.halt_all_effectors()` (used by emergency, heartbeat, motor fault paths).
 - **TD-054 latch:** any `halt_all_effectors` sets `continuous_motion_allowed=False` until `clear_error_state`; teleop skips the engine tick while latched.
+- **Track Control Left/Right:** mode name selects which track motor; stick selects axis input and display panel. `WheelHal` single-side commands partner-hold the other RPM; when a track mode fully leaves the selection pair, `ContinuousTeleopEngine.note_selection` zeros that side so the inactive track does not keep spinning.
 
 **Do not:** assume the gate covers sticks; put stick math in `*Actions`; add a second continuous entry beside `process_input`.
 

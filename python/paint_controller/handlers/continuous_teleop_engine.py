@@ -185,10 +185,28 @@ class ContinuousTeleopEngine:
     def note_selection(self, left_mode: str, right_mode: str) -> None:
         pair = (left_mode, right_mode)
         if pair != self._last_selection_pair:
+            # WheelHal holds partner RPM across single-side commands. When a track
+            # mode fully leaves the selection pair, explicitly zero that side so
+            # the inactive track does not keep the last non-zero command.
+            self._zero_tracks_leaving_selection(self._last_selection_pair, pair)
             if "EF Yaw Angle" in pair:
                 teensy_imu_yaw = self._teensy.get_status_value("imu_yaw") or 0.0
                 self.controls["EF Yaw Angle"].offset = float(teensy_imu_yaw)
             self._last_selection_pair = pair
+
+    def _zero_tracks_leaving_selection(
+        self, prev_pair: tuple[str, str], new_pair: tuple[str, str]
+    ) -> None:
+        """Zero track wheels whose mode is no longer on either stick."""
+        prev_modes = set(prev_pair)
+        new_modes = set(new_pair)
+        try:
+            if "Track Control Left" in prev_modes and "Track Control Left" not in new_modes:
+                self._wheel.command_left_wheel_speed(0.0)
+            if "Track Control Right" in prev_modes and "Track Control Right" not in new_modes:
+                self._wheel.command_right_wheel_speed(0.0)
+        except Exception as e:
+            logger.error("Error zeroing track after selection change: %s", e)
 
     def tick(self, input_state: dict[str, Any], left_mode: str, right_mode: str) -> None:
         """Process one continuous-teleop frame (modes from selection model)."""
@@ -235,15 +253,20 @@ class ContinuousTeleopEngine:
         track_normalized = track_input / self.JOYSTICK_MAX_VALUE
         track_speed = self._apply_nonlinear_curve(track_normalized)
         track_speed = max(-self.TRACK_MAX_SPEED, min(self.TRACK_MAX_SPEED, track_speed))
-        is_left_track = "Left" in mode
+        # Mode name selects which wheel; stick selects which axis drives it.
+        is_left_track = mode == "Track Control Left"
+        label = f"{'L' if is_left_track else 'R'}:{track_speed:.1f}"
+        # Display follows the stick (like winch/yaw/standard), not the wheel side.
+        if stick == "left":
+            self.current_values["left_mode"] = mode
+            self.current_values["left_value"] = label
+        else:
+            self.current_values["right_mode"] = mode
+            self.current_values["right_value"] = label
         try:
             if is_left_track:
-                self.current_values["left_mode"] = mode
-                self.current_values["left_value"] = f"L:{track_speed:.1f}"
                 self._wheel.command_left_wheel_speed(track_speed)
             else:
-                self.current_values["right_mode"] = mode
-                self.current_values["right_value"] = f"R:{track_speed:.1f}"
                 self._wheel.command_right_wheel_speed(track_speed)
         except Exception as e:
             logger.error("Error commanding track control (%s): %s", mode, e)
