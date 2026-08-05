@@ -1,6 +1,15 @@
 # Development Notes
 
 ---
+### 2026-08-05 - SelectBar navigation stuck on home
+
+**Goal**: Fix page icons in SelectBar doing nothing (always home).
+**Issues**: `ShellRouter` emitted snake_case `current_route_changed` while QML `Connections` listened for `onCurrentRouteChanged` — StackView never replaced. Tests only checked `currentRoute`/`currentIndex`, so silent no-op replace was green in CI.
+**Tried**: Renamed NOTIFY to camelCase; removed order early-return that raced the `currentIndex` binding; page objectNames + stack currentItem assertions. A first pass inset video beside SelectBar so clicks reached the bar under default video — **rejected**: video must stay full-window edge-to-edge; SelectBar is under that chrome by design when video is active.
+**Result**: ✅ Stack replace fixed; video remains full coverage. Fullscreen video intentionally covers SelectBar; click smoke uses video-off. Suite green after product correction.
+**Files**: `models/shell_router.py`, `MainWindow.qml`, `startup_smoke_support.py`, `test_shell_router.py`, `test_startup_smoke_shell.py`, `test_notify_contracts.py`
+
+---
 ### 2026-08-05 - Workflow editor v2 + maintainability structure
 
 **Goal**: Touch-first full-page workflow editor; structure for easy extension (estimate/completion/registry).

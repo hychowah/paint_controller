@@ -149,7 +149,17 @@ MainWindow {{
             qt_app.processEvents()
 
 
+def _stack_page_object_name(stack_view: QObject) -> str | None:
+    """Return objectName of StackView.currentItem (empty if missing)."""
+    current = stack_view.property("currentItem")
+    if current is None:
+        return None
+    name = current.property("objectName")
+    return str(name) if name is not None else ""
+
+
 def test_main_window_navigation_updates_selected_page_key(monkeypatch, tmp_path, qt_app, qtbot):
+    """Route change must swap StackView content, not only currentRoute/currentIndex."""
     repo_root = Path(__file__).resolve().parent.parent
     qml_dir = repo_root / "python" / "paint_controller" / "qml"
     core_import_url = _qml_import_url(qml_dir / "core")
@@ -202,11 +212,97 @@ MainWindow {{
 
         qtbot.waitUntil(lambda: root.property("routeScenarioComplete") is True, timeout=2000)
         qt_app.processEvents()
+        # Allow StackView replace transition to settle.
+        qtbot.waitUntil(
+            lambda: _stack_page_object_name(root.findChild(QObject, "stackView")) == "pageSettings",
+            timeout=2000,
+        )
 
         stack_view = root.findChild(QObject, "stackView")
         assert stack_view is not None
         assert context_objects["shellRouter"].currentRoute == "settings"
         assert stack_view.property("currentIndex") == 6
+        # currentItem objectName is the replace contract; StackView may keep the
+        # exit item alive briefly during the replace transition.
+        assert _stack_page_object_name(stack_view) == "pageSettings"
+        assert root.findChild(QObject, "pageSettings") is not None
+
+        assert_no_fatal_qml_warnings(warnings)
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
+def test_main_window_navigation_round_trip_restores_home_and_video(monkeypatch, tmp_path, qt_app, qtbot):
+    """home → settings → home must restore stack page and video overlay active flag."""
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    core_import_url = _qml_import_url(qml_dir / "core")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+    engine.addImageProvider("ef_live", BlankImageProvider())
+    engine.addImageProvider("base_front_live", BlankImageProvider())
+    engine.addImageProvider("base_rear_live", BlankImageProvider())
+    engine.addImageProvider("base_top_view", BlankImageProvider())
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{core_import_url}"
+
+MainWindow {{
+    id: rootWindow
+    objectName: "mainWindowRoundTripHarness"
+    property bool routeScenarioComplete: false
+
+    Timer {{
+        interval: 0
+        running: true
+        repeat: false
+        onTriggered: {{
+            shellRouter.navigateTo("settings")
+            shellRouter.navigateTo("home")
+            rootWindow.routeScenarioComplete = true
+        }}
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:MainWindowRoundTripHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+
+        qtbot.waitUntil(lambda: root.property("routeScenarioComplete") is True, timeout=2000)
+        qt_app.processEvents()
+        qtbot.waitUntil(
+            lambda: _stack_page_object_name(root.findChild(QObject, "stackView")) == "pageHome",
+            timeout=2000,
+        )
+
+        stack_view = root.findChild(QObject, "stackView")
+        assert stack_view is not None
+        assert context_objects["shellRouter"].currentRoute == "home"
+        assert stack_view.property("currentIndex") == 0
+        assert _stack_page_object_name(stack_view) == "pageHome"
+
+        video_overlay = root.findChild(QObject, "videoFullscreenOverlayMain")
+        assert video_overlay is not None
+        assert video_overlay.property("active") is True
 
         assert_no_fatal_qml_warnings(warnings)
     finally:
@@ -266,11 +362,16 @@ MainWindow {{
 
         qtbot.waitUntil(lambda: root.property("routeScenarioComplete") is True, timeout=2000)
         qt_app.processEvents()
+        qtbot.waitUntil(
+            lambda: _stack_page_object_name(root.findChild(QObject, "stackView")) == "pageSettings",
+            timeout=2000,
+        )
 
         stack_view = root.findChild(QObject, "stackView")
         assert stack_view is not None
         assert context_objects["shellRouter"].currentRoute == "settings"
         assert stack_view.property("currentIndex") == 6
+        assert _stack_page_object_name(stack_view) == "pageSettings"
     finally:
         if root is not None:
             root.deleteLater()
@@ -278,14 +379,11 @@ MainWindow {{
 
 
 def test_main_window_select_bar_click_navigates_to_base_route(monkeypatch, tmp_path, qt_app, qtbot):
-    """Real-shell interaction regression test for the Phase-7 SelectBar break.
+    """SelectBar click → route + StackView page swap when video is not covering chrome.
 
-    Clicks the "base" nav delegate in the real MainWindow.qml and asserts the
-    route change propagates to the Python-owned shellRouter and StackView. If
-    SelectBar's required `shellRouter` property is ever wired to something that
-    resolves to undefined again (`SelectBar { shellRouter: mainWindow.shellRouter }`),
-    the Repeater model collapses (`shellRouter ? shellRouter.routeRegistry : []`)
-    and zero delegates render — caught by the delegate-count assertion below.
+    Fullscreen video intentionally covers the entire main window (including SelectBar).
+    This click path uses video off so QTest can reach nav delegates. Stack replace
+    under an active video overlay is covered by the programmatic navigation tests.
     """
     repo_root = Path(__file__).resolve().parent.parent
     qml_dir = repo_root / "python" / "paint_controller" / "qml"
@@ -302,9 +400,7 @@ def test_main_window_select_bar_click_navigates_to_base_route(monkeypatch, tmp_p
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
-    # The default fixture's active fullscreen video overlay mounts full-window
-    # MouseAreas that swallow every sidebar click on the home route; keep it
-    # inactive so QTest mouse delivery reaches the nav delegates.
+    # Fullscreen video covers SelectBar by design; disable it so clicks reach nav.
     context_objects["overlayHost"] = FakeOverlayHost(video_fullscreen_active=False)
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
@@ -319,6 +415,10 @@ def test_main_window_select_bar_click_navigates_to_base_route(monkeypatch, tmp_p
     shell_router = context_objects["shellRouter"]
     assert shell_router.currentRoute == "home"
 
+    video_overlay = window.findChild(QObject, "videoFullscreenOverlayMain")
+    assert video_overlay is not None
+    assert video_overlay.property("active") is False
+
     # repeater.itemAt() returns None from Python; the delegates are the visual
     # children of the Repeater's parent Column.
     repeater = window.findChild(QObject, "navButtonRepeater")
@@ -327,8 +427,11 @@ def test_main_window_select_bar_click_navigates_to_base_route(monkeypatch, tmp_p
     assert len(nav_delegates) > 0, "SelectBar rendered zero nav delegates — shellRouter wiring regression"
     assert len(nav_delegates) == len(shell_router.routeRegistry)
 
+    home_delegate = next((item for item in nav_delegates if item.property("buttonKey") == "home"), None)
     base_delegate = next((item for item in nav_delegates if item.property("buttonKey") == "base"), None)
+    assert home_delegate is not None
     assert base_delegate is not None
+    assert home_delegate.property("isSelected") is True
     assert base_delegate.property("isSelected") is False
 
     click_point = base_delegate.mapToScene(QPointF(base_delegate.width() / 2, base_delegate.height() / 2)).toPoint()
@@ -336,19 +439,52 @@ def test_main_window_select_bar_click_navigates_to_base_route(monkeypatch, tmp_p
 
     qtbot.waitUntil(lambda: shell_router.currentRoute == "base", timeout=2000)
     qt_app.processEvents()
+    qtbot.waitUntil(
+        lambda: _stack_page_object_name(window.findChild(QObject, "stackView")) == "pageBase",
+        timeout=2000,
+    )
 
     assert base_delegate.property("isSelected") is True
+    assert home_delegate.property("isSelected") is False
 
     stack_view = window.findChild(QObject, "stackView")
     assert stack_view is not None
     # "base" has order 1 in the route registry (FakeShellRouter / models/shell_router.py).
     assert stack_view.property("currentIndex") == 1
-
-    video_overlay = window.findChild(QObject, "videoFullscreenOverlayMain")
-    assert video_overlay is not None
-    assert video_overlay.property("active") is False
+    assert _stack_page_object_name(stack_view) == "pageBase"
+    assert window.findChild(QObject, "pageBase") is not None
 
     assert_no_fatal_qml_warnings(warnings)
+
+
+def test_main_window_video_overlay_covers_full_window_on_home(monkeypatch, tmp_path, qt_app):
+    """Default home video must be full-window (not inset beside SelectBar)."""
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    qml_path = qml_dir / "core" / "MainWindow.qml"
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+    engine.addImageProvider("ef_live", BlankImageProvider())
+    engine.addImageProvider("base_front_live", BlankImageProvider())
+    engine.addImageProvider("base_rear_live", BlankImageProvider())
+    engine.addImageProvider("base_top_view", BlankImageProvider())
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    engine.load(QUrl.fromLocalFile(str(qml_path)))
+    qt_app.processEvents()
+
+    assert engine.rootObjects(), "MainWindow.qml failed to load"
+    window = engine.rootObjects()[0]
+    video_overlay = window.findChild(QObject, "videoFullscreenOverlayMain")
+    assert video_overlay is not None
+    assert video_overlay.property("active") is True
+    assert float(video_overlay.property("x")) == 0.0
+    assert float(video_overlay.property("width")) == float(window.width())
 
 
 def test_main_window_teardown_does_not_emit_null_binding_warnings(monkeypatch, tmp_path, qt_app):

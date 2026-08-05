@@ -68,23 +68,25 @@ class ShellRouter(QObject):
     state.
     """
 
-    current_route_changed = Signal(str)
-    route_registry_changed = Signal()
+    # CamelCase signal names: QML Connections matches by name
+    # (onCurrentRouteChanged), same convention as QtBridge QML-facing signals.
+    currentRouteChanged = Signal(str)
+    routeRegistryChanged = Signal()
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._current_route = "home"
         self._route_registry: list[dict[str, Any]] = [dict(entry) for entry in DEFAULT_ROUTE_REGISTRY]
 
-    @Property(list, notify=route_registry_changed)
+    @Property(list, notify=routeRegistryChanged)
     def routeRegistry(self) -> list[dict[str, Any]]:
         return list(self._route_registry)
 
-    @Property(str, notify=current_route_changed)
+    @Property(str, notify=currentRouteChanged)
     def currentRoute(self) -> str:
         return self._current_route
 
-    @Property(int, notify=current_route_changed)
+    @Property(int, notify=currentRouteChanged)
     def currentRouteOrder(self) -> int:
         return self.routeOrder(self._current_route)
 
@@ -95,7 +97,7 @@ class ShellRouter(QObject):
         if not self._is_valid_route(route):
             return False
         self._current_route = route
-        self.current_route_changed.emit(route)
+        self.currentRouteChanged.emit(route)
         return True
 
     @Slot(str, result=int)

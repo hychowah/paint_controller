@@ -62,7 +62,8 @@ class FakeOverlayController(QObject):
 
 
 class FakeShellRouter(QObject):
-    current_route_changed = Signal(str)
+    # Mirror production ShellRouter: camelCase NOTIFY for QML Connections.
+    currentRouteChanged = Signal(str)
 
     def __init__(self) -> None:
         super().__init__()
@@ -76,11 +77,11 @@ class FakeShellRouter(QObject):
     def routeRegistry(self) -> list[dict[str, object]]:
         return list(self._route_registry)
 
-    @Property(str, notify=current_route_changed)
+    @Property(str, notify=currentRouteChanged)
     def currentRoute(self) -> str:
         return self._current_route
 
-    @Property(int, notify=current_route_changed)
+    @Property(int, notify=currentRouteChanged)
     def currentRouteOrder(self) -> int:
         return self.routeOrder(self._current_route)
 
@@ -91,7 +92,7 @@ class FakeShellRouter(QObject):
         if self.routeOrder(route) < 0:
             return False
         self._current_route = route
-        self.current_route_changed.emit(route)
+        self.currentRouteChanged.emit(route)
         return True
 
     @Slot(str, result=int)

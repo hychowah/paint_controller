@@ -234,18 +234,17 @@ ApplicationWindow {
                                         target: shellRouter
 
                                         function onCurrentRouteChanged(route) {
+                                            // navigateTo already suppresses same-route emits.
+                                            // Do not early-return on currentIndex: it is bound to
+                                            // currentRouteOrder and may already match the new route
+                                            // before this handler runs (silent no-op replace).
                                             var component = mainWindow.routeComponentMap[route]
                                             if (!component) {
                                                 console.warn("MainWindow: unknown route", route)
                                                 return
                                             }
 
-                                            var targetOrder = shellRouter.routeOrder(route)
-                                            if (targetOrder === stackView.currentIndex) {
-                                                return
-                                            }
-
-                                            stackView.targetIndex = targetOrder
+                                            stackView.targetIndex = shellRouter.routeOrder(route)
                                             stackView.replace(stackView.currentItem, component)
                                         }
                                     }
@@ -258,10 +257,11 @@ ApplicationWindow {
         }
     }
 
-    // Components
+    // Components (objectNames pin StackView content for shell smoke tests)
     Component {
         id: homeComponent
         PageHome {
+            objectName: "pageHome"
             shellConnectivityStatus: mainWindow.shellConnectivityStatusModel
             videoRuntime: mainWindow.videoRuntimeModel
         }
@@ -270,6 +270,7 @@ ApplicationWindow {
     Component {
         id: wheelPageComponent
         PageWheel {
+            objectName: "pageBase"
             wheelStatus: mainWindow.wheelStatusModel
             wheelActions: mainWindow.wheelActionsModel
             videoRuntime: mainWindow.videoRuntimeModel
@@ -279,6 +280,7 @@ ApplicationWindow {
     Component {
         id: winchPageComponent
         PageWinch {
+            objectName: "pageWinch"
             winchStatus: mainWindow.winchStatusModel
             winchActions: mainWindow.winchActionsModel
         }
@@ -287,6 +289,7 @@ ApplicationWindow {
     Component {
         id: statusPageComponent
         PageStatus {
+            objectName: "pageMonitor"
             wheelStatus: mainWindow.wheelStatusModel
             winchStatus: mainWindow.winchStatusModel
             teensyStatus: mainWindow.teensyStatusModel
@@ -298,6 +301,7 @@ ApplicationWindow {
     Component {
         id: tuningPageComponent
         PageTuning {
+            objectName: "pageTuning"
             teensyStatus: mainWindow.teensyStatusModel
             tuningActions: mainWindow.tuningActionsModel
             qtBridge: mainWindow.qtBridgeModel
@@ -307,6 +311,7 @@ ApplicationWindow {
     Component {
         id: launcherPageComponent
         PageLauncher {
+            objectName: "pageLauncher"
             shellConnectivityStatus: mainWindow.shellConnectivityStatusModel
             launcherAdmin: mainWindow.launcherAdminModel
         }
@@ -315,6 +320,7 @@ ApplicationWindow {
     Component {
         id: settingsPageComponent
         PageSettings {
+            objectName: "pageSettings"
             settingsManager: mainWindow.settingsManagerModel
             qtBridge: mainWindow.qtBridgeModel
         }

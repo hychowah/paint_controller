@@ -5,7 +5,7 @@ the contract QML bindings silently depend on:
 
 - ``ShellState`` per-property signals (guarded setters + ``apply_screen_count``)
 - ``OverlayHostPolicy`` ``layout_changed`` vs. the video-fullscreen slots
-- ``ShellRouter.route_registry_changed``
+- ``ShellRouter.routeRegistryChanged``
 - The blanket-``changed`` composer wrappers in ``qml_context_composer.py``
   (connection completeness + fan-in emission)
 
@@ -357,11 +357,11 @@ def test_overlay_refresh_layout_never_emits_video_fullscreen_signals(qt_core_app
 
 def test_shell_router_route_registry_changed_has_no_emission_path(qt_core_app) -> None:
     # Pinned as-is: the registry is built once in __init__ and never mutated,
-    # so route_registry_changed currently never fires (navigation only emits
-    # current_route_changed, covered in tests/test_shell_router.py). If a
+    # so routeRegistryChanged currently never fires (navigation only emits
+    # currentRouteChanged, covered in tests/test_shell_router.py). If a
     # dynamic registry is ever added, it must emit this signal on change.
     router = ShellRouter()
-    spy = QSignalSpy(router.route_registry_changed)
+    spy = QSignalSpy(router.routeRegistryChanged)
 
     for route in ("base", "winch", "monitor", "tuning", "launcher", "settings", "home"):
         router.navigateTo(route)
