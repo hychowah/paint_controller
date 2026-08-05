@@ -179,12 +179,15 @@ def test_section_expansion_state_persists_and_unknown_defaults_true(monkeypatch,
 
     assert manager.getSectionExpanded("device_winch") is False
     assert manager.getSectionExpanded("unknown_section") is True
+    assert manager.getSectionExpanded("devices_wheel", False) is False
+    assert manager.getSectionExpanded("device_winch", True) is False
     saved_json = json.loads(config_path.read_text())
     assert saved_json["ui_section_states"] == {"device_winch": False}
 
     reloaded_manager, _ = _make_manager(monkeypatch, tmp_path)
     assert reloaded_manager.getSectionExpanded("device_winch") is False
     assert reloaded_manager.getSectionExpanded("unknown_section") is True
+    assert reloaded_manager.getSectionExpanded("devices_wheel", False) is False
 
 
 def test_save_all_keeps_last_good_file_when_json_dump_fails(monkeypatch, tmp_path, qt_core_app):

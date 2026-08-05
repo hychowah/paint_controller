@@ -923,10 +923,14 @@ class SettingsManager(QObject):
         self.save_all()
 
     @Slot(str, result=bool)
-    def getSectionExpanded(self, sectionId: str) -> bool:
-        """Get the expanded state of a UI section (QML callable). Returns True by default."""
+    @Slot(str, bool, result=bool)
+    def getSectionExpanded(self, sectionId: str, default: bool = True) -> bool:
+        """Get the expanded state of a UI section (QML callable).
+
+        Missing keys return ``default`` (True for legacy Settings callers).
+        """
         with self._values_lock:
             states = self._values.get("ui_section_states", {})
             if not isinstance(states, dict):
-                return True
-            return states.get(sectionId, True)
+                return default
+            return states.get(sectionId, default)

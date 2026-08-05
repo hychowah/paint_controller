@@ -36,7 +36,9 @@ Rectangle {
         feedbackTimer.restart()
     }
     
-    height: CommonStyle.itemHeight
+    implicitHeight: CommonStyle.itemHeight
+    height: implicitHeight
+    implicitWidth: Math.round(200 * CommonStyle.scaleFactor)
     radius: CommonStyle.radiusMd
     color: !actionAllowed
         ? CommonStyle.warningSurface
@@ -44,9 +46,10 @@ Rectangle {
     border.width: 1
     border.color: actionAllowed ? CommonStyle.borderDefault : CommonStyle.statusWarning
     opacity: enabled ? 1.0 : 0.65
-    
-    // This ensures consistent layout
+
     Layout.fillWidth: true
+    Layout.preferredHeight: implicitHeight
+    Layout.minimumHeight: implicitHeight
 
     Component.onCompleted: refreshLegality()
     onActionKeyChanged: refreshLegality()

@@ -125,17 +125,25 @@ Item {
                 }
             }
 
+            // Navigation chrome: segmented track (not content cards)
             Rectangle {
+                id: tabTrack
                 Layout.fillWidth: true
-                height: CommonStyle.controlHeightLg
-                color: "transparent"
-                Layout.bottomMargin: CommonStyle.spacingSm + 2
+                Layout.preferredHeight: Math.round(48 * CommonStyle.scaleFactor)
+                Layout.bottomMargin: CommonStyle.spacingMd
+                color: CommonStyle.backgroundL1
+                radius: CommonStyle.radiusMd
+                border.color: CommonStyle.borderDefault
+                border.width: CommonStyle.borderWidthThin
 
                 ListView {
                     id: tabBar
-                    anchors.fill: parent
+                    anchors {
+                        fill: parent
+                        margins: CommonStyle.spacingXs
+                    }
                     orientation: ListView.Horizontal
-                    spacing: CommonStyle.spacingXs / 2
+                    spacing: CommonStyle.spacingXs
                     clip: true
                     flickableDirection: Flickable.HorizontalFlick
                     boundsBehavior: Flickable.StopAtBounds
@@ -153,7 +161,7 @@ Item {
                     }
 
                     delegate: TabButton {
-                        width: Math.round(150 * CommonStyle.scaleFactor)
+                        width: Math.round(148 * CommonStyle.scaleFactor)
                         height: tabBar.height
                         text: tabText
                         checked: tabView.currentIndex === tabIndex
@@ -162,42 +170,56 @@ Item {
                 }
             }
 
-            StackLayout {
-                id: tabView
+            // Content well: inset canvas so tab chrome ≠ panel body
+            Rectangle {
+                id: contentWell
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                currentIndex: 0
+                color: CommonStyle.inputBackground
+                radius: CommonStyle.radiusMd
+                border.color: CommonStyle.borderDefault
+                border.width: CommonStyle.borderWidthThin
 
-                LegacySystemControl.DeviceControlTab {
-                    id: deviceControlTabContent
-                    recordingStatus: systemControlWorkspace.recordingStatus
-                    wheelStatus: systemControlWorkspace.wheelStatus
-                    winchStatus: systemControlWorkspace.winchStatus
-                    teensyStatus: systemControlWorkspace.teensyStatus
-                    wheelActions: systemControlWorkspace.wheelActions
-                    winchActions: systemControlWorkspace.winchActions
-                    teensyActions: systemControlWorkspace.teensyActions
-                    recordingActions: systemControlWorkspace.recordingActions
-                    systemActions: systemControlWorkspace.systemActions
-                    actionLegality: systemControlWorkspace.actionLegality
-                }
+                StackLayout {
+                    id: tabView
+                    anchors {
+                        fill: parent
+                        margins: CommonStyle.spacingMd
+                    }
+                    currentIndex: 0
 
-                LegacySystemControl.CommandTab {
-                    id: commandTabContent
-                    manualCommandHandler: systemControlWorkspace.systemControlServices.manualCommandHandler
-                }
+                    LegacySystemControl.DeviceControlTab {
+                        id: deviceControlTabContent
+                        recordingStatus: systemControlWorkspace.recordingStatus
+                        wheelStatus: systemControlWorkspace.wheelStatus
+                        winchStatus: systemControlWorkspace.winchStatus
+                        teensyStatus: systemControlWorkspace.teensyStatus
+                        wheelActions: systemControlWorkspace.wheelActions
+                        winchActions: systemControlWorkspace.winchActions
+                        teensyActions: systemControlWorkspace.teensyActions
+                        recordingActions: systemControlWorkspace.recordingActions
+                        systemActions: systemControlWorkspace.systemActions
+                        actionLegality: systemControlWorkspace.actionLegality
+                        settingsManager: systemControlWorkspace.settingsManager
+                    }
 
-                LegacySystemControl.SettingsTab {
-                    id: settingsTabContent
-                    confirmationPopup: sharedConfirmationPopup
-                    settingsManager: systemControlWorkspace.settingsManager
-                }
+                    LegacySystemControl.CommandTab {
+                        id: commandTabContent
+                        manualCommandHandler: systemControlWorkspace.systemControlServices.manualCommandHandler
+                    }
 
-                LegacySystemControl.WorkFlowTab {
-                    id: workFlowTabContent
-                    workflowRunner: systemControlWorkspace.systemControlServices.workflowRunner
-                    workflowEditor: systemControlWorkspace.systemControlServices.workflowEditor
-                    overlayController: systemControlWorkspace.overlayController
+                    LegacySystemControl.SettingsTab {
+                        id: settingsTabContent
+                        confirmationPopup: sharedConfirmationPopup
+                        settingsManager: systemControlWorkspace.settingsManager
+                    }
+
+                    LegacySystemControl.WorkFlowTab {
+                        id: workFlowTabContent
+                        workflowRunner: systemControlWorkspace.systemControlServices.workflowRunner
+                        workflowEditor: systemControlWorkspace.systemControlServices.workflowEditor
+                        overlayController: systemControlWorkspace.overlayController
+                    }
                 }
             }
         }
@@ -249,53 +271,60 @@ Item {
         }
     }
 
+    // Segment control segment — filled pill when active; no card-style outline
+    // (content sections own the blue bordered-card look).
     component TabButton: Rectangle {
+        id: tabButton
         property string text: ""
         property bool checked: false
         signal clicked()
 
-        color: checked ? CommonStyle.backgroundL2 : CommonStyle.backgroundL0
-        border.color: checked ? CommonStyle.accentPrimary : CommonStyle.borderDefault
-        border.width: 1
-        radius: CommonStyle.radiusSm + 2
+        readonly property color idleColor: "transparent"
+        readonly property color hoverColor: CommonStyle.backgroundL2
+        readonly property color activeColor: CommonStyle.chromeBackground
+
+        color: checked ? activeColor : (tabMouse.containsMouse ? hoverColor : idleColor)
+        border.width: 0
+        radius: CommonStyle.radiusSm
 
         Behavior on color {
-            ColorAnimation { duration: CommonStyle.motionStandard }
-        }
-
-        Behavior on border.color {
-            ColorAnimation { duration: CommonStyle.motionStandard }
+            ColorAnimation { duration: CommonStyle.motionFast }
         }
 
         MouseArea {
+            id: tabMouse
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: parent.clicked()
-
-            onEntered: {
-                if (!parent.checked) {
-                    parent.color = CommonStyle.backgroundL1
-                }
-            }
-
-            onExited: {
-                if (!parent.checked) {
-                    parent.color = CommonStyle.backgroundL0
-                }
-            }
+            onClicked: tabButton.clicked()
         }
 
         Text {
             anchors.centerIn: parent
-            text: parent.text
-            color: parent.checked ? CommonStyle.textPrimary : CommonStyle.textSecondary
+            text: tabButton.text
+            color: tabButton.checked ? CommonStyle.textPrimary : CommonStyle.textSecondary
             font.family: CommonStyle.fontSans
             font.pixelSize: CommonStyle.fontBody
-            font.bold: parent.checked
+            font.bold: tabButton.checked
 
             Behavior on color {
-                ColorAnimation { duration: CommonStyle.motionStandard }
+                ColorAnimation { duration: CommonStyle.motionFast }
+            }
+        }
+
+        // Active indicator: bottom accent bar (nav chrome, not content card)
+        Rectangle {
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 2
+            width: tabButton.checked ? Math.round(parent.width * 0.55) : 0
+            height: 3
+            radius: 1
+            color: CommonStyle.accentPrimary
+            visible: width > 0
+
+            Behavior on width {
+                NumberAnimation { duration: CommonStyle.motionStandard; easing.type: Easing.OutCubic }
             }
         }
     }

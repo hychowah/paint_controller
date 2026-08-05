@@ -15,7 +15,15 @@ Rectangle {
     property var legality: controlPanel.defaultLegality()
     readonly property bool actionAllowed: !actionKey || !legalityModel || legality.allowed !== false
     readonly property string blockedReason: actionAllowed ? "" : String(legality.reason || "")
-    
+    readonly property color baseColor: !actionAllowed
+        ? CommonStyle.warningSurface
+        : (enabledState ? CommonStyle.cardBackground : CommonStyle.backgroundL1)
+    readonly property color baseBorder: !actionAllowed
+        ? CommonStyle.statusWarning
+        : (enabledState ? CommonStyle.statusSuccess : CommonStyle.inputBorder)
+    readonly property color activeAccent: CommonStyle.statusSuccess
+    readonly property color inactiveAccent: CommonStyle.textDisabled
+
     signal clicked()
 
     function defaultLegality() {
@@ -31,20 +39,19 @@ Rectangle {
             ? legalityModel.getActionLegality(actionKey)
             : defaultLegality()
     }
-    
-    height: blockedReason !== "" ? CommonStyle.itemHeight + CommonStyle.spacingLg : CommonStyle.itemHeight
+
+    // Layouts size by implicitHeight; keep height in sync for non-layout parents.
+    implicitHeight: blockedReason !== "" ? CommonStyle.itemHeight + CommonStyle.spacingLg : CommonStyle.itemHeight
+    height: implicitHeight
+    implicitWidth: Math.round(200 * CommonStyle.scaleFactor)
     radius: CommonStyle.radiusMd
-    color: !actionAllowed
-        ? CommonStyle.warningSurface
-        : (enabledState ? CommonStyle.cardBackground : CommonStyle.backgroundL1)
-    border.color: !actionAllowed
-        ? CommonStyle.statusWarning
-        : (enabledState ? CommonStyle.borderFocused : CommonStyle.inputBorder)
-    border.width: 1
+    color: baseColor
+    border.color: baseBorder
+    border.width: enabledState && actionAllowed ? CommonStyle.borderWidthThick : 1
     opacity: enabled ? 1.0 : 0.65
-    
-    // This ensures consistent layout across all control panels
     Layout.fillWidth: true
+    Layout.preferredHeight: implicitHeight
+    Layout.minimumHeight: implicitHeight
 
     Component.onCompleted: refreshLegality()
     onActionKeyChanged: refreshLegality()
@@ -57,17 +64,36 @@ Rectangle {
             controlPanel.refreshLegality()
         }
     }
-    
-    // Subtle transition animations
+
     Behavior on color {
         ColorAnimation { duration: CommonStyle.motionStandard }
     }
-    
+
     Behavior on border.color {
         ColorAnimation { duration: CommonStyle.motionStandard }
     }
-    
+
+    states: [
+        State {
+            name: "hovered"
+            when: panelMouseArea.containsMouse && controlPanel.enabled && controlPanel.actionAllowed && !panelMouseArea.pressed
+            PropertyChanges {
+                target: controlPanel
+                color: controlPanel.enabledState ? CommonStyle.cardBackgroundAlt : CommonStyle.backgroundL2
+            }
+        },
+        State {
+            name: "pressed"
+            when: panelMouseArea.pressed && controlPanel.enabled && controlPanel.actionAllowed
+            PropertyChanges {
+                target: controlPanel
+                color: CommonStyle.backgroundL1
+            }
+        }
+    ]
+
     MouseArea {
+        id: panelMouseArea
         anchors.fill: parent
         hoverEnabled: true
         enabled: controlPanel.enabled && controlPanel.actionAllowed
@@ -79,38 +105,23 @@ Rectangle {
             }
             controlPanel.clicked()
         }
-        // Hover effect
-        onEntered: {
-            if (enabled) {
-                parent.color = enabledState ? CommonStyle.cardBackgroundAlt : CommonStyle.backgroundL2
-            }
-        }
-        
-        onExited: {
-            parent.color = !controlPanel.actionAllowed
-                ? CommonStyle.warningSurface
-                : (enabledState ? CommonStyle.cardBackground : CommonStyle.backgroundL1)
-        }
     }
-    
-    // Use Row instead of RowLayout for more consistent sizing
-    Row {
+
+    RowLayout {
         anchors {
             fill: parent
             margins: CommonStyle.spacingMd
-            // Add right margin to create space between toggle and right edge
             rightMargin: CommonStyle.spacingLg
         }
         spacing: CommonStyle.spacingMd
-        
-        // Icon
+
         Rectangle {
-            width: CommonStyle.controlHeightMd
-            height: CommonStyle.controlHeightMd
+            Layout.preferredWidth: CommonStyle.controlHeightMd
+            Layout.preferredHeight: CommonStyle.controlHeightMd
+            Layout.alignment: Qt.AlignVCenter
             radius: width / 2
-            color: enabledState ? CommonStyle.borderFocused : CommonStyle.textDisabled
-            anchors.verticalCenter: parent.verticalCenter
-            
+            color: enabledState ? controlPanel.activeAccent : controlPanel.inactiveAccent
+
             Text {
                 anchors.centerIn: parent
                 text: controlPanel.iconText
@@ -119,83 +130,81 @@ Rectangle {
                 color: CommonStyle.textPrimary
                 font.bold: true
             }
-            
-            // Color transition
+
             Behavior on color {
                 ColorAnimation { duration: CommonStyle.motionStandard }
             }
         }
-        
-        // Text with status - using a Rectangle with Column inside to fill available space
-        Rectangle {
-            width: parent.width - 36 - 10 - 52 - 5 // parent width minus icon width, spacing, switch width, and extra margin
-            height: parent.height - 20
-            color: "transparent" // Make this visible for debugging: "#550000"
-            anchors.verticalCenter: parent.verticalCenter
-            
-            Column {
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: Math.max(2, CommonStyle.spacingXs)
-                
-                Text {
-                    text: controlPanel.controlName
-                    font.family: CommonStyle.fontSans
-                    font.pixelSize: CommonStyle.fontBody
-                    font.bold: true
-                    color: CommonStyle.textPrimary
-                }
-                
-                Text {
-                    text: controlPanel.controlStatus
-                    font.family: CommonStyle.fontSans
-                    font.pixelSize: CommonStyle.fontCaption
-                    color: enabledState ? CommonStyle.accentMuted : CommonStyle.textDisabled
-                    wrapMode: Text.WordWrap
-                    visible: controlPanel.controlStatus !== ""
-                    
-                    // Color transition
-                    Behavior on color {
-                        ColorAnimation { duration: CommonStyle.motionStandard }
-                    }
-                }
 
-                Text {
-                    text: controlPanel.blockedReason
-                    font.family: CommonStyle.fontSans
-                    font.pixelSize: CommonStyle.fontCaption
-                    color: CommonStyle.warningText
-                    wrapMode: Text.WordWrap
-                    visible: controlPanel.blockedReason !== ""
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignVCenter
+            spacing: Math.max(2, CommonStyle.spacingXs)
+
+            Text {
+                Layout.fillWidth: true
+                text: controlPanel.controlName
+                font.family: CommonStyle.fontSans
+                font.pixelSize: CommonStyle.fontBody
+                font.bold: true
+                color: CommonStyle.textPrimary
+                elide: Text.ElideRight
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: controlPanel.controlStatus
+                font.family: CommonStyle.fontSans
+                font.pixelSize: CommonStyle.fontCaption
+                color: enabledState ? controlPanel.activeAccent : CommonStyle.textDisabled
+                wrapMode: Text.WordWrap
+                visible: controlPanel.controlStatus !== ""
+
+                Behavior on color {
+                    ColorAnimation { duration: CommonStyle.motionStandard }
                 }
             }
+
+            Text {
+                Layout.fillWidth: true
+                text: controlPanel.blockedReason
+                font.family: CommonStyle.fontSans
+                font.pixelSize: CommonStyle.fontCaption
+                color: CommonStyle.warningText
+                wrapMode: Text.WordWrap
+                visible: controlPanel.blockedReason !== ""
+            }
         }
-        
-        // Toggle switch - simple Rectangle with fixed width
+
         Rectangle {
-            width: 52
-            height: 28
-            radius: 14
-            color: enabledState ? CommonStyle.borderFocused : CommonStyle.textDisabled
-            anchors.verticalCenter: parent.verticalCenter
-            
+            Layout.preferredWidth: Math.round(52 * CommonStyle.scaleFactor)
+            Layout.preferredHeight: Math.round(28 * CommonStyle.scaleFactor)
+            Layout.alignment: Qt.AlignVCenter
+            radius: height / 2
+            color: enabledState ? controlPanel.activeAccent : CommonStyle.backgroundL0
+            border.width: 1
+            border.color: enabledState ? controlPanel.activeAccent : CommonStyle.borderDefault
+
             Rectangle {
-                width: 22
-                height: 22
-                radius: 11
+                width: Math.round(22 * CommonStyle.scaleFactor)
+                height: width
+                radius: width / 2
                 color: CommonStyle.textPrimary
                 anchors.verticalCenter: parent.verticalCenter
                 x: enabledState ? parent.width - width - 3 : 3
-                
+
                 Behavior on x {
-                    NumberAnimation { 
+                    NumberAnimation {
                         duration: CommonStyle.motionStandard
                         easing.type: Easing.OutCubic
                     }
                 }
             }
-            
-            // Color transition
+
             Behavior on color {
+                ColorAnimation { duration: CommonStyle.motionStandard }
+            }
+            Behavior on border.color {
                 ColorAnimation { duration: CommonStyle.motionStandard }
             }
         }

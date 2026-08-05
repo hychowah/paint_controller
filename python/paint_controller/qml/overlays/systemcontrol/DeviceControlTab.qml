@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../../theme"
 import "./components"
 
 Item {
@@ -15,6 +16,13 @@ Item {
     required property var recordingActions
     required property var systemActions
     required property var actionLegality
+    required property var settingsManager
+
+    // Shared content column: Column (not ColumnLayout) so height is always real.
+    component DeviceSectionBody: Column {
+        width: parent ? parent.width : 300
+        spacing: CommonStyle.spacingSm
+    }
 
     ScrollView {
         anchors.fill: parent
@@ -25,686 +33,365 @@ Item {
 
         ColumnLayout {
             width: parent.width
-            spacing: 8
+            spacing: CommonStyle.spacingSm + 2
 
-            // =====================================================
-            // Hardware Power Section
-            // =====================================================
-            Rectangle {
+            SettingsSection {
+                settingsManager: deviceControlTab.settingsManager
                 Layout.fillWidth: true
-                color: "#1E2433"
-                border.color: "#3A5A8C"
-                border.width: 1
-                radius: 8
-                height: childrenRect.height + 30
-                
-                ColumnLayout {
-                    width: parent.width - 30
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.top: parent.top
-                    anchors.topMargin: 15
-                    spacing: 8
-                    
-                    // Section Header
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-                        
-                        Text {
-                            text: "Hardware Power"
-                            color: "#FFFFFF"
-                            font.pixelSize: 16
-                            font.bold: true
+                Layout.preferredHeight: implicitHeight
+                title: "Hardware Power"
+                description: "Core power controls for system components"
+                sectionId: "devices_hardware_power"
+                defaultExpanded: true
+
+                contentItem: Component {
+                    DeviceSectionBody {
+                        ControlPanel {
+                            objectName: "teensyRelayControl"
+                            width: parent.width
+                            controlName: "Teensy Relay"
+                            controlStatus: deviceControlTab.teensyStatus.relayOn ? "Connected" : "Disconnected"
+                            enabledState: deviceControlTab.teensyStatus.relayOn
+                            iconText: "TR"
+                            actionKey: "status.teensy_relay"
+                            legalityModel: deviceControlTab.actionLegality
+                            onClicked: deviceControlTab.teensyActions.toggleTeensyRelay()
                         }
-                        
-                        Text {
-                            text: "Core power controls for system components"
-                            color: "#888888"
-                            font.pixelSize: 13
+                        ControlPanel {
+                            objectName: "teensyEnableControl"
+                            width: parent.width
+                            controlName: "Teensy Enable"
+                            controlStatus: deviceControlTab.teensyStatus.enabled ? "Powered" : "Unpowered"
+                            enabledState: deviceControlTab.teensyStatus.enabled
+                            iconText: "T"
+                            actionKey: "status.teensy_enable"
+                            legalityModel: deviceControlTab.actionLegality
+                            onClicked: deviceControlTab.teensyActions.toggleTeensyEnable()
                         }
-                        
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 1
-                            color: "#333333"
-                            Layout.topMargin: 5
-                            Layout.bottomMargin: 5
-                        }
-                    }
-                    
-                    // Teensy Relay Control
-                    ControlPanel {
-                        objectName: "teensyRelayControl"
-                        Layout.fillWidth: true
-                        controlName: "Teensy Relay"
-                        controlStatus: deviceControlTab.teensyStatus.relayOn ? "Connected" : "Disconnected"
-                        enabledState: deviceControlTab.teensyStatus.relayOn
-                        iconText: "TR"
-                        actionKey: "status.teensy_relay"
-                        legalityModel: deviceControlTab.actionLegality
-                        
-                        onClicked: deviceControlTab.teensyActions.toggleTeensyRelay()
-                    }
-                    
-                    // Teensy Enable Control
-                    ControlPanel {
-                        objectName: "teensyEnableControl"
-                        Layout.fillWidth: true
-                        controlName: "Teensy Enable"
-                        controlStatus: deviceControlTab.teensyStatus.enabled ? "Powered" : "Unpowered"
-                        enabledState: deviceControlTab.teensyStatus.enabled
-                        iconText: "T"
-                        actionKey: "status.teensy_enable"
-                        legalityModel: deviceControlTab.actionLegality
-                        
-                        onClicked: deviceControlTab.teensyActions.toggleTeensyEnable()
                     }
                 }
             }
 
-            // =====================================================
-            // Winch Section
-            // =====================================================
-            Rectangle {
+            SettingsSection {
+                settingsManager: deviceControlTab.settingsManager
                 Layout.fillWidth: true
-                color: "#1E2433"
-                border.color: "#3A5A8C"
-                border.width: 1
-                radius: 8
-                height: childrenRect.height + 30
-                
-                ColumnLayout {
-                    width: parent.width - 30
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.top: parent.top
-                    anchors.topMargin: 15
-                    spacing: 8
-                    
-                    // Section Header
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-                        
-                        Text {
-                            text: "Winch"
-                            color: "#FFFFFF"
-                            font.pixelSize: 16
-                            font.bold: true
+                Layout.preferredHeight: implicitHeight
+                title: "Winch"
+                description: "Winch motor and load controls"
+                sectionId: "devices_winch"
+                defaultExpanded: false
+
+                contentItem: Component {
+                    DeviceSectionBody {
+                        ControlPanel {
+                            objectName: "winchEnableControl"
+                            width: parent.width
+                            controlName: "Winch Enable"
+                            controlStatus: deviceControlTab.winchStatus.enabled ? "Enabled" : "Disabled"
+                            enabledState: deviceControlTab.winchStatus.enabled
+                            iconText: "W"
+                            actionKey: "status.winch_enable"
+                            legalityModel: deviceControlTab.actionLegality
+                            onClicked: deviceControlTab.winchActions.toggleWinchEnable()
                         }
-                        
-                        Text {
-                            text: "Winch motor and load controls"
-                            color: "#888888"
-                            font.pixelSize: 13
+                        ControlPanel {
+                            objectName: "loadDetectionControl"
+                            width: parent.width
+                            controlName: "Load Detection"
+                            controlStatus: deviceControlTab.winchStatus.loadDetectionEnabled ? "Active" : "Inactive"
+                            enabledState: deviceControlTab.winchStatus.loadDetectionEnabled
+                            iconText: "LD"
+                            actionKey: "winch.load_detection"
+                            legalityModel: deviceControlTab.actionLegality
+                            onClicked: deviceControlTab.winchActions.toggleLoadDetection()
                         }
-                        
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 1
-                            color: "#333333"
-                            Layout.topMargin: 5
-                            Layout.bottomMargin: 5
-                        }
-                    }
-                    
-                    // Winch Enable Control
-                    ControlPanel {
-                        objectName: "winchEnableControl"
-                        Layout.fillWidth: true
-                        controlName: "Winch Enable"
-                        controlStatus: deviceControlTab.winchStatus.enabled ? "Enabled" : "Disabled"
-                        enabledState: deviceControlTab.winchStatus.enabled
-                        iconText: "W"
-                        actionKey: "status.winch_enable"
-                        legalityModel: deviceControlTab.actionLegality
-                        
-                        onClicked: deviceControlTab.winchActions.toggleWinchEnable()
-                    }
-                    
-                    // Winch Load Detection Control
-                    ControlPanel {
-                        objectName: "loadDetectionControl"
-                        Layout.fillWidth: true
-                        controlName: "Load Detection"
-                        controlStatus: deviceControlTab.winchStatus.loadDetectionEnabled ? "Active" : "Inactive"
-                        enabledState: deviceControlTab.winchStatus.loadDetectionEnabled
-                        iconText: "LD"
-                        actionKey: "winch.load_detection"
-                        legalityModel: deviceControlTab.actionLegality
-                        
-                        onClicked: deviceControlTab.winchActions.toggleLoadDetection()
                     }
                 }
             }
 
-            // =====================================================
-            // Wheel Section
-            // =====================================================
-            Rectangle {
+            SettingsSection {
+                settingsManager: deviceControlTab.settingsManager
                 Layout.fillWidth: true
-                color: "#1E2433"
-                border.color: "#3A5A8C"
-                border.width: 1
-                radius: 8
-                height: childrenRect.height + 30
-                
-                ColumnLayout {
-                    width: parent.width - 30
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.top: parent.top
-                    anchors.topMargin: 15
-                    spacing: 8
-                    
-                    // Section Header
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-                        
-                        Text {
-                            text: "Wheel"
-                            color: "#FFFFFF"
-                            font.pixelSize: 16
-                            font.bold: true
+                Layout.preferredHeight: implicitHeight
+                title: "Wheel"
+                description: "Wheel motor controls"
+                sectionId: "devices_wheel"
+                defaultExpanded: false
+
+                contentItem: Component {
+                    DeviceSectionBody {
+                        ControlPanel {
+                            objectName: "wheelEnableControl"
+                            width: parent.width
+                            controlName: "Wheel Enable"
+                            controlStatus: deviceControlTab.wheelStatus.available
+                                ? (deviceControlTab.wheelStatus.enabled ? "Motors active" : "Motors inactive")
+                                : "Unavailable"
+                            enabledState: deviceControlTab.wheelStatus.enabled
+                            iconText: "WH"
+                            actionKey: "wheel.enable"
+                            legalityModel: deviceControlTab.actionLegality
+                            onClicked: deviceControlTab.wheelActions.toggleEnabled()
                         }
-                        
-                        Text {
-                            text: "Wheel motor controls"
-                            color: "#888888"
-                            font.pixelSize: 13
-                        }
-                        
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 1
-                            color: "#333333"
-                            Layout.topMargin: 5
-                            Layout.bottomMargin: 5
-                        }
-                    }
-                    
-                    // Wheel Enable Control
-                    ControlPanel {
-                        objectName: "wheelEnableControl"
-                        Layout.fillWidth: true
-                        controlName: "Wheel Enable"
-                        controlStatus: deviceControlTab.wheelStatus.available ? (deviceControlTab.wheelStatus.enabled ? "Motors active" : "Motors inactive") : "Unavailable"
-                        enabledState: deviceControlTab.wheelStatus.enabled
-                        iconText: "🛞"
-                        actionKey: "wheel.enable"
-                        legalityModel: deviceControlTab.actionLegality
-                        
-                        onClicked: deviceControlTab.wheelActions.toggleEnabled()
-                    }
-                    
-                    // Wheel Reset Position Button
-                    ActionButton {
-                        objectName: "wheelResetAction"
-                        Layout.fillWidth: true
-                        buttonText: "Reset Wheel Position"
-                        buttonDescription: "Set wheel position counters to zero"
-                        iconColor: "#4CAF50"
-                        iconType: "reset"
-                        actionKey: "wheel.reset_position"
-                        legalityModel: deviceControlTab.actionLegality
-                        
-                        onClicked: {
-                            if (deviceControlTab.wheelActions.resetPosition()) {
-                                showFeedback()
+                        ActionButton {
+                            objectName: "wheelResetAction"
+                            width: parent.width
+                            buttonText: "Reset Wheel Position"
+                            buttonDescription: "Set wheel position counters to zero"
+                            iconColor: CommonStyle.statusSuccess
+                            iconType: "reset"
+                            actionKey: "wheel.reset_position"
+                            legalityModel: deviceControlTab.actionLegality
+                            onClicked: {
+                                if (deviceControlTab.wheelActions.resetPosition())
+                                    showFeedback()
                             }
                         }
                     }
                 }
             }
 
-            // =====================================================
-            // Recording & Monitoring Section
-            // =====================================================
-            Rectangle {
+            SettingsSection {
+                settingsManager: deviceControlTab.settingsManager
                 Layout.fillWidth: true
-                color: "#1E2433"
-                border.color: "#3A5A8C"
-                border.width: 1
-                radius: 8
-                height: childrenRect.height + 30
-                
-                ColumnLayout {
-                    width: parent.width - 30
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.top: parent.top
-                    anchors.topMargin: 15
-                    spacing: 8
-                    
-                    // Section Header
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-                        
-                        Text {
-                            text: "Recording & Monitoring"
-                            color: "#FFFFFF"
-                            font.pixelSize: 16
-                            font.bold: true
-                        }
-                        
-                        Text {
-                            text: "Camera, screen, and data recording"
-                            color: "#888888"
-                            font.pixelSize: 13
-                        }
-                        
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 1
-                            color: "#333333"
-                            Layout.topMargin: 5
-                            Layout.bottomMargin: 5
-                        }
-                    }
-                    
-                    // Camera Recording Control (End Effector)
-                    ControlPanel {
-                        objectName: "efRecordingControl"
-                        Layout.fillWidth: true
-                        controlName: "EF Camera Recording"
-                        controlStatus: deviceControlTab.recordingStatus.endEffectorRecording ? "Recording" : "Streaming"
-                        enabledState: deviceControlTab.recordingStatus.endEffectorRecording
-                        iconText: "REC"
-                        
-                        onClicked: deviceControlTab.recordingActions.toggleEndEffectorRecording()
-                    }
+                Layout.preferredHeight: implicitHeight
+                title: "Recording & Monitoring"
+                description: "Camera, screen, and data recording"
+                sectionId: "devices_recording"
+                defaultExpanded: false
 
-                    // Base Camera Recording Control
-                    ControlPanel {
-                        objectName: "baseRecordingControl"
-                        Layout.fillWidth: true
-                        controlName: "Base Camera Recording"
-                        controlStatus: deviceControlTab.recordingStatus.baseRecording ? "Recording" : "Streaming"
-                        enabledState: deviceControlTab.recordingStatus.baseRecording
-                        iconText: "BASE"
-                        
-                        onClicked: deviceControlTab.recordingActions.toggleBaseRecording()
-                    }
-
-                    // Screen Recording Control
-                    ControlPanel {
-                        objectName: "screenRecordingControl"
-                        Layout.fillWidth: true
-                        controlName: "Screen Recording"
-                        controlStatus: {
-                            if (deviceControlTab.recordingStatus.screenFreeSpaceGb < 5.0) {
-                                return "Low Storage! (" + deviceControlTab.recordingStatus.screenFreeSpaceGb.toFixed(1) + " GB)"
-                            } else if (deviceControlTab.recordingStatus.screenRecording) {
-                                var mins = Math.floor(deviceControlTab.recordingStatus.screenRecordingDuration / 60)
-                                var secs = deviceControlTab.recordingStatus.screenRecordingDuration % 60
-                                return "Recording " + mins + ":" + (secs < 10 ? "0" : "") + secs + " (" + deviceControlTab.recordingStatus.screenFreeSpaceGb.toFixed(1) + " GB free)"
-                            } else {
+                contentItem: Component {
+                    DeviceSectionBody {
+                        ControlPanel {
+                            objectName: "efRecordingControl"
+                            width: parent.width
+                            controlName: "EF Camera Recording"
+                            controlStatus: deviceControlTab.recordingStatus.endEffectorRecording ? "Recording" : "Streaming"
+                            enabledState: deviceControlTab.recordingStatus.endEffectorRecording
+                            iconText: "REC"
+                            onClicked: deviceControlTab.recordingActions.toggleEndEffectorRecording()
+                        }
+                        ControlPanel {
+                            objectName: "baseRecordingControl"
+                            width: parent.width
+                            controlName: "Base Camera Recording"
+                            controlStatus: deviceControlTab.recordingStatus.baseRecording ? "Recording" : "Streaming"
+                            enabledState: deviceControlTab.recordingStatus.baseRecording
+                            iconText: "BASE"
+                            onClicked: deviceControlTab.recordingActions.toggleBaseRecording()
+                        }
+                        ControlPanel {
+                            objectName: "screenRecordingControl"
+                            width: parent.width
+                            controlName: "Screen Recording"
+                            controlStatus: {
+                                if (deviceControlTab.recordingStatus.screenFreeSpaceGb < 5.0) {
+                                    return "Low Storage! (" + deviceControlTab.recordingStatus.screenFreeSpaceGb.toFixed(1) + " GB)"
+                                } else if (deviceControlTab.recordingStatus.screenRecording) {
+                                    var mins = Math.floor(deviceControlTab.recordingStatus.screenRecordingDuration / 60)
+                                    var secs = deviceControlTab.recordingStatus.screenRecordingDuration % 60
+                                    return "Recording " + mins + ":" + (secs < 10 ? "0" : "") + secs
+                                        + " (" + deviceControlTab.recordingStatus.screenFreeSpaceGb.toFixed(1) + " GB free)"
+                                }
                                 return "Idle (" + deviceControlTab.recordingStatus.screenFreeSpaceGb.toFixed(1) + " GB free)"
                             }
+                            enabledState: deviceControlTab.recordingStatus.screenRecording
+                            iconText: "SCR"
+                            onClicked: deviceControlTab.recordingActions.toggleScreenRecording()
                         }
-                        enabledState: deviceControlTab.recordingStatus.screenRecording
-                        iconText: "SCR"
-                        
-                        onClicked: deviceControlTab.recordingActions.toggleScreenRecording()
-                    }
-
-                    // ROS Bag Recording Control (Remote End Effector)
-                    ControlPanel {
-                        objectName: "rosBagRecordingControl"
-                        Layout.fillWidth: true
-                        controlName: "ROS Bag Recording"
-                        controlStatus: {
-                            if (deviceControlTab.recordingStatus.rosBagCompressing) {
-                                return "Compressing..."
-                            } else if (deviceControlTab.recordingStatus.rosBagRecording) {
-                                var mins = Math.floor(deviceControlTab.recordingStatus.rosBagRecordingDuration / 60)
-                                var secs = deviceControlTab.recordingStatus.rosBagRecordingDuration % 60
-                                return "Recording " + mins + ":" + (secs < 10 ? "0" : "") + secs
-                            } else if (deviceControlTab.recordingStatus.rosBagStatusMessage !== "") {
-                                return deviceControlTab.recordingStatus.rosBagStatusMessage
-                            } else {
+                        ControlPanel {
+                            objectName: "rosBagRecordingControl"
+                            width: parent.width
+                            controlName: "ROS Bag Recording"
+                            controlStatus: {
+                                if (deviceControlTab.recordingStatus.rosBagCompressing) {
+                                    return "Compressing..."
+                                } else if (deviceControlTab.recordingStatus.rosBagRecording) {
+                                    var mins = Math.floor(deviceControlTab.recordingStatus.rosBagRecordingDuration / 60)
+                                    var secs = deviceControlTab.recordingStatus.rosBagRecordingDuration % 60
+                                    return "Recording " + mins + ":" + (secs < 10 ? "0" : "") + secs
+                                } else if (deviceControlTab.recordingStatus.rosBagStatusMessage !== "") {
+                                    return deviceControlTab.recordingStatus.rosBagStatusMessage
+                                }
                                 return "Idle (Remote EF)"
                             }
+                            enabledState: deviceControlTab.recordingStatus.rosBagRecording
+                            iconText: "BAG"
+                            enabled: !deviceControlTab.recordingStatus.rosBagCompressing
+                            opacity: deviceControlTab.recordingStatus.rosBagCompressing ? 0.6 : 1.0
+                            onClicked: deviceControlTab.recordingActions.toggleRosBagRecording()
                         }
-                        enabledState: deviceControlTab.recordingStatus.rosBagRecording
-                        iconText: "BAG"
-                        enabled: !deviceControlTab.recordingStatus.rosBagCompressing
-                        opacity: deviceControlTab.recordingStatus.rosBagCompressing ? 0.6 : 1.0
-                        
-                        onClicked: deviceControlTab.recordingActions.toggleRosBagRecording()
                     }
                 }
             }
 
-            // =====================================================
-            // Stabilization Section
-            // =====================================================
-            Rectangle {
+            SettingsSection {
+                settingsManager: deviceControlTab.settingsManager
                 Layout.fillWidth: true
-                color: "#1E2433"
-                border.color: "#3A5A8C"
-                border.width: 1
-                radius: 8
-                height: childrenRect.height + 30
-                
-                ColumnLayout {
-                    width: parent.width - 30
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.top: parent.top
-                    anchors.topMargin: 15
-                    spacing: 8
-                    
-                    // Section Header
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-                        
-                        Text {
-                            text: "Stabilization"
-                            color: "#FFFFFF"
-                            font.pixelSize: 16
-                            font.bold: true
+                Layout.preferredHeight: implicitHeight
+                title: "Stabilization"
+                description: "Stability, yaw, and leveling controls"
+                sectionId: "devices_stabilization"
+                defaultExpanded: false
+
+                contentItem: Component {
+                    DeviceSectionBody {
+                        ControlPanel {
+                            objectName: "stabilityControl"
+                            width: parent.width
+                            controlName: "Stability Controller"
+                            controlStatus: deviceControlTab.teensyStatus.stabilityEnabled ? "Active" : "Inactive"
+                            enabledState: deviceControlTab.teensyStatus.stabilityEnabled
+                            iconText: "SC"
+                            onClicked: deviceControlTab.teensyActions.toggleStability()
                         }
-                        
-                        Text {
-                            text: "Stability, yaw, and leveling controls"
-                            color: "#888888"
-                            font.pixelSize: 13
+                        ControlPanel {
+                            objectName: "yawControl"
+                            width: parent.width
+                            controlName: "Yaw Control"
+                            controlStatus: deviceControlTab.teensyStatus.yawEnabled ? "Active" : "Inactive"
+                            enabledState: deviceControlTab.teensyStatus.yawEnabled
+                            iconText: "Y"
+                            onClicked: deviceControlTab.teensyActions.toggleYaw()
                         }
-                        
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 1
-                            color: "#333333"
-                            Layout.topMargin: 5
-                            Layout.bottomMargin: 5
+                        ControlPanel {
+                            objectName: "autoCorrectionControl"
+                            width: parent.width
+                            controlName: "Auto Correction"
+                            controlStatus: deviceControlTab.teensyStatus.autoCorrectionEnabled ? "Active" : "Inactive"
+                            enabledState: deviceControlTab.teensyStatus.autoCorrectionEnabled
+                            iconText: "AC"
+                            onClicked: deviceControlTab.teensyActions.toggleAutoCorrection()
                         }
-                    }
-                    
-                    // Stability Controller (Master Enable)
-                    ControlPanel {
-                        objectName: "stabilityControl"
-                        Layout.fillWidth: true
-                        controlName: "Stability Controller"
-                        controlStatus: deviceControlTab.teensyStatus.stabilityEnabled ? "Active" : "Inactive"
-                        enabledState: deviceControlTab.teensyStatus.stabilityEnabled
-                        iconText: "SC"
-                        
-                        onClicked: deviceControlTab.teensyActions.toggleStability()
-                    }
-
-                    // Yaw Control
-                    ControlPanel {
-                        objectName: "yawControl"
-                        Layout.fillWidth: true
-                        controlName: "Yaw Control"
-                        controlStatus: deviceControlTab.teensyStatus.yawEnabled ? "Active" : "Inactive"
-                        enabledState: deviceControlTab.teensyStatus.yawEnabled
-                        iconText: "Y"
-                        
-                        onClicked: deviceControlTab.teensyActions.toggleYaw()
-                    }
-
-                    // Auto Correction Control
-                    ControlPanel {
-                        objectName: "autoCorrectionControl"
-                        Layout.fillWidth: true
-                        controlName: "Auto Correction"
-                        controlStatus: deviceControlTab.teensyStatus.autoCorrectionEnabled ? "Active" : "Inactive"
-                        enabledState: deviceControlTab.teensyStatus.autoCorrectionEnabled
-                        iconText: "AC"
-                        
-                        onClicked: deviceControlTab.teensyActions.toggleAutoCorrection()
-                    }
-
-                    // SprayGun Levelling
-                    ControlPanel {
-                        objectName: "sprayGunLevelingControl"
-                        Layout.fillWidth: true
-                        controlName: "SprayGun Levelling"
-                        controlStatus: deviceControlTab.teensyStatus.sprayGunLevelingEnabled ? "Active" : "Inactive"
-                        enabledState: deviceControlTab.teensyStatus.sprayGunLevelingEnabled
-                        iconText: "SL"
-
-                        onClicked: deviceControlTab.teensyActions.toggleSprayGunLeveling()
-                    }
-
-                    // Roller Steering Control
-                    ControlPanel {
-                        objectName: "rollerSteeringControl"
-                        Layout.fillWidth: true
-                        controlName: "Roller Steering"
-                        controlStatus: deviceControlTab.teensyStatus.rollerSteeringEnabled ? "Enabled" : "Disabled"
-                        enabledState: deviceControlTab.teensyStatus.rollerSteeringEnabled
-                        iconText: "RS"
-                        
-                        onClicked: deviceControlTab.teensyActions.toggleRollerSteering()
-                    }
-
-                    // Swing Damping Control
-                    ControlPanel {
-                        objectName: "swingDampingControl"
-                        Layout.fillWidth: true
-                        controlName: "Swing Damping"
-                        controlStatus: deviceControlTab.teensyStatus.swingDampingEnabled ? "Active" : "Inactive"
-                        enabledState: deviceControlTab.teensyStatus.swingDampingEnabled
-                        iconText: "SD"
-                        
-                        onClicked: deviceControlTab.teensyActions.toggleSwingDamping()
+                        ControlPanel {
+                            objectName: "sprayGunLevelingControl"
+                            width: parent.width
+                            controlName: "SprayGun Levelling"
+                            controlStatus: deviceControlTab.teensyStatus.sprayGunLevelingEnabled ? "Active" : "Inactive"
+                            enabledState: deviceControlTab.teensyStatus.sprayGunLevelingEnabled
+                            iconText: "SL"
+                            onClicked: deviceControlTab.teensyActions.toggleSprayGunLeveling()
+                        }
+                        ControlPanel {
+                            objectName: "rollerSteeringControl"
+                            width: parent.width
+                            controlName: "Roller Steering"
+                            controlStatus: deviceControlTab.teensyStatus.rollerSteeringEnabled ? "Enabled" : "Disabled"
+                            enabledState: deviceControlTab.teensyStatus.rollerSteeringEnabled
+                            iconText: "RS"
+                            onClicked: deviceControlTab.teensyActions.toggleRollerSteering()
+                        }
+                        ControlPanel {
+                            objectName: "swingDampingControl"
+                            width: parent.width
+                            controlName: "Swing Damping"
+                            controlStatus: deviceControlTab.teensyStatus.swingDampingEnabled ? "Active" : "Inactive"
+                            enabledState: deviceControlTab.teensyStatus.swingDampingEnabled
+                            iconText: "SD"
+                            onClicked: deviceControlTab.teensyActions.toggleSwingDamping()
+                        }
                     }
                 }
             }
 
-            // =====================================================
-            // Other Controls Section
-            // =====================================================
-            Rectangle {
+            SettingsSection {
+                settingsManager: deviceControlTab.settingsManager
                 Layout.fillWidth: true
-                color: "#1E2433"
-                border.color: "#3A5A8C"
-                border.width: 1
-                radius: 8
-                height: childrenRect.height + 30
-                
-                ColumnLayout {
-                    width: parent.width - 30
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.top: parent.top
-                    anchors.topMargin: 15
-                    spacing: 8
-                    
-                    // Section Header
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-                        
-                        Text {
-                            text: "Other Controls"
-                            color: "#FFFFFF"
-                            font.pixelSize: 16
-                            font.bold: true
-                        }
-                        
-                        Text {
-                            text: "LED, lidar, and homing actions"
-                            color: "#888888"
-                            font.pixelSize: 13
-                        }
-                        
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 1
-                            color: "#333333"
-                            Layout.topMargin: 5
-                            Layout.bottomMargin: 5
-                        }
-                    }
+                Layout.preferredHeight: implicitHeight
+                title: "Other Controls"
+                description: "LED, lidar, and homing actions"
+                sectionId: "devices_other"
+                defaultExpanded: false
 
-                    // SprayGun Led Control
-                    ControlPanel {
-                        objectName: "sprayGunLedControl"
-                        Layout.fillWidth: true
-                        controlName: "SprayGun LED"
-                        controlStatus: deviceControlTab.teensyStatus.sprayGunLedOn ? "On" : "Off"
-                        enabledState: deviceControlTab.teensyStatus.sprayGunLedOn
-                        iconText: "LED"
-                        
-                        onClicked: deviceControlTab.teensyActions.toggleSprayGunLed()
-                    }
-
-                    ControlPanel {
-                        Layout.fillWidth: true
-                        controlName: "Lidar Power"
-                        controlStatus: deviceControlTab.teensyStatus.lidarPower ? "On" : "Off"
-                        enabledState: deviceControlTab.teensyStatus.lidarPower
-                        iconText: "LID"
-                        
-                        onClicked: deviceControlTab.teensyActions.toggleLidarPower()
-                    }
-                    
-                    ActionButton {
-                        Layout.fillWidth: true
-                        buttonText: "Home Top Rail"
-                        buttonDescription: "(Be careful of the tilting during the process)"
-                        iconColor: "#4CAF50"
-                        iconType: "reset"
-                        
-                        onClicked: {
-                            if (deviceControlTab.teensyActions.homeTopRail()) {
-                                showFeedback()
+                contentItem: Component {
+                    DeviceSectionBody {
+                        ControlPanel {
+                            objectName: "sprayGunLedControl"
+                            width: parent.width
+                            controlName: "SprayGun LED"
+                            controlStatus: deviceControlTab.teensyStatus.sprayGunLedOn ? "On" : "Off"
+                            enabledState: deviceControlTab.teensyStatus.sprayGunLedOn
+                            iconText: "LED"
+                            onClicked: deviceControlTab.teensyActions.toggleSprayGunLed()
+                        }
+                        ControlPanel {
+                            width: parent.width
+                            controlName: "Lidar Power"
+                            controlStatus: deviceControlTab.teensyStatus.lidarPower ? "On" : "Off"
+                            enabledState: deviceControlTab.teensyStatus.lidarPower
+                            iconText: "LID"
+                            onClicked: deviceControlTab.teensyActions.toggleLidarPower()
+                        }
+                        ActionButton {
+                            width: parent.width
+                            buttonText: "Home Top Rail"
+                            buttonDescription: "(Be careful of the tilting during the process)"
+                            iconColor: CommonStyle.statusWarning
+                            iconType: "warning"
+                            onClicked: {
+                                if (deviceControlTab.teensyActions.homeTopRail())
+                                    showFeedback()
                             }
                         }
-                    }
-
-                    ActionButton {
-                        Layout.fillWidth: true
-                        buttonText: "Home Arm Rail"
-                        buttonDescription: "(Be careful of the tilting during the process)"
-                        iconColor: "#4CAF50"
-                        iconType: "reset"
-
-                        onClicked: {
-                            if (deviceControlTab.teensyActions.homeArm()) {
-                                showFeedback()
+                        ActionButton {
+                            width: parent.width
+                            buttonText: "Home Arm Rail"
+                            buttonDescription: "(Be careful of the tilting during the process)"
+                            iconColor: CommonStyle.statusWarning
+                            iconType: "warning"
+                            onClicked: {
+                                if (deviceControlTab.teensyActions.homeArm())
+                                    showFeedback()
                             }
                         }
                     }
                 }
             }
 
-            // =====================================================
-            // System Errors Section (always visible, not collapsible)
-            // =====================================================
             Item {
                 Layout.fillWidth: true
-                Layout.topMargin: 10
-                height: 32
-                
+                Layout.preferredHeight: CommonStyle.controlHeightMd
+                Layout.topMargin: CommonStyle.spacingXs
+                implicitHeight: CommonStyle.controlHeightMd
+                height: implicitHeight
+
                 Text {
                     text: "System Errors"
-                    color: "#FFFFFF"
-                    font.family: "Helvetica"
-                    font.pixelSize: 18
+                    color: CommonStyle.textPrimary
+                    font.family: CommonStyle.fontSans
+                    font.pixelSize: CommonStyle.fontBody
                     font.bold: true
                     anchors.verticalCenter: parent.verticalCenter
                 }
-                
+
                 Rectangle {
                     height: 1
-                    width: parent.width - 120
-                    color: "#333333"
+                    width: parent.width - Math.round(120 * CommonStyle.scaleFactor)
+                    color: CommonStyle.inputBorder
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
-            
-            // Error Clear Button
-            Rectangle {
-                id: errorClearButton
+
+            ActionButton {
+                objectName: "clearErrorsAction"
                 Layout.fillWidth: true
-                height: 60
-                radius: 10
-                color: errorClearMouseArea.containsMouse ? "#4A2C2C" : "#3A2222"
-                border.color: "#8C3A3A"
-                border.width: 1
-                
-                Behavior on color {
-                    ColorAnimation { duration: 200 }
-                }
-                
-                MouseArea {
-                    id: errorClearMouseArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        deviceControlTab.systemActions.clearErrors()
-                    }
-                }
-                
-                RowLayout {
-                    anchors {
-                        fill: parent
-                        margins: 10
-                    }
-                    spacing: 15
-                    
-                    // Icon
-                    Rectangle {
-                        width: 36
-                        height: 36
-                        radius: 18
-                        color: "#8C3A3A"
-                        
-                        Text {
-                            anchors.centerIn: parent
-                            text: "⚠"
-                            font.pixelSize: 16
-                            color: "white"
-                            font.bold: true
-                        }
-                    }
-                    
-                    // Text
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-                        
-                        Text {
-                            text: "Clear Error States"
-                            font.pixelSize: 16
-                            font.bold: true
-                            color: "#FFFFFF"
-                        }
-                        
-                        Text {
-                            text: "Reset all error flags in system components"
-                            font.pixelSize: 14
-                            color: "#F99090"
-                        }
-                    }
-                    
-                    // Reset icon
-                    Rectangle {
-                        width: 36
-                        height: 36
-                        radius: 18
-                        color: "#8C3A3A"
-                        
-                        Text {
-                            anchors.centerIn: parent
-                            text: "↺"
-                            font.pixelSize: 20
-                            color: "white"
-                            font.bold: true
-                        }
-                    }
+                Layout.preferredHeight: implicitHeight
+                buttonText: "Clear Error States"
+                buttonDescription: "Reset all error flags in system components"
+                iconColor: CommonStyle.statusError
+                iconType: "warning"
+                onClicked: {
+                    deviceControlTab.systemActions.clearErrors()
+                    showFeedback()
                 }
             }
-            
-            // Bottom spacer
+
             Item {
                 Layout.fillWidth: true
-                height: 10
+                Layout.preferredHeight: CommonStyle.spacingSm
+                implicitHeight: CommonStyle.spacingSm
+                height: implicitHeight
             }
         }
     }

@@ -1084,6 +1084,7 @@ Item {{
     property var injectedRecordingActions: recordingActions
     property var injectedSystemActions: systemActions
     property var injectedActionLegality: actionLegality
+    property var injectedSettingsManager: settingsManager
 
     DeviceControlTab {{
         anchors.fill: parent
@@ -1097,6 +1098,7 @@ Item {{
         recordingActions: parent.injectedRecordingActions
         systemActions: parent.injectedSystemActions
         actionLegality: parent.injectedActionLegality
+        settingsManager: parent.injectedSettingsManager
     }}
 }}
 '''.encode(),
