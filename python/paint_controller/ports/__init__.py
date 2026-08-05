@@ -12,6 +12,7 @@ from paint_controller.ports.halt import (
     SupportsWheelHalt,
     SupportsWinchHalt,
 )
+from paint_controller.ports.notifier import DeviceNotifier
 from paint_controller.ports.teensy import (
     SupportsTeensyHalt,
     SupportsTeensyStatusRead,
@@ -27,6 +28,7 @@ from paint_controller.ports.winch import (
 )
 
 __all__ = [
+    "DeviceNotifier",
     "SupportsTeensyHalt",
     "SupportsTeensyStatusRead",
     "SupportsTeensyTeleop",

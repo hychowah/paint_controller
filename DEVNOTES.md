@@ -1,6 +1,15 @@
 # Development Notes
 
 ---
+### 2026-08-05 - Level C P0 seams (DeviceNotifier + external bridge parent)
+
+**Goal**: Land Level C P0 only — notification Protocol + prove `RosTelemetryBridge` can parent to a non-adapter shell. No pure-HAL device rewires.
+**Issues**: None.
+**Tried**: `ports/notifier.py` (`DeviceNotifier`, Null/Recording); `core/device_notifier.py` (`SignalDeviceNotifier`); bridge docstring; tests for pure + Qt notify and external-shell apply-on-main.
+**Result**: Focused notifier+telemetry green; frozen concurrency bar `71 passed`; full suite `545 passed`. Production controllers unchanged.
+**Files**: `ports/notifier.py`, `ports/__init__.py`, `core/device_notifier.py`, `core/ros_telemetry.py`, `tests/test_device_notifier.py`, `tests/test_ros_telemetry.py`, `docs/plan/02_LEVEL_C_PURE_HAL_PLAN.md`
+
+---
 ### 2026-08-05 - Concurrency lock pack (ROS↔Qt / command bus)
 
 **Goal**: Prove worker-thread post/callback affinity and halt vs continuous bus races so Level C (or any threading move) has a before/after bar.

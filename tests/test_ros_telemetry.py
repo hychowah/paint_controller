@@ -128,6 +128,47 @@ def test_post_from_worker_rearm_under_burst(qt_core_app) -> None:
     assert all(tid == main_tid for tid in apply_tids), "all applies must be on main thread"
 
 
+def test_bridge_parented_to_external_shell_applies_on_main(qt_core_app) -> None:
+    """Level C P0: bridge parent may be a shell that is not the apply target.
+
+    Pure-HAL pilots keep apply_fn on plain adapters while the Qt shell owns
+    the bridge lifetime. Worker post must still apply only on the main thread.
+    """
+    from PySide6.QtCore import QObject
+
+    main_tid = threading.get_ident()
+    applied: list[int] = []
+    apply_tids: list[int] = []
+    errors: list[BaseException] = []
+
+    shell = QObject()  # external I/O shell — not the adapter under test
+    bridge = RosTelemetryBridge(
+        lambda s: (apply_tids.append(threading.get_ident()), applied.append(s.value)),
+        parent=shell,
+    )
+    assert bridge.parent() is shell
+
+    def worker() -> None:
+        try:
+            for i in range(1, 11):
+                bridge.post(_Snap(i))
+        except BaseException as exc:  # noqa: BLE001 — surface on main
+            errors.append(exc)
+
+    thread = threading.Thread(target=worker, name="telemetry-external-shell-worker")
+    thread.start()
+    thread.join(timeout=5.0)
+    assert not thread.is_alive(), "worker thread did not finish"
+    assert errors == []
+    assert applied == []
+
+    qt_core_app.processEvents()
+
+    assert applied == [10], f"expected last-wins apply, got {applied}"
+    assert apply_tids == [main_tid], f"apply must run on main thread, got {apply_tids}"
+    assert bridge.parent() is shell
+
+
 def test_teardown_with_pending_post_does_not_crash(qt_core_app) -> None:
     """Pending wake after bridge parent teardown must not crash the event loop.
 

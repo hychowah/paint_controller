@@ -24,7 +24,13 @@ T = TypeVar("T")
 class RosTelemetryBridge(QObject):
     """Last-wins telemetry bridge: ``post`` anywhere, ``apply_fn`` only on main.
 
-    Construct on the Qt main thread with ``parent`` typically the device controller.
+    Construct on the Qt main thread.
+
+    ``parent`` is the **QObject lifetime owner** (device adapter today, or a
+    composition-owned I/O shell for pure-HAL pilots). It need not be the object
+    that ``apply_fn`` mutates — adapters may be plain Python while the shell
+    owns the bridge. Production still parents on adapters until Level C pilots
+    reparent.
     """
 
     _wake = Signal()
