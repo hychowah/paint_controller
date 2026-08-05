@@ -6,6 +6,7 @@ from paint_controller.core.signal_wiring import SignalWiring, SignalWiringPorts
 from tests.controller_factory_runtime_support import (
     _ControlProcessorRecorder,
     _EmergencyHandlerRecorder,
+    _ExitHoldHandlerRecorder,
     _InputHandlerRecorder,
     _QtBridgeRecorder,
     _SafetyCoordinatorRecorder,
@@ -27,6 +28,7 @@ def _make_ports(**overrides) -> SignalWiringPorts:
             {
                 "input_handler": _InputHandlerRecorder(),
                 "emergency_handler": _EmergencyHandlerRecorder(),
+                "exit_hold_handler": _ExitHoldHandlerRecorder(),
                 "control_processor": _ControlProcessorRecorder(),
                 "wheel_controller": _WheelControllerRecorder(),
                 "safety_coordinator": _SafetyCoordinatorRecorder(),
@@ -97,6 +99,10 @@ def test_wire_connects_control_mode_and_emergency() -> None:
     assert len(ports.state_store.control_mode_changed.connections) == 1
     assert len(ports.bundle.emergency_handler.overlay_changed.connections) == 1
     assert len(ports.bundle.emergency_handler.emergency_triggered.connections) == 1
+    assert len(ports.bundle.exit_hold_handler.overlay_changed.connections) == 1
+    # Exit hold progress must land on the bridge signal QML binds.
+    connected = ports.bundle.exit_hold_handler.overlay_changed.connections[0][0]
+    assert getattr(connected, "__self__", None) is ports.qt_bridge.exit_overlay_changed
 
 
 def test_wire_registers_steam_deck_callbacks() -> None:
@@ -111,13 +117,23 @@ def test_wire_registers_steam_deck_callbacks() -> None:
         "r4",
         "l4",
         "menu",
-        "switch",
         "l5",
         "r5",
         "dot",
         "a",
         "l1",
     ]
+
+
+def test_status_tick_polls_exit_hold_handler() -> None:
+    ports = _make_ports()
+    wiring = SignalWiring(ports)
+    wiring.wire()
+
+    ports.steam_deck_handler._current_state = {"buttons": {"switch": True}}
+    wiring._on_status_tick()
+
+    assert ports.bundle.exit_hold_handler.check_calls == [{"switch": True}]
 
 
 def test_wire_connects_status_tick() -> None:

@@ -74,6 +74,7 @@ class SignalWiring:
         state_store.control_mode_changed.connect(qt_bridge.update_fullscreen_video_source)
         bundle.emergency_handler.overlay_changed.connect(qt_bridge.emergency_overlay_changed.emit)
         bundle.emergency_handler.emergency_triggered.connect(qt_bridge.emergency_triggered.emit)
+        bundle.exit_hold_handler.overlay_changed.connect(qt_bridge.exit_overlay_changed.emit)
         video_stream_handler.endEffectorFrameReady.connect(qt_bridge.frame_ready.emit)
         bundle.wheel_controller.error_state_changed.connect(
             self._on_wheel_motor_error,
@@ -139,7 +140,7 @@ class SignalWiring:
         steam_deck_handler.register_button_callback("r4", input_handler.on_r4_pressed)
         steam_deck_handler.register_button_callback("l4", input_handler.on_l4_pressed)
         steam_deck_handler.register_button_callback("menu", input_handler.on_menu_pressed)
-        steam_deck_handler.register_button_callback("switch", input_handler.on_switch_pressed)
+        # Switch is hold-to-exit (ExitHoldHandler), not a press callback.
         steam_deck_handler.register_button_callback("l5", input_handler.on_l5_pressed)
         steam_deck_handler.register_button_callback("r5", input_handler.on_r5_pressed)
         steam_deck_handler.register_button_callback("dot", qt_bridge.toggle_fullscreen)
@@ -177,8 +178,10 @@ class SignalWiring:
             return
 
         input_state = steam_deck_handler.get_current_state()
+        buttons = input_state.get("buttons", {})
         # TD-054: e-stop poll before teleop so a held e-stop latches before stick cmds.
-        bundle.emergency_handler.check_emergency_button(input_state.get("buttons", {}))
+        bundle.emergency_handler.check_emergency_button(buttons)
+        bundle.exit_hold_handler.check_exit_button(buttons)
         bundle.control_processor.process_input(input_state)
 
     def start_timers(self) -> QTimer:

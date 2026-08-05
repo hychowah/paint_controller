@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-08-05 - Switch button hold-1s app exit
+
+**Goal**: Remove Switch mode-toggle (Base↔EF); hold Switch 1s to quit app with progress UI.
+**Tried**: Mirror emergency hold pattern with `ExitHoldHandler` + `ExitHoldOverlay`; wire progress via `QtBridge.exit_overlay_changed`; poll on status tick; graceful `QApplication.quit()`.
+**Result**: ✅ Hold duration 1s; unit/wiring/factory coverage expanded. Residual: Base↔EF `control_mode` has no hardware button path (top bar only switches video source).
+**Files**: `handlers/exit_hold.py`, `handlers/input.py`, `core/signal_wiring.py`, `core/qt_bridge.py`, `core/controller_factory.py`, `qml/overlays/ExitHoldOverlay.qml`, `ShellOverlayStack.qml`, related tests
+
+---
 ### 2026-08-05 - SelectBar navigation stuck on home
 
 **Goal**: Fix page icons in SelectBar doing nothing (always home).

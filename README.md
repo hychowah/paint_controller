@@ -185,7 +185,8 @@ Useful focused handoff bands:
 - **Joystick selection, overlay, and input handling**
   - `tests/test_joystick_selection.py` — Joystick selection model
   - `tests/test_overlay_controller.py` — Overlay menu controller
-  - `tests/test_input_handler.py` — Control-mode switch and menu delegation
+  - `tests/test_input_handler.py` — Menu delegation and thrust toggle
+  - `tests/test_exit_hold.py` — Switch hold-to-exit progress, cancel, quit
 
 - **Device controllers and ROS I/O**
   - `tests/test_ros_node.py` — PaintRosNode heartbeat, cleanup, and command-bus pump

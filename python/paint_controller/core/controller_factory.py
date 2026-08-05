@@ -15,6 +15,7 @@ from paint_controller.controllers.winch_shell import WinchController
 from paint_controller.controllers.wind_monitor import WindMonitor
 from paint_controller.handlers.control_processor import ControlProcessor
 from paint_controller.handlers.emergency import EmergencyButtonHandler
+from paint_controller.handlers.exit_hold import ExitHoldHandler
 from paint_controller.handlers.heartbeat import UIHeartbeatHandler
 from paint_controller.handlers.input import UIInputHandler
 from paint_controller.handlers.manual_commands import ManualCommandHandler
@@ -108,6 +109,7 @@ class ControllerBundle:
     base_top_view_actions: BaseTopViewActions
     input_handler: UIInputHandler
     emergency_handler: EmergencyButtonHandler
+    exit_hold_handler: ExitHoldHandler
 
     # Services
     ssh_controller: UISSHController
@@ -240,6 +242,7 @@ def _build_control_plane(
         safety_coordinator=devices["safety_coordinator"],
         esp32_valve=devices["esp32_valve"],
     )
+    exit_hold = ExitHoldHandler()
     return {
         "selection_model": selection_model,
         "overlay": overlay,
@@ -248,6 +251,7 @@ def _build_control_plane(
         "manual_command_handler": manual_command_handler,
         "input_handler": input_handler,
         "emergency": emergency,
+        "exit_hold": exit_hold,
     }
 
 
@@ -404,6 +408,7 @@ def create_controllers(
         base_top_view_actions=actions["base_top_view_actions"],
         input_handler=control["input_handler"],
         emergency_handler=control["emergency"],
+        exit_hold_handler=control["exit_hold"],
         ssh_controller=services["ssh"],
         screen_manager=services["screen_mgr"],
         screen_recorder=services["screen_rec"],

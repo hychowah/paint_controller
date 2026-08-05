@@ -13,6 +13,7 @@ class QtBridge(QObject):
     frame_ready = Signal()
     emergency_overlay_changed = Signal(bool, float, float)  # visible, current_duration, target_duration
     emergency_triggered = Signal()
+    exit_overlay_changed = Signal(bool, float, float)  # visible, current_duration, target_duration
     status_updated = Signal()
     display_message_changed = Signal(str)
 

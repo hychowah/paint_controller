@@ -12,6 +12,7 @@ from tests.controller_factory_runtime_support import (
     _CleanupRecorder,
     _ControlProcessorRecorder,
     _EmergencyHandlerRecorder,
+    _ExitHoldHandlerRecorder,
     _EngineRecorder,
     _HeartbeatHandlerRecorder,
     _InputHandlerRecorder,
@@ -106,6 +107,7 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
             "workflow_editor": object(),
             "input_handler": _InputHandlerRecorder(),
             "emergency_handler": _EmergencyHandlerRecorder(),
+            "exit_hold_handler": _ExitHoldHandlerRecorder(),
             "safety_coordinator": _SafetyCoordinatorRecorder(),
         },
     )()
@@ -299,7 +301,6 @@ def test_app_runtime_create_bundle_and_register_context_properties(monkeypatch) 
         "r4",
         "l4",
         "menu",
-        "switch",
         "l5",
         "r5",
         "dot",

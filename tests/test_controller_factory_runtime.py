@@ -45,6 +45,7 @@ def test_controller_bundle_cleanup_runs_reverse_order_and_logs_errors() -> None:
         base_top_view_actions=object(),
         input_handler=object(),
         emergency_handler=BrokenCleanup(),  # unlisted leftover with cleanup()
+        exit_hold_handler=object(),
         ssh_controller=cleanup_factory("ssh_controller"),
         screen_manager=cleanup_factory("screen_manager"),
         screen_recorder=cleanup_factory("screen_recorder"),
@@ -138,6 +139,7 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     monkeypatch.setattr(module, "WorkFlowRunner", record("WorkFlowRunner"))
     monkeypatch.setattr(module, "UIInputHandler", record("UIInputHandler"))
     monkeypatch.setattr(module, "EmergencyButtonHandler", record("EmergencyButtonHandler"))
+    monkeypatch.setattr(module, "ExitHoldHandler", record("ExitHoldHandler"))
     monkeypatch.setattr(module, "UISSHController", record("UISSHController"))
     monkeypatch.setattr(module, "ScreenManager", record("ScreenManager"))
     monkeypatch.setattr(module, "ScreenRecorder", record("ScreenRecorder"))
@@ -213,6 +215,8 @@ def test_create_controllers_wires_dependency_graph(monkeypatch) -> None:
     assert bundle.control_processor.kwargs["selection_model"] is bundle.selection_model
     assert bundle.input_handler.kwargs["close_popup_fn"] is close_popup
     assert bundle.emergency_handler.kwargs["safety_coordinator"] is bundle.safety_coordinator
+    assert any(name == "ExitHoldHandler" for name, _args, _kwargs in construction_log)
+    assert bundle.exit_hold_handler.kwargs == {}
     assert bundle.screen_recorder.kwargs["screen_manager"] is bundle.screen_manager
     assert node.get_logger().records[-1].message == "All controllers created with explicit DI"
 
@@ -289,6 +293,7 @@ def test_cleanup_order_lists_every_field_with_cleanup_method(monkeypatch) -> Non
         "WorkFlowRunner",
         "UIInputHandler",
         "EmergencyButtonHandler",
+        "ExitHoldHandler",
         "UISSHController",
         "ScreenManager",
         "ScreenRecorder",

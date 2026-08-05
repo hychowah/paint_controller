@@ -82,9 +82,13 @@ class _SignalRecorder:
 class _SteamDeckHandlerRecorder:
     def __init__(self) -> None:
         self.callbacks: list[tuple[str, object]] = []
+        self._current_state: dict = {"buttons": {}}
 
     def register_button_callback(self, button_name: str, callback) -> None:
         self.callbacks.append((button_name, callback))
+
+    def get_current_state(self) -> dict:
+        return self._current_state
 
 
 class _InputHandlerRecorder:
@@ -109,9 +113,6 @@ class _InputHandlerRecorder:
     def on_menu_pressed(self) -> None:
         pass
 
-    def on_switch_pressed(self) -> None:
-        pass
-
     def on_l5_pressed(self) -> None:
         pass
 
@@ -127,6 +128,7 @@ class _QtBridgeRecorder:
         self.status_updated = _SignalRecorder()
         self.emergency_overlay_changed = _SignalRecorder()
         self.emergency_triggered = _SignalRecorder()
+        self.exit_overlay_changed = _SignalRecorder()
         self.frame_ready = _SignalRecorder()
         self.toggleVideoOverlayRequested = _SignalRecorder()
         self.updateVideoSourceRequested = _SignalRecorder()
@@ -194,6 +196,16 @@ class _EmergencyHandlerRecorder:
 
     def check_emergency_button(self, _buttons) -> None:
         pass
+
+
+class _ExitHoldHandlerRecorder:
+    def __init__(self) -> None:
+        self.overlay_changed = _SignalRecorder()
+        self.exit_triggered = _SignalRecorder()
+        self.check_calls: list[dict[str, bool]] = []
+
+    def check_exit_button(self, buttons) -> None:
+        self.check_calls.append(dict(buttons or {}))
 
 
 class _ControlProcessorRecorder:

@@ -138,4 +138,13 @@ Item {
         qtBridge: stack.qtBridge
         visible: stack.emergencyVisible
     }
+
+    // Hold-to-exit chrome (Switch). Always mounted; visibility is signal-driven.
+    ExitHoldOverlay {
+        id: exitHoldOverlayItem
+        anchors.fill: parent
+        objectName: "exitHoldOverlay"
+        z: stack.emergencyLayer - 1
+        qtBridge: stack.qtBridge
+    }
 }
