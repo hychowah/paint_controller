@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, fields
 from typing import Any
 
-from paint_controller.controllers.esp32_valve import ESP32ValveController
+from paint_controller.controllers.esp32_valve_shell import ESP32ValveController
 from paint_controller.controllers.lidar_shell import LidarController
 from paint_controller.controllers.ssh import UISSHController
 from paint_controller.controllers.system_monitor import SystemMonitor

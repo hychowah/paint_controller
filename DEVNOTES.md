@@ -1,6 +1,18 @@
 # Development Notes
 
 ---
+### 2026-08-05 - Level C P5 ESP32 protocol/HAL split
+
+**Goal**: Pure ESP32 protocol+HAL (no PySide6); transport shell keeps QThread/timers/discovery.
+**Result**: ✅ Full suite green. Pure ban includes esp32_valve.py.
+**Files**: esp32_valve.py, esp32_valve_shell.py, factory, tests/test_esp32_pure_hal.py
+
+---
+### 2026-08-05 - Level C P0–P5 program complete
+
+**Result**: Phases P0–P5 committed separately; frozen concurrency bar + full pytest green; pure HAL PySide ban covers lidar/wheel/winch/teensy/esp32_valve.
+
+---
 ### 2026-08-05 - Level C P4 Teensy pure HAL
 
 **Goal**: TeensyHal without PySide6; shell owns timers/bridge/settings.

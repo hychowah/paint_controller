@@ -70,7 +70,7 @@ class FakeRetiredThread:
 
 
 def _esp32_controller_class():
-    return importlib.import_module("paint_controller.controllers.esp32_valve").ESP32ValveController
+    return importlib.import_module("paint_controller.controllers.esp32_valve_shell").ESP32ValveController
 
 
 def _message_type():

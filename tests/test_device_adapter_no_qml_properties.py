@@ -25,7 +25,7 @@ _SOURCE_FILES: dict[str, str] = {
     "WinchController": "winch_shell.py",
     # Level C P1: presentation shell; pure HAL is lidar.py (no Qt Property).
     "LidarController": "lidar_shell.py",
-    "ESP32ValveController": "esp32_valve.py",
+    "ESP32ValveController": "esp32_valve_shell.py",
     "WindMonitor": "wind_monitor.py",
 }
 

@@ -39,7 +39,7 @@ _SOURCE_FILES: dict[str, str] = {
     "WinchController": "winch_shell.py",
     # Level C P1: presentation shell; pure HAL is lidar.py (no Qt slots).
     "LidarController": "lidar_shell.py",
-    "ESP32ValveController": "esp32_valve.py",
+    "ESP32ValveController": "esp32_valve_shell.py",
 }
 
 
@@ -91,7 +91,7 @@ def test_device_adapters_have_no_qml_command_slots() -> None:
 
 def test_esp32_discovery_slot_still_queued_from_signal() -> None:
     """Worker slot must remain; production connects discovery_completed QueuedConnection."""
-    mod = importlib.import_module("paint_controller.controllers.esp32_valve")
+    mod = importlib.import_module("paint_controller.controllers.esp32_valve_shell")
     source = Path(mod.__file__).read_text(encoding="utf-8")
     assert "_finish_discovery_and_connect" in source
     assert "QueuedConnection" in source

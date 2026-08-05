@@ -1,8 +1,8 @@
 # Level C — Pure-Python Device HAL (Durable Plan)
 
-**Status**: Full Level C program in progress — **P0–P4 landed**  
+**Status**: Full Level C program in progress — **P0–P5 complete**  
 **Saved**: 2026-08-05  
-**Last refreshed**: 2026-08-05 (P4 Teensy pure HAL landed)  
+**Last refreshed**: 2026-08-05 (P0–P5 full Level C complete)  
 **Depends on**: Level A (`@Slot` strip) and Level B (`Property` → `@property`) — **both landed**  
 **Do not overwrite** this file with concurrency-test or feature plans; those are separate tracks. Refresh this file when Level C scope or prerequisites change.
 
@@ -241,16 +241,18 @@ Production controllers still parent bridges on adapters (unchanged). No QML / fa
 
 **Landed**: pure `teensy.py` (`TeensyHal`); `teensy_shell.TeensyController` owns Signals/bridge/watchdog/thrust timer/settings.
 
-### P5 — ESP32 split (High)
+### P5 — ESP32 split (High) — **LANDED 2026-08-05**
 
 - Pure protocol + HAL (`setValveTurn`, status apply).
 - Transport QObject (thread, discovery, timers) remains.
 - `ValveStatus` wires to shell/proxy.
 
-### Closeout
+**Landed**: pure `esp32_valve.py` (protocol + `Esp32ValveHal`); transport `esp32_valve_shell.ESP32ValveController`.
 
-- AST/import ban: pure HAL modules no PySide6 (allowlist transport modules).
-- Update decision log; optional DEVNOTES one-liner.
+### Closeout — **LANDED 2026-08-05**
+
+- AST/import ban: pure HAL modules no PySide6 (`tests/test_pure_hal_no_pyside.py`: lidar/wheel/winch/teensy/esp32_valve).
+- Decision log updated; DEVNOTES per phase.
 
 ---
 

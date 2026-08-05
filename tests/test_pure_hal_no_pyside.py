@@ -15,6 +15,7 @@ _PURE_HAL_MODULES: tuple[str, ...] = (
     "wheel.py",
     "winch.py",
     "teensy.py",
+    "esp32_valve.py",
 )
 
 
