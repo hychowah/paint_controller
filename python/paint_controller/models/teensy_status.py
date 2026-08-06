@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from PySide6.QtCore import Property, QObject, Signal
 
 from paint_controller.models.status_wiring import connect_required
+
+# P-04: cap QML notify storms from high-rate firmware status dicts.
+# HAL/cache still updates; NOTIFY emit is paint-rate limited (per-property, not blanket).
+TEENS_STATUS_PAINT_INTERVAL_S = 1.0 / 15.0
 
 # Dict-key projection from TeensyController.all_status / status_changed payload.
 # (status_key, property_name, kind) where kind is "bool" | "float" | "int"
@@ -150,10 +155,19 @@ class TeensyStatus(QObject):
     swingDampingEnabledChanged = Signal()
     sprayGunLedOnChanged = Signal()
 
-    def __init__(self, teensy_controller: Any, parent: QObject | None = None) -> None:
+    def __init__(
+        self,
+        teensy_controller: Any,
+        parent: QObject | None = None,
+        *,
+        paint_interval_s: float = TEENS_STATUS_PAINT_INTERVAL_S,
+    ) -> None:
         super().__init__(parent)
         self._c = teensy_controller
         self._cache: dict[str, Any] = {}
+        self._paint_interval_s = max(0.0, float(paint_interval_s))
+        self._last_paint_at = 0.0
+        self._pending_snapshot: dict[str, Any] | None = None
         # property_name -> notify signal
         self._notifiers: dict[str, Any] = {
             "enabled": self.enabledChanged,
@@ -230,7 +244,26 @@ class TeensyStatus(QObject):
             snapshot = getattr(self._c, "all_status", {}) or {}
         if not isinstance(snapshot, dict):
             snapshot = {}
-        self._apply_dict_snapshot(snapshot, emit=True)
+        # Last-wins coalesce between paint windows (P-04).
+        self._pending_snapshot = snapshot
+        if self._should_emit_paint():
+            self._flush_status_paint()
+
+    def _should_emit_paint(self) -> bool:
+        """Return True when enough time has elapsed for a QML paint wave (P-04)."""
+        if self._paint_interval_s <= 0.0:
+            return True
+        now = time.monotonic()
+        if (now - self._last_paint_at) >= self._paint_interval_s:
+            self._last_paint_at = now
+            return True
+        return False
+
+    def _flush_status_paint(self) -> None:
+        snapshot = self._pending_snapshot
+        self._pending_snapshot = None
+        if isinstance(snapshot, dict):
+            self._apply_dict_snapshot(snapshot, emit=True)
         # Keep controller-property flags in sync when only status_changed fires.
         for attr, prop_name, _signal in _TEENS_CONTROLLER_BOOL_FIELDS:
             notify = self._notifiers[prop_name]

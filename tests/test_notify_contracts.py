@@ -858,6 +858,33 @@ def test_teensy_status_discrete_enable_signal_updates_cache(qt_core_app) -> None
     assert status.stabilityEnabled is False
 
 
+def test_teensy_status_paint_interval_coalesces_rapid_status_changed(qt_core_app) -> None:
+    """P-04: rapid status_changed updates cache last-wins but NOTIFY at paint rate."""
+    hub = _make_teensy_controller_hub()
+    status = TeensyStatus(hub, paint_interval_s=1.0)
+    pitch_spy = QSignalSpy(status.imuPitchChanged)
+
+    hub.all_status = {**hub.all_status, "imu_pitch": 2.0}
+    hub.status_changed.emit(hub.all_status)
+    assert pitch_spy.count() == 1
+    assert status.imuPitch == 2.0
+
+    # Within paint window: no extra NOTIFY; pending holds latest.
+    hub.all_status = {**hub.all_status, "imu_pitch": 3.0}
+    hub.status_changed.emit(hub.all_status)
+    hub.all_status = {**hub.all_status, "imu_pitch": 4.0}
+    hub.status_changed.emit(hub.all_status)
+    assert pitch_spy.count() == 1
+    # Cache not flushed yet — property still shows last painted value.
+    assert status.imuPitch == 2.0
+
+    # Force paint window open.
+    status._last_paint_at = 0.0
+    hub.status_changed.emit(hub.all_status)
+    assert pitch_spy.count() == 2
+    assert status.imuPitch == 4.0
+
+
 # ---------------------------------------------------------------------------
 # ValveStatus / LidarStatus (TD-037 residual)
 # ---------------------------------------------------------------------------
