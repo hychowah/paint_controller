@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-08-06 - Top-bar EF/BASE also switches joystick modes
+
+**Goal**: Fullscreen top-bar stream switch should fully change control mode (sticks + `control_mode`), not only the feed.
+**Tried**: Policy defaults in `teleop_modes.default_stick_pair`; selection owns `transition_controls` (remember/restore); `UIInputHandler.switch_control_mode` orchestrates session side effects; top-bar wiring calls mode switch only (video via existing `control_mode_changed`).
+**Result**: ✅ Focused band 39 passed (input, selection, signal_wiring, teleop_modes).
+**Files**: `handlers/policy/teleop_modes.py`, `models/joystick_selection.py`, `handlers/input.py`, `core/signal_wiring.py`, related tests.
+
+---
 ### 2026-08-06 - Stream unavailable icon (3s EF/base liveness)
 
 **Goal**: When EF or base has no frames (>3s / never), show stream-not-available icon instead of frozen last frame (esp. EF→base switch).

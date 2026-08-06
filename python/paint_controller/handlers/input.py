@@ -4,8 +4,9 @@ import logging
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QObject, Slot
+from PySide6.QtCore import QObject, QTimer, Slot
 
+from paint_controller.utils.constants import ControlMode
 from paint_controller.utils.input import DoublePressDetector
 
 if TYPE_CHECKING:
@@ -66,6 +67,44 @@ class UIInputHandler(QObject):
         """Handle arm_extend_length change from SettingsManager"""
         self._arm_extend_length = new_value
         logger.info("Arm extend length updated to: %s", new_value)
+
+    @staticmethod
+    def _normalize_control_mode(mode: object) -> str:
+        """Return canonical ``base`` / ``ef`` (do not use str(str-Enum); that is the member name)."""
+        if isinstance(mode, ControlMode):
+            return mode.value
+        value = getattr(mode, "value", None)
+        if isinstance(value, str):
+            return value
+        return str(mode)
+
+    def switch_control_mode(self, target_mode: str) -> None:
+        """Switch session control mode and restore per-mode joystick assignments.
+
+        Absolute (not toggle). Top-bar EF/BASE requests call this so stream switch
+        and stick modes stay one decision. Video follows via ``control_mode_changed``.
+        """
+        target = self._normalize_control_mode(target_mode)
+        current = self._normalize_control_mode(self._state_store.control_mode)
+        if current == target:
+            return
+
+        try:
+            self._close_popup_fn()
+        except Exception as e:
+            logger.warning("Could not close popup: %s", e)
+
+        self._selection_model.transition_controls(current, target)
+        self._state_store.control_mode = target
+
+        if target == ControlMode.END_EFFECTOR.value:
+            self._control_processor.reset_winch_activation()
+            message = "Switched to EF control mode"
+        else:
+            message = "Switched to Base control mode (Track Control)"
+
+        # Defer popup so video overlay Loader can stabilize (KNOWLEDGE: Loader timing).
+        QTimer.singleShot(150, lambda: self._show_popup_fn("Control Mode", message, "info"))
 
     @Slot()
     def on_l5_pressed(self):

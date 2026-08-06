@@ -58,6 +58,23 @@ def test_selection_model_remembers_controls_per_mode(qt_app) -> None:
     assert model.get_remembered_controls("ef") == ("EF arm", "Winch Speed")
 
 
+def test_transition_controls_applies_defaults_then_restores_memory(qt_app) -> None:
+    model = JoystickSelectionModel()
+    model.set_joystick_controls("Track Control Left", "Track Control Right")
+
+    model.transition_controls("base", "ef")
+    assert model.get_current_joystick_controls() == ["None", "Winch Speed"]
+    assert model.get_remembered_controls("base") == ("Track Control Left", "Track Control Right")
+
+    model.set_joystick_controls("EF arm", "EF Yaw Angle")
+    model.transition_controls("ef", "base")
+    assert model.get_current_joystick_controls() == ["Track Control Left", "Track Control Right"]
+    assert model.get_remembered_controls("ef") == ("EF arm", "EF Yaw Angle")
+
+    model.transition_controls("base", "ef")
+    assert model.get_current_joystick_controls() == ["EF arm", "EF Yaw Angle"]
+
+
 def _index_of(model: JoystickSelectionModel, label: str) -> int:
     return model.control_options.index(label)
 

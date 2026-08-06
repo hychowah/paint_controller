@@ -163,6 +163,18 @@ def display_name(menu_label: str) -> str:
     return _DISPLAY_NAMES.get(menu_label, menu_label)
 
 
+def default_stick_pair(control_mode: str) -> tuple[str, str]:
+    """Default left/right menu labels when entering a control mode for the first time.
+
+    ``control_mode`` is a session mode (``base`` / ``ef``), not a stick menu label.
+    Labels are catalog members so selection can apply them without a parallel vocabulary.
+    """
+    if control_mode == "ef":
+        return ("None", "Winch Speed")
+    # base and any unknown mode fall back to track teleop (safe base default).
+    return ("Track Control Left", "Track Control Right")
+
+
 def autorun_clear_labels() -> frozenset[str]:
     """Modes cleared to None when avoidAutoRunOverwrite runs."""
     return _AUTORUN_CLEAR

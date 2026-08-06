@@ -173,6 +173,19 @@ class JoystickSelectionModel(QObject):
     def get_remembered_controls(self, mode: str) -> tuple[str, str] | None:
         return self._remembered_controls_by_mode.get(mode)
 
+    def transition_controls(self, leaving_mode: str, entering_mode: str) -> None:
+        """Remember sticks for the mode being left; restore or apply defaults for the mode entered.
+
+        Owns the per-mode stick memory decision. Session ``control_mode`` and
+        hardware side-effects (video, winch reset) stay with the orchestrator.
+        """
+        self.remember_current_controls(leaving_mode)
+        remembered = self.get_remembered_controls(entering_mode)
+        if remembered is None:
+            remembered = teleop_modes.default_stick_pair(entering_mode)
+        left_control, right_control = remembered
+        self.set_joystick_controls(left_control, right_control)
+
     @Slot()
     def avoidAutoRunOverwrite(self) -> None:
         clear = teleop_modes.autorun_clear_labels()

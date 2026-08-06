@@ -117,6 +117,17 @@ def test_autorun_and_duplicate_policy_sets() -> None:
     )
 
 
+def test_default_stick_pair_labels_are_catalog_members() -> None:
+    menu = set(teleop_modes.menu_labels())
+    base_pair = teleop_modes.default_stick_pair("base")
+    ef_pair = teleop_modes.default_stick_pair("ef")
+
+    assert base_pair == ("Track Control Left", "Track Control Right")
+    assert ef_pair == ("None", "Winch Speed")
+    for label in (*base_pair, *ef_pair):
+        assert label in menu
+
+
 class _FakeTeensy:
     def __init__(self) -> None:
         self.arm_speeds: list[float] = []

@@ -92,6 +92,9 @@ class _SteamDeckHandlerRecorder:
 
 
 class _InputHandlerRecorder:
+    def __init__(self) -> None:
+        self.switch_control_mode_calls: list[str] = []
+
     def on_up_pressed(self) -> None:
         pass
 
@@ -121,6 +124,9 @@ class _InputHandlerRecorder:
 
     def on_l1_pressed(self) -> None:
         pass
+
+    def switch_control_mode(self, target_mode: str) -> None:
+        self.switch_control_mode_calls.append(str(target_mode))
 
 
 class _QtBridgeRecorder:

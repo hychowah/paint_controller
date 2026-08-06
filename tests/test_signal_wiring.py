@@ -175,6 +175,26 @@ def test_wire_connects_video_top_bar_requests() -> None:
     assert len(video_runtime.topBar.baseVideoRequested.connections) == 1
 
 
+def test_top_bar_video_requests_switch_control_mode_not_raw_video_source() -> None:
+    """EF/BASE top bar must change mode (sticks + control_mode), not only the feed URI."""
+    from paint_controller.utils.constants import ControlMode
+
+    video_runtime = _VideoRuntimeRecorderForWiring()
+    ports = _make_ports(video_runtime=video_runtime)
+    SignalWiring(ports).wire()
+
+    ef_cb, _ = video_runtime.topBar.endEffectorVideoRequested.connections[0]
+    base_cb, _ = video_runtime.topBar.baseVideoRequested.connections[0]
+    ef_cb()
+    base_cb()
+
+    assert ports.bundle.input_handler.switch_control_mode_calls == [
+        ControlMode.END_EFFECTOR.value,
+        ControlMode.BASE.value,
+    ]
+    assert ports.overlay_host.sources == []
+
+
 def test_start_timers_creates_status_timer_and_starts_monitor(monkeypatch) -> None:
     from paint_controller.core import signal_wiring as signal_wiring_module
 

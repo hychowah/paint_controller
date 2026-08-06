@@ -10,6 +10,8 @@ from typing import Any
 
 from PySide6.QtCore import Qt, QTimer
 
+from paint_controller.utils.constants import ControlMode
+
 logger = logging.getLogger(__name__)
 
 # Throttle ROS thread error messages so varying spin errors do not thrash TopBar.
@@ -89,11 +91,14 @@ class SignalWiring:
                 Qt.QueuedConnection,
             )
 
+        # Stream switch ≡ control mode switch (sticks + control_mode). Video feed
+        # follows via control_mode_changed → update_fullscreen_video_source.
+        # Pass .value so session state always stores "ef" / "base" (not enum repr).
         video_runtime.topBar.endEffectorVideoRequested.connect(
-            lambda: overlay_host.set_video_fullscreen_source("image://ef_live/frame")
+            lambda: bundle.input_handler.switch_control_mode(ControlMode.END_EFFECTOR.value)
         )
         video_runtime.topBar.baseVideoRequested.connect(
-            lambda: overlay_host.set_video_fullscreen_source("image://base_front_live/frame")
+            lambda: bundle.input_handler.switch_control_mode(ControlMode.BASE.value)
         )
         qt_bridge.toggleVideoOverlayRequested.connect(
             lambda _active, video_source: overlay_host.toggle_video_fullscreen(video_source)
