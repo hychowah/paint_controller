@@ -159,6 +159,42 @@ def test_process_input_still_ticks_when_mode_selected_but_sticks_idle(qt_app) ->
     assert calls["n"] == 1
 
 
+def test_process_input_deselect_track_zeros_wheel_with_sticks_centered(qt_app) -> None:
+    """P-03 fix: deselect Track Control → None must still tick and zero the track.
+
+    Idle early-out must not skip note_selection/_zero_tracks_leaving_selection when
+    the selection pair changes to None with sticks already centered.
+    """
+    wheel = FakeWheel()
+
+    class _MutableOverlay:
+        def __init__(self) -> None:
+            self.left = "Track Control Left"
+            self.right = "None"
+
+        def get_left_selected_option(self) -> str:
+            return self.left
+
+        def get_right_selected_option(self) -> str:
+            return self.right
+
+        def display_name_for_option(self, option: str) -> str:
+            return option
+
+    overlay = _MutableOverlay()
+    cp = _make_cp(wheel=wheel, overlay=overlay)
+
+    # Drive left track at full stick so a non-zero command is latched.
+    cp.process_input(_stick_state(ly=JOYSTICK_MAX))
+    assert wheel.left_speed_commands, "expected a non-zero track command while mode active"
+    assert wheel.left_speed_commands[-1] != 0.0
+
+    # Deselect with sticks centered — must still zero the leaving track side.
+    overlay.left = "None"
+    cp.process_input(_stick_state())
+    assert wheel.left_speed_commands[-1] == 0.0
+
+
 # ---------------------------------------------------------------------------
 # Nonlinear curve (_apply_nonlinear_curve)
 # ---------------------------------------------------------------------------

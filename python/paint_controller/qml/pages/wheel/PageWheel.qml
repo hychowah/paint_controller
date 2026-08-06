@@ -18,6 +18,12 @@ Rectangle {
     color: "#9F9F9F"
 
     property string camSource: "image://base_front_live/frame"
+
+    // P-02: demand-start rear/front when the operator switches camSource (warm-start is EF+front only).
+    onCamSourceChanged: {
+        if (page1Rect.videoRuntime && page1Rect.videoRuntime.feeds)
+            page1Rect.videoRuntime.feeds.ensureStreamForImageUrl(camSource)
+    }
     
     // Main container optimized for 1280x720 but scales responsively
     Rectangle {
@@ -118,7 +124,11 @@ Rectangle {
                                 
                                 MouseArea {
                                     anchors.fill: parent
-                                    onClicked: camSource = "image://base_front_live/frame"
+                                    onClicked: {
+                                        camSource = "image://base_front_live/frame"
+                                        if (page1Rect.videoRuntime && page1Rect.videoRuntime.feeds)
+                                            page1Rect.videoRuntime.feeds.ensureStreamForImageUrl(camSource)
+                                    }
                                     cursorShape: Qt.PointingHandCursor
                                 }
                             }
@@ -160,7 +170,11 @@ Rectangle {
                                 
                                 MouseArea {
                                     anchors.fill: parent
-                                    onClicked: camSource = "image://base_rear_live/frame"
+                                    onClicked: {
+                                        camSource = "image://base_rear_live/frame"
+                                        if (page1Rect.videoRuntime && page1Rect.videoRuntime.feeds)
+                                            page1Rect.videoRuntime.feeds.ensureStreamForImageUrl(camSource)
+                                    }
                                     cursorShape: Qt.PointingHandCursor
                                 }
                             }

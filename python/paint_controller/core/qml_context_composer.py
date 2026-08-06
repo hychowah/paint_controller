@@ -201,6 +201,15 @@ class _VideoRuntimeFeeds(QObject):
         """Build image:// URL with generation query (P-01); no empty-source thrash."""
         return _versioned_image_url(base_url, generation)
 
+    @Slot(str, result=bool)
+    def ensureStreamForImageUrl(self, image_url: str) -> bool:
+        """Demand-start the pipeline for an image:// URL (P-02 PageWheel rear/front)."""
+        handler = self._video_stream_handler
+        ensure = getattr(handler, "ensure_stream_for_image_url", None)
+        if not callable(ensure):
+            return False
+        return bool(ensure(image_url))
+
 
 def _versioned_image_url(base_url: str, generation: int) -> str:
     """Pure helper for tests and :meth:`_VideoRuntimeFeeds.versionedImageUrl`."""

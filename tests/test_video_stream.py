@@ -165,6 +165,34 @@ def test_start_all_streams_only_warms_ef_and_base_front(qt_app) -> None:
         handler.cleanup()
 
 
+def test_video_runtime_feeds_ensure_stream_for_image_url_starts_rear(qt_app) -> None:
+    """P-02: QML-facing feeds.ensureStreamForImageUrl demand-starts BASE_REAR (PageWheel path)."""
+    from unittest.mock import patch
+
+    from paint_controller.core.qml_context_composer import _VideoRuntimeFeeds
+
+    handler = VideoStreamHandler(ros_node=None)
+    try:
+        starts: list[CameraType] = []
+
+        def _fake_start(self):  # type: ignore[no-untyped-def]
+            starts.append(self.config.camera_type)
+            with self._running_lock:
+                self._is_running = True
+            return True
+
+        feeds = _VideoRuntimeFeeds(handler)
+        with patch.object(CameraStream, "start", _fake_start):
+            # Warm start does not include rear.
+            handler.start_all_streams()
+            assert CameraType.BASE_REAR not in starts
+            # PageWheel REAR click path: camSource → ensureStreamForImageUrl.
+            assert feeds.ensureStreamForImageUrl("image://base_rear_live/frame") is True
+            assert CameraType.BASE_REAR in starts
+    finally:
+        handler.cleanup()
+
+
 def test_frame_generation_bumps_on_publish_and_versioned_url(qt_app) -> None:
     """P-01: generation property + versionedImageUrl for cache-bust without empty source."""
     from paint_controller.core.qml_context_composer import _versioned_image_url

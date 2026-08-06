@@ -233,12 +233,16 @@ class ControlProcessor(QObject):
             self.left_control_mode_display = self._selection_model.display_name_for_option(left_mode)
             self.right_control_mode_display = self._selection_model.display_name_for_option(right_mode)
 
-            # P-03: skip engine tick when both modes idle and sticks centered.
+            # P-03: skip engine tick only when stable idle (modes None, sticks
+            # centered, selection unchanged). Always tick on selection change so
+            # note_selection/_zero_tracks_leaving_selection still runs when
+            # deselecting Track Control → None with sticks centered.
             # E-stop / exit-hold still run every status tick in SignalWiring.
-            # When a mode is selected, always tick so zero/deadzone paths fire.
+            pair = (str(left_mode or "None"), str(right_mode or "None"))
+            selection_changed = pair != getattr(self._engine, "_last_selection_pair", pair)
             modes_active = left_mode not in ("", "None", None) or right_mode not in ("", "None", None)
             axes_active = input_axes_active(input_state)
-            if modes_active or axes_active:
+            if modes_active or axes_active or selection_changed:
                 PERF.incr("teleop_tick")
                 self._engine.tick(input_state, left_mode, right_mode)
             else:
