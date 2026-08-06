@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../theme"
 import "../../overlays/systemcontrol/components" as SysComponents
+import "../../components/inputs"
 
 /**
  * Full-page touch workflow editor.
@@ -134,7 +135,7 @@ Rectangle {
                 EditorButton {
                     text: "Save as"
                     buttonWidth: Math.round(110 * CommonStyle.scaleFactor)
-                    onClicked: saveAsPopup.open()
+                    onClicked: saveAsKeyboard.openFor(workflowEditor ? workflowEditor.workflow_name : "")
                 }
             }
         }
@@ -653,60 +654,14 @@ Rectangle {
         }
     }
 
-    // Save as popup
-    Popup {
-        id: saveAsPopup
-        modal: true
-        width: Math.round(440 * CommonStyle.scaleFactor)
-        height: Math.round(240 * CommonStyle.scaleFactor)
-        anchors.centerIn: parent
-        background: Rectangle {
-            color: CommonStyle.backgroundL1
-            radius: 10
-            border.color: CommonStyle.borderDefault
-        }
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 16
-            spacing: 12
-            Text {
-                text: "Save as"
-                color: CommonStyle.textPrimary
-                font.bold: true
-                font.pixelSize: root.fontSection
-            }
-            TextField {
-                id: saveAsName
-                Layout.fillWidth: true
-                Layout.preferredHeight: Math.round(56 * CommonStyle.scaleFactor)
-                color: CommonStyle.textPrimary
-                font.pixelSize: root.fontField
-                placeholderText: "workflow name"
-                text: workflowEditor ? workflowEditor.workflow_name : ""
-                background: Rectangle {
-                    color: CommonStyle.backgroundL2
-                    border.color: CommonStyle.borderFocused
-                    radius: 6
-                }
-            }
-            RowLayout {
-                Layout.alignment: Qt.AlignRight
-                spacing: 8
-                EditorButton {
-                    text: "Cancel"
-                    onClicked: saveAsPopup.close()
-                }
-                EditorButton {
-                    text: "Save"
-                    accent: true
-                    onClicked: {
-                        if (workflowEditor && saveAsName.text.trim() !== "") {
-                            workflowEditor.save_as(saveAsName.text.trim())
-                            saveAsPopup.close()
-                        }
-                    }
-                }
-            }
+    // Full-screen touch keyboard for workflow naming (native IM is disabled)
+    TextKeyboardOverlay {
+        id: saveAsKeyboard
+        title: "Save as"
+        placeholderText: "workflow name"
+        onAccepted: function(name) {
+            if (workflowEditor)
+                workflowEditor.save_as(name)
         }
     }
 
