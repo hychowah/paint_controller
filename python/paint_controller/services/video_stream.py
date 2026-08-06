@@ -58,7 +58,12 @@ class CameraConfig:
 
 
 class ImageProvider(QQuickImageProvider):
-    """Enhanced image provider for camera streams with thread-safe access"""
+    """Thread-safe live-frame provider (P-06 double-buffer / COW swap).
+
+    Writers publish a **detached** QImage via :meth:`publish` (swap under lock).
+    Readers get a shallow QImage (Qt COW) — no per-request deep ``.copy()``.
+    Pixel buffers of published frames are never mutated in place.
+    """
 
     def __init__(self, camera_type: CameraType, width: int = 640, height: int = 480):
         super().__init__(QQuickImageProvider.Image)
@@ -68,6 +73,13 @@ class ImageProvider(QQuickImageProvider):
         self.image = QImage(self._default_width, self._default_height, QImage.Format_RGB888)
         self.image.fill(0)
         self._image_lock = QMutex()  # ✅ Thread-safe Qt mutex for concurrent access
+        self._generation = 0
+
+    @property
+    def generation(self) -> int:
+        """Monotonic frame generation; bumps on every publish/clear (P-01)."""
+        with QMutexLocker(self._image_lock):
+            return int(self._generation)
 
     def _black_placeholder(self) -> QImage:
         """Return a non-null black frame safe for QML requestImage."""
@@ -80,18 +92,38 @@ class ImageProvider(QQuickImageProvider):
         placeholder.fill(0)
         return placeholder
 
+    def publish(self, image: QImage) -> tuple[int, QImage]:
+        """Atomically swap the front buffer. ``image`` must be detached from GST/OpenCV.
+
+        Returns ``(generation, shallow_front)`` for optional signal consumers.
+        """
+        if image is None or image.isNull():
+            self.clear_to_placeholder()
+            with QMutexLocker(self._image_lock):
+                return int(self._generation), QImage(self.image)
+        # Detach from foreign (GStreamer) memory into a heap-owned buffer once.
+        owned = image.copy()
+        with QMutexLocker(self._image_lock):
+            self.image = owned
+            self._generation += 1
+            return int(self._generation), QImage(self.image)
+
     def clear_to_placeholder(self) -> None:
         """Replace the current frame with a black placeholder under the provider lock."""
         with QMutexLocker(self._image_lock):
             self.image = self._black_placeholder()
+            self._generation += 1
 
     def requestImage(self, id, size, requestedSize):
+        from paint_controller.utils.perf_counters import PERF
+
+        PERF.incr("image_request")
         with QMutexLocker(self._image_lock):
             # Never return None: render thread may call during stream cleanup.
             if self.image is None or self.image.isNull():
                 return self._black_placeholder()
-            # Return a deep copy to prevent external modifications
-            return self.image.copy()
+            # Shallow QImage (COW): safe while we never mutate published pixels in place.
+            return QImage(self.image)
 
 
 class CameraStream(QObject):
@@ -169,13 +201,12 @@ class CameraStream(QObject):
 
             try:
                 image = QImage(map_info.data, width, height, width * 3, QImage.Format_RGB888)
-                image_copy = image.copy()
+                # publish() deep-copies once into the provider front buffer (P-06).
+                _gen, front = self.image_provider.publish(image)
+                from paint_controller.utils.perf_counters import PERF
 
-                locker = QMutexLocker(self.image_provider._image_lock)
-                self.image_provider.image = image_copy
-                locker.unlock()
-
-                self.frameReady.emit(self.config.camera_type, image_copy)
+                PERF.incr("frame_publish")
+                self.frameReady.emit(self.config.camera_type, front)
 
                 return Gst.FlowReturn.OK
 

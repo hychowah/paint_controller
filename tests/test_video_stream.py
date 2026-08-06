@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 
-from PySide6.QtCore import QMutexLocker, QSize
+from PySide6.QtCore import QSize
 from PySide6.QtGui import QImage
 
 from paint_controller.services.video_stream import (
@@ -24,6 +24,30 @@ def test_image_provider_request_image_returns_copy(qt_app) -> None:
     assert not image.isNull()
     assert image.width() == 32
     assert image.height() == 16
+
+
+def test_image_provider_publish_swaps_without_request_deep_copy(qt_app) -> None:
+    """P-06: publish owns one deep buffer; requestImage returns a COW handle of that frame."""
+    provider = ImageProvider(CameraType.BASE_FRONT, width=16, height=8)
+    painted = QImage(16, 8, QImage.Format_RGB888)
+    painted.fill(0xAABBCC)
+    gen1, front = provider.publish(painted)
+    assert gen1 == 1
+    assert not front.isNull()
+    requested = provider.requestImage("frame", QSize(), QSize())
+    assert not requested.isNull()
+    # Same pixels as published frame (shallow or COW of provider front).
+    assert requested.pixel(0, 0) == front.pixel(0, 0)
+    # Replacing the front buffer does not mutate the previously returned image bits
+    # once QImage has detached / points at the old buffer.
+    painted2 = QImage(16, 8, QImage.Format_RGB888)
+    painted2.fill(0x112233)
+    gen2, _ = provider.publish(painted2)
+    assert gen2 == 2
+    assert provider.generation == 2
+    # request now sees the new frame
+    new_req = provider.requestImage("frame", QSize(), QSize())
+    assert new_req.pixel(0, 0) == painted2.pixel(0, 0)
 
 
 def test_image_provider_request_image_tolerates_null_image(qt_app) -> None:
@@ -49,8 +73,7 @@ def test_camera_stream_cleanup_keeps_non_null_image(qt_app) -> None:
     # Simulate a live frame then cleanup while QML may still requestImage.
     painted = QImage(64, 48, QImage.Format_RGB888)
     painted.fill(0x112233)
-    with QMutexLocker(stream.image_provider._image_lock):
-        stream.image_provider.image = painted
+    stream.image_provider.publish(painted)
 
     stream.cleanup()
 
@@ -94,8 +117,7 @@ def test_feed_liveness_defaults_unavailable_and_recovers(qt_app) -> None:
         painted.fill(0xABCDEF)
         base = handler._get_stream(CameraType.BASE_FRONT)
         assert base is not None
-        with QMutexLocker(base.image_provider._image_lock):
-            base.image_provider.image = painted
+        base.image_provider.publish(painted)
 
         state = handler._feed_availability[CameraType.BASE_FRONT]
         state.last_status_update_time = now - (STREAM_FRAME_TIMEOUT_S + 0.5)

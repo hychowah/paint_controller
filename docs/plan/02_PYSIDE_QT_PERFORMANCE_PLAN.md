@@ -123,7 +123,7 @@ Mark each row after review:
 | **P-03** | Status-tick idle early-out (keep 60 Hz e-stop) | Med–High | S–M | **Must preserve safety order** | ☐ Apply / ☐ Defer / ☐ Reject |
 | **P-04** | Telemetry / status paint rate split | Med | M | Keep per-property NOTIFY | ☐ Apply / ☐ Defer / ☐ Reject |
 | **P-05** | Dual-surface video/binding gate | Med | M | Product dual-monitor rule | ☐ Apply / ☐ Defer / ☐ Reject |
-| **P-06** | ImageProvider double-buffer / swap | Med–High | M | Thread safety critical | ☐ Apply / ☐ Defer / ☐ Reject |
+| **P-06** | ImageProvider double-buffer / swap | Med–High | M | Thread safety critical | **Apply-done** (`publish` + COW `requestImage`) |
 | **P-07** | Gate page-local QML timers on visibility | Low–Med | S | None | ☐ Apply / ☐ Defer / ☐ Reject |
 | **P-08** | Startup: defer base-top worker / heavy shells | Med (cold start) | M | Keep factory graph | ☐ Apply / ☐ Defer / ☐ Reject |
 | **P-09** | QML scene hygiene (overdraw, effects, text) | Med when effects | S–M | Chrome only; no policy | ☐ Apply / ☐ Defer / ☐ Reject |
