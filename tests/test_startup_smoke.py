@@ -208,10 +208,10 @@ Item {{
 
 
 def test_video_fullscreen_base_ef_switch_single_active_chrome(monkeypatch, tmp_path, qt_app, qtbot):
-    """Video dual-layer flips immediately; only one mode chrome Loader is active.
+    """Video dual-layer flips immediately; exactly one mode chrome Loader is active.
 
     Chrome commit is deferred one event-loop turn so switch work is spread.
-    Shared top bar stays present across base↔EF.
+    Shared top bar stays present across base↔EF. No dual-warm / chromeHeld hold.
     """
     import time
 
@@ -315,9 +315,9 @@ Item {{
             qtbot.wait(20)
         assert ef_loader.property("item") is not None
         assert ef_loader.property("item").objectName() == "endEffectorOverlay"
-        # Base chrome released while EF is active.
+        assert bool(ef_loader.property("visible")) is True
+        # Single-active: previous base chrome is destroyed when EF becomes desired.
         assert base_loader.property("item") is None
-        # Shared top bar still present (not recreated per mode).
         assert _find_named("sharedVideoTopBar") is not None
 
         workspace.setProperty("videoSource", "image://base_front_live/frame")

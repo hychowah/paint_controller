@@ -21,13 +21,13 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Mode-switch timing budget (video-first on Deck — do not collapse without re-measure).
-# | Delay | Owner                         | Role                                      |
-# | 0 ms  | this module, _apply_mode      | commit StateStore.control_mode → video URL |
-# | 0 ms  | VideoFullscreenWorkspace      | chromeFeed after videoSource               |
-# | ~1 ms | EndEffectorOverlay heavyDecor | Canvas after EF chrome item                |
-# | 80 ms | this module, popup            | toast after video + chrome tick            |
-# | 66 ms | VideoFullscreenWorkspace      | ~15 Hz active-feed Image pull              |
+# Mode-switch timing budget (video-first on Deck — re-measure before collapsing).
+# | Delay | Owner                    | Role                                         |
+# | 0 ms  | this module, _apply_mode | commit StateStore.control_mode → video URL   |
+# | 0 ms  | VideoFullscreenWorkspace | chromeFeed after videoSource (one Loader)    |
+# | 80 ms | this module, popup       | toast after video + chrome tick              |
+# | 66 ms | VideoFullscreenWorkspace | ~15 Hz active-feed Image pull                |
+# EF pitch/wall HUDs are pure QML (no Canvas) — no extra decor defer on switch.
 _MODE_APPLY_DELAY_MS = 0
 _MODE_POPUP_DELAY_MS = 80
 _PHASE1_WARN_MS = 25.0

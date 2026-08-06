@@ -17,8 +17,6 @@ Rectangle {
     required property var lidarStatus
     // Workspace may own a single shared top bar (avoid recreate on base↔EF).
     property bool showTopBar: true
-    // Defer Canvas-heavy widgets one tick so mode switch video flips first.
-    property bool heavyDecorReady: false
 
     readonly property int panelWidth: CommonStyle.panelWidth
     readonly property int panelHeight: CommonStyle.panelHeight
@@ -50,39 +48,17 @@ Rectangle {
         return numericValue(value, 0).toFixed(digits) + suffix
     }
     
-    Component.onCompleted: heavyDecorTimer.start()
-    Timer {
-        id: heavyDecorTimer
-        interval: 1
-        repeat: false
-        onTriggered: overlay.heavyDecorReady = true
-    }
-
-    // Top Center - Pitch Indicator Dial (Canvas) — deferred off mode-switch stack
-    Loader {
-        active: overlay.heavyDecorReady
+    // Pure QML HUDs (no Canvas/Context2D — first Canvas paint blocked Deck ~2s).
+    PitchIndicatorDial {
         anchors.top: parent.top
         anchors.topMargin: 50
         anchors.horizontalCenter: parent.horizontalCenter
-        width: 180
-        height: 120
         z: 50
-        sourceComponent: PitchIndicatorDial {
-            currentPitch: numericValue(overlay.teensyStatus ? overlay.teensyStatus.imuPitch : 0.0, 0.0)
-        }
+        currentPitch: numericValue(overlay.teensyStatus ? overlay.teensyStatus.imuPitch : 0.0, 0.0)
     }
 
-    // Wall Detection Overlay - Bottom Center (Canvas) — deferred
-    Loader {
-        active: overlay.heavyDecorReady
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: 5
-        anchors.horizontalCenter: parent.horizontalCenter
-        width: 250
-        height: 120
-        sourceComponent: WallDetectionOverlay {
-            lidarStatus: overlay.lidarStatus
-        }
+    WallDetectionOverlay {
+        lidarStatus: overlay.lidarStatus
     }
     
     // WorkFlow Status Overlay - Full screen with blinking border

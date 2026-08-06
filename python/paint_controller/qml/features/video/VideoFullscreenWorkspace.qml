@@ -10,10 +10,11 @@ import "../../overlays/video/components"
  * 2. chromeFeed commits next event-loop turn; exactly one mode chrome Loader is active.
  * 3. Shared VideoOverlayTopBar lives here; mode overlays set showTopBar: false.
  * 4. Frames: timer-coalesced generation pull (~15 Hz), not per-frame Connections thrash.
- * 5. Do not dual-warm mode chromes (main-thread binding storms / false device disconnects).
+ * 5. Do not dual-warm mode chromes (binding storms / false device disconnects).
+ * 6. EF pitch/wall HUDs are pure QML (no Canvas/Context2D — first Canvas paint froze Deck ~2s).
  *
- * Timing (paired with handlers/input.py): control_mode 0 ms → chrome 0 ms → EF Canvas ~1 ms
- * → popup 80 ms; frame pull 66 ms.
+ * Timing (paired with handlers/input.py):
+ * control_mode 0 ms → chrome 0 ms → popup 80 ms; frame pull 66 ms.
  */
 Rectangle {
     id: root
@@ -85,28 +86,24 @@ Rectangle {
         var feeds = root.videoRuntime.feeds
         var gen = 0
         var baseUrl = ""
-        var lastGen = -1
         if (kind === "ef") {
             gen = feeds.endEffectorFrameGeneration
             baseUrl = "image://ef_live/frame"
-            lastGen = root._efDisplayGen
-            if (!force && gen === lastGen)
+            if (!force && gen === root._efDisplayGen)
                 return
             root._efDisplayGen = gen
             root.efDisplayUrl = feeds.versionedImageUrl(baseUrl, gen)
         } else if (kind === "base_front") {
             gen = feeds.baseFrontFrameGeneration
             baseUrl = "image://base_front_live/frame"
-            lastGen = root._baseFrontDisplayGen
-            if (!force && gen === lastGen)
+            if (!force && gen === root._baseFrontDisplayGen)
                 return
             root._baseFrontDisplayGen = gen
             root.baseFrontDisplayUrl = feeds.versionedImageUrl(baseUrl, gen)
         } else if (kind === "base_rear") {
             gen = feeds.baseRearFrameGeneration
             baseUrl = "image://base_rear_live/frame"
-            lastGen = root._baseRearDisplayGen
-            if (!force && gen === lastGen)
+            if (!force && gen === root._baseRearDisplayGen)
                 return
             root._baseRearDisplayGen = gen
             root.baseRearDisplayUrl = feeds.versionedImageUrl(baseUrl, gen)
@@ -296,7 +293,7 @@ Rectangle {
         }
     }
 
-    // Exactly one mode chrome. Destroy inactive to free binding storms.
+    // Exactly one mode chrome active (destroy inactive — no dual-warm).
     Loader {
         id: endEffectorOverlayLoader
         objectName: "endEffectorOverlayLoader"
