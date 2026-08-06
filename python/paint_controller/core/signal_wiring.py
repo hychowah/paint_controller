@@ -11,6 +11,7 @@ from typing import Any
 from PySide6.QtCore import Qt, QTimer
 
 from paint_controller.utils.constants import ControlMode
+from paint_controller.utils.perf_counters import PERF, timed_section
 
 logger = logging.getLogger(__name__)
 
@@ -182,12 +183,14 @@ class SignalWiring:
         if bundle is None or steam_deck_handler is None:
             return
 
-        input_state = steam_deck_handler.get_current_state()
-        buttons = input_state.get("buttons", {})
-        # TD-054: e-stop poll before teleop so a held e-stop latches before stick cmds.
-        bundle.emergency_handler.check_emergency_button(buttons)
-        bundle.exit_hold_handler.check_exit_button(buttons)
-        bundle.control_processor.process_input(input_state)
+        with timed_section("status_tick"):
+            PERF.incr("status_tick")
+            input_state = steam_deck_handler.get_current_state()
+            buttons = input_state.get("buttons", {})
+            # TD-054: e-stop poll before teleop so a held e-stop latches before stick cmds.
+            bundle.emergency_handler.check_emergency_button(buttons)
+            bundle.exit_hold_handler.check_exit_button(buttons)
+            bundle.control_processor.process_input(input_state)
 
     def start_timers(self) -> QTimer:
         """Create and start the status timer and system monitor.
