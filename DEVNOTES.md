@@ -1,6 +1,15 @@
 # Development Notes
 
 ---
+### 2026-08-06 - Stream unavailable icon (3s EF/base liveness)
+
+**Goal**: When EF or base has no frames (>3s / never), show stream-not-available icon instead of frozen last frame (esp. EF→base switch).
+**Issues**: QML cache-bust assigns `videoFrame.source` and breaks binding to `root.videoSource`; image providers keep last pixels; Flaticon download URL 403.
+**Tried**: Own liveness in `VideoStreamHandler` via `AvailabilityState(3s)` + `AvailabilityWatchdog` (device pattern); clear provider on stale; surface flags on `videoRuntime.feeds`; QML rebinds source on switch + icon when active feed unavailable. Local PNG icon (Flaticon token expired).
+**Result**: ✅ Focused band 47 passed (`test_video_stream`, composer, startup smokes). No commit per request.
+**Files**: `services/video_stream.py`, `core/qml_context_composer.py`, `qml/features/video/VideoFullscreenWorkspace.qml`, `resource/stream_not_available.png`, `tests/test_video_stream.py`, `tests/startup_smoke_support.py`
+
+---
 ### 2026-08-05 - Switch button hold-1s app exit
 
 **Goal**: Remove Switch mode-toggle (Base↔EF); hold Switch 1s to quit app with progress UI.

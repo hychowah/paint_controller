@@ -111,15 +111,54 @@ class _VideoRuntimeControls(QObject):
 
 
 class _VideoRuntimeFeeds(QObject):
+    """QML-facing feed signals/properties; liveness policy lives on VideoStreamHandler."""
+
     endEffectorFrameReady = Signal()
     baseFrontFrameReady = Signal()
     baseRearFrameReady = Signal()
+    endEffectorStreamAvailableChanged = Signal()
+    baseFrontStreamAvailableChanged = Signal()
+    baseRearStreamAvailableChanged = Signal()
 
     def __init__(self, video_stream_handler: object) -> None:
         super().__init__()
+        self._video_stream_handler = video_stream_handler
         _connect_if_signal(video_stream_handler, "endEffectorFrameReady", self.endEffectorFrameReady.emit)
         _connect_if_signal(video_stream_handler, "baseFrontFrameReady", self.baseFrontFrameReady.emit)
         _connect_if_signal(video_stream_handler, "baseRearFrameReady", self.baseRearFrameReady.emit)
+        _connect_if_signal(
+            video_stream_handler,
+            "endEffectorStreamAvailableChanged",
+            self.endEffectorStreamAvailableChanged.emit,
+        )
+        _connect_if_signal(
+            video_stream_handler,
+            "baseFrontStreamAvailableChanged",
+            self.baseFrontStreamAvailableChanged.emit,
+        )
+        _connect_if_signal(
+            video_stream_handler,
+            "baseRearStreamAvailableChanged",
+            self.baseRearStreamAvailableChanged.emit,
+        )
+
+    @Property(bool, notify=endEffectorStreamAvailableChanged)
+    def endEffectorStreamAvailable(self) -> bool:
+        return bool(
+            _read_object_value(self._video_stream_handler, "endEffectorStreamAvailable", default=False)
+        )
+
+    @Property(bool, notify=baseFrontStreamAvailableChanged)
+    def baseFrontStreamAvailable(self) -> bool:
+        return bool(
+            _read_object_value(self._video_stream_handler, "baseFrontStreamAvailable", default=False)
+        )
+
+    @Property(bool, notify=baseRearStreamAvailableChanged)
+    def baseRearStreamAvailable(self) -> bool:
+        return bool(
+            _read_object_value(self._video_stream_handler, "baseRearStreamAvailable", default=False)
+        )
 
 
 class _VideoRuntimeTopBar(QObject):

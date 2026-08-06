@@ -26,6 +26,17 @@ Rectangle {
     readonly property int panelBottomMargin: CommonStyle.videoPanelBottomMargin
     readonly property int panelSideMargin: CommonStyle.videoPanelSideMargin
 
+    // Python owns the 3s freshness rule; QML only selects the active feed's flag.
+    readonly property bool activeStreamAvailable: {
+        if (root.videoSource.indexOf("ef_live") >= 0)
+            return root.videoRuntime.feeds.endEffectorStreamAvailable
+        if (root.videoSource.indexOf("base_front_live") >= 0)
+            return root.videoRuntime.feeds.baseFrontStreamAvailable
+        if (root.videoSource.indexOf("base_rear_live") >= 0)
+            return root.videoRuntime.feeds.baseRearStreamAvailable
+        return false
+    }
+
     visible: active
     anchors.fill: parent
     color: CommonStyle.backgroundL0
@@ -41,7 +52,28 @@ Rectangle {
         fillMode: Image.PreserveAspectFit
         cache: false
         asynchronous: false
+        // Keep an explicit assignment path for frame cache-bust; re-applied on videoSource change.
         source: root.videoSource
+        visible: root.activeStreamAvailable
+    }
+
+    // Shown when the active EF/base feed has not delivered a frame within the Python timeout.
+    Image {
+        id: streamUnavailableIcon
+        anchors.centerIn: parent
+        width: Math.round(160 * CommonStyle.scaleFactor)
+        height: width
+        fillMode: Image.PreserveAspectFit
+        source: "../../../resource/stream_not_available.png"
+        visible: root.active && !root.activeStreamAvailable
+        opacity: 0.85
+    }
+
+    onVideoSourceChanged: {
+        // Frame handlers assign videoFrame.source and break the binding to root.videoSource.
+        // Re-apply so EF→base switches do not keep the previous feed's last frame.
+        videoFrame.source = ""
+        videoFrame.source = root.videoSource
     }
 
     Rectangle {

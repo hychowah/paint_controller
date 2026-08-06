@@ -11,11 +11,18 @@ from PySide6.QtCore import Property, QMutex, QMutexLocker, QObject, Signal, Slot
 from PySide6.QtGui import QImage
 from PySide6.QtQuick import QQuickImageProvider
 
+from paint_controller.core.availability import AvailabilityState
+from paint_controller.core.availability_watchdog import AvailabilityWatchdog
+
 gi.require_version("Gst", "1.0")
 gi.require_version("GstApp", "1.0")
 from gi.repository import Gst
 
 logger = logging.getLogger(__name__)
+
+# Operator-facing rule: hide frozen last frame after this long without samples.
+STREAM_FRAME_TIMEOUT_S = 3.0
+STREAM_AVAILABILITY_POLL_MS = 250
 
 # ROS2 imports (optional - gracefully handle if not available)
 try:
@@ -264,6 +271,11 @@ class VideoStreamHandler(QObject):
     # General frame ready signal with camera type
     frameReady = Signal(str)  # Emits camera type as string
 
+    # Per-feed liveness (frame within STREAM_FRAME_TIMEOUT_S). Default unavailable.
+    endEffectorStreamAvailableChanged = Signal()
+    baseFrontStreamAvailableChanged = Signal()
+    baseRearStreamAvailableChanged = Signal()
+
     # ROS2 signals for status and recording
     recordingStatusChanged = Signal(str)  # Emits recording status ("recording", "stopped", "failed")
     baseRecordingStatusChanged = Signal(str)  # Emits base camera recording status
@@ -302,6 +314,19 @@ class VideoStreamHandler(QObject):
         self._startup_lock = threading.RLock()
         self._streams_started = False
 
+        # Operator feeds with fullscreen / preview consumers (not base-top processed path).
+        self._feed_availability: dict[CameraType, AvailabilityState] = {
+            CameraType.END_EFFECTOR: AvailabilityState(STREAM_FRAME_TIMEOUT_S),
+            CameraType.BASE_FRONT: AvailabilityState(STREAM_FRAME_TIMEOUT_S),
+            CameraType.BASE_REAR: AvailabilityState(STREAM_FRAME_TIMEOUT_S),
+        }
+        self._feed_available_signals: dict[CameraType, Signal] = {
+            CameraType.END_EFFECTOR: self.endEffectorStreamAvailableChanged,
+            CameraType.BASE_FRONT: self.baseFrontStreamAvailableChanged,
+            CameraType.BASE_REAR: self.baseRearStreamAvailableChanged,
+        }
+        self._watchdog: AvailabilityWatchdog | None = None
+
         # Define camera configurations
         self.camera_configs = {
             CameraType.END_EFFECTOR: CameraConfig(
@@ -327,6 +352,7 @@ class VideoStreamHandler(QObject):
         # Create camera streams
         self.camera_streams: dict[CameraType, CameraStream] = {}
         self._create_camera_streams()
+        self._start_feed_availability_watchdog()
 
     def _setup_ros_interface(self):
         """Setup ROS2 publishers and subscribers for end effector camera recording control and status."""
@@ -575,6 +601,63 @@ class VideoStreamHandler(QObject):
             self.configurableFrameReady.emit()
 
         self.frameReady.emit(camera_type.value)
+        self._note_feed_frame(camera_type)
+
+    def _start_feed_availability_watchdog(self) -> None:
+        """Poll feed freshness on the Qt thread (same pattern as device shells)."""
+        if self._watchdog is not None:
+            return
+        self._watchdog = AvailabilityWatchdog(
+            self._check_feed_availability,
+            interval_ms=STREAM_AVAILABILITY_POLL_MS,
+            parent=self,
+        )
+
+    def _note_feed_frame(self, camera_type: CameraType, now: float | None = None) -> None:
+        """Record a live sample for operator-facing feeds; mark available when it flips."""
+        state = self._feed_availability.get(camera_type)
+        if state is None:
+            return
+        state.record_status_update(now)
+        self._set_feed_available(camera_type, True)
+
+    def _set_feed_available(self, camera_type: CameraType, available: bool) -> None:
+        state = self._feed_availability.get(camera_type)
+        if state is None:
+            return
+        if not state.set_available(available):
+            return
+        if not available:
+            # Drop frozen last frame so QML cannot rediscover stale pixels.
+            stream = self._get_stream(camera_type)
+            if stream is not None:
+                stream.image_provider.clear_to_placeholder()
+        signal = self._feed_available_signals.get(camera_type)
+        if signal is not None:
+            signal.emit()
+
+    def _check_feed_availability(self) -> None:
+        """Mark feeds unavailable after STREAM_FRAME_TIMEOUT_S without frames."""
+        now = time.time()
+        for camera_type, state in self._feed_availability.items():
+            if state.available and not state.status_is_recent(now):
+                self._set_feed_available(camera_type, False)
+
+    def _feed_is_available(self, camera_type: CameraType) -> bool:
+        state = self._feed_availability.get(camera_type)
+        return bool(state.available) if state is not None else False
+
+    @Property(bool, notify=endEffectorStreamAvailableChanged)
+    def endEffectorStreamAvailable(self) -> bool:
+        return self._feed_is_available(CameraType.END_EFFECTOR)
+
+    @Property(bool, notify=baseFrontStreamAvailableChanged)
+    def baseFrontStreamAvailable(self) -> bool:
+        return self._feed_is_available(CameraType.BASE_FRONT)
+
+    @Property(bool, notify=baseRearStreamAvailableChanged)
+    def baseRearStreamAvailable(self) -> bool:
+        return self._feed_is_available(CameraType.BASE_REAR)
 
     def _get_stream(self, camera_type: CameraType) -> CameraStream | None:
         """
@@ -735,6 +818,10 @@ class VideoStreamHandler(QObject):
         try:
             logger.info("Cleaning up video streams...")
 
+            if self._watchdog is not None:
+                self._watchdog.stop()
+                self._watchdog = None
+
             with self._streams_lock:
                 # Create snapshot to avoid iteration issues during cleanup
                 streams_copy = copy(self.camera_streams)
@@ -756,6 +843,9 @@ class VideoStreamHandler(QObject):
 
             with self._startup_lock:
                 self._streams_started = False
+
+            for camera_type in list(self._feed_availability):
+                self._set_feed_available(camera_type, False)
 
             logger.info("Video stream cleanup complete")
 

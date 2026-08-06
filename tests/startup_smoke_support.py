@@ -157,6 +157,27 @@ class FakeStreamHandler(QObject):
     endEffectorFrameReady = Signal()
     baseFrontFrameReady = Signal()
     baseRearFrameReady = Signal()
+    endEffectorStreamAvailableChanged = Signal()
+    baseFrontStreamAvailableChanged = Signal()
+    baseRearStreamAvailableChanged = Signal()
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._end_effector_stream_available = False
+        self._base_front_stream_available = False
+        self._base_rear_stream_available = False
+
+    @Property(bool, notify=endEffectorStreamAvailableChanged)
+    def endEffectorStreamAvailable(self) -> bool:
+        return self._end_effector_stream_available
+
+    @Property(bool, notify=baseFrontStreamAvailableChanged)
+    def baseFrontStreamAvailable(self) -> bool:
+        return self._base_front_stream_available
+
+    @Property(bool, notify=baseRearStreamAvailableChanged)
+    def baseRearStreamAvailable(self) -> bool:
+        return self._base_rear_stream_available
 
 
 class FakeScreenManager(DynamicObject):
