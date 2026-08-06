@@ -21,15 +21,23 @@ def test_selection_model_commits_temporary_selection_independently(qt_app) -> No
     assert model.get_current_joystick_controls() == ["Wheel Travel Left", "Track Control Right"]
 
 
-def test_selection_model_prevents_duplicate_non_track_selection(qt_app) -> None:
+def test_selection_model_exclusive_duplicate_clears_other_temp_stick(qt_app) -> None:
+    """Selecting an exclusive mode already on the other stick clears that stick to None."""
     model = JoystickSelectionModel()
     model.set_joystick_controls("Winch Speed", "None")
 
     model.initialize_temporary_selection()
-    model.move_selection_to_last("right")
+    winch_index = model.control_options.index("Winch Speed")
+    assert model.set_temporary_index("right", winch_index) is True
 
+    # Temporary preview: right took Winch, left cleared to None.
+    assert model.display_left_index(show_overlay=True) == 0
+    assert model.display_right_index(show_overlay=True) == winch_index
+    # Committed unchanged until commit.
     assert model.get_current_joystick_controls() == ["Winch Speed", "None"]
-    assert model.display_right_index(show_overlay=True) != 1
+
+    model.commit_temporary_selection()
+    assert model.get_current_joystick_controls() == ["None", "Winch Speed"]
 
 
 def test_selection_model_allows_independent_track_selection_on_both_sides(qt_app) -> None:
@@ -87,12 +95,20 @@ def test_select_left_control_commits_allowed_option(qt_app) -> None:
     assert model.get_left_selected_option() == "Track Control Left"
 
 
-def test_select_left_control_blocks_duplicate_of_committed_right(qt_app) -> None:
+def test_select_left_control_takes_exclusive_mode_and_clears_right(qt_app) -> None:
     model = JoystickSelectionModel()
     model.set_joystick_controls("Winch Speed", "EF arm")
 
-    assert model.select_left_control(_index_of(model, "EF arm")) is False
-    assert model.get_left_selected_option() == "Winch Speed"
+    assert model.select_left_control(_index_of(model, "EF arm")) is True
+    assert model.get_current_joystick_controls() == ["EF arm", "None"]
+
+
+def test_select_right_control_takes_exclusive_mode_and_clears_left(qt_app) -> None:
+    model = JoystickSelectionModel()
+    model.set_joystick_controls("Winch Speed", "None")
+
+    assert model.select_right_control(_index_of(model, "Winch Speed")) is True
+    assert model.get_current_joystick_controls() == ["None", "Winch Speed"]
 
 
 def test_select_control_allows_track_options_independently_on_both_sides(qt_app) -> None:

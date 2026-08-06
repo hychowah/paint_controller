@@ -98,16 +98,16 @@ def test_select_index_commits_and_hides_overlay(qt_app) -> None:
     assert model.get_left_selected_option() == "Winch Speed"
 
 
-def test_select_index_returns_false_for_blocked_duplicate(qt_app) -> None:
+def test_select_index_exclusive_duplicate_clears_other_stick(qt_app) -> None:
     model, overlay = _build_overlay()
     model.set_joystick_controls("Winch Speed", "EF arm")
 
     overlay.open_menu("left")
     selected = overlay.select_index(_EF_ARM)
 
-    assert selected is False
-    assert overlay.show_overlay is True
-    assert model.get_left_selected_option() == "Winch Speed"
+    assert selected is True
+    assert overlay.show_overlay is False
+    assert model.get_current_joystick_controls() == ["EF arm", "None"]
 
 
 def test_cleanup_stops_input_timer_and_disconnects_model_signals(qt_app) -> None:

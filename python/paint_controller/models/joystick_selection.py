@@ -54,91 +54,84 @@ class JoystickSelectionModel(QObject):
             return self._control_options[index]
         return ""
 
-    def _can_select_option(self, active_menu: str, index: int, *, other_index: int | None = None) -> bool:
-        label = self._label_at(index)
-        if label in teleop_modes.duplicate_allowed_labels():
-            return True
+    def _is_valid_index(self, index: int) -> bool:
+        return 0 <= index < len(self._control_options)
 
-        if other_index is None:
-            other_index = self._temp_right_index if active_menu == "left" else self._temp_left_index
-        # Sentinel "None" (index 0) or any non-conflicting unique mode.
-        return index == 0 or label == "None" or index != other_index
+    def _is_exclusive_conflict(self, index: int, other_index: int) -> bool:
+        """True when both sticks would own the same exclusive mode.
+
+        Track modes may share a label on both sticks. ``None`` never conflicts.
+        Other modes are exclusive: selecting them on one stick clears the other.
+        """
+        label = self._label_at(index)
+        if index == 0 or label == "None":
+            return False
+        if label in teleop_modes.duplicate_allowed_labels():
+            return False
+        return index == other_index
+
+    def _assign_side(self, side: str, index: int, *, temporary: bool) -> bool:
+        """Assign one stick; if exclusive conflict, clear the other stick to None."""
+        if not self._is_valid_index(index):
+            return False
+
+        if temporary:
+            if side == "left":
+                self._set_temporary_left_index(index)
+                if self._is_exclusive_conflict(index, self._temp_right_index):
+                    self._set_temporary_right_index(0)
+            else:
+                self._set_temporary_right_index(index)
+                if self._is_exclusive_conflict(index, self._temp_left_index):
+                    self._set_temporary_left_index(0)
+        else:
+            if side == "left":
+                self._set_committed_left_index(index)
+                if self._is_exclusive_conflict(index, self._right_selected_index):
+                    self._set_committed_right_index(0)
+            else:
+                self._set_committed_right_index(index)
+                if self._is_exclusive_conflict(index, self._left_selected_index):
+                    self._set_committed_left_index(0)
+        return True
 
     def select_left_control(self, index: int) -> bool:
-        """Commit a left control selection if it is allowed.
-
-        Validation is performed against the committed right selection so that
-        direct touch selection behaves correctly even when the overlay is not
-        using temporary preview.
-        """
-        if not self._can_select_option("left", index, other_index=self._right_selected_index):
-            return False
-        self._set_committed_left_index(index)
-        return True
+        """Commit a left control selection (clears right if exclusive conflict)."""
+        return self._assign_side("left", index, temporary=False)
 
     def select_right_control(self, index: int) -> bool:
-        """Commit a right control selection if it is allowed.
-
-        Validation is performed against the committed left selection so that
-        direct touch selection behaves correctly even when the overlay is not
-        using temporary preview.
-        """
-        if not self._can_select_option("right", index, other_index=self._left_selected_index):
-            return False
-        self._set_committed_right_index(index)
-        return True
+        """Commit a right control selection (clears left if exclusive conflict)."""
+        return self._assign_side("right", index, temporary=False)
 
     def set_temporary_index(self, active_menu: str, index: int) -> bool:
-        """Set the temporary selection index if it is allowed.
+        """Set the temporary selection index for the active menu.
 
-        This is used by touch selection so that hide_menu() can commit the
-        temporary index through the same path as button navigation.
+        Used by touch selection so hide_menu() can commit through the same
+        path as button navigation. Exclusive conflicts clear the other temp stick.
         """
-        if not self._can_select_option(active_menu, index):
+        if active_menu not in ("left", "right"):
             return False
-        if active_menu == "left":
-            self._set_temporary_left_index(index)
-        else:
-            self._set_temporary_right_index(index)
-        return True
+        return self._assign_side(active_menu, index, temporary=True)
 
     def move_selection_up(self, active_menu: str) -> bool:
         current_index = self._temp_left_index if active_menu == "left" else self._temp_right_index
-        for index in range(current_index - 1, -1, -1):
-            if self._can_select_option(active_menu, index):
-                if active_menu == "left":
-                    self._set_temporary_left_index(index)
-                else:
-                    self._set_temporary_right_index(index)
-                return True
-        return False
+        if current_index <= 0:
+            return False
+        return self._assign_side(active_menu, current_index - 1, temporary=True)
 
     def move_selection_down(self, active_menu: str) -> bool:
         current_index = self._temp_left_index if active_menu == "left" else self._temp_right_index
-        for index in range(current_index + 1, len(self._control_options)):
-            if self._can_select_option(active_menu, index):
-                if active_menu == "left":
-                    self._set_temporary_left_index(index)
-                else:
-                    self._set_temporary_right_index(index)
-                return True
-        return False
+        if current_index >= len(self._control_options) - 1:
+            return False
+        return self._assign_side(active_menu, current_index + 1, temporary=True)
 
     def move_selection_to_first(self, active_menu: str) -> None:
-        if active_menu == "left":
-            self._set_temporary_left_index(0)
-        else:
-            self._set_temporary_right_index(0)
+        self._assign_side(active_menu, 0, temporary=True)
 
     def move_selection_to_last(self, active_menu: str) -> bool:
-        for index in range(len(self._control_options) - 1, -1, -1):
-            if self._can_select_option(active_menu, index):
-                if active_menu == "left":
-                    self._set_temporary_left_index(index)
-                else:
-                    self._set_temporary_right_index(index)
-                return True
-        return False
+        if not self._control_options:
+            return False
+        return self._assign_side(active_menu, len(self._control_options) - 1, temporary=True)
 
     @Slot(result=str)
     def get_left_selected_option(self) -> str:

@@ -181,7 +181,10 @@ def autorun_clear_labels() -> frozenset[str]:
 
 
 def duplicate_allowed_labels() -> frozenset[str]:
-    """Modes that may be selected on both sticks (tracks)."""
+    """Modes that may remain on both sticks without clearing the other.
+
+    All other exclusive modes: selecting on one stick clears the other to None.
+    """
     return _DUPLICATE_ALLOWED
 
 
