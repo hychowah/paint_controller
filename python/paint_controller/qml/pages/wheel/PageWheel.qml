@@ -511,7 +511,8 @@ Rectangle {
         Timer {
             interval: 100
             repeat: true
-            running: true
+            // P-07: do not burn CPU when the wheel page is not visible.
+            running: page1Rect.visible
             onTriggered: {
                 timeStep++;
                 var y = (1+Math.cos(timeStep/10.0))/2.0;

@@ -23,11 +23,11 @@ Item {
     property real currentAngle: (torque / maxTorque) * 270
     property real maxAngle: (maxTorqueInWindow / maxTorque) * 270
 
-    // Timer to update max value window
+    // Timer to update max value window (P-07: only while visible)
     Timer {
         id: historyTimer
         interval: 100  // Update every 100ms
-        running: true
+        running: root.visible
         repeat: true
         onTriggered: {
             // Add current value with timestamp
