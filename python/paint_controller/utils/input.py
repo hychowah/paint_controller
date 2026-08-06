@@ -1,6 +1,36 @@
 """Reusable input utilities for button press detection and deadzone tracking."""
 
+from __future__ import annotations
+
 import time
+from typing import Any
+
+
+def input_axes_active(input_state: dict[str, Any] | None, threshold: float = 1638.4) -> bool:
+    """True when any stick/trigger axis exceeds ``threshold`` (default ~5% of 32768).
+
+    Used by continuous teleop idle early-out (P-03). Pure function — no Qt.
+    """
+    if not input_state:
+        return False
+    for stick_name in ("left_stick", "right_stick"):
+        stick = input_state.get(stick_name) or {}
+        try:
+            if abs(float(stick.get("x", 0.0) or 0.0)) > threshold:
+                return True
+            if abs(float(stick.get("y", 0.0) or 0.0)) > threshold:
+                return True
+        except (TypeError, ValueError):
+            continue
+    triggers = input_state.get("triggers") or {}
+    try:
+        if abs(float(triggers.get("left", 0.0) or 0.0)) > threshold:
+            return True
+        if abs(float(triggers.get("right", 0.0) or 0.0)) > threshold:
+            return True
+    except (TypeError, ValueError):
+        pass
+    return False
 
 
 class DoublePressDetector:

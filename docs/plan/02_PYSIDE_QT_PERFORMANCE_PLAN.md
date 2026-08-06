@@ -120,7 +120,7 @@ Mark each row after review:
 | **P-00** | Measurement baseline (before any opt) | Meta | S | None | **Apply-done** (`utils/perf_counters.py`) |
 | **P-01** | Video: cut double-copy + QML cache-bust | **High** | M–L | Low if Python still owns pixels | **Apply-done** (generation URL, option B) |
 | **P-02** | Lazy / demand-driven multi-stream GStreamer | **High** | M | Low if `videoRuntime` owns policy | **Apply-done** (option C warm EF+front) |
-| **P-03** | Status-tick idle early-out (keep 60 Hz e-stop) | Med–High | S–M | **Must preserve safety order** | ☐ Apply / ☐ Defer / ☐ Reject |
+| **P-03** | Status-tick idle early-out (keep 60 Hz e-stop) | Med–High | S–M | **Must preserve safety order** | **Apply-done** (skip engine when modes None) |
 | **P-04** | Telemetry / status paint rate split | Med | M | Keep per-property NOTIFY | ☐ Apply / ☐ Defer / ☐ Reject |
 | **P-05** | Dual-surface video/binding gate | Med | M | Product dual-monitor rule | ☐ Apply / ☐ Defer / ☐ Reject |
 | **P-06** | ImageProvider double-buffer / swap | Med–High | M | Thread safety critical | **Apply-done** (`publish` + COW `requestImage`) |

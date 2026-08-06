@@ -24,6 +24,8 @@ from paint_controller.ports.teensy import SupportsTeensyTeleop
 from paint_controller.ports.valve import SupportsValveCommand
 from paint_controller.ports.wheel import SupportsWheelTeleop
 from paint_controller.ports.winch import SupportsWinchTeleop
+from paint_controller.utils.input import input_axes_active
+from paint_controller.utils.perf_counters import PERF
 
 if TYPE_CHECKING:
     from paint_controller.core.settings import SettingsManager
@@ -230,7 +232,17 @@ class ControlProcessor(QObject):
             right_mode = self._selection_model.get_right_selected_option()
             self.left_control_mode_display = self._selection_model.display_name_for_option(left_mode)
             self.right_control_mode_display = self._selection_model.display_name_for_option(right_mode)
-            self._engine.tick(input_state, left_mode, right_mode)
+
+            # P-03: skip engine tick when both modes idle and sticks centered.
+            # E-stop / exit-hold still run every status tick in SignalWiring.
+            # When a mode is selected, always tick so zero/deadzone paths fire.
+            modes_active = left_mode not in ("", "None", None) or right_mode not in ("", "None", None)
+            axes_active = input_axes_active(input_state)
+            if modes_active or axes_active:
+                PERF.incr("teleop_tick")
+                self._engine.tick(input_state, left_mode, right_mode)
+            else:
+                PERF.incr("teleop_idle_skip")
             self._update_display()
         except Exception as e:
             logger.error("Error processing input: %s", e)

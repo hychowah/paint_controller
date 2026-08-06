@@ -106,6 +106,59 @@ def test_process_input_skips_engine_when_continuous_motion_latched(qt_app) -> No
     assert winch.rpm_commands == []
 
 
+def test_process_input_idle_skip_when_modes_none_and_sticks_centered(qt_app) -> None:
+    """P-03: no engine tick when both modes None and sticks idle (e-stop still external)."""
+    from paint_controller.utils.perf_counters import PERF
+
+    PERF.set_enabled(True)
+    PERF.reset()
+    wheel = FakeWheel()
+    overlay = FakeOverlay(left="None", right="None")
+    cp = _make_cp(wheel=wheel, overlay=overlay)
+    # Patch engine.tick to detect calls without relying on HW side effects.
+    calls = {"n": 0}
+    original = cp._engine.tick
+
+    def _counting_tick(*args, **kwargs):
+        calls["n"] += 1
+        return original(*args, **kwargs)
+
+    cp._engine.tick = _counting_tick  # type: ignore[method-assign]
+    cp.process_input(_stick_state())
+    assert calls["n"] == 0
+    assert PERF.count("teleop_idle_skip") == 1
+    # Active stick with mode still ticks.
+    cp2 = _make_cp(wheel=wheel, overlay=FakeOverlay(left="Track Control Left", right="None"))
+    calls2 = {"n": 0}
+    original2 = cp2._engine.tick
+
+    def _counting_tick2(*args, **kwargs):
+        calls2["n"] += 1
+        return original2(*args, **kwargs)
+
+    cp2._engine.tick = _counting_tick2  # type: ignore[method-assign]
+    cp2.process_input(_stick_state(ly=JOYSTICK_MAX))
+    assert calls2["n"] == 1
+    PERF.set_enabled(False)
+    PERF.reset()
+
+
+def test_process_input_still_ticks_when_mode_selected_but_sticks_idle(qt_app) -> None:
+    """P-03: selected modes must tick so zero/deadzone paths still run."""
+    overlay = FakeOverlay(left="Track Control Left", right="None")
+    cp = _make_cp(overlay=overlay)
+    calls = {"n": 0}
+    original = cp._engine.tick
+
+    def _counting_tick(*args, **kwargs):
+        calls["n"] += 1
+        return original(*args, **kwargs)
+
+    cp._engine.tick = _counting_tick  # type: ignore[method-assign]
+    cp.process_input(_stick_state())  # sticks centered, mode selected
+    assert calls["n"] == 1
+
+
 # ---------------------------------------------------------------------------
 # Nonlinear curve (_apply_nonlinear_curve)
 # ---------------------------------------------------------------------------

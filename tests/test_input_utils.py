@@ -2,7 +2,7 @@
 
 from unittest.mock import patch
 
-from paint_controller.utils.input import DeadzoneTracker, DoublePressDetector
+from paint_controller.utils.input import DeadzoneTracker, DoublePressDetector, input_axes_active
 
 
 def test_first_press_is_not_double() -> None:
@@ -114,3 +114,23 @@ def test_re_entering_deadzone_restarts_timeout_window() -> None:
         result = tracker.update(0.01, threshold=0.05)
 
     assert result is True
+
+
+def test_input_axes_active_false_when_centered() -> None:
+    assert input_axes_active(None) is False
+    assert (
+        input_axes_active(
+            {
+                "left_stick": {"x": 0.0, "y": 0.0},
+                "right_stick": {"x": 0.0, "y": 0.0},
+                "triggers": {"left": 0.0, "right": 0.0},
+            }
+        )
+        is False
+    )
+
+
+def test_input_axes_active_true_for_stick_or_trigger() -> None:
+    assert input_axes_active({"left_stick": {"x": 5000.0, "y": 0.0}, "right_stick": {}, "triggers": {}}) is True
+    assert input_axes_active({"left_stick": {}, "right_stick": {"x": 0.0, "y": -9000.0}, "triggers": {}}) is True
+    assert input_axes_active({"left_stick": {}, "right_stick": {}, "triggers": {"left": 4000.0}}) is True
