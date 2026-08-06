@@ -45,6 +45,13 @@ class CameraType(Enum):
     CONFIGURABLE = "configurable"
 
 
+# P-02 option C: always-warm operator feeds; rear/top start on demand.
+WARM_START_CAMERA_TYPES: tuple[CameraType, ...] = (
+    CameraType.END_EFFECTOR,
+    CameraType.BASE_FRONT,
+)
+
+
 @dataclass
 class CameraConfig:
     """Configuration for a single camera stream"""
@@ -724,49 +731,103 @@ class VideoStreamHandler(QObject):
         with self._streams_lock:
             return self.camera_streams.get(camera_type)
 
+    def _start_stream_types(self, camera_types: list[CameraType] | tuple[CameraType, ...]) -> int:
+        """Start the given camera types if configured; returns count of successful starts."""
+        success_count = 0
+        for camera_type in camera_types:
+            stream = self._get_stream(camera_type)
+            if stream is None:
+                continue
+            if stream.is_running():
+                success_count += 1
+                continue
+            stream_t0 = time.perf_counter()
+            if stream.start():
+                success_count += 1
+                logger.info(
+                    "Started %s in %.1f ms",
+                    self.camera_configs[camera_type].name,
+                    (time.perf_counter() - stream_t0) * 1000.0,
+                )
+            else:
+                logger.warning(
+                    "Failed to start %s after %.1f ms",
+                    self.camera_configs[camera_type].name,
+                    (time.perf_counter() - stream_t0) * 1000.0,
+                )
+        return success_count
+
     @Slot(result=int)
     def start_all_streams(self):
         """
-        Start all configured camera streams with thread-safe dictionary access.
+        Start warm operator feeds (P-02 option C: EF + base front).
 
-        Creates a snapshot of streams to avoid issues with concurrent modifications.
+        Rear/top remain on-demand via :meth:`ensure_stream_running` so idle
+        multi-decode does not burn Deck CPU when those views are unused.
         """
         with self._startup_lock:
             if self._streams_started:
                 logger.info("Video streams already started; skipping duplicate startup request")
                 return 0
 
-            with self._streams_lock:
-                # Create snapshot to avoid iteration issues during concurrent modifications
-                streams_copy = copy(self.camera_streams)
-
             total_t0 = time.perf_counter()
-            success_count = 0
-            for camera_type, stream in streams_copy.items():
-                stream_t0 = time.perf_counter()
-                if stream.start():
-                    success_count += 1
-                    logger.info(
-                        "Started %s in %.1f ms",
-                        self.camera_configs[camera_type].name,
-                        (time.perf_counter() - stream_t0) * 1000.0,
-                    )
-                else:
-                    logger.warning(
-                        "Failed to start %s after %.1f ms",
-                        self.camera_configs[camera_type].name,
-                        (time.perf_counter() - stream_t0) * 1000.0,
-                    )
+            warm = [ct for ct in WARM_START_CAMERA_TYPES if ct in self.camera_configs]
+            success_count = self._start_stream_types(warm)
 
             self._streams_started = success_count > 0
             logger.info(
-                "Video stream startup finished in %.1f ms (%s/%s started)",
+                "Video warm-start finished in %.1f ms (%s/%s warm feeds started)",
                 (time.perf_counter() - total_t0) * 1000.0,
                 success_count,
-                len(streams_copy),
+                len(warm),
             )
 
             return success_count
+
+    def ensure_stream_running(self, camera_type: CameraType | str) -> bool:
+        """Start a single stream on demand (P-02 lazy rear/top/path switch)."""
+        resolved = self._resolve_camera_type(camera_type)
+        if resolved is None:
+            return False
+        with self._startup_lock:
+            ok = self._start_stream_types((resolved,)) > 0
+            if ok:
+                self._streams_started = True
+            return ok
+
+    @staticmethod
+    def _resolve_camera_type(camera_type: CameraType | str) -> CameraType | None:
+        if isinstance(camera_type, CameraType):
+            return camera_type
+        try:
+            return CameraType(str(camera_type))
+        except ValueError:
+            lowered = str(camera_type).lower()
+            mapping = {
+                "end_effector": CameraType.END_EFFECTOR,
+                "ef": CameraType.END_EFFECTOR,
+                "ef_live": CameraType.END_EFFECTOR,
+                "base_front": CameraType.BASE_FRONT,
+                "base_front_live": CameraType.BASE_FRONT,
+                "base_rear": CameraType.BASE_REAR,
+                "base_rear_live": CameraType.BASE_REAR,
+                "base_top": CameraType.BASE_TOP,
+                "base_top_view": CameraType.BASE_TOP,
+            }
+            return mapping.get(lowered)
+
+    def ensure_stream_for_image_url(self, image_url: str) -> bool:
+        """Start the stream implied by an image:// provider URL (P-02)."""
+        text = str(image_url or "")
+        if "ef_live" in text:
+            return self.ensure_stream_running(CameraType.END_EFFECTOR)
+        if "base_front_live" in text:
+            return self.ensure_stream_running(CameraType.BASE_FRONT)
+        if "base_rear_live" in text:
+            return self.ensure_stream_running(CameraType.BASE_REAR)
+        if "base_top" in text:
+            return self.ensure_stream_running(CameraType.BASE_TOP)
+        return False
 
     @Slot()
     def stop_all_streams(self):

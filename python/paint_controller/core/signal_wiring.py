@@ -105,6 +105,10 @@ class SignalWiring:
             lambda _active, video_source: overlay_host.toggle_video_fullscreen(video_source)
         )
         qt_bridge.updateVideoSourceRequested.connect(overlay_host.set_video_fullscreen_source)
+        # P-02: lazy-start the feed implied by the active image:// source.
+        qt_bridge.updateVideoSourceRequested.connect(
+            lambda video_source: video_stream_handler.ensure_stream_for_image_url(video_source)
+        )
 
         self._wire_steam_deck_callbacks()
 

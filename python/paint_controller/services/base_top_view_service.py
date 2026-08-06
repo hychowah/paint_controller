@@ -799,6 +799,11 @@ class BaseTopViewService(QObject):
 
             # Connect/disconnect signal based on enabled state
             if value and self._base_top_stream:
+                # P-02: base top is not warm-started; demand-start the pipeline.
+                try:
+                    self.video_handler.ensure_stream_running(CameraType.BASE_TOP)
+                except Exception as exc:
+                    self.logger.warning("Could not start BASE_TOP stream: %s", exc)
                 self._base_top_stream.frameReady.connect(self.worker.process_frame)
                 self._frame_ready_connected = True
                 self.logger.info("Base top view processing enabled")

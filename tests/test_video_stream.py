@@ -137,6 +137,34 @@ def test_feed_liveness_defaults_unavailable_and_recovers(qt_app) -> None:
         handler.cleanup()
 
 
+def test_start_all_streams_only_warms_ef_and_base_front(qt_app) -> None:
+    """P-02 option C: warm start is EF + base front; rear/top stay stopped until ensure."""
+    from unittest.mock import patch
+
+    handler = VideoStreamHandler(ros_node=None)
+    try:
+        starts: list[CameraType] = []
+
+        def _fake_start(self):  # type: ignore[no-untyped-def]
+            starts.append(self.config.camera_type)
+            with self._running_lock:
+                self._is_running = True
+            return True
+
+        with patch.object(CameraStream, "start", _fake_start):
+            n = handler.start_all_streams()
+            assert n == 2
+            assert set(starts) == {CameraType.END_EFFECTOR, CameraType.BASE_FRONT}
+            # Second call is a no-op.
+            assert handler.start_all_streams() == 0
+            assert handler.ensure_stream_for_image_url("image://base_rear_live/frame") is True
+            assert CameraType.BASE_REAR in starts
+            assert handler.ensure_stream_running("base_top") is True
+            assert CameraType.BASE_TOP in starts
+    finally:
+        handler.cleanup()
+
+
 def test_frame_generation_bumps_on_publish_and_versioned_url(qt_app) -> None:
     """P-01: generation property + versionedImageUrl for cache-bust without empty source."""
     from paint_controller.core.qml_context_composer import _versioned_image_url
