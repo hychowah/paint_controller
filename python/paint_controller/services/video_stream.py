@@ -298,6 +298,10 @@ class VideoStreamHandler(QObject):
     baseFrontFrameReady = Signal()
     baseRearFrameReady = Signal()
     configurableFrameReady = Signal()
+    # P-01: generation bumps so QML can rebind image://…?g=N without source="" thrash.
+    endEffectorFrameGenerationChanged = Signal()
+    baseFrontFrameGenerationChanged = Signal()
+    baseRearFrameGenerationChanged = Signal()
 
     # General frame ready signal with camera type
     frameReady = Signal(str)  # Emits camera type as string
@@ -621,18 +625,39 @@ class VideoStreamHandler(QObject):
                 except Exception as e:
                     logger.error("Failed to create stream for %s: %s", config.name, e)
 
+    def _frame_generation(self, camera_type: CameraType) -> int:
+        stream = self._get_stream(camera_type)
+        if stream is None:
+            return 0
+        return int(stream.image_provider.generation)
+
     def _on_camera_frame(self, camera_type: CameraType, image: QImage):
         if camera_type == CameraType.END_EFFECTOR:
+            self.endEffectorFrameGenerationChanged.emit()
             self.endEffectorFrameReady.emit()
         elif camera_type == CameraType.BASE_FRONT:
+            self.baseFrontFrameGenerationChanged.emit()
             self.baseFrontFrameReady.emit()
         elif camera_type == CameraType.BASE_REAR:
+            self.baseRearFrameGenerationChanged.emit()
             self.baseRearFrameReady.emit()
         elif camera_type == CameraType.CONFIGURABLE:
             self.configurableFrameReady.emit()
 
         self.frameReady.emit(camera_type.value)
         self._note_feed_frame(camera_type)
+
+    @Property(int, notify=endEffectorFrameGenerationChanged)
+    def endEffectorFrameGeneration(self) -> int:
+        return self._frame_generation(CameraType.END_EFFECTOR)
+
+    @Property(int, notify=baseFrontFrameGenerationChanged)
+    def baseFrontFrameGeneration(self) -> int:
+        return self._frame_generation(CameraType.BASE_FRONT)
+
+    @Property(int, notify=baseRearFrameGenerationChanged)
+    def baseRearFrameGeneration(self) -> int:
+        return self._frame_generation(CameraType.BASE_REAR)
 
     def _start_feed_availability_watchdog(self) -> None:
         """Poll feed freshness on the Qt thread (same pattern as device shells)."""

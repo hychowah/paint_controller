@@ -119,6 +119,9 @@ class _VideoRuntimeFeeds(QObject):
     endEffectorStreamAvailableChanged = Signal()
     baseFrontStreamAvailableChanged = Signal()
     baseRearStreamAvailableChanged = Signal()
+    endEffectorFrameGenerationChanged = Signal()
+    baseFrontFrameGenerationChanged = Signal()
+    baseRearFrameGenerationChanged = Signal()
 
     def __init__(self, video_stream_handler: object) -> None:
         super().__init__()
@@ -141,6 +144,21 @@ class _VideoRuntimeFeeds(QObject):
             "baseRearStreamAvailableChanged",
             self.baseRearStreamAvailableChanged.emit,
         )
+        _connect_if_signal(
+            video_stream_handler,
+            "endEffectorFrameGenerationChanged",
+            self.endEffectorFrameGenerationChanged.emit,
+        )
+        _connect_if_signal(
+            video_stream_handler,
+            "baseFrontFrameGenerationChanged",
+            self.baseFrontFrameGenerationChanged.emit,
+        )
+        _connect_if_signal(
+            video_stream_handler,
+            "baseRearFrameGenerationChanged",
+            self.baseRearFrameGenerationChanged.emit,
+        )
 
     @Property(bool, notify=endEffectorStreamAvailableChanged)
     def endEffectorStreamAvailable(self) -> bool:
@@ -159,6 +177,37 @@ class _VideoRuntimeFeeds(QObject):
         return bool(
             _read_object_value(self._video_stream_handler, "baseRearStreamAvailable", default=False)
         )
+
+    @Property(int, notify=endEffectorFrameGenerationChanged)
+    def endEffectorFrameGeneration(self) -> int:
+        return int(
+            _read_object_value(self._video_stream_handler, "endEffectorFrameGeneration", default=0)
+        )
+
+    @Property(int, notify=baseFrontFrameGenerationChanged)
+    def baseFrontFrameGeneration(self) -> int:
+        return int(
+            _read_object_value(self._video_stream_handler, "baseFrontFrameGeneration", default=0)
+        )
+
+    @Property(int, notify=baseRearFrameGenerationChanged)
+    def baseRearFrameGeneration(self) -> int:
+        return int(
+            _read_object_value(self._video_stream_handler, "baseRearFrameGeneration", default=0)
+        )
+
+    @Slot(str, int, result=str)
+    def versionedImageUrl(self, base_url: str, generation: int) -> str:
+        """Build image:// URL with generation query (P-01); no empty-source thrash."""
+        return _versioned_image_url(base_url, generation)
+
+
+def _versioned_image_url(base_url: str, generation: int) -> str:
+    """Pure helper for tests and :meth:`_VideoRuntimeFeeds.versionedImageUrl`."""
+    base = str(base_url or "").split("?", 1)[0]
+    if not base:
+        return ""
+    return f"{base}?g={int(generation)}"
 
 
 class _VideoRuntimeTopBar(QObject):

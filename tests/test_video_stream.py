@@ -137,6 +137,32 @@ def test_feed_liveness_defaults_unavailable_and_recovers(qt_app) -> None:
         handler.cleanup()
 
 
+def test_frame_generation_bumps_on_publish_and_versioned_url(qt_app) -> None:
+    """P-01: generation property + versionedImageUrl for cache-bust without empty source."""
+    from paint_controller.core.qml_context_composer import _versioned_image_url
+
+    handler = VideoStreamHandler(ros_node=None)
+    try:
+        assert handler.endEffectorFrameGeneration == 0
+        stream = handler._get_stream(CameraType.END_EFFECTOR)
+        assert stream is not None
+        painted = QImage(8, 8, QImage.Format_RGB888)
+        painted.fill(0x101010)
+        stream.image_provider.publish(painted)
+        # Direct publish does not emit handler signals; generation still readable.
+        assert handler.endEffectorFrameGeneration == 1
+        # Simulate the live path used by GStreamer → handler.
+        handler._on_camera_frame(CameraType.END_EFFECTOR, painted)
+        assert handler.endEffectorFrameGeneration >= 1
+        url = _versioned_image_url("image://ef_live/frame", 7)
+        assert url == "image://ef_live/frame?g=7"
+        # Strips prior query.
+        url2 = _versioned_image_url("image://ef_live/frame?g=1", 9)
+        assert url2 == "image://ef_live/frame?g=9"
+    finally:
+        handler.cleanup()
+
+
 def test_feed_liveness_ignores_untracked_camera_types(qt_app) -> None:
     handler = VideoStreamHandler(ros_node=None)
     try:

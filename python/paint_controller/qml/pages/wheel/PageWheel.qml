@@ -520,17 +520,18 @@ Rectangle {
 
         Connections {
             target: page1Rect.videoRuntime.feeds
+            // P-01: generation query avoids source="" destroy/recreate thrash.
             function onBaseFrontFrameReady() {
-                if (camSource == "image://base_front_live/frame"){
-                    baseFrame.source = ""
-                    baseFrame.source = "image://base_front_live/frame"
+                if (camSource.indexOf("base_front_live") >= 0) {
+                    baseFrame.source = page1Rect.videoRuntime.feeds.versionedImageUrl(
+                        camSource, page1Rect.videoRuntime.feeds.baseFrontFrameGeneration)
                 }
             }
 
             function onBaseRearFrameReady() {
-                if (camSource == "image://base_rear_live/frame"){
-                    baseFrame.source = ""
-                    baseFrame.source = "image://base_rear_live/frame"
+                if (camSource.indexOf("base_rear_live") >= 0) {
+                    baseFrame.source = page1Rect.videoRuntime.feeds.versionedImageUrl(
+                        camSource, page1Rect.videoRuntime.feeds.baseRearFrameGeneration)
                 }
             }
         }

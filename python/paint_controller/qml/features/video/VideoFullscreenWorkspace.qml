@@ -283,24 +283,25 @@ Rectangle {
         target: root.videoRuntime.feeds
         enabled: root.active
 
+        // P-01: rebind with generation query instead of source="" thrash.
         function onEndEffectorFrameReady() {
             if (root.videoSource.indexOf("ef_live") >= 0) {
-                videoFrame.source = ""
-                videoFrame.source = "image://ef_live/frame"
+                videoFrame.source = root.videoRuntime.feeds.versionedImageUrl(
+                    root.videoSource, root.videoRuntime.feeds.endEffectorFrameGeneration)
             }
         }
 
         function onBaseFrontFrameReady() {
             if (root.videoSource.indexOf("base_front_live") >= 0) {
-                videoFrame.source = ""
-                videoFrame.source = "image://base_front_live/frame"
+                videoFrame.source = root.videoRuntime.feeds.versionedImageUrl(
+                    root.videoSource, root.videoRuntime.feeds.baseFrontFrameGeneration)
             }
         }
 
         function onBaseRearFrameReady() {
             if (root.videoSource.indexOf("base_rear_live") >= 0) {
-                videoFrame.source = ""
-                videoFrame.source = "image://base_rear_live/frame"
+                videoFrame.source = root.videoRuntime.feeds.versionedImageUrl(
+                    root.videoSource, root.videoRuntime.feeds.baseRearFrameGeneration)
             }
         }
     }
