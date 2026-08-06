@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 import yaml
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
-from .action_schema import param_fields_for_type
+from .action_schema import member_palette_entries, param_fields_for_type
 from .document import (
     CONTINUE_IMMEDIATELY,
     CONTINUE_WAIT_COMPLETE,
@@ -39,6 +39,7 @@ class WorkflowEditor(QObject):
     document_changed = Signal()
     dirty_changed = Signal(bool)
     selected_index_changed = Signal(int)
+    selected_member_index_changed = Signal(int)
     is_open_changed = Signal(bool)
     loop_changed = Signal(bool)
     name_changed = Signal(str)
@@ -53,6 +54,7 @@ class WorkflowEditor(QObject):
         self._is_open = False
         self._dirty = False
         self._selected_index = -1
+        self._selected_member_index = -1
         self._document = WorkflowDocument.empty("untitled")
         self._loaded_name = ""  # catalog name currently associated with disk
 
@@ -119,9 +121,18 @@ class WorkflowEditor(QObject):
     def selected_index(self) -> int:
         return self._selected_index
 
+    @Property(int, notify=selected_member_index_changed)
+    def selected_member_index(self) -> int:
+        return self._selected_member_index
+
     @Property(list, constant=True)
     def palette(self) -> list[dict[str, Any]]:
         return palette_entries()
+
+    @Property(list, constant=True)
+    def member_palette(self) -> list[dict[str, Any]]:
+        """Action types legal as parallel members (no wait / structural parallel)."""
+        return member_palette_entries()
 
     @Slot(str, result="QVariant")
     def param_fields(self, action_type: str) -> list[dict[str, Any]]:
@@ -143,11 +154,49 @@ class WorkflowEditor(QObject):
         self.name_changed.emit(self._document.name)
         self.loop_changed.emit(self._document.loop)
 
+    def _set_selected_member_index(self, index: int) -> None:
+        if index == self._selected_member_index:
+            return
+        self._selected_member_index = index
+        self.selected_member_index_changed.emit(index)
+
+    def _selected_parallel_step(self) -> WorkflowStep | None:
+        if self._selected_index < 0 or self._selected_index >= len(self._document.steps):
+            return None
+        step = self._document.steps[self._selected_index]
+        if step.kind != KIND_PARALLEL:
+            return None
+        return step
+
+    def _sync_member_selection_for_step(self) -> None:
+        """Clamp or reset member selection based on the currently selected step."""
+        step = self._selected_parallel_step()
+        if step is None or not step.members:
+            self._set_selected_member_index(-1)
+            return
+        if self._selected_member_index < 0 or self._selected_member_index >= len(step.members):
+            self._set_selected_member_index(0)
+
+    def _legal_member_types(self) -> set[str]:
+        return {str(entry["type"]) for entry in member_palette_entries() if entry.get("type")}
+
+    def _make_member(self, action_type: str, *, reserved: set[str] | None = None) -> ActionMember:
+        action_type = (action_type or "").strip()
+        if not action_type or action_type not in self._legal_member_types():
+            raise ValueError(f"Illegal parallel member type: {action_type!r}")
+        member_id = self._allocate_id("m", reserved=reserved)
+        return ActionMember(
+            id=member_id,
+            type=action_type,
+            params=default_params_for_type(action_type),
+        )
+
     def _replace_document(self, document: WorkflowDocument, *, loaded_name: str, dirty: bool) -> None:
         self._document = document
         self._loaded_name = loaded_name
         self._selected_index = -1
         self.selected_index_changed.emit(self._selected_index)
+        self._set_selected_member_index(-1)
         self._set_dirty(dirty)
         self._emit_document()
 
@@ -166,6 +215,11 @@ class WorkflowEditor(QObject):
             return
         self._selected_index = index
         self.selected_index_changed.emit(index)
+        step = self._selected_parallel_step()
+        if step is not None and step.members:
+            self._set_selected_member_index(0)
+        else:
+            self._set_selected_member_index(-1)
 
     @Slot(bool)
     def set_loop(self, enabled: bool) -> None:
@@ -202,6 +256,10 @@ class WorkflowEditor(QObject):
             self._set_dirty(True)
             self._emit_document()
             self.selected_index_changed.emit(self._selected_index)
+            if step.kind == KIND_PARALLEL and step.members:
+                self._set_selected_member_index(0)
+            else:
+                self._set_selected_member_index(-1)
             return True
         except Exception as exc:
             self._emit_error(f"Cannot add step: {exc}")
@@ -265,6 +323,7 @@ class WorkflowEditor(QObject):
         self._set_dirty(True)
         self._emit_document()
         self.selected_index_changed.emit(self._selected_index)
+        self._sync_member_selection_for_step()
         return True
 
     @Slot(result=bool)
@@ -325,7 +384,7 @@ class WorkflowEditor(QObject):
 
     @Slot(str, "QVariant", result=bool)
     def set_param(self, key: str, value: Any) -> bool:
-        """Set a param on the selected action step (or first parallel member if parallel)."""
+        """Set a param on the selected action step (not parallel members)."""
         if self._selected_index < 0:
             return False
         step = self._document.steps[self._selected_index]
@@ -333,12 +392,10 @@ class WorkflowEditor(QObject):
             if step.kind == KIND_ACTION:
                 step.params[key] = self._coerce_param_value(value)
                 self._document.validate()
-            elif step.kind == KIND_PARALLEL and step.members:
-                step.members[0].params[key] = self._coerce_param_value(value)
-                self._document.validate()
             elif step.kind == KIND_WAIT and key == "duration_ms":
                 return self.set_wait_duration_ms(int(value))
             else:
+                # Parallel and other kinds must use set_member_param / dedicated slots.
                 return False
             self._set_dirty(True)
             self.document_changed.emit()
@@ -365,6 +422,109 @@ class WorkflowEditor(QObject):
         except Exception as exc:
             self._emit_error(str(exc))
             return False
+
+    @Slot(int)
+    def select_member(self, index: int) -> None:
+        step = self._selected_parallel_step()
+        if step is None or not step.members:
+            self._set_selected_member_index(-1)
+            return
+        if index < 0 or index >= len(step.members):
+            return
+        self._set_selected_member_index(index)
+
+    @Slot(str, result=bool)
+    def add_member(self, action_type: str) -> bool:
+        step = self._selected_parallel_step()
+        if step is None:
+            self._emit_error("No parallel step selected")
+            return False
+        try:
+            member = self._make_member(action_type)
+            step.members.append(member)
+            self._document.validate()
+            self._set_dirty(True)
+            self._emit_document()
+            self._set_selected_member_index(len(step.members) - 1)
+            return True
+        except Exception as exc:
+            self._emit_error(f"Cannot add member: {exc}")
+            return False
+
+    @Slot(result=bool)
+    def remove_selected_member(self) -> bool:
+        step = self._selected_parallel_step()
+        if step is None:
+            return False
+        if len(step.members) <= 1:
+            self._emit_error("Parallel group requires at least one member")
+            return False
+        idx = self._selected_member_index
+        if idx < 0 or idx >= len(step.members):
+            return False
+        del step.members[idx]
+        if idx >= len(step.members):
+            idx = len(step.members) - 1
+        self._set_dirty(True)
+        self._emit_document()
+        self._set_selected_member_index(idx)
+        return True
+
+    @Slot(str, result=bool)
+    def set_member_type(self, action_type: str) -> bool:
+        step = self._selected_parallel_step()
+        if step is None:
+            return False
+        idx = self._selected_member_index
+        if idx < 0 or idx >= len(step.members):
+            self._emit_error("No parallel member selected")
+            return False
+        action_type = (action_type or "").strip()
+        if not action_type or action_type not in self._legal_member_types():
+            self._emit_error(f"Illegal parallel member type: {action_type!r}")
+            return False
+        try:
+            member = step.members[idx]
+            member.type = action_type
+            member.params = default_params_for_type(action_type)
+            # Keep member.id and any reserved advanced timing.
+            self._document.validate()
+            self._set_dirty(True)
+            self._emit_document()
+            return True
+        except Exception as exc:
+            self._emit_error(str(exc))
+            return False
+
+    @Slot(result=bool)
+    def move_selected_member_up(self) -> bool:
+        step = self._selected_parallel_step()
+        if step is None:
+            return False
+        idx = self._selected_member_index
+        if idx <= 0 or idx >= len(step.members):
+            return False
+        members = step.members
+        members[idx - 1], members[idx] = members[idx], members[idx - 1]
+        self._set_dirty(True)
+        self._emit_document()
+        self._set_selected_member_index(idx - 1)
+        return True
+
+    @Slot(result=bool)
+    def move_selected_member_down(self) -> bool:
+        step = self._selected_parallel_step()
+        if step is None:
+            return False
+        idx = self._selected_member_index
+        if idx < 0 or idx >= len(step.members) - 1:
+            return False
+        members = step.members
+        members[idx + 1], members[idx] = members[idx], members[idx + 1]
+        self._set_dirty(True)
+        self._emit_document()
+        self._set_selected_member_index(idx + 1)
+        return True
 
     @staticmethod
     def _coerce_param_value(value: Any) -> Any:

@@ -21,13 +21,25 @@ Rectangle {
 
     readonly property bool editorActive: workflowEditor ? workflowEditor.is_open : false
     readonly property int selectedIndex: workflowEditor ? workflowEditor.selected_index : -1
+    readonly property int selectedMemberIndex: workflowEditor ? workflowEditor.selected_member_index : -1
     readonly property var stepsModel: workflowEditor ? workflowEditor.steps : []
     readonly property var paletteModel: workflowEditor ? workflowEditor.palette : []
+    readonly property var memberPaletteModel: workflowEditor ? workflowEditor.member_palette : []
     readonly property var selectedStep: {
         if (!workflowEditor || selectedIndex < 0 || selectedIndex >= stepsModel.length)
             return null
         return stepsModel[selectedIndex]
     }
+    readonly property var selectedMember: {
+        if (!selectedStep || selectedStep.kind !== "parallel")
+            return null
+        if (!selectedStep.members || selectedMemberIndex < 0
+                || selectedMemberIndex >= selectedStep.members.length)
+            return null
+        return selectedStep.members[selectedMemberIndex]
+    }
+    property bool memberTypeChooserOpen: false
+    property bool memberAddChooserOpen: false
 
     // Local type ladder (Steam Deck readability; uses CommonStyle scaleFactor only)
     readonly property int fontTitle: Math.round(22 * CommonStyle.scaleFactor)
@@ -274,9 +286,9 @@ Rectangle {
                 }
             }
 
-            // Inspector
+            // Inspector (slightly wider for parallel member tools)
             Rectangle {
-                Layout.preferredWidth: Math.round(300 * CommonStyle.scaleFactor)
+                Layout.preferredWidth: Math.round(340 * CommonStyle.scaleFactor)
                 Layout.fillHeight: true
                 color: CommonStyle.backgroundL1
                 radius: CommonStyle.radiusMd
@@ -288,15 +300,32 @@ Rectangle {
                     anchors.margins: Math.round(12 * CommonStyle.scaleFactor)
                     spacing: 10
 
+                    // Group identity
                     Text {
-                        text: root.selectedStep ? "Edit step" : "Select a step"
+                        text: {
+                            if (!root.selectedStep)
+                                return "Select a step"
+                            if (root.selectedStep.kind === "parallel")
+                                return "Parallel group"
+                            return "Edit step"
+                        }
                         color: CommonStyle.textPrimary
                         font.bold: true
                         font.pixelSize: root.fontSection
+                        Layout.fillWidth: true
                     }
 
                     Text {
-                        visible: !!root.selectedStep
+                        visible: !!root.selectedStep && root.selectedStep.kind === "parallel"
+                        text: "These actions start together"
+                        color: CommonStyle.textSecondary
+                        font.pixelSize: root.fontPrimary
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
+
+                    Text {
+                        visible: !!root.selectedStep && root.selectedStep.kind !== "parallel"
                         text: root.selectedStep ? stepTitle(root.selectedStep) : ""
                         color: CommonStyle.textSecondary
                         font.pixelSize: root.fontSecondary
@@ -310,9 +339,12 @@ Rectangle {
                         Layout.fillWidth: true
                         spacing: 6
                         Text {
-                            text: "After this step"
+                            text: root.selectedStep && root.selectedStep.kind === "parallel"
+                                  ? "When group finishes"
+                                  : "After this step"
                             color: CommonStyle.textPrimary
                             font.pixelSize: root.fontSecondary
+                            font.bold: true
                         }
                         RowLayout {
                             Layout.fillWidth: true
@@ -433,7 +465,7 @@ Rectangle {
                         }
                     }
 
-                    // Parallel member summary + first member params via set_member_param
+                    // Parallel members (Python owns legality; chrome only)
                     Flickable {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -444,7 +476,18 @@ Rectangle {
                         ColumnLayout {
                             id: parallelColumn
                             width: parent.width
-                            spacing: 10
+                            spacing: 12
+
+                            Text {
+                                text: {
+                                    var n = root.selectedStep && root.selectedStep.members
+                                            ? root.selectedStep.members.length : 0
+                                    return "Actions (" + n + ")"
+                                }
+                                color: CommonStyle.textPrimary
+                                font.bold: true
+                                font.pixelSize: root.fontSecondary
+                            }
 
                             Repeater {
                                 model: root.selectedStep && root.selectedStep.members
@@ -452,80 +495,277 @@ Rectangle {
                                        : []
                                 delegate: Rectangle {
                                     Layout.fillWidth: true
-                                    height: Math.round(96 * CommonStyle.scaleFactor)
-                                    color: CommonStyle.backgroundL2
+                                    height: Math.round(76 * CommonStyle.scaleFactor)
+                                    color: index === root.selectedMemberIndex
+                                           ? CommonStyle.backgroundL3
+                                           : CommonStyle.backgroundL2
                                     radius: 6
-                                    border.color: CommonStyle.borderDefault
+                                    border.color: index === root.selectedMemberIndex
+                                                  ? CommonStyle.borderFocused
+                                                  : CommonStyle.borderDefault
+                                    border.width: index === root.selectedMemberIndex ? 2 : 1
+
+                                    // Left accent: selection vs lead (distinct)
+                                    Rectangle {
+                                        anchors.left: parent.left
+                                        anchors.top: parent.top
+                                        anchors.bottom: parent.bottom
+                                        width: 4
+                                        radius: 2
+                                        color: {
+                                            if (index === root.selectedMemberIndex)
+                                                return CommonStyle.borderFocused
+                                            if (index === 0)
+                                                return CommonStyle.accentSecondary
+                                            return "transparent"
+                                        }
+                                    }
 
                                     ColumnLayout {
                                         anchors.fill: parent
-                                        anchors.margins: 10
+                                        anchors.leftMargin: 12
+                                        anchors.rightMargin: 10
+                                        anchors.topMargin: 8
+                                        anchors.bottomMargin: 8
                                         spacing: 4
-                                        Text {
-                                            text: (index + 1) + ". " + (modelData.type || "")
-                                            color: CommonStyle.textPrimary
-                                            font.bold: true
-                                            font.pixelSize: root.fontSecondary
+
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 8
+                                            Text {
+                                                text: actionTypeLabel(modelData.type)
+                                                color: CommonStyle.textPrimary
+                                                font.bold: true
+                                                font.pixelSize: root.fontPrimary
+                                                elide: Text.ElideRight
+                                                Layout.fillWidth: true
+                                            }
+                                            // Lead badge (first member = wait-done target)
+                                            Rectangle {
+                                                visible: index === 0
+                                                radius: 4
+                                                color: "#2a4a3a"
+                                                border.color: CommonStyle.accentSecondary
+                                                border.width: 1
+                                                implicitWidth: leadLabel.implicitWidth + 12
+                                                implicitHeight: Math.round(22 * CommonStyle.scaleFactor)
+                                                Text {
+                                                    id: leadLabel
+                                                    anchors.centerIn: parent
+                                                    text: "Leads"
+                                                    color: CommonStyle.textPrimary
+                                                    font.pixelSize: root.fontFloor
+                                                    font.bold: true
+                                                }
+                                            }
                                         }
                                         Text {
                                             text: memberSummary(modelData)
                                             color: CommonStyle.textSecondary
-                                            font.pixelSize: root.fontFloor
+                                            font.pixelSize: root.fontSecondary
                                             elide: Text.ElideRight
                                             Layout.fillWidth: true
                                         }
-                                        Text {
-                                            text: "Tap param keys below to edit member " + (index + 1)
-                                            color: CommonStyle.textSecondary
-                                            font.pixelSize: root.fontFloor
-                                            visible: index === 0
+                                    }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: {
+                                            root.memberTypeChooserOpen = false
+                                            root.memberAddChooserOpen = false
+                                            if (workflowEditor)
+                                                workflowEditor.select_member(index)
                                         }
                                     }
                                 }
                             }
 
-                            Repeater {
-                                model: {
-                                    if (!root.selectedStep || root.selectedStep.kind !== "parallel")
-                                        return []
-                                    if (!root.selectedStep.members || root.selectedStep.members.length === 0)
-                                        return []
-                                    var p = root.selectedStep.members[0].params || {}
-                                    return Object.keys(p)
-                                }
-                                delegate: ColumnLayout {
+                            // Row 1: add / remove (full-width pair — avoids "Add Remove" crush)
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 10
+                                EditorButton {
+                                    text: root.memberAddChooserOpen ? "Cancel add" : "Add action"
                                     Layout.fillWidth: true
-                                    spacing: 4
-                                    Text {
-                                        text: "m1." + modelData
-                                        color: CommonStyle.textSecondary
-                                        font.pixelSize: root.fontSecondary
+                                    height: Math.round(52 * CommonStyle.scaleFactor)
+                                    onClicked: {
+                                        root.memberTypeChooserOpen = false
+                                        root.memberAddChooserOpen = !root.memberAddChooserOpen
                                     }
-                                    TextField {
+                                }
+                                EditorButton {
+                                    text: "Remove"
+                                    Layout.fillWidth: true
+                                    height: Math.round(52 * CommonStyle.scaleFactor)
+                                    enabled: root.selectedStep && root.selectedStep.members
+                                             && root.selectedStep.members.length > 1
+                                             && root.selectedMemberIndex >= 0
+                                    onClicked: {
+                                        root.memberTypeChooserOpen = false
+                                        root.memberAddChooserOpen = false
+                                        if (workflowEditor)
+                                            workflowEditor.remove_selected_member()
+                                    }
+                                }
+                            }
+
+                            // Row 2: who leads (first = wait-done target)
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 4
+                                Text {
+                                    text: "Who leads completion"
+                                    color: CommonStyle.textSecondary
+                                    font.pixelSize: root.fontFloor
+                                }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
+                                    EditorButton {
+                                        text: "Move up"
                                         Layout.fillWidth: true
-                                        Layout.preferredHeight: Math.round(52 * CommonStyle.scaleFactor)
-                                        readOnly: true
-                                        color: CommonStyle.textPrimary
-                                        font.pixelSize: root.fontField
-                                        font.bold: true
-                                        text: {
-                                            if (!root.selectedStep || !root.selectedStep.members
-                                                    || root.selectedStep.members.length === 0)
-                                                return ""
-                                            return String(root.selectedStep.members[0].params[modelData])
+                                        height: Math.round(48 * CommonStyle.scaleFactor)
+                                        enabled: root.selectedMemberIndex > 0
+                                        onClicked: {
+                                            if (workflowEditor)
+                                                workflowEditor.move_selected_member_up()
                                         }
-                                        background: Rectangle {
-                                            color: CommonStyle.backgroundL2
-                                            border.color: CommonStyle.borderFocused
-                                            radius: 6
+                                    }
+                                    EditorButton {
+                                        text: "Move down"
+                                        Layout.fillWidth: true
+                                        height: Math.round(48 * CommonStyle.scaleFactor)
+                                        enabled: root.selectedStep && root.selectedStep.members
+                                                 && root.selectedMemberIndex >= 0
+                                                 && root.selectedMemberIndex
+                                                    < root.selectedStep.members.length - 1
+                                        onClicked: {
+                                            if (workflowEditor)
+                                                workflowEditor.move_selected_member_down()
                                         }
-                                        MouseArea {
-                                            anchors.fill: parent
+                                    }
+                                }
+                            }
+
+                            // Collapsible add-action type chooser
+                            ColumnLayout {
+                                visible: root.memberAddChooserOpen
+                                Layout.fillWidth: true
+                                spacing: 6
+                                Text {
+                                    text: "Choose action type"
+                                    color: CommonStyle.textSecondary
+                                    font.pixelSize: root.fontSecondary
+                                }
+                                Repeater {
+                                    model: root.memberPaletteModel
+                                    delegate: EditorButton {
+                                        Layout.fillWidth: true
+                                        height: Math.round(48 * CommonStyle.scaleFactor)
+                                        text: modelData.label || actionTypeLabel(modelData.type)
+                                        onClicked: {
+                                            if (workflowEditor)
+                                                workflowEditor.add_member(modelData.type)
+                                            root.memberAddChooserOpen = false
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Edit selected action (params + optional type change)
+                            ColumnLayout {
+                                visible: !!root.selectedMember && !root.memberAddChooserOpen
+                                Layout.fillWidth: true
+                                spacing: 8
+
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    height: 1
+                                    color: CommonStyle.borderDefault
+                                    opacity: 0.6
+                                }
+
+                                Text {
+                                    text: "Edit: " + actionTypeLabel(
+                                              root.selectedMember ? root.selectedMember.type : "")
+                                    color: CommonStyle.textPrimary
+                                    font.bold: true
+                                    font.pixelSize: root.fontSecondary
+                                    Layout.fillWidth: true
+                                    elide: Text.ElideRight
+                                }
+
+                                EditorButton {
+                                    Layout.fillWidth: true
+                                    height: Math.round(48 * CommonStyle.scaleFactor)
+                                    text: root.memberTypeChooserOpen ? "Hide types" : "Change type"
+                                    onClicked: {
+                                        root.memberAddChooserOpen = false
+                                        root.memberTypeChooserOpen = !root.memberTypeChooserOpen
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    visible: root.memberTypeChooserOpen
+                                    Layout.fillWidth: true
+                                    spacing: 6
+                                    Repeater {
+                                        model: root.memberPaletteModel
+                                        delegate: EditorButton {
+                                            Layout.fillWidth: true
+                                            height: Math.round(48 * CommonStyle.scaleFactor)
+                                            text: modelData.label || actionTypeLabel(modelData.type)
+                                            accent: root.selectedMember
+                                                    && root.selectedMember.type === modelData.type
                                             onClicked: {
-                                                numpad.targetField = parent
-                                                numpad.paramKey = modelData
-                                                numpad.memberIndex = 0
-                                                numpad.open()
+                                                if (workflowEditor)
+                                                    workflowEditor.set_member_type(modelData.type)
+                                                root.memberTypeChooserOpen = false
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Repeater {
+                                    model: {
+                                        if (!root.selectedMember || !workflowEditor)
+                                            return []
+                                        return workflowEditor.param_fields(root.selectedMember.type || "")
+                                    }
+                                    delegate: ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 4
+                                        readonly property string fieldKey: modelData.key || modelData
+                                        Text {
+                                            text: modelData.label || fieldKey
+                                            color: CommonStyle.textSecondary
+                                            font.pixelSize: root.fontSecondary
+                                        }
+                                        TextField {
+                                            Layout.fillWidth: true
+                                            Layout.preferredHeight: Math.round(52 * CommonStyle.scaleFactor)
+                                            readOnly: true
+                                            color: CommonStyle.textPrimary
+                                            font.pixelSize: root.fontField
+                                            font.bold: true
+                                            text: {
+                                                if (!root.selectedMember || !root.selectedMember.params)
+                                                    return ""
+                                                var v = root.selectedMember.params[fieldKey]
+                                                return v === undefined || v === null ? "" : String(v)
+                                            }
+                                            background: Rectangle {
+                                                color: CommonStyle.backgroundL2
+                                                border.color: CommonStyle.borderFocused
+                                                radius: 6
+                                            }
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                onClicked: {
+                                                    numpad.targetField = parent
+                                                    numpad.paramKey = fieldKey
+                                                    numpad.memberIndex = root.selectedMemberIndex
+                                                    numpad.open()
+                                                }
                                             }
                                         }
                                     }
@@ -534,12 +774,31 @@ Rectangle {
                         }
                     }
 
+                    // Demoted step tools (distinct from member "who leads")
+                    Rectangle {
+                        visible: !!root.selectedStep
+                        Layout.fillWidth: true
+                        height: 1
+                        color: CommonStyle.borderDefault
+                        opacity: 0.5
+                    }
+
+                    Text {
+                        visible: !!root.selectedStep
+                        text: "This step"
+                        color: CommonStyle.textSecondary
+                        font.bold: true
+                        font.pixelSize: root.fontFloor
+                        Layout.fillWidth: true
+                    }
+
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
                         EditorButton {
-                            text: "▲"
-                            buttonWidth: Math.round(60 * CommonStyle.scaleFactor)
+                            text: "Up"
+                            buttonWidth: Math.round(64 * CommonStyle.scaleFactor)
+                            height: Math.round(48 * CommonStyle.scaleFactor)
                             enabled: root.selectedIndex > 0
                             onClicked: {
                                 if (workflowEditor)
@@ -547,8 +806,9 @@ Rectangle {
                             }
                         }
                         EditorButton {
-                            text: "▼"
-                            buttonWidth: Math.round(60 * CommonStyle.scaleFactor)
+                            text: "Down"
+                            buttonWidth: Math.round(64 * CommonStyle.scaleFactor)
+                            height: Math.round(48 * CommonStyle.scaleFactor)
                             enabled: workflowEditor && root.selectedIndex >= 0
                                      && root.selectedIndex < root.stepsModel.length - 1
                             onClicked: {
@@ -557,8 +817,9 @@ Rectangle {
                             }
                         }
                         EditorButton {
-                            text: "Delete"
+                            text: "Delete step"
                             Layout.fillWidth: true
+                            height: Math.round(48 * CommonStyle.scaleFactor)
                             enabled: root.selectedIndex >= 0
                             onClicked: {
                                 if (workflowEditor)
@@ -747,8 +1008,33 @@ Rectangle {
         if (step.kind === "wait")
             return "WAIT"
         if (step.kind === "parallel")
-            return "PARALLEL"
+            return "TOGETHER"
         return (step.type || "ACTION").toString().toUpperCase()
+    }
+
+    function actionTypeLabel(typeName) {
+        if (!typeName)
+            return ""
+        var lists = [root.memberPaletteModel, root.paletteModel]
+        for (var li = 0; li < lists.length; li++) {
+            var list = lists[li]
+            if (!list)
+                continue
+            for (var i = 0; i < list.length; i++) {
+                if (list[i] && list[i].type === typeName)
+                    return list[i].label || humanizeKey(typeName)
+            }
+        }
+        return humanizeKey(typeName)
+    }
+
+    function humanizeKey(key) {
+        if (key === undefined || key === null)
+            return ""
+        var s = String(key).replace(/_/g, " ")
+        if (s.length === 0)
+            return s
+        return s.charAt(0).toUpperCase() + s.slice(1)
     }
 
     function stepTitle(step) {
@@ -758,7 +1044,7 @@ Rectangle {
             return "Wait"
         if (step.kind === "parallel")
             return "Parallel group"
-        return (step.type || step.id || "Action").toString().replace(/_/g, " ")
+        return actionTypeLabel(step.type || step.id || "Action")
     }
 
     function stepSummary(step) {
@@ -768,14 +1054,16 @@ Rectangle {
             return (step.duration_ms || 0) + " ms"
         if (step.kind === "parallel") {
             var n = step.members ? step.members.length : 0
-            return n + " actions together · " + (step.continue || "wait_complete")
+            var cont = step.continue === "continue_immediately"
+                       ? "next immediately" : "wait until done"
+            return n + " start together · " + cont
         }
         var p = step.params || {}
         var parts = []
         for (var k in p)
-            parts.push(k + "=" + p[k])
-        var cont = step.continue === "continue_immediately" ? "next now" : "wait done"
-        return (parts.join(", ") || "no params") + " · " + cont
+            parts.push(humanizeKey(k) + " " + p[k])
+        var cont2 = step.continue === "continue_immediately" ? "next now" : "wait done"
+        return (parts.join(" · ") || "no params") + " · " + cont2
     }
 
     function memberSummary(member) {
@@ -784,8 +1072,8 @@ Rectangle {
         var p = member.params || {}
         var parts = []
         for (var k in p)
-            parts.push(k + "=" + p[k])
-        return parts.join(", ") || "no params"
+            parts.push(humanizeKey(k) + " " + p[k])
+        return parts.join(" · ") || "Tap to edit"
     }
 
     // Keep loop checkbox in sync when document reloads

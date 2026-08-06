@@ -541,6 +541,11 @@ def registry_palette_entries() -> list[dict[str, Any]]:
     return entries
 
 
+def member_palette_entries() -> list[dict[str, Any]]:
+    """Action types legal as parallel-group members (excludes wait + structural parallel)."""
+    return [entry for entry in registry_palette_entries() if entry.get("kind") == "action"]
+
+
 def build_operator_summary(
     action_type: str,
     params: dict[str, Any] | None,

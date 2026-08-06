@@ -67,6 +67,13 @@ Item {{
         assert "wait" in kinds
         assert "parallel" in kinds
 
+        # Parallel member palette is action-only (no wait / structural parallel)
+        member_kinds = {entry["kind"] for entry in editor.member_palette}
+        member_types = {entry["type"] for entry in editor.member_palette}
+        assert member_kinds == {"action"}
+        assert "parallel" not in member_types
+        assert "time_wait" not in member_types
+
         assert_no_fatal_qml_warnings(warnings)
     finally:
         if root is not None:

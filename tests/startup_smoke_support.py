@@ -951,6 +951,7 @@ class FakeWorkflowEditor(QObject):
     document_changed = Signal()
     dirty_changed = Signal(bool)
     selected_index_changed = Signal(int)
+    selected_member_index_changed = Signal(int)
     is_open_changed = Signal(bool)
     loop_changed = Signal(bool)
     name_changed = Signal(str)
@@ -960,6 +961,7 @@ class FakeWorkflowEditor(QObject):
         self._is_open = False
         self._dirty = False
         self._selected_index = -1
+        self._selected_member_index = -1
         self._loop = False
         self._name = "demo"
         self._steps: list[dict] = []
@@ -992,6 +994,10 @@ class FakeWorkflowEditor(QObject):
     def selected_index(self) -> int:
         return self._selected_index
 
+    @Property(int, notify=selected_member_index_changed)
+    def selected_member_index(self) -> int:
+        return self._selected_member_index
+
     @Property(list, constant=True)
     def palette(self):
         return [
@@ -1000,6 +1006,14 @@ class FakeWorkflowEditor(QObject):
             {"type": "spray_gimbal", "kind": "action", "label": "Spray Gimbal"},
             {"type": "time_wait", "kind": "wait", "label": "Wait"},
             {"type": "parallel", "kind": "parallel", "label": "Parallel group"},
+        ]
+
+    @Property(list, constant=True)
+    def member_palette(self):
+        return [
+            {"type": "winch_absolute", "kind": "action", "label": "Winch Absolute"},
+            {"type": "valve_turn", "kind": "action", "label": "Valve"},
+            {"type": "spray_gimbal", "kind": "action", "label": "Spray Gimbal"},
         ]
 
     @Slot(result=bool)
@@ -1056,6 +1070,39 @@ class FakeWorkflowEditor(QObject):
     def select_step(self, index: int) -> None:
         self._selected_index = index
         self.selected_index_changed.emit(index)
+
+    @Slot(int)
+    def select_member(self, index: int) -> None:
+        self._selected_member_index = index
+        self.selected_member_index_changed.emit(index)
+
+    @Slot(str, result=bool)
+    def add_member(self, _action_type: str) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def remove_selected_member(self) -> bool:
+        return True
+
+    @Slot(str, result=bool)
+    def set_member_type(self, _action_type: str) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def move_selected_member_up(self) -> bool:
+        return True
+
+    @Slot(result=bool)
+    def move_selected_member_down(self) -> bool:
+        return True
+
+    @Slot(int, str, "QVariant", result=bool)
+    def set_member_param(self, _member_index: int, _key: str, _value) -> bool:
+        return True
+
+    @Slot(str, result=bool)
+    def set_continue_policy(self, _policy: str) -> bool:
+        return True
 
     @Slot(bool)
     def set_loop(self, enabled: bool) -> None:
