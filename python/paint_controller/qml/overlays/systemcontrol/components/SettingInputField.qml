@@ -8,6 +8,16 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: CommonStyle.spacingSm
 
+    // Idle | "success" | "error" — brief post-commit chrome (pure QML).
+    property string saveFeedback: ""
+    property bool visuallyPressed: false
+
+    readonly property color saveIdleColor: CommonStyle.statusSuccess
+    readonly property color saveHoverColor: Qt.lighter(CommonStyle.statusSuccess, 1.08)
+    readonly property color savePressedColor: Qt.darker(CommonStyle.statusSuccess, 1.15)
+    readonly property color saveSuccessColor: Qt.lighter(CommonStyle.statusSuccess, 1.18)
+    readonly property color saveErrorColor: CommonStyle.statusError
+
     function currentSettingText() {
         if (!root.settingsManager) {
             return root.defaultValue
@@ -22,7 +32,12 @@ ColumnLayout {
     function refreshDisplayText() {
         inputField.text = root.currentSettingText()
     }
-    
+
+    function showSaveFeedback(success) {
+        root.saveFeedback = success ? "success" : "error"
+        saveFeedbackTimer.restart()
+    }
+
     // Component properties
     required property string label
     required property string settingKey
@@ -84,16 +99,37 @@ ColumnLayout {
             }
         }
         
-        // Save button
+        // Save button — press linger + success/error result feedback
         Rectangle {
+            id: saveButton
             width: root.buttonWidth
             height: root.fieldHeight
             radius: CommonStyle.radiusSm
-            color: saveArea.containsMouse ? Qt.lighter(CommonStyle.statusSuccess, 1.08) : CommonStyle.statusSuccess
-            
+            color: {
+                if (root.saveFeedback === "success")
+                    return root.saveSuccessColor
+                if (root.saveFeedback === "error")
+                    return root.saveErrorColor
+                if (root.visuallyPressed)
+                    return root.savePressedColor
+                if (saveArea.containsMouse)
+                    return root.saveHoverColor
+                return root.saveIdleColor
+            }
+
+            Behavior on color {
+                ColorAnimation { duration: CommonStyle.motionFast }
+            }
+
             Text {
                 anchors.centerIn: parent
-                text: "Save"
+                text: {
+                    if (root.saveFeedback === "success")
+                        return "Saved ✓"
+                    if (root.saveFeedback === "error")
+                        return "Failed"
+                    return "Save"
+                }
                 color: CommonStyle.textStrong
                 font.family: CommonStyle.fontSans
                 font.pixelSize: Math.max(12, root.fieldHeight * 0.30)
@@ -105,22 +141,46 @@ ColumnLayout {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
+                onPressed: root.visuallyPressed = true
+                onCanceled: {
+                    root.visuallyPressed = false
+                    pressLingerTimer.stop()
+                }
                 onClicked: {
-                    var num = root.decimalPlaces === 0 ? 
-                        parseInt(inputField.text) : 
-                        parseFloat(inputField.text)
-                    
+                    var num = root.decimalPlaces === 0
+                        ? parseInt(inputField.text)
+                        : parseFloat(inputField.text)
+                    var success = false
+
                     if (!isNaN(num) && root.settingsManager) {
                         // TD-036: single gated write path (set+persist).
                         if (root.decimalPlaces === 0) {
-                            root.settingsManager.applyInt(root.settingKey, num)
+                            success = root.settingsManager.applyInt(root.settingKey, num)
                         } else {
-                            root.settingsManager.applyFloat(root.settingKey, num)
+                            success = root.settingsManager.applyFloat(root.settingKey, num)
                         }
                         // Always refresh so a gate deny restores the truthful value.
                         root.refreshDisplayText()
                     }
+
+                    root.showSaveFeedback(success)
+                    // Linger press highlight briefly so a short touch still registers.
+                    pressLingerTimer.restart()
                 }
+            }
+
+            Timer {
+                id: pressLingerTimer
+                interval: 150
+                repeat: false
+                onTriggered: root.visuallyPressed = false
+            }
+
+            Timer {
+                id: saveFeedbackTimer
+                interval: 900
+                repeat: false
+                onTriggered: root.saveFeedback = ""
             }
         }
     }
