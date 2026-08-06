@@ -9,8 +9,8 @@ Item {
     
     required property real currentPitch
     
-    // Opacity for the background, 0.0 (fully transparent) to 1.0 (fully opaque)
-    property real backgroundOpacity: 0.6
+    // Opacity for sky/ground fill only (labels & aircraft ref stay solid)
+    property real backgroundOpacity: 0.45
     
     // Pitch range (±10 degrees)
     property real pitchRange: 10.0
@@ -18,12 +18,15 @@ Item {
     // Pitch scale factor (pixels per degree)
     property real pitchScale: 4.5
     readonly property string pitchText: (root.currentPitch >= 0 ? "+" : "") + root.currentPitch.toFixed(1) + "°"
+
+    // ADI-style sky / ground (above / below 0°) — solid base; alpha via opacity
+    readonly property color skyColor: "#3a7ebd"
+    readonly property color groundColor: "#8b5a2b"
     
     Rectangle {
         id: container
         anchors.fill: parent
-        color: CommonStyle.backgroundL0
-        opacity: root.backgroundOpacity
+        color: "transparent"
         radius: CommonStyle.radiusSm
         border.width: 0
         clip: true
@@ -41,22 +44,46 @@ Item {
             Behavior on y {
                 NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
             }
+
+            // Sky band — above 0° horizon (top half of ladder)
+            Rectangle {
+                id: skyBand
+                anchors.left: parent.left
+                anchors.right: parent.right
+                y: 0
+                height: parent.height / 2
+                color: root.skyColor
+                opacity: root.backgroundOpacity
+            }
+
+            // Ground band — below 0° horizon (bottom half of ladder)
+            Rectangle {
+                id: groundBand
+                anchors.left: parent.left
+                anchors.right: parent.right
+                y: parent.height / 2
+                height: parent.height / 2
+                color: root.groundColor
+                opacity: root.backgroundOpacity
+            }
             
             // Center horizon line
             Rectangle {
                 id: horizonLine
                 anchors.horizontalCenter: parent.horizontalCenter
                 y: parent.height / 2 - 1.5
-                width: parent.width * 0.5
+                width: parent.width * 0.85
                 height: 3
                 color: CommonStyle.textPrimary
                 radius: 1.5
+                z: 2
             }
             
             // Pitch ladder marks
             Canvas {
                 id: pitchMarks
                 anchors.fill: parent
+                z: 2
                 
                 Component.onCompleted: requestPaint()
                 
@@ -67,12 +94,14 @@ Item {
                     var centerX = width / 2
                     var centerY = height / 2
                     
-                    ctx.strokeStyle = CommonStyle.textSecondary
-                    ctx.fillStyle = CommonStyle.textPrimary
+                    // Light ticks/labels for contrast on both sky and ground
+                    ctx.strokeStyle = "#f4f7fb"
+                    ctx.fillStyle = "#f4f7fb"
                     ctx.font = "11px Arial"
                     ctx.textAlign = "center"
                     ctx.textBaseline = "middle"
                     ctx.lineWidth = 2
+                    ctx.globalAlpha = 0.9
                     
                     // Draw pitch lines every 2.5 degrees from -pitchRange to +pitchRange
                     for (var pitch = -root.pitchRange; pitch <= root.pitchRange; pitch += 2.5) {
