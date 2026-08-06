@@ -15,3 +15,6 @@ PLANNING.md
 .coverage.*
 htmlcov/
 .pytest_cache/
+
+# Operator-editable workflow definitions (local machine content)
+python/paint_controller/resource/workflows/
