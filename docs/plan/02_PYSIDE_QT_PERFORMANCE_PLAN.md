@@ -121,14 +121,14 @@ Mark each row after review:
 | **P-01** | Video: cut double-copy + QML cache-bust | **High** | M–L | Low if Python still owns pixels | **Apply-done** (generation URL, option B) |
 | **P-02** | Lazy / demand-driven multi-stream GStreamer | **High** | M | Low if `videoRuntime` owns policy | **Apply-done** (option C warm EF+front) |
 | **P-03** | Status-tick idle early-out (keep 60 Hz e-stop) | Med–High | S–M | **Must preserve safety order** | **Apply-done** (skip engine when modes None) |
-| **P-04** | Telemetry / status paint rate split | Med | M | Keep per-property NOTIFY | ☐ Apply / ☐ Defer / ☐ Reject |
-| **P-05** | Dual-surface video/binding gate | Med | M | Product dual-monitor rule | ☐ Apply / ☐ Defer / ☐ Reject |
+| **P-04** | Telemetry / status paint rate split | Med | M | Keep per-property NOTIFY | **Apply-done** (~15 Hz TeensyStatus) |
+| **P-05** | Dual-surface video/binding gate | Med | M | Product dual-monitor rule | **Deferred** — needs product rule which surface gets full-rate video |
 | **P-06** | ImageProvider double-buffer / swap | Med–High | M | Thread safety critical | **Apply-done** (`publish` + COW `requestImage`) |
-| **P-07** | Gate page-local QML timers on visibility | Low–Med | S | None | ☐ Apply / ☐ Defer / ☐ Reject |
-| **P-08** | Startup: defer base-top worker / heavy shells | Med (cold start) | M | Keep factory graph | ☐ Apply / ☐ Defer / ☐ Reject |
-| **P-09** | QML scene hygiene (overdraw, effects, text) | Med when effects | S–M | Chrome only; no policy | ☐ Apply / ☐ Defer / ☐ Reject |
-| **P-10** | Large list models → `QAbstractListModel` | Low–Med *here* | M | Prefer only if lists hurt | ☐ Apply / ☐ Defer / ☐ Reject |
-| **P-11** | Thermal/idle rate scaling | Med (battery) | M | Product policy in Python | ☐ Apply / ☐ Defer / ☐ Reject |
+| **P-07** | Gate page-local QML timers on visibility | Low–Med | S | None | **Apply-done** (DigitalGauge, PageWheel) |
+| **P-08** | Startup: defer base-top worker / heavy shells | Med (cold start) | M | Keep factory graph | **Apply-done** (worker thread on first enable) |
+| **P-09** | QML scene hygiene (overdraw, effects, text) | Med when effects | S–M | Chrome only; no policy | **Apply-done** (videoFrame smooth:false) |
+| **P-10** | Large list models → `QAbstractListModel` | Low–Med *here* | M | Prefer only if lists hurt | **Deferred** — no large virtualized operator lists; editor N small |
+| **P-11** | Thermal/idle rate scaling | Med (battery) | M | Product policy in Python | **Deferred** — needs product battery policy; P-02/P-03 deliver related savings |
 
 **Recommended pick order if you want a short list:**  
 `P-00` → profile → then likely `P-01`/`P-06` and/or `P-02` (video dominates) → `P-03` if tick budget shows up → small wins `P-07`/`P-09`.
