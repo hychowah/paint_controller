@@ -48,6 +48,9 @@ def test_cleanup_quits_worker_thread(qt_app) -> None:
     handler = _FakeVideoStreamHandler()
     service = BaseTopViewService(video_handler=handler)
 
+    # P-08: thread starts on first enable, not at construction.
+    assert service.worker_thread.isRunning() is False
+    service.enabled = True
     assert service.worker_thread.isRunning()
 
     service.cleanup()
@@ -59,8 +62,28 @@ def test_cleanup_quits_worker_thread(qt_app) -> None:
     assert service.worker_thread.isFinished()
 
 
+def test_worker_thread_starts_only_on_first_enable(qt_app) -> None:
+    """P-08: construction must not start the OpenCV worker thread."""
+    handler = _FakeVideoStreamHandlerTracked()
+    handler.ensure_stream_running = lambda *_a, **_k: True  # type: ignore[attr-defined]
+    service = BaseTopViewService(video_handler=handler)
+    try:
+        assert service._worker_thread_started is False
+        assert service.worker_thread.isRunning() is False
+        service.enabled = True
+        assert service._worker_thread_started is True
+        assert service.worker_thread.isRunning()
+        # Second enable path does not create a second thread.
+        service.enabled = False
+        service.enabled = True
+        assert service.worker_thread.isRunning()
+    finally:
+        service.cleanup()
+
+
 def test_cleanup_disconnects_frame_ready_before_quitting_worker_thread(qt_app) -> None:
     handler = _FakeVideoStreamHandlerTracked()
+    handler.ensure_stream_running = lambda *_a, **_k: True  # type: ignore[attr-defined]
     service = BaseTopViewService(video_handler=handler)
     stream = handler.camera_streams[CameraType.BASE_TOP]
 
@@ -91,6 +114,8 @@ def test_map_recompute_runs_on_worker_thread_not_gui(qt_app, monkeypatch) -> Non
     """TD-039: GUI k/zoom changes must not call _compute_remap_tables on the GUI thread."""
     handler = _FakeVideoStreamHandler()
     service = BaseTopViewService(video_handler=handler)
+    # P-08: start worker on first enable so QueuedConnection recompute has a live thread.
+    service._ensure_worker_thread_started()
     worker_thread = service.worker_thread
     gui_thread = QThread.currentThread()
 

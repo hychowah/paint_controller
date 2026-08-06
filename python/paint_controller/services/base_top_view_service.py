@@ -509,9 +509,8 @@ class BaseTopViewService(QObject):
         self._map_recompute_timer.setSingleShot(True)
         self._map_recompute_timer.timeout.connect(self._flush_map_recompute)
 
-        # Start thread
-        self.worker_thread.start()
-        self.logger.info("Base top view worker thread started")
+        # P-08: do not start the worker thread until first enable (saves startup RAM/CPU).
+        self._worker_thread_started = False
 
         # Migrate old bird_view settings to base_top_view if they exist
         if self.settings_manager:
@@ -791,6 +790,14 @@ class BaseTopViewService(QObject):
         """Whether base top view processing is active"""
         return self._enabled
 
+    def _ensure_worker_thread_started(self) -> None:
+        """Start the OpenCV worker thread on first enable (P-08)."""
+        if self._worker_thread_started:
+            return
+        self.worker_thread.start()
+        self._worker_thread_started = True
+        self.logger.info("Base top view worker thread started")
+
     @enabled.setter
     def enabled(self, value: bool):
         if self._enabled != value:
@@ -799,6 +806,7 @@ class BaseTopViewService(QObject):
 
             # Connect/disconnect signal based on enabled state
             if value and self._base_top_stream:
+                self._ensure_worker_thread_started()
                 # P-02: base top is not warm-started; demand-start the pipeline.
                 try:
                     self.video_handler.ensure_stream_running(CameraType.BASE_TOP)
