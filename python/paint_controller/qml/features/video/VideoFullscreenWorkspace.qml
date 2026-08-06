@@ -52,6 +52,8 @@ Rectangle {
         fillMode: Image.PreserveAspectFit
         cache: false
         asynchronous: false
+        // P-09: live video is 1:1 decode path; skip smooth scaling cost on Deck.
+        smooth: false
         // Keep an explicit assignment path for frame cache-bust; re-applied on videoSource change.
         source: root.videoSource
         visible: root.activeStreamAvailable
