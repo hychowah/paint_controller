@@ -77,7 +77,12 @@ class RosTelemetryBridge(QObject):
             self._wake.emit()
 
     def pending_snapshot(self) -> Any | None:
-        """Test/diagnostics: current pending POD (may be None)."""
+        """Return the last-wins pending POD, if any (may be None).
+
+        Used by tests/diagnostics and by consumers that must distinguish a
+        queued ROS receive from main-thread apply state (e.g. heartbeat loss
+        detection under UI-thread lag).
+        """
         with self._lock:
             return self._pending
 

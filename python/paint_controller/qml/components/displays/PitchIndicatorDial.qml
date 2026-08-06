@@ -97,7 +97,9 @@ Item {
                     // Light ticks/labels for contrast on both sky and ground
                     ctx.strokeStyle = "#f4f7fb"
                     ctx.fillStyle = "#f4f7fb"
-                    ctx.font = "11px Arial"
+                    // Context2D font resolution is not Qt Text's stack — use generic CSS
+                    // families (Roboto/Arial often missing on Deck → invalid-family cost).
+                    ctx.font = "11px sans-serif"
                     ctx.textAlign = "center"
                     ctx.textBaseline = "middle"
                     ctx.lineWidth = 2

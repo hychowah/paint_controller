@@ -4,6 +4,17 @@ import QtQuick.Layouts
 import "../../theme"
 import "../../overlays/video/components"
 
+/*
+ * Fullscreen video contract (base↔EF on Deck):
+ * 1. Active feed Image visibility flips on videoSource (last texture kept per layer).
+ * 2. chromeFeed commits next event-loop turn; exactly one mode chrome Loader is active.
+ * 3. Shared VideoOverlayTopBar lives here; mode overlays set showTopBar: false.
+ * 4. Frames: timer-coalesced generation pull (~15 Hz), not per-frame Connections thrash.
+ * 5. Do not dual-warm mode chromes (main-thread binding storms / false device disconnects).
+ *
+ * Timing (paired with handlers/input.py): control_mode 0 ms → chrome 0 ms → EF Canvas ~1 ms
+ * → popup 80 ms; frame pull 66 ms.
+ */
 Rectangle {
     id: root
 
@@ -26,15 +37,134 @@ Rectangle {
     readonly property int panelBottomMargin: CommonStyle.videoPanelBottomMargin
     readonly property int panelSideMargin: CommonStyle.videoPanelSideMargin
 
-    // Python owns the 3s freshness rule; QML only selects the active feed's flag.
+    // Active-feed UI rebind budget (ms). Product presentation; not machine policy.
+    readonly property int framePullIntervalMs: 66
+
+    // Feed kind — URL classification at the image-provider boundary (Python owns mode).
+    readonly property bool isEfFeed: root.videoSource.indexOf("ef_live") >= 0
+    readonly property bool isBaseFrontFeed: root.videoSource.indexOf("base_front_live") >= 0
+    readonly property bool isBaseRearFeed: root.videoSource.indexOf("base_rear_live") >= 0
+
+    readonly property bool efStreamAvailable: !!(root.videoRuntime && root.videoRuntime.feeds
+                                                && root.videoRuntime.feeds.endEffectorStreamAvailable)
+    readonly property bool baseFrontStreamAvailable: !!(root.videoRuntime && root.videoRuntime.feeds
+                                                       && root.videoRuntime.feeds.baseFrontStreamAvailable)
+    readonly property bool baseRearStreamAvailable: !!(root.videoRuntime && root.videoRuntime.feeds
+                                                      && root.videoRuntime.feeds.baseRearStreamAvailable)
+
     readonly property bool activeStreamAvailable: {
-        if (root.videoSource.indexOf("ef_live") >= 0)
-            return root.videoRuntime.feeds.endEffectorStreamAvailable
-        if (root.videoSource.indexOf("base_front_live") >= 0)
-            return root.videoRuntime.feeds.baseFrontStreamAvailable
-        if (root.videoSource.indexOf("base_rear_live") >= 0)
-            return root.videoRuntime.feeds.baseRearStreamAvailable
+        if (root.isEfFeed)
+            return root.efStreamAvailable
+        if (root.isBaseFrontFeed)
+            return root.baseFrontStreamAvailable
+        if (root.isBaseRearFeed)
+            return root.baseRearStreamAvailable
         return false
+    }
+
+    // Chrome lags video by one event-loop turn so base↔EF first paints Images only.
+    property string chromeFeed: ""  // "ef" | "base" | ""
+    readonly property bool chromeIsEf: root.chromeFeed === "ef"
+    readonly property bool chromeIsBase: root.chromeFeed === "base"
+
+    property string efDisplayUrl: ""
+    property string baseFrontDisplayUrl: ""
+    property string baseRearDisplayUrl: ""
+    property int _efDisplayGen: -1
+    property int _baseFrontDisplayGen: -1
+    property int _baseRearDisplayGen: -1
+
+    function _feedsReady() {
+        return !!(root.videoRuntime && root.videoRuntime.feeds)
+    }
+
+    function pullFrame(kind, force) {
+        // kind: "ef" | "base_front" | "base_rear"
+        if (!root._feedsReady())
+            return
+        var feeds = root.videoRuntime.feeds
+        var gen = 0
+        var baseUrl = ""
+        var lastGen = -1
+        if (kind === "ef") {
+            gen = feeds.endEffectorFrameGeneration
+            baseUrl = "image://ef_live/frame"
+            lastGen = root._efDisplayGen
+            if (!force && gen === lastGen)
+                return
+            root._efDisplayGen = gen
+            root.efDisplayUrl = feeds.versionedImageUrl(baseUrl, gen)
+        } else if (kind === "base_front") {
+            gen = feeds.baseFrontFrameGeneration
+            baseUrl = "image://base_front_live/frame"
+            lastGen = root._baseFrontDisplayGen
+            if (!force && gen === lastGen)
+                return
+            root._baseFrontDisplayGen = gen
+            root.baseFrontDisplayUrl = feeds.versionedImageUrl(baseUrl, gen)
+        } else if (kind === "base_rear") {
+            gen = feeds.baseRearFrameGeneration
+            baseUrl = "image://base_rear_live/frame"
+            lastGen = root._baseRearDisplayGen
+            if (!force && gen === lastGen)
+                return
+            root._baseRearDisplayGen = gen
+            root.baseRearDisplayUrl = feeds.versionedImageUrl(baseUrl, gen)
+        }
+    }
+
+    function pullActiveFrame(force) {
+        if (root.isEfFeed)
+            root.pullFrame("ef", force)
+        else if (root.isBaseFrontFeed)
+            root.pullFrame("base_front", force)
+        else if (root.isBaseRearFeed)
+            root.pullFrame("base_rear", force)
+    }
+
+    function commitChromeFeed() {
+        if (!root.active) {
+            root.chromeFeed = ""
+            return
+        }
+        if (root.isEfFeed)
+            root.chromeFeed = "ef"
+        else if (root.isBaseFrontFeed)
+            root.chromeFeed = "base"
+        else
+            root.chromeFeed = ""
+    }
+
+    onVideoSourceChanged: {
+        root.pullActiveFrame(true)
+        if (root.active)
+            chromeCommitTimer.restart()
+    }
+    onActiveChanged: {
+        if (root.active) {
+            // Seed operator warm feeds (EF + base front); rear stays on demand.
+            root.pullFrame("base_front", true)
+            root.pullFrame("ef", true)
+            root.pullActiveFrame(true)
+            chromeCommitTimer.restart()
+        } else {
+            root.chromeFeed = ""
+        }
+    }
+    Component.onCompleted: {
+        if (root.active) {
+            root.pullFrame("base_front", true)
+            root.pullFrame("ef", true)
+            root.pullActiveFrame(true)
+            chromeCommitTimer.restart()
+        }
+    }
+
+    Timer {
+        id: chromeCommitTimer
+        interval: 0
+        repeat: false
+        onTriggered: root.commitChromeFeed()
     }
 
     visible: active
@@ -47,19 +177,44 @@ Rectangle {
     }
 
     Image {
-        id: videoFrame
+        id: efVideoFrame
+        objectName: "efVideoFrame"
         anchors.fill: parent
         fillMode: Image.PreserveAspectFit
         cache: false
         asynchronous: false
-        // P-09: live video is 1:1 decode path; skip smooth scaling cost on Deck.
         smooth: false
-        // Keep an explicit assignment path for frame cache-bust; re-applied on videoSource change.
-        source: root.videoSource
-        visible: root.activeStreamAvailable
+        source: root.efDisplayUrl
+        visible: root.isEfFeed && root.efStreamAvailable
+        z: 0
     }
 
-    // Shown when the active EF/base feed has not delivered a frame within the Python timeout.
+    Image {
+        id: baseFrontVideoFrame
+        objectName: "baseFrontVideoFrame"
+        anchors.fill: parent
+        fillMode: Image.PreserveAspectFit
+        cache: false
+        asynchronous: false
+        smooth: false
+        source: root.baseFrontDisplayUrl
+        visible: root.isBaseFrontFeed && root.baseFrontStreamAvailable
+        z: 0
+    }
+
+    Image {
+        id: baseRearVideoFrame
+        objectName: "baseRearVideoFrame"
+        anchors.fill: parent
+        fillMode: Image.PreserveAspectFit
+        cache: false
+        asynchronous: false
+        smooth: false
+        source: root.baseRearDisplayUrl
+        visible: root.isBaseRearFeed && root.baseRearStreamAvailable
+        z: 0
+    }
+
     Image {
         id: streamUnavailableIcon
         anchors.centerIn: parent
@@ -69,13 +224,24 @@ Rectangle {
         source: "../../../resource/stream_not_available.png"
         visible: root.active && !root.activeStreamAvailable
         opacity: 0.85
+        z: 1
     }
 
-    onVideoSourceChanged: {
-        // Frame handlers assign videoFrame.source and break the binding to root.videoSource.
-        // Re-apply so EF→base switches do not keep the previous feed's last frame.
-        videoFrame.source = ""
-        videoFrame.source = root.videoSource
+    Timer {
+        id: frameRefreshTimer
+        interval: root.framePullIntervalMs
+        running: root.active
+        repeat: true
+        onTriggered: root.pullActiveFrame(false)
+    }
+
+    VideoOverlayTopBar {
+        id: sharedTopBar
+        objectName: "sharedVideoTopBar"
+        z: 200
+        visible: root.active && root.videoRuntime && root.videoRuntime.topBar
+        topBarModel: root.videoRuntime ? root.videoRuntime.topBar : null
+        selectedOverlay: root.isEfFeed ? "ef" : "base"
     }
 
     Rectangle {
@@ -130,72 +296,43 @@ Rectangle {
         }
     }
 
-    Rectangle {
-        id: centerCrosshair
-        anchors.centerIn: parent
-        width: 30
-        height: 30
-        color: "transparent"
-        border.color: CommonStyle.videoCrosshair
-        border.width: 2
-        radius: 15
-        visible: false
+    // Exactly one mode chrome. Destroy inactive to free binding storms.
+    Loader {
+        id: endEffectorOverlayLoader
+        objectName: "endEffectorOverlayLoader"
+        anchors.fill: parent
+        z: 2
+        active: root.active && root.chromeIsEf
+        visible: status === Loader.Ready && root.chromeIsEf
+        asynchronous: true
+        sourceComponent: endEffectorOverlayComponent
 
-        Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.top: parent.top
-            anchors.topMargin: -10
-            width: 2
-            height: 10
-            color: CommonStyle.videoCrosshair
-        }
-
-        Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: -10
-            width: 2
-            height: 10
-            color: CommonStyle.videoCrosshair
-        }
-
-        Rectangle {
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.left: parent.left
-            anchors.leftMargin: -10
-            width: 10
-            height: 2
-            color: CommonStyle.videoCrosshair
-        }
-
-        Rectangle {
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.right: parent.right
-            anchors.rightMargin: -10
-            width: 10
-            height: 2
-            color: CommonStyle.videoCrosshair
+        onLoaded: {
+            if (item)
+                item.objectName = "endEffectorOverlay"
         }
     }
 
     Loader {
-        id: overlayLoader
+        id: baseFrontOverlayLoader
+        objectName: "baseFrontOverlayLoader"
         anchors.fill: parent
-        enabled: root.active
+        z: 2
+        active: root.active && root.chromeIsBase
+        visible: status === Loader.Ready && root.chromeIsBase
+        asynchronous: true
+        sourceComponent: baseFrontOverlayComponent
 
-        sourceComponent: {
-            if (root.videoSource.indexOf("ef_live") >= 0) {
-                return endEffectorOverlayComponent
-            } else if (root.videoSource.indexOf("base_front_live") >= 0) {
-                return baseFrontOverlayComponent
-            }
-            return null
+        onLoaded: {
+            if (item)
+                item.objectName = "baseFrontOverlay"
         }
     }
 
     Component {
         id: endEffectorOverlayComponent
         EndEffectorOverlay {
+            showTopBar: false
             workflowRunner: root.workflowServices.workflowRunner
             videoRuntime: root.videoRuntime
             winchStatus: root.winchStatus
@@ -208,6 +345,7 @@ Rectangle {
     Component {
         id: baseFrontOverlayComponent
         BaseFrontOverlay {
+            showTopBar: false
             workflowRunner: root.workflowServices.workflowRunner
             videoRuntime: root.videoRuntime
             wheelStatus: root.wheelStatus
@@ -219,93 +357,40 @@ Rectangle {
 
     ControlInfoPanel {
         id: leftControlPanel
+        z: 6
         position: "left"
         leftMargin: root.panelSideMargin
         rightMargin: 20
         bottomMargin: root.panelBottomMargin
         width: root.panelWidth
         height: root.panelHeight
-        controlMode: root.videoRuntime.controls.leftMode
-        controlModeDisplay: root.videoRuntime.controls.leftModeDisplay
-        controlValue: root.videoRuntime.controls.leftValue
+        controlMode: root.videoRuntime && root.videoRuntime.controls
+            ? root.videoRuntime.controls.leftMode : ""
+        controlModeDisplay: root.videoRuntime && root.videoRuntime.controls
+            ? root.videoRuntime.controls.leftModeDisplay : ""
+        controlValue: root.videoRuntime && root.videoRuntime.controls
+            ? root.videoRuntime.controls.leftValue : ""
         title: "LEFT CONTROL"
         onPanelClicked: root.overlayController.open_menu("left")
     }
 
     ControlInfoPanel {
         id: rightControlPanel
+        z: 6
         position: "right"
         leftMargin: 20
         rightMargin: root.panelSideMargin
         bottomMargin: root.panelBottomMargin
         width: root.panelWidth
         height: root.panelHeight
-        controlMode: root.videoRuntime.controls.rightMode
-        controlModeDisplay: root.videoRuntime.controls.rightModeDisplay
-        controlValue: root.videoRuntime.controls.rightValue
+        controlMode: root.videoRuntime && root.videoRuntime.controls
+            ? root.videoRuntime.controls.rightMode : ""
+        controlModeDisplay: root.videoRuntime && root.videoRuntime.controls
+            ? root.videoRuntime.controls.rightModeDisplay : ""
+        controlValue: root.videoRuntime && root.videoRuntime.controls
+            ? root.videoRuntime.controls.rightValue : ""
         title: "RIGHT CONTROL"
         onPanelClicked: root.overlayController.open_menu("right")
-    }
-
-    Rectangle {
-        visible: false
-        anchors.bottom: parent.bottom
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottomMargin: CommonStyle.spacingLg + CommonStyle.spacingXs
-        width: 200
-        height: 40
-        radius: CommonStyle.radiusLg + CommonStyle.spacingXs / 2
-        color: CommonStyle.videoSurface
-        border.color: CommonStyle.videoCrosshair
-        border.width: 1
-
-        Label {
-            anchors.centerIn: parent
-            text: "Tap to exit fullscreen"
-            color: CommonStyle.textPrimary
-            font.family: CommonStyle.fontSans
-            font.pixelSize: CommonStyle.fontCaption + 1
-        }
-
-        opacity: fadeOutTimer.running ? 1.0 : 0.0
-
-        Behavior on opacity {
-            NumberAnimation { duration: CommonStyle.motionSlow + 200 }
-        }
-    }
-
-    Timer {
-        id: fadeOutTimer
-        interval: 3000
-        running: root.active
-        repeat: false
-    }
-
-    Connections {
-        target: root.videoRuntime.feeds
-        enabled: root.active
-
-        // P-01: rebind with generation query instead of source="" thrash.
-        function onEndEffectorFrameReady() {
-            if (root.videoSource.indexOf("ef_live") >= 0) {
-                videoFrame.source = root.videoRuntime.feeds.versionedImageUrl(
-                    root.videoSource, root.videoRuntime.feeds.endEffectorFrameGeneration)
-            }
-        }
-
-        function onBaseFrontFrameReady() {
-            if (root.videoSource.indexOf("base_front_live") >= 0) {
-                videoFrame.source = root.videoRuntime.feeds.versionedImageUrl(
-                    root.videoSource, root.videoRuntime.feeds.baseFrontFrameGeneration)
-            }
-        }
-
-        function onBaseRearFrameReady() {
-            if (root.videoSource.indexOf("base_rear_live") >= 0) {
-                videoFrame.source = root.videoRuntime.feeds.versionedImageUrl(
-                    root.videoSource, root.videoRuntime.feeds.baseRearFrameGeneration)
-            }
-        }
     }
 
     Behavior on opacity {

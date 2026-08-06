@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-08-06 - Base→EF freeze: stable chrome + HB lag + frame bind
+
+**Goal**: Fix 0.5–2s UI freeze / false controller heartbeat loss on first base→EF switch.
+**Tried**: Wave1: warm dual loaders + generation bind + HB pending lag. Device still ~1s (popup late; no HB loss). Wave2: dual Image layers (switch = visibility); 50 ms EF chrome prewarm + opacity show; ~20 Hz active-feed pull; PitchIndicatorDial font; Python switch timing warn ≥25 ms.
+**Result**: Wave4 device OK (~159 ms source→popup, no false disconnects). Audit cleanup: pending-mode race fix, hygiene test, top-bar Loader, pullFrame factor, dead UI removed, timing contract docs. No commit yet.
+**Files**: `VideoFullscreenWorkspace.qml`, `PitchIndicatorDial.qml`, `handlers/input.py`, `handlers/heartbeat.py`, tests
+
+---
 ### 2026-08-06 - Workflow editor Steam Deck readability
 
 **Goal**: Larger type + touch density on workflow editor for 7″ 1280×800.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
@@ -19,6 +20,17 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+# Mode-switch timing budget (video-first on Deck — do not collapse without re-measure).
+# | Delay | Owner                         | Role                                      |
+# | 0 ms  | this module, _apply_mode      | commit StateStore.control_mode → video URL |
+# | 0 ms  | VideoFullscreenWorkspace      | chromeFeed after videoSource               |
+# | ~1 ms | EndEffectorOverlay heavyDecor | Canvas after EF chrome item                |
+# | 80 ms | this module, popup            | toast after video + chrome tick            |
+# | 66 ms | VideoFullscreenWorkspace      | ~15 Hz active-feed Image pull              |
+_MODE_APPLY_DELAY_MS = 0
+_MODE_POPUP_DELAY_MS = 80
+_PHASE1_WARN_MS = 25.0
 
 
 class UIInputHandler(QObject):
@@ -46,6 +58,10 @@ class UIInputHandler(QObject):
         self._l5_double_press = DoublePressDetector(threshold=1.0)
         self._r5_double_press = DoublePressDetector(threshold=1.0)
         self._a_double_press = DoublePressDetector(threshold=1.0)
+
+        # In-flight session mode for early-return / stick transition while phase2 is pending.
+        self._pending_control_mode: str | None = None
+        self._mode_switch_generation = 0
 
         # Get arm extension presets from settings_manager if available
         if settings_manager is not None:
@@ -78,24 +94,35 @@ class UIInputHandler(QObject):
             return value
         return str(mode)
 
+    def _effective_control_mode(self) -> str:
+        """Session mode including an in-flight deferred apply (not store alone)."""
+        if self._pending_control_mode is not None:
+            return self._normalize_control_mode(self._pending_control_mode)
+        return self._normalize_control_mode(self._state_store.control_mode)
+
     def switch_control_mode(self, target_mode: str) -> None:
         """Switch session control mode and restore per-mode joystick assignments.
 
         Absolute (not toggle). Top-bar EF/BASE requests call this so stream switch
         and stick modes stay one decision. Video follows via ``control_mode_changed``.
+
+        Phase 1 (this turn): stick memory + winch reset when entering EF.
+        Phase 2 (next event-loop turn): ``control_mode`` so video/chrome do not nest
+        under stick NOTIFY. Rapid re-entry cancels/replaces the pending apply via
+        generation counter so sticks and store stay on the last request.
         """
         target = self._normalize_control_mode(target_mode)
-        current = self._normalize_control_mode(self._state_store.control_mode)
+        current = self._effective_control_mode()
         if current == target:
             return
 
+        t0 = time.perf_counter()
         try:
             self._close_popup_fn()
         except Exception as e:
             logger.warning("Could not close popup: %s", e)
 
         self._selection_model.transition_controls(current, target)
-        self._state_store.control_mode = target
 
         if target == ControlMode.END_EFFECTOR.value:
             self._control_processor.reset_winch_activation()
@@ -103,8 +130,33 @@ class UIInputHandler(QObject):
         else:
             message = "Switched to Base control mode (Track Control)"
 
-        # Defer popup so video overlay Loader can stabilize (KNOWLEDGE: Loader timing).
-        QTimer.singleShot(150, lambda: self._show_popup_fn("Control Mode", message, "info"))
+        self._pending_control_mode = target
+        self._mode_switch_generation += 1
+        generation = self._mode_switch_generation
+
+        def _apply_mode() -> None:
+            if generation != self._mode_switch_generation:
+                return
+            self._state_store.control_mode = target
+            if self._pending_control_mode == target:
+                self._pending_control_mode = None
+
+        def _show_mode_popup() -> None:
+            if generation != self._mode_switch_generation:
+                return
+            self._show_popup_fn("Control Mode", message, "info")
+
+        QTimer.singleShot(_MODE_APPLY_DELAY_MS, _apply_mode)
+        QTimer.singleShot(_MODE_POPUP_DELAY_MS, _show_mode_popup)
+
+        elapsed_ms = (time.perf_counter() - t0) * 1000.0
+        if elapsed_ms >= _PHASE1_WARN_MS:
+            logger.warning(
+                "switch_control_mode(%s→%s) phase1 took %.1f ms",
+                current,
+                target,
+                elapsed_ms,
+            )
 
     @Slot()
     def on_l5_pressed(self):

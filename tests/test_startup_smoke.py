@@ -207,6 +207,149 @@ Item {{
             qt_app.processEvents()
 
 
+def test_video_fullscreen_base_ef_switch_single_active_chrome(monkeypatch, tmp_path, qt_app, qtbot):
+    """Video dual-layer flips immediately; only one mode chrome Loader is active.
+
+    Chrome commit is deferred one event-loop turn so switch work is spread.
+    Shared top bar stays present across base↔EF.
+    """
+    import time
+
+    from PySide6.QtCore import QObject
+
+    repo_root = Path(__file__).resolve().parent.parent
+    qml_dir = repo_root / "python" / "paint_controller" / "qml"
+    video_import_url = _qml_import_url(qml_dir / "features" / "video")
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(qml_dir))
+    engine.addImageProvider("ef_live", BlankImageProvider())
+    engine.addImageProvider("base_front_live", BlankImageProvider())
+    engine.addImageProvider("base_rear_live", BlankImageProvider())
+    engine.addImageProvider("base_top_view", BlankImageProvider())
+
+    warnings = []
+    engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
+
+    context_objects = _context_objects(monkeypatch, tmp_path)
+    ctx = engine.rootContext()
+    for name, obj in context_objects.items():
+        ctx.setContextProperty(name, obj)
+
+    component = QQmlComponent(engine)
+    component.setData(
+        f'''
+import QtQuick
+import "{video_import_url}"
+
+Item {{
+    width: 1280
+    height: 800
+    property alias workspace: workspace
+
+    VideoFullscreenWorkspace {{
+        id: workspace
+        objectName: "videoFullscreenWorkspace"
+        anchors.fill: parent
+        active: true
+        videoSource: "image://base_front_live/frame"
+        workflowServices: systemControlServices
+        videoRuntime: videoRuntime
+        wheelStatus: wheelStatus
+        winchStatus: winchStatus
+        teensyStatus: teensyStatus
+        valveStatus: valveStatus
+        lidarStatus: lidarStatus
+        overlayController: overlayController
+        baseTopViewStatus: baseTopViewStatus
+        baseTopViewActions: baseTopViewActions
+        actionLegality: actionLegality
+    }}
+}}
+'''.encode(),
+        QUrl("inmemory:VideoFullscreenModeSwitchHarness.qml"),
+    )
+
+    _assert_component_ready(qtbot, component)
+    root = component.create()
+    try:
+        assert root is not None, [str(error) for error in component.errors()]
+        qt_app.processEvents()
+
+        def _find_named(name: str):
+            return root.findChild(QObject, name)
+
+        def _wait_base_chrome() -> None:
+            deadline = time.monotonic() + 3.0
+            while time.monotonic() < deadline:
+                qt_app.processEvents()
+                base_loader = _find_named("baseFrontOverlayLoader")
+                if base_loader is not None and base_loader.property("item") is not None:
+                    return
+                qtbot.wait(20)
+            raise AssertionError("base chrome loader did not create item")
+
+        _wait_base_chrome()
+        workspace = _find_named("videoFullscreenWorkspace")
+        ef_loader = _find_named("endEffectorOverlayLoader")
+        base_loader = _find_named("baseFrontOverlayLoader")
+        shared_top = _find_named("sharedVideoTopBar")
+        assert workspace is not None
+        assert ef_loader is not None and base_loader is not None
+        assert shared_top is not None
+        assert base_loader.property("item") is not None
+        # Exactly one chrome active: base on, EF inactive (no dual-warm).
+        assert ef_loader.property("item") is None
+
+        workspace.setProperty("videoSource", "image://ef_live/frame")
+        # Next event-loop turn commits chromeFeed and activates EF loader (async).
+        qt_app.processEvents()
+        qtbot.wait(50)
+        qt_app.processEvents()
+
+        deadline = time.monotonic() + 3.0
+        while time.monotonic() < deadline:
+            qt_app.processEvents()
+            if ef_loader.property("item") is not None:
+                break
+            qtbot.wait(20)
+        assert ef_loader.property("item") is not None
+        assert ef_loader.property("item").objectName() == "endEffectorOverlay"
+        # Base chrome released while EF is active.
+        assert base_loader.property("item") is None
+        # Shared top bar still present (not recreated per mode).
+        assert _find_named("sharedVideoTopBar") is not None
+
+        workspace.setProperty("videoSource", "image://base_front_live/frame")
+        qt_app.processEvents()
+        qtbot.wait(50)
+        qt_app.processEvents()
+        deadline = time.monotonic() + 3.0
+        while time.monotonic() < deadline:
+            qt_app.processEvents()
+            if base_loader.property("item") is not None:
+                break
+            qtbot.wait(20)
+        assert base_loader.property("item") is not None
+        assert ef_loader.property("item") is None
+
+        assert _find_named("efVideoFrame") is not None
+        assert _find_named("baseFrontVideoFrame") is not None
+        feeds = context_objects["videoRuntime"].feeds
+        t0 = time.perf_counter()
+        for _ in range(30):
+            feeds.bump_base_front_generation()
+            qt_app.processEvents()
+        elapsed_ms = (time.perf_counter() - t0) * 1000.0
+        assert elapsed_ms < 2000.0, f"frame generation rebinds too slow: {elapsed_ms:.1f} ms"
+
+        assert_no_fatal_qml_warnings(warnings)
+    finally:
+        if root is not None:
+            root.deleteLater()
+            qt_app.processEvents()
+
+
 def test_page_winch_loads_with_explicit_winch_status(monkeypatch, tmp_path, qt_app, qtbot):
     repo_root = Path(__file__).resolve().parent.parent
     qml_dir = repo_root / "python" / "paint_controller" / "qml"

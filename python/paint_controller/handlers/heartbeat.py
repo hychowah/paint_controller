@@ -157,21 +157,49 @@ class UIHeartbeatHandler(QObject):
         )
         self._node.get_logger().info("Heartbeat subscribers initialized")
 
+    def _pending_recv_mono(self, bridge: RosTelemetryBridge) -> float | None:
+        """Return recv_mono of a queued tick if present (UI apply lag ≠ peer loss)."""
+        pending = bridge.pending_snapshot()
+        if isinstance(pending, HeartbeatTick):
+            return float(pending.recv_mono)
+        return None
+
+    def _effective_last_seen(self, last_seen: float, bridge: RosTelemetryBridge) -> float:
+        """Max of last applied tick and any pending receive time.
+
+        Heartbeats are posted from the ROS thread with wall recv time; main-thread
+        apply may lag during QML work. Loss detection must not treat a queued
+        recent post as silence (false "Controller heartbeat lost" during UI stalls).
+        """
+        pending_recv = self._pending_recv_mono(bridge)
+        if pending_recv is None:
+            return last_seen
+        return max(last_seen, pending_recv)
+
     def _check_availability(self) -> None:
         """Main-thread timer: offline detection + halt on loss."""
         current_time = time.time()
 
-        if current_time - self._controller_last_seen > self._heartbeat_timeout:
+        if (
+            current_time - self._effective_last_seen(self._controller_last_seen, self._controller_bridge)
+            > self._heartbeat_timeout
+        ):
             if self._controller_online:
                 self.set_controller_online(False)
                 self._handle_heartbeat_loss("Controller heartbeat lost")
 
-        if current_time - self._base_last_seen > self._heartbeat_timeout:
+        if (
+            current_time - self._effective_last_seen(self._base_last_seen, self._base_bridge)
+            > self._heartbeat_timeout
+        ):
             if self._base_online:
                 self.set_base_online(False)
                 self._handle_heartbeat_loss("Base robot heartbeat lost")
 
-        if current_time - self._ef_last_seen > self._heartbeat_timeout:
+        if (
+            current_time - self._effective_last_seen(self._ef_last_seen, self._ef_bridge)
+            > self._heartbeat_timeout
+        ):
             if self._ef_online:
                 self.set_ef_online(False)
                 self._handle_heartbeat_loss("End effector heartbeat lost")

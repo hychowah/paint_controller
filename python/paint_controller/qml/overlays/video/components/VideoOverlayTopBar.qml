@@ -9,13 +9,12 @@ import "../../../components/displays"
 Rectangle {
     id: topBar
     required property var topBarModel
-    width: root.width
     height: 50
     color: "transparent"
     
     anchors.top: parent.top
-    // anchors.left: parent.left
-    // anchors.right: parent.right
+    anchors.left: parent.left
+    anchors.right: parent.right
     
     readonly property color dividerColor: CommonStyle.videoDivider
     readonly property color topBarTextColor: CommonStyle.textPrimary

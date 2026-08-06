@@ -160,12 +160,18 @@ class FakeStreamHandler(QObject):
     endEffectorStreamAvailableChanged = Signal()
     baseFrontStreamAvailableChanged = Signal()
     baseRearStreamAvailableChanged = Signal()
+    endEffectorFrameGenerationChanged = Signal()
+    baseFrontFrameGenerationChanged = Signal()
+    baseRearFrameGenerationChanged = Signal()
 
     def __init__(self) -> None:
         super().__init__()
         self._end_effector_stream_available = False
         self._base_front_stream_available = False
         self._base_rear_stream_available = False
+        self._end_effector_frame_generation = 0
+        self._base_front_frame_generation = 0
+        self._base_rear_frame_generation = 0
 
     @Property(bool, notify=endEffectorStreamAvailableChanged)
     def endEffectorStreamAvailable(self) -> bool:
@@ -178,6 +184,39 @@ class FakeStreamHandler(QObject):
     @Property(bool, notify=baseRearStreamAvailableChanged)
     def baseRearStreamAvailable(self) -> bool:
         return self._base_rear_stream_available
+
+    @Property(int, notify=endEffectorFrameGenerationChanged)
+    def endEffectorFrameGeneration(self) -> int:
+        return self._end_effector_frame_generation
+
+    @Property(int, notify=baseFrontFrameGenerationChanged)
+    def baseFrontFrameGeneration(self) -> int:
+        return self._base_front_frame_generation
+
+    @Property(int, notify=baseRearFrameGenerationChanged)
+    def baseRearFrameGeneration(self) -> int:
+        return self._base_rear_frame_generation
+
+    @Slot(str, int, result=str)
+    def versionedImageUrl(self, base_url: str, generation: int) -> str:
+        base = str(base_url or "").split("?", 1)[0]
+        if not base:
+            return ""
+        return f"{base}?g={int(generation)}"
+
+    def bump_end_effector_generation(self) -> int:
+        """Test helper: simulate a new EF frame publish."""
+        self._end_effector_frame_generation += 1
+        self.endEffectorFrameGenerationChanged.emit()
+        self.endEffectorFrameReady.emit()
+        return self._end_effector_frame_generation
+
+    def bump_base_front_generation(self) -> int:
+        """Test helper: simulate a new base-front frame publish."""
+        self._base_front_frame_generation += 1
+        self.baseFrontFrameGenerationChanged.emit()
+        self.baseFrontFrameReady.emit()
+        return self._base_front_frame_generation
 
 
 class FakeScreenManager(DynamicObject):

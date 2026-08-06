@@ -15,6 +15,10 @@ Rectangle {
     required property var teensyStatus
     required property var valveStatus
     required property var lidarStatus
+    // Workspace may own a single shared top bar (avoid recreate on base↔EF).
+    property bool showTopBar: true
+    // Defer Canvas-heavy widgets one tick so mode switch video flips first.
+    property bool heavyDecorReady: false
 
     readonly property int panelWidth: CommonStyle.panelWidth
     readonly property int panelHeight: CommonStyle.panelHeight
@@ -46,21 +50,39 @@ Rectangle {
         return numericValue(value, 0).toFixed(digits) + suffix
     }
     
-    // Top Center - Pitch Indicator Dial
-    PitchIndicatorDial {
-        id: pitchIndicator
+    Component.onCompleted: heavyDecorTimer.start()
+    Timer {
+        id: heavyDecorTimer
+        interval: 1
+        repeat: false
+        onTriggered: overlay.heavyDecorReady = true
+    }
+
+    // Top Center - Pitch Indicator Dial (Canvas) — deferred off mode-switch stack
+    Loader {
+        active: overlay.heavyDecorReady
         anchors.top: parent.top
         anchors.topMargin: 50
         anchors.horizontalCenter: parent.horizontalCenter
-        
-        currentPitch: numericValue(overlay.teensyStatus.imuPitch, 0.0)
+        width: 180
+        height: 120
         z: 50
+        sourceComponent: PitchIndicatorDial {
+            currentPitch: numericValue(overlay.teensyStatus ? overlay.teensyStatus.imuPitch : 0.0, 0.0)
+        }
     }
-    
-    // Wall Detection Overlay - Bottom Center
-    WallDetectionOverlay {
-        id: wallDetectionOverlay
-        lidarStatus: overlay.lidarStatus
+
+    // Wall Detection Overlay - Bottom Center (Canvas) — deferred
+    Loader {
+        active: overlay.heavyDecorReady
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 5
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: 250
+        height: 120
+        sourceComponent: WallDetectionOverlay {
+            lidarStatus: overlay.lidarStatus
+        }
     }
     
     // WorkFlow Status Overlay - Full screen with blinking border
@@ -70,12 +92,18 @@ Rectangle {
         workflowRunner: overlay.workflowRunner
     }
     
-    // Top bar
-    VideoOverlayTopBar {
-        id: topBar
-        z: 200  // Highest z-index
-        topBarModel: overlay.videoRuntime.topBar
-        selectedOverlay: "ef"
+    // Top bar only when this overlay owns it (fullscreen workspace uses shared bar).
+    Loader {
+        active: overlay.showTopBar
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: active ? 50 : 0
+        z: 200
+        sourceComponent: VideoOverlayTopBar {
+            topBarModel: overlay.videoRuntime ? overlay.videoRuntime.topBar : null
+            selectedOverlay: "ef"
+        }
     }
     
     // LEFT SIDE - Teensy Data (Extension & Gimbal Angle)

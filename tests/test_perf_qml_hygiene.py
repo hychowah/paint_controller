@@ -36,9 +36,9 @@ def test_page_wheel_rear_cam_demand_starts_stream() -> None:
 
 
 def test_video_fullscreen_smooth_disabled() -> None:
-    """P-09: live fullscreen video Image uses smooth: false."""
+    """P-09: live fullscreen dual Image layers use smooth: false."""
     text = (_QML / "features" / "video" / "VideoFullscreenWorkspace.qml").read_text(encoding="utf-8")
-    # Ensure the live frame Image (not only unavailable icon) has smooth: false nearby.
-    assert "id: videoFrame" in text
-    frame_block = text.split("id: videoFrame", 1)[1].split("id: streamUnavailableIcon", 1)[0]
-    assert "smooth: false" in frame_block
+    for frame_id in ("efVideoFrame", "baseFrontVideoFrame", "baseRearVideoFrame"):
+        assert f"id: {frame_id}" in text, f"missing live frame id {frame_id}"
+        frame_block = text.split(f"id: {frame_id}", 1)[1].split("}", 1)[0]
+        assert "smooth: false" in frame_block, f"{frame_id} must set smooth: false"

@@ -105,7 +105,7 @@ Any candidate that fails these is **Reject** regardless of FPS gain:
 | Per-property device status façades | `TeensyStatus`, `SimpleDeviceStatus`, … |
 | HID poll reduced to 10 ms | `steam_deck.py` |
 | Deferred video start (+200 ms after timers) | `signal_wiring.py` |
-| Video `Connections` gated by `root.active` | `VideoFullscreenWorkspace.qml` |
+| Fullscreen dual Image layers + ~15 Hz gen pull (no FrameReady thrash) | `VideoFullscreenWorkspace.qml` |
 | Map recompute coalesce timer | TD-039 |
 | Dedicated workers for HID / GStreamer / SSH pool / system monitor | various |
 
@@ -185,13 +185,14 @@ Each item: technique source · applicability · design check · tradeoffs · aff
 
 **Technique:** Image provider / custom item; avoid full-frame copy on every request; prefer texture update over `source="" ; source=url` thrash.
 
-**Evidence today:**
+**Evidence / landed state:**
 
-1. `CameraStream._on_new_sample` — `QImage.copy()` into provider + emit `frameReady` (`video_stream.py` ~171–178).
-2. `ImageProvider.requestImage` — **another** `.copy()` under mutex (~88–94).
-3. `VideoFullscreenWorkspace.qml` — on each `*FrameReady`, clear `source` then reassign `image://…/frame` (~282–305) while `root.active`.
+1. `CameraStream._on_new_sample` — `QImage.copy()` into provider + emit `frameReady` (`video_stream.py`).
+2. `ImageProvider` — P-06 publish/swap + COW `requestImage` (no per-request deep copy).
+3. `VideoFullscreenWorkspace.qml` — **landed:** dual Image layers (ef / base front / base rear) with last texture; **timer-coalesced** (~66 ms) generation pull for the **active** feed only; versioned `image://…?g=N` URLs. Not per-frame `*FrameReady` Connections thrash.
+4. Mode chrome: single-active async Loader + shared top bar (video-first base↔EF; do not dual-warm).
 
-That is **decode + 2× copy + scene-graph invalidate** per frame for the active feed (worse if multiple consumers).
+Residual risk is decode + provider publish cost and any remaining consumers that still rebind every frame (e.g. PageWheel Connections path).
 
 **Applicability:** **High**. Largest evidence-backed UI/CPU risk in this tree after multi-stream decode.
 
@@ -231,8 +232,7 @@ That is **decode + 2× copy + scene-graph invalidate** per frame for the active 
 
 **Validation:** Device FPS/CPU before/after; freeze/stale after stream stop; switch EF↔base; dual window if applicable. Focused pytest video band.
 
-**Decision:** ☐ Apply / ☐ Defer / ☐ Reject  
-**If Apply, preferred option:** ☐ A / ☐ B / ☐ C / ☐ (decide after P-00)
+**Decision:** **Apply-done** (option B generation URL + dual-layer timer pull; P-06 option A subset). Option C custom item still open if Deck FPS needs more.
 
 ---
 

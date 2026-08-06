@@ -118,19 +118,22 @@ def test_switch_control_mode_to_ef_applies_defaults_and_resets_winch(qt_app, mon
     monkeypatch.setattr(
         input_module.QTimer,
         "singleShot",
-        staticmethod(lambda _ms, callback: deferred.append(callback)),
+        staticmethod(lambda _ms, callback: deferred.append((_ms, callback))),
     )
     handler, model, processor, store, popups, closed = _make_handler()
     model.set_joystick_controls("Track Control Left", "Track Control Right")
 
     handler.switch_control_mode(ControlMode.END_EFFECTOR)
 
-    assert store.control_mode == ControlMode.END_EFFECTOR.value
+    # Phase1: sticks + winch; control_mode applies on deferred 0ms callback.
+    assert store.control_mode != ControlMode.END_EFFECTOR.value or deferred
     assert model.get_current_joystick_controls() == ["None", "Winch Speed"]
     assert processor.reset_winch_activation_calls == 1
     assert closed == [True]
-    assert deferred  # popup deferred
-    deferred[0]()
+    assert len(deferred) >= 2  # mode apply (0ms) + popup
+    deferred[0][1]()  # apply control_mode
+    assert store.control_mode == ControlMode.END_EFFECTOR.value
+    deferred[1][1]()  # popup
     assert popups[-1][0] == "Control Mode"
     assert "EF" in popups[-1][1]
 
@@ -138,23 +141,32 @@ def test_switch_control_mode_to_ef_applies_defaults_and_resets_winch(qt_app, mon
 def test_switch_control_mode_round_trip_restores_remembered_sticks(qt_app, monkeypatch) -> None:
     import paint_controller.handlers.input as input_module
 
+    deferred: list = []
     monkeypatch.setattr(
         input_module.QTimer,
         "singleShot",
-        staticmethod(lambda _ms, _callback: None),
+        staticmethod(lambda _ms, callback: deferred.append(callback)),
     )
     handler, model, processor, store, _popups, _closed = _make_handler()
     model.set_joystick_controls("Track Control Left", "Track Control Right")
 
     handler.switch_control_mode(ControlMode.END_EFFECTOR)
+    for cb in deferred:
+        cb()
+    deferred.clear()
     model.set_joystick_controls("EF arm", "EF Yaw Angle")
     handler.switch_control_mode(ControlMode.BASE)
+    for cb in deferred:
+        cb()
+    deferred.clear()
 
     assert store.control_mode == ControlMode.BASE.value
     assert model.get_current_joystick_controls() == ["Track Control Left", "Track Control Right"]
     assert processor.reset_winch_activation_calls == 1  # only on EF enter
 
     handler.switch_control_mode(ControlMode.END_EFFECTOR)
+    for cb in deferred:
+        cb()
     assert model.get_current_joystick_controls() == ["EF arm", "EF Yaw Angle"]
     assert processor.reset_winch_activation_calls == 2
 
@@ -176,3 +188,35 @@ def test_switch_control_mode_same_mode_is_noop(qt_app, monkeypatch) -> None:
     assert model.get_current_joystick_controls() == ["EF arm", "Winch Speed"]
     assert processor.reset_winch_activation_calls == 0
     assert closed == []
+
+
+def test_switch_control_mode_rapid_double_switch_last_request_wins(qt_app, monkeypatch) -> None:
+    """Pending phase2 must not leave sticks/mode desynced on base→ef→base in one turn."""
+    import paint_controller.handlers.input as input_module
+
+    deferred: list = []
+    monkeypatch.setattr(
+        input_module.QTimer,
+        "singleShot",
+        staticmethod(lambda _ms, callback: deferred.append((_ms, callback))),
+    )
+    handler, model, processor, store, popups, _closed = _make_handler()
+    model.set_joystick_controls("Track Control Left", "Track Control Right")
+
+    handler.switch_control_mode(ControlMode.END_EFFECTOR)
+    # Do not drain deferred yet — second switch while phase2 for EF is pending.
+    handler.switch_control_mode(ControlMode.BASE)
+
+    # Sticks restored for base (remembered from first transition out of base).
+    assert model.get_current_joystick_controls() == ["Track Control Left", "Track Control Right"]
+    assert processor.reset_winch_activation_calls == 1  # EF enter only once
+
+    # Run all deferred callbacks in order (stale gens no-op).
+    for _ms, cb in deferred:
+        cb()
+
+    assert store.control_mode == ControlMode.BASE.value
+    assert model.get_current_joystick_controls() == ["Track Control Left", "Track Control Right"]
+    # Only the last switch's popup should fire.
+    assert len(popups) == 1
+    assert "Base" in popups[-1][1]

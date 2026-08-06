@@ -118,6 +118,68 @@ def test_controller_heartbeat_loss_halts_and_sets_warning(qt_app):
     assert state_store.controller_heartbeat_state == HeartbeatStatus.IDLE.value
 
 
+def test_controller_heartbeat_pending_tick_avoids_false_loss_during_ui_lag(qt_app):
+    """Queued ROS ticks with recent recv_mono must not trip halt while main is lagging.
+
+    Reproduces the base→EF stall pattern: applied last_seen is stale, but a
+    controller heartbeat was received and is still pending main-thread apply.
+    """
+    node = FakeNode()
+    state_store = FakeStateStore()
+    coordinator = FakeSafetyCoordinator()
+    handler = UIHeartbeatHandler(node, state_store=state_store, safety_coordinator=coordinator)
+    handler.cleanup()  # stop timer; we drive _check_availability explicitly
+
+    handler.set_controller_online(True)
+    handler.set_base_online(True)
+    handler.set_ef_online(True)
+    # Applied path is stale (as if main was blocked and never applied).
+    handler._controller_last_seen = 100.0
+    handler._base_last_seen = 101.0
+    handler._ef_last_seen = 101.0
+
+    # ROS received a controller tick during the UI stall (not yet applied).
+    with patch("paint_controller.handlers.heartbeat.time.time", return_value=101.2):
+        handler._controller_heartbeat_callback(_heartbeat_msg(HeartbeatStatus.ONTASK.value))
+
+    assert handler._controller_bridge.pending_snapshot() is not None
+
+    # Wall clock past applied last_seen timeout, but pending recv is recent.
+    with patch("paint_controller.handlers.heartbeat.time.time", return_value=101.8):
+        handler._check_availability()
+
+    assert handler.controller_online is True
+    assert coordinator.calls == []
+
+    qt_app.processEvents()
+    assert handler.controller_online is True
+    assert coordinator.calls == []
+
+
+def test_controller_heartbeat_true_silence_still_halts_without_pending(qt_app):
+    """No pending post + stale applied last_seen must still halt (real loss)."""
+    node = FakeNode()
+    state_store = FakeStateStore()
+    coordinator = FakeSafetyCoordinator()
+    handler = UIHeartbeatHandler(node, state_store=state_store, safety_coordinator=coordinator)
+    handler.cleanup()
+
+    handler.set_controller_online(True)
+    handler.set_base_online(True)
+    handler.set_ef_online(True)
+    handler._controller_last_seen = 100.0
+    handler._base_last_seen = 101.5
+    handler._ef_last_seen = 101.5
+
+    assert handler._controller_bridge.pending_snapshot() is None
+
+    with patch("paint_controller.handlers.heartbeat.time.time", return_value=101.5):
+        handler._check_availability()
+
+    assert handler.controller_online is False
+    assert coordinator.calls == [("Controller heartbeat lost", HeartbeatStatus.WARNING.value)]
+
+
 def test_base_heartbeat_recovery_promotes_runtime_state_to_ontask(qt_app):
     node = FakeNode()
     state_store = FakeStateStore()

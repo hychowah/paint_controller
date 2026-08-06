@@ -13,6 +13,8 @@ Rectangle {
     required property var baseTopViewStatus
     required property var baseTopViewActions
     required property var actionLegality
+    // Workspace may own a single shared top bar (avoid recreate on base↔EF).
+    property bool showTopBar: true
 
     readonly property int panelWidth: CommonStyle.panelWidth
     readonly property int panelHeight: CommonStyle.panelHeight
@@ -52,12 +54,18 @@ Rectangle {
         workflowRunner: overlay.workflowRunner
     }
     
-    // Top bar
-    VideoOverlayTopBar {
-        id: topBar
-        z: 200  // Highest z-index
-        topBarModel: overlay.videoRuntime.topBar
-        selectedOverlay: "base"
+    // Top bar only when this overlay owns it (fullscreen workspace uses shared bar).
+    Loader {
+        active: overlay.showTopBar
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: active ? 50 : 0
+        z: 200
+        sourceComponent: VideoOverlayTopBar {
+            topBarModel: overlay.videoRuntime ? overlay.videoRuntime.topBar : null
+            selectedOverlay: "base"
+        }
     }
     
     // LEFT SIDE - Left Motor Data (RPM, Current, Travel)
