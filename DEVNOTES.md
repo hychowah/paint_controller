@@ -1,6 +1,14 @@
 # Development Notes
 
 ---
+### 2026-08-06 - Workflow editor Steam Deck readability
+
+**Goal**: Larger type + touch density on workflow editor for 7″ 1280×800.
+**Tried**: Local type ladder on `WorkflowEditorWorkspace` (title 22 / section 18 / primary 16 / secondary 14 / field 18 / floor 13); taller palette/step rows; palette 200 / inspector 300; drop low-value subtitle; TextField values bold 18px; load/save-as popup rows match.
+**Result**: ✅ Focused band 10 passed (`test_startup_smoke_workflow_editor`, `test_qml_imports`, `test_workflow_editor`).
+**Files**: `qml/features/workflow/WorkflowEditorWorkspace.qml`
+
+---
 ### 2026-08-06 - Top-bar EF/BASE also switches joystick modes
 
 **Goal**: Fullscreen top-bar stream switch should fully change control mode (sticks + `control_mode`), not only the feed.
