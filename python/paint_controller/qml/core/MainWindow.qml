@@ -330,8 +330,8 @@ ApplicationWindow {
         id: messagePopup
     }
 
-    // Shared dual-surface overlay composition (TD-053). Host computes surface flags
-    // and home-route video policy; stack does not read root-context globals.
+    // Shared dual-surface overlay composition (TD-053). Host owns fullscreen-video
+    // active/source and surface placement; stack does not re-encode route policy.
     ShellOverlayStack {
         id: shellOverlayStack
         anchors.fill: parent
@@ -340,9 +340,7 @@ ApplicationWindow {
         emergencyVisible: showEmergencyOverlayOnMainSurface
         videoFullscreenActive: overlayHost
             ? (overlayHost.video_fullscreen_active
-               && overlayHost.video_fullscreen_on_main_surface
-               && shellRouter
-               && shellRouter.currentRoute === "home")
+               && overlayHost.video_fullscreen_on_main_surface)
             : false
         systemControlObjectName: "systemControlMenuMain"
         joystickObjectName: "joystickOverlayMain"

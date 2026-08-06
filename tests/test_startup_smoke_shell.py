@@ -83,7 +83,14 @@ def test_main_window_video_overlay_is_active_by_default(monkeypatch, tmp_path, q
     assert_no_fatal_qml_warnings(warnings)
 
 
-def test_main_window_video_overlay_hides_when_navigating_away(monkeypatch, tmp_path, qt_app, qtbot):
+def test_main_window_video_overlay_stays_active_when_navigating_away(
+    monkeypatch, tmp_path, qt_app, qtbot
+):
+    """Fullscreen video is owned by overlayHost, not by the current shell route.
+
+    Navigating to a non-home page must not hide an active video overlay; the DOT
+    toggle path flips overlayHost.video_fullscreen_active from any route.
+    """
     repo_root = Path(__file__).resolve().parent.parent
     qml_dir = repo_root / "python" / "paint_controller" / "qml"
     core_import_url = _qml_import_url(qml_dir / "core")
@@ -99,6 +106,8 @@ def test_main_window_video_overlay_hides_when_navigating_away(monkeypatch, tmp_p
     engine.warnings.connect(lambda errs: warnings.extend(str(err) for err in errs))
 
     context_objects = _context_objects(monkeypatch, tmp_path)
+    # Default FakeOverlayHost starts with video_fullscreen_active=True (startup default).
+    assert context_objects["overlayHost"].video_fullscreen_active is True
     ctx = engine.rootContext()
     for name, obj in context_objects.items():
         ctx.setContextProperty(name, obj)
@@ -139,7 +148,18 @@ MainWindow {{
 
         video_overlay = root.findChild(QObject, "videoFullscreenOverlayMain")
         assert video_overlay is not None
+        assert video_overlay.property("active") is True
+        assert context_objects["shellRouter"].currentRoute == "settings"
+        assert context_objects["overlayHost"].video_fullscreen_active is True
+
+        # Toggle path while already off home (DOT → overlayHost flip).
+        context_objects["overlayHost"].hide_video_fullscreen()
+        qt_app.processEvents()
         assert video_overlay.property("active") is False
+
+        context_objects["overlayHost"].show_video_fullscreen("image://base_front_live/frame")
+        qt_app.processEvents()
+        assert video_overlay.property("active") is True
         assert context_objects["shellRouter"].currentRoute == "settings"
 
         assert_no_fatal_qml_warnings(warnings)
