@@ -7,21 +7,31 @@ import "."
 Popup {
     id: numpad
     width: Math.round(400 * CommonStyle.scaleFactor)
-    height: Math.round(600 * CommonStyle.scaleFactor)
+    height: Math.round(560 * CommonStyle.scaleFactor)
     modal: true
+    dim: true
+    focus: true
     clip: true
-    
+    // Center over the full overlay (workflow editor / settings / command hosts)
+    anchors.centerIn: Overlay.overlay
+    padding: 0
+
     property var targetField
     property int buttonFontSize: Math.round(60 * CommonStyle.scaleFactor)
-    property color buttonColor: CommonStyle.cardBackground
+    // Elevated key face vs pad shell so digits read as targets
+    property color buttonColor: CommonStyle.cardBackgroundAlt
     property color buttonPressedColor: CommonStyle.buttonPressed
     property color buttonBorderColor: CommonStyle.borderFocused
     property color buttonTextColor: CommonStyle.textPrimary
-    property color specialButtonColor: CommonStyle.backgroundL1
+    property color specialButtonColor: CommonStyle.backgroundL2
     property int buttonRadius: CommonStyle.radiusSm
 
     background: Rectangle {
         color: "transparent"
+    }
+
+    Overlay.modal: Rectangle {
+        color: CommonStyle.overlayScrim
     }
     
     function toggleNegative() {
@@ -68,7 +78,7 @@ Popup {
         color: CommonStyle.cardBackground
         radius: CommonStyle.radiusLg
         border.color: CommonStyle.borderFocused
-        border.width: 2
+        border.width: CommonStyle.borderWidthThick
 
         ColumnLayout {
             anchors.fill: parent
@@ -224,6 +234,7 @@ Popup {
                     Layout.fillHeight: true
                     text: "✓"
                     isSpecial: true
+                    isAccent: true
                     onClicked: {
                         numpad.close()
                         if (numpad.targetField) {

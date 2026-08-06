@@ -665,12 +665,16 @@ Rectangle {
         }
     }
 
+    // Feature-local chrome button. Owns press-linger feedback so every
+    // Back/New/Load/Save/palette/Wait-done/Delete control gets the same hit.
+    // Accent = selected/primary state (persistent); visuallyPressed = touch flash.
     component EditorButton: Rectangle {
         id: btn
         property string text: ""
         property bool enabled: true
         property bool accent: false
         property int buttonWidth: 0
+        property bool visuallyPressed: false
         signal clicked()
 
         width: buttonWidth > 0 ? buttonWidth : implicitWidth
@@ -678,11 +682,30 @@ Rectangle {
         height: Math.round(54 * CommonStyle.scaleFactor)
         radius: 8
         opacity: enabled ? 1.0 : 0.45
-        color: !enabled ? CommonStyle.backgroundL2
-               : (mouse.pressed ? "#2A4060"
-               : (accent || mouse.containsMouse ? "#3A5A8C" : CommonStyle.backgroundL2))
-        border.color: accent ? "#5A7AAC" : CommonStyle.borderDefault
-        border.width: 1
+        color: {
+            if (!enabled)
+                return CommonStyle.backgroundL2
+            // Press flash must read above accent-selected state
+            if (visuallyPressed)
+                return CommonStyle.buttonPressed
+            if (accent)
+                return CommonStyle.buttonPrimary
+            if (mouse.containsMouse)
+                return CommonStyle.cardBackgroundAlt
+            return CommonStyle.backgroundL2
+        }
+        border.color: {
+            if (visuallyPressed)
+                return CommonStyle.borderFocused
+            if (accent)
+                return CommonStyle.accentSecondary
+            return CommonStyle.borderDefault
+        }
+        border.width: visuallyPressed ? CommonStyle.borderWidthThick : CommonStyle.borderWidthThin
+
+        Behavior on color {
+            ColorAnimation { duration: 60 }
+        }
 
         Text {
             id: label
@@ -690,7 +713,7 @@ Rectangle {
             text: btn.text
             color: CommonStyle.textPrimary
             font.pixelSize: root.fontPrimary
-            font.bold: accent
+            font.bold: accent || btn.visuallyPressed
         }
 
         MouseArea {
@@ -698,7 +721,23 @@ Rectangle {
             anchors.fill: parent
             enabled: btn.enabled
             hoverEnabled: true
-            onClicked: btn.clicked()
+            onPressed: btn.visuallyPressed = true
+            onCanceled: {
+                btn.visuallyPressed = false
+                pressLingerTimer.stop()
+            }
+            onClicked: {
+                btn.clicked()
+                // Linger so a short finger tap still registers on Steam Deck
+                pressLingerTimer.restart()
+            }
+        }
+
+        Timer {
+            id: pressLingerTimer
+            interval: 150
+            repeat: false
+            onTriggered: btn.visuallyPressed = false
         }
     }
 
