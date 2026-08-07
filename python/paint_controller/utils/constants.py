@@ -51,3 +51,6 @@ class HeartbeatStatus(IntEnum):
 # Qt-free SOT for hold-to-exit duration so tests/integrity checks can read it
 # without importing PySide6 via handlers/exit_hold.py.
 DEFAULT_EXIT_HOLD_DURATION_S = 1.0
+
+# Qt-free SOT for hold-to-emergency-stop duration (configurable at runtime).
+DEFAULT_EMERGENCY_HOLD_DURATION_S = 1.0

@@ -21,8 +21,13 @@ Item {
     /** Catalog key — see GuideCatalog.qml */
     property string contextId: "ef"
 
+    /** Optional footer button to swap to a companion guide context (e.g. UI ↔ deck buttons). */
+    property bool switchButtonVisible: false
+    property string switchButtonLabel: ""
+
     signal closed()
     signal finished()
+    signal switchContextRequested()
 
     GuideCatalog {
         id: catalog
@@ -138,6 +143,15 @@ Item {
             anchors.fill: parent
             anchors.margins: CommonStyle.spacingMd
             spacing: CommonStyle.spacingMd
+
+            GuideNavButton {
+                objectName: "guideSwitchButton"
+                label: root.switchButtonLabel
+                secondary: true
+                visible: root.switchButtonVisible
+                Layout.preferredWidth: visible ? implicitWidth : 0
+                onClicked: root.switchContextRequested()
+            }
 
             GuideNavButton {
                 objectName: "guideSkipButton"

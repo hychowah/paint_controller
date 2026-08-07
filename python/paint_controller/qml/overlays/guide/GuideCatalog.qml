@@ -113,7 +113,7 @@ QtObject {
         {
             id: "ef_to_buttons",
             title: "Hardware buttons",
-            body: "Thrust force, arm extend/retract, base move, and exit app are Steam Deck buttons — not on this screen. Tap the Btn control (above ?) for that guide.",
+            body: "Thrust force, arm extend/retract, base move, and exit app are Steam Deck buttons — not on this screen. Tap the Deck Buttons toggle inside this guide for that pack.",
             hotspots: [],
             calloutX: 0.28,
             calloutY: 0.35
@@ -132,17 +132,6 @@ QtObject {
             ],
             calloutX: 0.48,
             calloutY: 0.20
-        },
-        {
-            id: "base_hud",
-            title: "BASE overlay readouts",
-            body: "Left motor tiles show RPM, current, and travel. Base top view is the overhead fisheye. Winch current/cable sit near the right tile when winch is assigned.",
-            hotspots: [
-                { x: 0.18, y: 0.55, w: 0.22, h: 0.28 },
-                { x: 0.72, y: 0.28, w: 0.22, h: 0.32 }
-            ],
-            calloutX: 0.30,
-            calloutY: 0.18
         },
         {
             id: "base_left",
@@ -171,7 +160,7 @@ QtObject {
         {
             id: "base_to_buttons",
             title: "Hardware buttons",
-            body: "Thrust force, arm extend/retract, base move, and exit app are Steam Deck buttons — not on this screen. Tap the Btn control (above ?) for that guide.",
+            body: "Thrust force, arm extend/retract, base move, and exit app are Steam Deck buttons — not on this screen. Tap the Deck Buttons toggle inside this guide for that pack.",
             hotspots: [],
             calloutX: 0.28,
             calloutY: 0.35
@@ -303,11 +292,30 @@ QtObject {
             id: "btn_exit",
             title: "Exit app",
             // Duration owned by DEFAULT_EXIT_HOLD_DURATION_S — do not hard-code seconds here.
-            body: "Hold the Switch button to quit. Keep holding until the exit progress overlay completes, then release. Releasing early cancels. SteamOS Steam button is separate and is not used for app exit.",
+            body: "Hold the Switch button to quit. Keep holding until the exit progress overlay completes, then release. Releasing early cancels.",
             badge: "⋯ Switch",
             hotspots: [],
             calloutX: 0.28,
             calloutY: 0.26
+        },
+        {
+            id: "btn_emergency",
+            title: "Emergency stop",
+            // Duration owned by DEFAULT_EMERGENCY_HOLD_DURATION_S — do not hard-code seconds here.
+            body: "Hold the Steam button to trigger an emergency stop. All effectors halt, spray stops, and the system enters an error state. Release early to cancel; the hold must complete to activate.",
+            badge: "Steam",
+            hotspots: [],
+            calloutX: 0.28,
+            calloutY: 0.26
+        },
+        {
+            id: "btn_fullscreen",
+            title: "Toggle fullscreen",
+            body: "Press the right trackpad click (dot) to toggle the fullscreen video overlay on or off.",
+            badge: "Dot",
+            hotspots: [],
+            calloutX: 0.28,
+            calloutY: 0.28
         },
         {
             id: "btn_menus",

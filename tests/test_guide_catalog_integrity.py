@@ -9,7 +9,10 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from paint_controller.utils.constants import DEFAULT_EXIT_HOLD_DURATION_S
+from paint_controller.utils.constants import (
+    DEFAULT_EMERGENCY_HOLD_DURATION_S,
+    DEFAULT_EXIT_HOLD_DURATION_S,
+)
 from paint_controller.utils.input import DEFAULT_DOUBLE_PRESS_THRESHOLD_S
 
 _REPO = Path(__file__).resolve().parent.parent
@@ -120,8 +123,12 @@ def test_deck_binding_pins_match_python_sot() -> None:
         'badge: "L1"',
         'badge: "L5 / R5"',
         'badge: "A ×2"',
+        'badge: "Steam"',
+        'badge: "Dot"',
         "Switch",
         "Double-press",
+        "Emergency",
+        "fullscreen",
     ):
         assert token in deck, f"deck_buttons pack missing pin {token!r}"
 
@@ -147,7 +154,27 @@ def test_deck_binding_pins_match_python_sot() -> None:
             f"DEFAULT_EXIT_HOLD_DURATION_S ({DEFAULT_EXIT_HOLD_DURATION_S})"
         )
 
+    # Emergency-hold duration must also match the Python SOT if a number is given.
+    emergency_start = deck.find('id: "btn_emergency"')
+    assert emergency_start >= 0, "btn_emergency step not found"
+    emergency_block = deck[emergency_start:]
+    # Find the next step or end of deck block.
+    next_step = emergency_block.find("\n        {\n            id:", 1)
+    emergency_block = emergency_block[:next_step] if next_step > 0 else emergency_block
+    emergency_holds = re.findall(
+        r"(?:hold|holding)[^.]*?(\d+(?:\.\d+)?)\s*s",
+        emergency_block,
+        flags=re.IGNORECASE,
+    )
+    for raw in emergency_holds:
+        value = float(raw)
+        assert value == float(DEFAULT_EMERGENCY_HOLD_DURATION_S), (
+            f"Emergency-hold duration in catalog ({value}) must match "
+            f"DEFAULT_EMERGENCY_HOLD_DURATION_S ({DEFAULT_EMERGENCY_HOLD_DURATION_S})"
+        )
+
 
 def test_double_press_constant_is_positive() -> None:
     assert DEFAULT_DOUBLE_PRESS_THRESHOLD_S > 0
     assert DEFAULT_EXIT_HOLD_DURATION_S > 0
+    assert DEFAULT_EMERGENCY_HOLD_DURATION_S > 0

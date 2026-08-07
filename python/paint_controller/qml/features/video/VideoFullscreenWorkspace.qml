@@ -366,55 +366,6 @@ Rectangle {
         }
     }
 
-    // Deck hardware buttons (L1 thrust, L5/R5 arm, A base pos, Switch exit).
-    // Not UI chrome — separate pack from surface-specific hotspots.
-    Rectangle {
-        id: deckButtonsGuideButton
-        objectName: "deckButtonsGuideButton"
-        z: 10
-        width: Math.round(72 * CommonStyle.scaleFactor)
-        height: width
-        radius: Math.round(12 * CommonStyle.scaleFactor)
-
-        anchors.left: parent.left
-        anchors.bottom: helpGuideButton.top
-        anchors.bottomMargin: Math.round(12 * CommonStyle.scaleFactor)
-
-        color: deckButtonsMouseArea.pressed
-            ? CommonStyle.backgroundL2
-            : (deckButtonsMouseArea.containsMouse ? CommonStyle.backgroundL1 : CommonStyle.videoSurface)
-        border.color: deckButtonsMouseArea.pressed
-            ? CommonStyle.accentPrimary
-            : CommonStyle.borderDefault
-        border.width: CommonStyle.borderWidthThin
-        opacity: 0.85
-        visible: root.active && !root.operatorGuideOpen
-
-        Behavior on color { ColorAnimation { duration: CommonStyle.motionFast } }
-        Behavior on border.color { ColorAnimation { duration: CommonStyle.motionFast } }
-        Behavior on scale { NumberAnimation { duration: CommonStyle.motionFast } }
-
-        MouseArea {
-            id: deckButtonsMouseArea
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.openOperatorGuideContext("deck_buttons", 0)
-            onPressed: deckButtonsGuideButton.scale = 0.92
-            onReleased: deckButtonsGuideButton.scale = 1.0
-            onCanceled: deckButtonsGuideButton.scale = 1.0
-        }
-
-        Text {
-            anchors.centerIn: parent
-            text: "Btn"
-            color: CommonStyle.textPrimary
-            font.family: CommonStyle.fontSans
-            font.pixelSize: Math.round(16 * CommonStyle.scaleFactor)
-            font.bold: true
-        }
-    }
-
     // Exactly one mode chrome active (destroy inactive — no dual-warm).
     Loader {
         id: endEffectorOverlayLoader
@@ -518,6 +469,14 @@ Rectangle {
         id: operatorGuideHost
         z: 400
         loaderObjectName: "operatorGuideLoader"
+        switchButtonVisible: true
+        switchButtonLabel: operatorGuideHost.activeContextId === "deck_buttons" ? "UI Guide" : "Deck Buttons"
+        onSwitchContextRequested: {
+            if (operatorGuideHost.activeContextId === "deck_buttons")
+                operatorGuideHost.openGuide(root.operatorGuideContext, 0)
+            else
+                operatorGuideHost.openGuide("deck_buttons", 0)
+        }
     }
 
     Behavior on opacity {

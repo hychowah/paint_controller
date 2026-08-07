@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Protocol, TypedDict, cast
 
 from PySide6.QtCore import QObject, Signal
 
-from paint_controller.utils.constants import HeartbeatStatus
+from paint_controller.utils.constants import DEFAULT_EMERGENCY_HOLD_DURATION_S, HeartbeatStatus
 
 if TYPE_CHECKING:
     from paint_controller.controllers.esp32_valve import ESP32ValveController
@@ -69,12 +69,12 @@ class EmergencyButtonHandler(QObject):
         self._state_store = state_store
         self._safety_coordinator = safety_coordinator
 
-        duration_target = 1.0
+        duration_target = DEFAULT_EMERGENCY_HOLD_DURATION_S
         if self._settings_manager is not None:
             try:
-                duration_target = float(self._settings_manager.get("emergency_hold_duration_s", 1.0))
+                duration_target = float(self._settings_manager.get("emergency_hold_duration_s", DEFAULT_EMERGENCY_HOLD_DURATION_S))
             except Exception:
-                duration_target = 1.0
+                duration_target = DEFAULT_EMERGENCY_HOLD_DURATION_S
 
             signal = getattr(self._settings_manager, "emergency_hold_duration_s_changed", None)
             if signal is not None:

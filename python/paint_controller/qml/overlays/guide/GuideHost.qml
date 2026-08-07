@@ -16,6 +16,12 @@ Item {
     readonly property bool open: loader.item ? loader.item.open : false
     readonly property string activeContextId: loader.item ? loader.item.contextId : ""
 
+    /** Optional companion-context switch (e.g. video UI guide ↔ deck-buttons guide). */
+    property bool switchButtonVisible: false
+    property string switchButtonLabel: ""
+
+    signal switchContextRequested()
+
     function openGuide(contextId, startIndex) {
         loader.active = true
         // Sync Loader creates the item immediately when active becomes true.
@@ -40,6 +46,7 @@ Item {
                 item.closed.connect(function () {
                     loader.active = false
                 })
+                item.switchContextRequested.connect(root.switchContextRequested)
             }
         }
     }
@@ -48,6 +55,8 @@ Item {
         id: guideComponent
         OperatorGuideOverlay {
             anchors.fill: parent
+            switchButtonVisible: root.switchButtonVisible
+            switchButtonLabel: root.switchButtonLabel
         }
     }
 }
