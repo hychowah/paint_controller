@@ -46,3 +46,8 @@ class HeartbeatStatus(IntEnum):
     WARNING = 0x02
     ERROR = 0x03
     CLEAR_ERROR = 0x04
+
+
+# Qt-free SOT for hold-to-exit duration so tests/integrity checks can read it
+# without importing PySide6 via handlers/exit_hold.py.
+DEFAULT_EXIT_HOLD_DURATION_S = 1.0

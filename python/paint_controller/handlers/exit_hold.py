@@ -9,8 +9,7 @@ from typing import TypedDict
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QApplication
 
-
-DEFAULT_EXIT_HOLD_DURATION_S = 1.0
+from paint_controller.utils.constants import DEFAULT_EXIT_HOLD_DURATION_S
 
 
 class ExitHoldState(TypedDict):

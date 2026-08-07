@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import "../../theme"
 import "../../overlays/systemcontrol/components" as SysComponents
 import "../../components/inputs"
+import "../../overlays/guide"
 
 /**
  * Full-page touch workflow editor.
@@ -20,6 +21,20 @@ Rectangle {
     required property var overlayController
 
     readonly property bool editorActive: workflowEditor ? workflowEditor.is_open : false
+    readonly property bool operatorGuideOpen: editorGuideHost.open
+
+    function openOperatorGuide(startIndex) {
+        editorGuideHost.openGuide("workflow_editor", startIndex || 0)
+    }
+
+    function closeOperatorGuide() {
+        editorGuideHost.closeGuide()
+    }
+
+    onEditorActiveChanged: {
+        if (!editorActive)
+            closeOperatorGuide()
+    }
     readonly property int selectedIndex: workflowEditor ? workflowEditor.selected_index : -1
     readonly property int selectedMemberIndex: workflowEditor ? workflowEditor.selected_member_index : -1
     readonly property var stepsModel: workflowEditor ? workflowEditor.steps : []
@@ -148,6 +163,14 @@ Rectangle {
                     text: "Save as"
                     buttonWidth: Math.round(110 * CommonStyle.scaleFactor)
                     onClicked: saveAsKeyboard.openFor(workflowEditor ? workflowEditor.workflow_name : "")
+                }
+
+                EditorButton {
+                    objectName: "workflowEditorHelpButton"
+                    text: "?"
+                    buttonWidth: Math.round(56 * CommonStyle.scaleFactor)
+                    visible: !root.operatorGuideOpen
+                    onClicked: root.openOperatorGuide(0)
                 }
             }
         }
@@ -1087,5 +1110,12 @@ Rectangle {
             if (workflowEditor)
                 loopBox.checked = workflowEditor.loop
         }
+    }
+
+    // Editor-only guide (palette / steps / params) — not shown on video HUD.
+    GuideHost {
+        id: editorGuideHost
+        z: 200
+        loaderObjectName: "workflowEditorGuideLoader"
     }
 }

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QObject, QTimer, Slot
 
 from paint_controller.utils.constants import ControlMode
-from paint_controller.utils.input import DoublePressDetector
+from paint_controller.utils.input import DEFAULT_DOUBLE_PRESS_THRESHOLD_S, DoublePressDetector
 
 if TYPE_CHECKING:
     from paint_controller.controllers.teensy import TeensyController
@@ -55,9 +55,9 @@ class UIInputHandler(QObject):
         self._show_popup_fn = show_popup_fn
         self._close_popup_fn = close_popup_fn
 
-        self._l5_double_press = DoublePressDetector(threshold=1.0)
-        self._r5_double_press = DoublePressDetector(threshold=1.0)
-        self._a_double_press = DoublePressDetector(threshold=1.0)
+        self._l5_double_press = DoublePressDetector(threshold=DEFAULT_DOUBLE_PRESS_THRESHOLD_S)
+        self._r5_double_press = DoublePressDetector(threshold=DEFAULT_DOUBLE_PRESS_THRESHOLD_S)
+        self._a_double_press = DoublePressDetector(threshold=DEFAULT_DOUBLE_PRESS_THRESHOLD_S)
 
         # In-flight session mode for early-return / stick transition while phase2 is pending.
         self._pending_control_mode: str | None = None

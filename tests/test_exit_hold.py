@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from paint_controller.handlers.exit_hold import DEFAULT_EXIT_HOLD_DURATION_S, ExitHoldHandler
+from paint_controller.handlers.exit_hold import ExitHoldHandler
+from paint_controller.utils.constants import DEFAULT_EXIT_HOLD_DURATION_S
 
 
 def test_default_hold_duration_is_one_second(qt_app) -> None:

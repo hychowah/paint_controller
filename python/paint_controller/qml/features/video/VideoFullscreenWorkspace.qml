@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../theme"
 import "../../overlays/video/components"
+import "../../overlays/guide"
 
 /*
  * Fullscreen video contract (base↔EF on Deck):
@@ -121,15 +122,20 @@ Rectangle {
 
     function commitChromeFeed() {
         if (!root.active) {
+            if (root.operatorGuideOpen)
+                root.closeOperatorGuide()
             root.chromeFeed = ""
             return
         }
+        var next = ""
         if (root.isEfFeed)
-            root.chromeFeed = "ef"
+            next = "ef"
         else if (root.isBaseFrontFeed)
-            root.chromeFeed = "base"
-        else
-            root.chromeFeed = ""
+            next = "base"
+        // Mode-specific packs: close guide when EF↔BASE chrome swaps.
+        if (next !== root.chromeFeed && root.operatorGuideOpen)
+            root.closeOperatorGuide()
+        root.chromeFeed = next
     }
 
     onVideoSourceChanged: {
@@ -146,7 +152,24 @@ Rectangle {
             chromeCommitTimer.restart()
         } else {
             root.chromeFeed = ""
+            root.closeOperatorGuide()
         }
+    }
+
+    /** Default chrome guide pack (ef | base). Hardware buttons use "deck_buttons". */
+    readonly property string operatorGuideContext: root.chromeIsBase ? "base" : "ef"
+    readonly property bool operatorGuideOpen: operatorGuideHost.open
+
+    function openOperatorGuide(startIndex) {
+        openOperatorGuideContext(root.operatorGuideContext, startIndex)
+    }
+
+    function openOperatorGuideContext(contextId, startIndex) {
+        operatorGuideHost.openGuide(contextId || root.operatorGuideContext, startIndex || 0)
+    }
+
+    function closeOperatorGuide() {
+        operatorGuideHost.closeGuide()
     }
     Component.onCompleted: {
         if (root.active) {
@@ -243,6 +266,7 @@ Rectangle {
 
     Rectangle {
         id: systemMenuButton
+        objectName: "systemMenuButton"
         z: 10
         width: Math.round(72 * CommonStyle.scaleFactor)
         height: width
@@ -259,6 +283,7 @@ Rectangle {
             : CommonStyle.borderDefault
         border.width: CommonStyle.borderWidthThin
         opacity: 0.85
+        visible: root.active && !root.operatorGuideOpen
 
         Behavior on color { ColorAnimation { duration: CommonStyle.motionFast } }
         Behavior on border.color { ColorAnimation { duration: CommonStyle.motionFast } }
@@ -290,6 +315,103 @@ Rectangle {
                     color: CommonStyle.textPrimary
                 }
             }
+        }
+    }
+
+    // Operator help (?) — chrome guide for active EF/BASE surface.
+    Rectangle {
+        id: helpGuideButton
+        objectName: "helpGuideButton"
+        z: 10
+        width: Math.round(72 * CommonStyle.scaleFactor)
+        height: width
+        radius: Math.round(12 * CommonStyle.scaleFactor)
+
+        anchors.left: parent.left
+        anchors.bottom: systemMenuButton.top
+        anchors.bottomMargin: Math.round(12 * CommonStyle.scaleFactor)
+
+        color: helpGuideMouseArea.pressed
+            ? CommonStyle.backgroundL2
+            : (helpGuideMouseArea.containsMouse ? CommonStyle.backgroundL1 : CommonStyle.videoSurface)
+        border.color: helpGuideMouseArea.pressed
+            ? CommonStyle.accentPrimary
+            : CommonStyle.borderDefault
+        border.width: CommonStyle.borderWidthThin
+        opacity: 0.85
+        visible: root.active && !root.operatorGuideOpen
+
+        Behavior on color { ColorAnimation { duration: CommonStyle.motionFast } }
+        Behavior on border.color { ColorAnimation { duration: CommonStyle.motionFast } }
+        Behavior on scale { NumberAnimation { duration: CommonStyle.motionFast } }
+
+        MouseArea {
+            id: helpGuideMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.openOperatorGuide(0)
+            onPressed: helpGuideButton.scale = 0.92
+            onReleased: helpGuideButton.scale = 1.0
+            onCanceled: helpGuideButton.scale = 1.0
+        }
+
+        Text {
+            anchors.centerIn: parent
+            text: "?"
+            color: CommonStyle.textPrimary
+            font.family: CommonStyle.fontSans
+            font.pixelSize: Math.round(28 * CommonStyle.scaleFactor)
+            font.bold: true
+        }
+    }
+
+    // Deck hardware buttons (L1 thrust, L5/R5 arm, A base pos, Switch exit).
+    // Not UI chrome — separate pack from surface-specific hotspots.
+    Rectangle {
+        id: deckButtonsGuideButton
+        objectName: "deckButtonsGuideButton"
+        z: 10
+        width: Math.round(72 * CommonStyle.scaleFactor)
+        height: width
+        radius: Math.round(12 * CommonStyle.scaleFactor)
+
+        anchors.left: parent.left
+        anchors.bottom: helpGuideButton.top
+        anchors.bottomMargin: Math.round(12 * CommonStyle.scaleFactor)
+
+        color: deckButtonsMouseArea.pressed
+            ? CommonStyle.backgroundL2
+            : (deckButtonsMouseArea.containsMouse ? CommonStyle.backgroundL1 : CommonStyle.videoSurface)
+        border.color: deckButtonsMouseArea.pressed
+            ? CommonStyle.accentPrimary
+            : CommonStyle.borderDefault
+        border.width: CommonStyle.borderWidthThin
+        opacity: 0.85
+        visible: root.active && !root.operatorGuideOpen
+
+        Behavior on color { ColorAnimation { duration: CommonStyle.motionFast } }
+        Behavior on border.color { ColorAnimation { duration: CommonStyle.motionFast } }
+        Behavior on scale { NumberAnimation { duration: CommonStyle.motionFast } }
+
+        MouseArea {
+            id: deckButtonsMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.openOperatorGuideContext("deck_buttons", 0)
+            onPressed: deckButtonsGuideButton.scale = 0.92
+            onReleased: deckButtonsGuideButton.scale = 1.0
+            onCanceled: deckButtonsGuideButton.scale = 1.0
+        }
+
+        Text {
+            anchors.centerIn: parent
+            text: "Btn"
+            color: CommonStyle.textPrimary
+            font.family: CommonStyle.fontSans
+            font.pixelSize: Math.round(16 * CommonStyle.scaleFactor)
+            font.bold: true
         }
     }
 
@@ -388,6 +510,14 @@ Rectangle {
             ? root.videoRuntime.controls.rightValue : ""
         title: "RIGHT CONTROL"
         onPanelClicked: root.overlayController.open_menu("right")
+    }
+
+    // Demand-load guide so chrome EF↔BASE Loader swaps stay free of guide scene graph.
+    // z above HUD chrome (top bar 200); shell system/joystick (~1000) and emergency stay higher.
+    GuideHost {
+        id: operatorGuideHost
+        z: 400
+        loaderObjectName: "operatorGuideLoader"
     }
 
     Behavior on opacity {

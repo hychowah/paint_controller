@@ -1,0 +1,5 @@
+GuideCallout 1.0 GuideCallout.qml
+GuideCatalog 1.0 GuideCatalog.qml
+GuideHost 1.0 GuideHost.qml
+GuideHotspot 1.0 GuideHotspot.qml
+OperatorGuideOverlay 1.0 OperatorGuideOverlay.qml

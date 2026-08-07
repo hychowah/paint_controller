@@ -5,6 +5,9 @@ from __future__ import annotations
 import time
 from typing import Any
 
+# SOT for L5/R5/A double-press window (UIInputHandler + operator guide copy).
+DEFAULT_DOUBLE_PRESS_THRESHOLD_S = 1.0
+
 
 def input_axes_active(input_state: dict[str, Any] | None, threshold: float = 1638.4) -> bool:
     """True when any stick/trigger axis exceeds ``threshold`` (default ~5% of 32768).
@@ -40,12 +43,12 @@ class DoublePressDetector:
     the second press occurred within the threshold window.
 
     Usage:
-        detector = DoublePressDetector(threshold=1.0)
+        detector = DoublePressDetector()
         is_double = detector.press()  # False (first press)
-        is_double = detector.press()  # True if within 1 second
+        is_double = detector.press()  # True if within DEFAULT_DOUBLE_PRESS_THRESHOLD_S
     """
 
-    def __init__(self, threshold: float = 1.0):
+    def __init__(self, threshold: float = DEFAULT_DOUBLE_PRESS_THRESHOLD_S):
         self._threshold = threshold
         self._last_press_time = 0.0
 

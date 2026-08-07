@@ -5,6 +5,7 @@ import "../../theme"
 import "../../components/popups"
 import "../../navigation"
 import "../../overlays/systemcontrol" as LegacySystemControl
+import "../../overlays/guide"
 
 Item {
     id: systemControlWorkspace
@@ -25,6 +26,34 @@ Item {
     required property var settingsManager
     required property var overlayController
     readonly property bool showSystemMenu: showOverlay && activeMenu === "system"
+
+    // Guide pack follows the open System Control tab.
+    readonly property var systemGuideContexts: [
+        "system_devices",
+        "system_command",
+        "system_settings",
+        "system_workflow"
+    ]
+    readonly property string operatorGuideContext: {
+        var idx = tabView.currentIndex
+        if (idx < 0 || idx >= systemGuideContexts.length)
+            return "system_devices"
+        return systemGuideContexts[idx]
+    }
+    readonly property bool operatorGuideOpen: systemGuideHost.open
+
+    function openOperatorGuide(startIndex) {
+        systemGuideHost.openGuide(systemControlWorkspace.operatorGuideContext, startIndex || 0)
+    }
+
+    function closeOperatorGuide() {
+        systemGuideHost.closeGuide()
+    }
+
+    onShowSystemMenuChanged: {
+        if (!showSystemMenu)
+            closeOperatorGuide()
+    }
 
     visible: true
 
@@ -57,6 +86,8 @@ Item {
         color: CommonStyle.backgroundL0
         opacity: showSystemMenu ? 1 : 0
         visible: opacity > 0
+        // Clip guide hotspots/scrim to the dialog (not full window).
+        clip: true
 
         border.color: CommonStyle.borderDefault
         border.width: 1
@@ -100,6 +131,30 @@ Item {
                     font.pixelSize: CommonStyle.fontHeading + 6
                     font.bold: true
                     Layout.fillWidth: true
+                }
+
+                Rectangle {
+                    objectName: "systemControlHelpButton"
+                    width: CommonStyle.controlHeightMd
+                    height: CommonStyle.controlHeightMd
+                    radius: 16
+                    color: helpMouseArea.containsMouse ? CommonStyle.backgroundL2 : "transparent"
+                    visible: !systemControlWorkspace.operatorGuideOpen
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "?"
+                        color: CommonStyle.textSecondary
+                        font.pixelSize: CommonStyle.fontHeading
+                        font.bold: true
+                    }
+
+                    MouseArea {
+                        id: helpMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: systemControlWorkspace.openOperatorGuide(0)
+                    }
                 }
 
                 Rectangle {
@@ -182,11 +237,18 @@ Item {
 
                 StackLayout {
                     id: tabView
+                    objectName: "systemControlTabView"
                     anchors {
                         fill: parent
                         margins: CommonStyle.spacingMd
                     }
                     currentIndex: 0
+
+                    // Tab change invalidates open guide (hotspots/copy are tab-specific).
+                    onCurrentIndexChanged: {
+                        if (systemControlWorkspace.operatorGuideOpen)
+                            systemControlWorkspace.closeOperatorGuide()
+                    }
 
                     LegacySystemControl.DeviceControlTab {
                         id: deviceControlTabContent
@@ -222,6 +284,14 @@ Item {
                     }
                 }
             }
+        }
+
+        // Guide must parent to the dialog panel so catalog anchors (0–1) match
+        // System Control chrome — not the full window behind it.
+        GuideHost {
+            id: systemGuideHost
+            z: 100
+            loaderObjectName: "systemOperatorGuideLoader"
         }
     }
 
