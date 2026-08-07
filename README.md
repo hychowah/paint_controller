@@ -97,7 +97,7 @@ source ~/.bashrc
 paint_controller
 ```
 
-`paint_controller` is installed by `pip install -e .`. The launcher script below is only an optional convenience wrapper when you do not want to activate the project venv manually.
+`paint_controller` is installed by `pip install -e .`. The launcher script above is only an optional convenience wrapper when you do not want to activate the project venv manually.
 
 ### Manual Run
 
@@ -253,20 +253,11 @@ Useful focused handoff bands:
 - `python/paint_controller/qml/` — QML UI
 - `python/config/` — runtime configuration JSON
 - `tests/` — pytest suite
-- `docs/plan/` — live architecture board plus durable architecture guide
 - Historical C++ sources have been removed from the live repo; no `src/` runtime path remains
-
-## Documentation Map
-
-- `INDEX.md` — start here in a fresh LLM or handoff session; repo authority order and doc navigation
-- `docs/plan/00_ARCHITECTURE_PROGRESS.md` — current roadmap status, completed slices, next recommended slice
-- `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` — durable architecture rationale, anti-goals, and historical completion context
-- `DEVNOTES.md` — chronological development notes
-- `KNOWLEDGE.md` — reusable Qt/Python/ROS gotchas
 
 ## Operational Notes
 
-- Multi-screen behavior is managed by `ScreenManager` and the QML shell; use `docs/plan/00_ARCHITECTURE_PROGRESS.md` for the live next slice and `docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md` for durable architecture rationale.
+- Multi-screen behavior is managed by `ScreenManager` and the QML shell.
 - The build system is now a pure `ament_cmake` wrapper around the Python package; no live C++ UI/runtime path remains in the repo.
 - In fullscreen video, the left/right `ControlInfoPanel` tiles are touch targets: tapping one shows a pressed highlight and opens the joystick control menu; tapping a menu item briefly highlights it before selecting and committing that mode; tapping outside the menu dismisses it. Long mode names (e.g., `"Track Control Right"`) are shown as compact labels in the panel while the full names remain in the menu. Physical L4/R4 and D-pad navigation continue to work as before.
 

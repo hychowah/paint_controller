@@ -18,8 +18,7 @@ class StateStore(QObject):
     Stick/control HUD labels live on ``ControlProcessor`` / selection models — not here.
 
     Thread-safe: all property access is guarded by ``_lock``.
-    Signals are emitted **outside** the lock to avoid deadlocks
-    (see KNOWLEDGE.md — Thread Lock + Signal Pattern).
+    Signals are emitted **outside** the lock to avoid deadlocks.
     """
 
     control_mode_changed = Signal(str)

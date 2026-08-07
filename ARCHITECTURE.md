@@ -7,12 +7,8 @@ It does **not** cover operator UX, visual design, or industrial HMI certificatio
 
 | Need | Document |
 |---|---|
-| Session orientation & authority hierarchy | [`INDEX.md`](INDEX.md) |
-| How to work in this repo (agents / gates) | [`AGENTS.md`](AGENTS.md) |
-| Live unfinished architecture work | [`docs/plan/00_ARCHITECTURE_PROGRESS.md`](docs/plan/00_ARCHITECTURE_PROGRESS.md) |
-| Durable rationale & invariants | [`docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md`](docs/plan/01_PYTHON_QT_ARCHITECTURE_DEBT_PLAN.md) |
-| Known debt items | [`docs/tech-debt.md`](docs/tech-debt.md) |
 | Run / install | [`README.md`](README.md) |
+| Program structure | [`ARCHITECTURE.md`](ARCHITECTURE.md) (this file) |
 
 ---
 
@@ -343,7 +339,7 @@ Main:       bridge QueuedConnection → controller._apply_status_snapshot(pod)
 
 **Other residuals:** in-flight workflow oneshot may still publish before stop is seen; ESP32 UDP already QueuedConnection; BaseTopView scalar residual opportunistic.
 
-House rules (see also `KNOWLEDGE.md`):
+House rules:
 
 - Prefer **emit outside locks**.
 - Cross-thread edges: prefer explicit `Qt.QueuedConnection` when affinity is known.
@@ -361,7 +357,7 @@ House rules (see also `KNOWLEDGE.md`):
 | `python/config/` | Hardware / defaults JSON (e.g. `settings.json`, device configs) |
 | `python/paint_controller/config/` | SSH / bash helper config |
 | `python/paint_controller/resource/` | Images, workflow YAML samples |
-| Settings runtime | `SettingsManager` loads/persists schema-driven values (path details evolve; see tech debt if deploying read-only) |
+| Settings runtime | `SettingsManager` loads/persists schema-driven values |
 
 ---
 
@@ -464,8 +460,7 @@ Do **not** hand-sync separate lists in selection model, control map, and engine 
 | Workflow run / edit | `services/workflow/*` via `systemControlServices` (runner + editor); full-page editor workspace; action types/estimate/completion SOT in `action_schema` + `estimate`/`completion` |
 | Fullscreen video family (touched surface) | `videoRuntime` |
 
-Frozen contracts and quarantine exceptions are listed on the live board:  
-[`docs/plan/00_ARCHITECTURE_PROGRESS.md`](docs/plan/00_ARCHITECTURE_PROGRESS.md).
+Frozen contracts and quarantine exceptions are documented inline in the relevant sections above.
 
 ---
 
@@ -488,11 +483,7 @@ That is enough to navigate most of the tree without reading every file.
 ```
 paint_controller_ros2/
 ├── ARCHITECTURE.md          ← this file
-├── INDEX.md                 ← session map & authority
-├── AGENTS.md                ← contributor/agent workflow
 ├── README.md                ← install & run
-├── docs/plan/               ← live board + durable plan
-├── docs/tech-debt.md
 ├── tests/
 └── python/paint_controller/
     ├── core/

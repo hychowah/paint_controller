@@ -8,7 +8,6 @@ __pycache__/
 venv/
 .venv/
 python/paint_controller/venv/
-PLANNING.md
 
 # Test / coverage artifacts
 .coverage
